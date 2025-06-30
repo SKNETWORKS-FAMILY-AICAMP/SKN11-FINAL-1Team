@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💬 MCP 도구 활용 에이전트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Streamlit과 유사한 스타일링 */
+        .sidebar {
+            background-color: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+        }
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- CSRF 토큰을 메타 태그로 추가 -->
+    {% csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    
+    <div class="flex h-screen">
+        <!-- 사이드바 (Streamlit sidebar와 동일한 구조) -->
+        <div class="sidebar w-1/4 p-4 overflow-y-auto">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold">✍️ Made by <a href="https://youtube.com/c/teddynote" class="text-blue-600">테디노트</a> 🚀</h3>
+                <p class="text-sm">💻 <a href="https://github.com/teddynote-lab/langgraph-mcp-agents" class="text-blue-600">Project Page</a></p>
+            </div>
+            
+            <hr class="my-4">
+            
+            <!-- 시스템 설정 -->
+            <div class="mb-6">
+                <h4 class="font-bold mb-2">⚙️ 시스템 설정</h4>
+                <select id="modelSelect" class="w-full p-2 border rounded">
+                    {% for model in available_models %}
+                    <option value="{{ model }}">{{ model }}</option>
+                    {% endfor %}
+                </select>
+                
+                <div class="mt-4">
+                    <label class="block text-sm font-medium">⏱️ 응답 생성 제한 시간(초)</label>
+                    <input type="range" id="timeoutSlider" min="60" max="300" value="120" class="w-full">
+                    <span id="timeoutValue">120</span>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <!-- 도구 설정 -->
+            <div class="mb-6">
+                <h4 class="font-bold mb-2">🔧 도구 설정</h4>
+                <details class="border rounded p-2">
+                    <summary class="cursor-pointer">🧰 MCP 도구 추가</summary>
+                    <div class="mt-2">
+                        <textarea id="toolConfig" class="w-full h-40 p-2 border rounded text-sm" 
+                                  placeholder='{"도구이름": {"command": "...", "args": [...]}}'></textarea>
+                        <button onclick="addTool()" class="w-full mt-2 bg-blue-500 text-white p-2 rounded">도구 추가</button>
+                    </div>
+                </details>
+                
+                <!-- 등록된 도구 목록 -->
+                <div class="mt-4">
+                    <h5 class="font-medium">📋 등록된 도구 목록</h5>
+                    <div id="toolList">
+                        {% for tool in mcp_tools %}
+                        <div class="flex justify-between items-center py-1">
+                            <span>- <strong>{{ tool.name }}</strong></span>
+                            <button onclick="deleteTool('{{ tool.name }}')" class="text-red-500 text-sm">삭제</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <!-- 시스템 정보 및 작업 버튼 -->
+            <div>
+                <h4 class="font-bold mb-2">📊 시스템 정보</h4>
+                <p class="text-sm">🛠️ MCP 도구 수: <span id="toolCount">{{ mcp_tools.count }}</span></p>
+                <p class="text-sm">🧠 현재 모델: <span id="currentModel">claude-3-7-sonnet-latest</span></p>
+                
+                <button onclick="applySettings()" id="applySettingsBtn" class="w-full mt-4 bg-green-500 text-white p-2 rounded">설정 적용하기</button>
+                <button onclick="clearChat()" class="w-full mt-2 bg-gray-500 text-white p-2 rounded">대화 초기화</button>
+            </div>
+        </div>
+        
+        <!-- 메인 채팅 영역 -->
+        <div class="flex-1 flex flex-col">
+            <header class="bg-white shadow-sm p-4">
+                <h1 class="text-2xl font-bold">💬 MCP 도구 활용 에이전트</h1>
+                <p class="text-gray-600">✨ MCP 도구를 활용한 ReAct 에이전트에게 질문해보세요.</p>
+            </header>
+            
+            <!-- 채팅 메시지 영역 -->
+            <div id="chatMessages" class="chat-container flex-1 p-4 space-y-4">
+                <!-- 채팅 메시지들이 여기에 동적으로 추가됩니다 -->
+            </div>
+            
+            <!-- 메시지 입력 영역 -->
+            <div class="bg-white border-t p-4">
+                <div class="flex space-x-2">
+                    <input type="text" id="messageInput" 
+                           placeholder="💬 질문을 입력하세요" 
+                           class="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="sendMessage()" 
+                            class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600">전송</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function initializeMCP() {
+            try {
+                const response = await fetch('/initialize-mcp/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('toolCount').textContent = data.tool_count;
+                    console.log('✅ MCP initialized:', data.tools);
+                    
+                    // 도구 목록 업데이트
+                    updateToolList(data.tools);
+                } else {
+                    console.error('❌ MCP initialization failed:', data.error);
+                    alert('MCP 초기화에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('❌ MCP initialization error:', error);
+                alert('MCP 초기화 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function addTool() {
+            const configText = document.getElementById('toolConfig').value;
+            
+            try {
+                const config = JSON.parse(configText);
+                
+                const response = await fetch('/save-config/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('도구가 성공적으로 추가되었습니다!');
+                    location.reload(); // 페이지 새로고침
+                } else {
+                    alert('도구 추가 실패: ' + data.error);
+                }
+            } catch (error) {
+                alert('JSON 형식이 올바르지 않습니다: ' + error.message);
+            }
+        }
+
+        async function deleteTool(toolName) {
+            if (confirm(`${toolName} 도구를 삭제하시겠습니까?`)) {
+                try {
+                    const response = await fetch('/delete-tool/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({tool_name: toolName})
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('도구가 성공적으로 삭제되었습니다!');
+                        location.reload();
+                    } else {
+                        alert('도구 삭제 실패: ' + data.error);
+                    }
+                } catch (error) {
+                    alert('오류가 발생했습니다: ' + error.message);
+                }
+            }
+        }
+
+        // 설정 적용 함수 (하나만 유지, 중복 제거)
+        async function applySettings() {
+            const btn = document.getElementById('applySettingsBtn');
+            if (!btn) {
+                console.error('❌ applySettingsBtn을 찾을 수 없습니다.');
+                return;
+            }
+            
+            const originalText = btn.textContent;
+            
+            // 버튼 상태 변경
+            btn.disabled = true;
+            btn.textContent = '적용 중...';
+            btn.className = 'w-full mt-4 bg-gray-400 text-white p-2 rounded cursor-not-allowed';
+            
+            try {
+                console.log('🔄 설정 적용 시작...');
+                
+                // 사용자 선택 설정 정보 수집 (중요: 모델 선택 정보 포함)
+                const selectedModel = document.getElementById('modelSelect').value;
+                const timeoutSeconds = parseInt(document.getElementById('timeoutSlider').value);
+                
+                console.log(`🎯 선택된 모델: ${selectedModel}`);
+                
+                // CSRF 토큰 가져오기
+                const csrftoken = getCookie('csrftoken') || 
+                                document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                                document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                if (csrftoken) {
+                    headers['X-CSRFToken'] = csrftoken;
+                }
+                
+                const response = await fetch('/apply-settings/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        'action': 'apply_settings',
+                        'selected_model': selectedModel,  // 선택된 모델 정보 전송
+                        'timeout_seconds': timeoutSeconds,
+                        'timestamp': new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}\n${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ 서버 응답:', data);
+                
+                if (data.success) {
+                    alert('✅ 설정이 성공적으로 적용되었습니다!');
+                    document.getElementById('toolCount').textContent = data.tool_count || 0;
+                    
+                    // 현재 모델 정보 업데이트 (세션에서 모델 선택 정보 유지 확인)
+                    if (data.user_settings && data.user_settings.selected_model) {
+                        document.getElementById('currentModel').textContent = data.user_settings.selected_model;
+                        document.getElementById('modelSelect').value = data.user_settings.selected_model;
+                        console.log(`✅ 모델 선택 정보 유지 확인: ${data.user_settings.selected_model}`);
+                    }
+                    
+                } else {
+                    throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
+                }
+                
+            } catch (error) {
+                console.error('❌ 설정 적용 오류:', error);
+                alert('❌ 설정 적용 실패: ' + error.message);
+            } finally {
+                // 버튼 상태 복원
+                btn.disabled = false;
+                btn.textContent = originalText;
+                btn.className = 'w-full mt-4 bg-green-500 text-white p-2 rounded hover:bg-green-600';
+            }
+        }
+
+        // 페이지 로드 시 세션에서 사용자 설정 복원
+        document.addEventListener('DOMContentLoaded', function() {
+            // 세션에서 사용자 설정 로드
+            fetch('/get-user-settings/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.user_settings) {
+                        console.log('🔄 세션에서 사용자 설정 복원:', data.user_settings);
+                        
+                        // 모델 선택 복원 (중요!)
+                        const modelSelect = document.getElementById('modelSelect');
+                        if (modelSelect && data.user_settings.selected_model) {
+                            modelSelect.value = data.user_settings.selected_model;
+                            document.getElementById('currentModel').textContent = data.user_settings.selected_model;
+                            console.log(`✅ 모델 선택 복원: ${data.user_settings.selected_model}`);
+                        }
+                        
+                        // 타임아웃 설정 복원
+                        if (data.user_settings.timeout_seconds) {
+                            document.getElementById('timeoutSlider').value = data.user_settings.timeout_seconds;
+                            document.getElementById('timeoutValue').textContent = data.user_settings.timeout_seconds;
+                        }
+                        
+                        // 도구 수 복원
+                        if (data.user_settings.tool_count) {
+                            document.getElementById('toolCount').textContent = data.user_settings.tool_count;
+                        }
+                    }
+                })
+                .catch(error => console.error('사용자 설정 로드 오류:', error));
+            
+            // MCP 초기화
+            initializeMCP();
+        });
+
+        // CSRF 토큰 가져오기
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        function updateToolList(tools) {
+            const toolListDiv = document.getElementById('toolList');
+            toolListDiv.innerHTML = '';
+            
+            tools.forEach(toolName => {
+                const toolDiv = document.createElement('div');
+                toolDiv.className = 'flex justify-between items-center py-1';
+                toolDiv.innerHTML = `
+                    <span>- <strong>${toolName}</strong></span>
+                    <button onclick="deleteTool('${toolName}')" class="text-red-500 text-sm">삭제</button>
+                `;
+                toolListDiv.appendChild(toolDiv);
+            });
+        }
+
+        // WebSocket 연결 및 채팅 로직
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/chat/'
+        );
+        
+        let messages = [];
+        
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            displayMessage(data);
+        };
+        
+        // WebSocket 대신 HTTP 기반 채팅으로 변경
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) {
+                return;
+            }
+            
+            // 사용자 메시지 표시
+            displayMessage({
+                role: 'user',
+                content: message
+            });
+            
+            // 입력 필드 초기화
+            input.value = '';
+            
+            // 로딩 메시지 표시
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-message';
+            loadingDiv.className = 'flex justify-start';
+            loadingDiv.innerHTML = `
+                <div class="bg-white border p-3 rounded-lg max-w-md">
+                    <div class="flex items-center mb-1">
+                        <span class="mr-2">🤖</span>
+                        <span class="font-medium">어시스턴트</span>
+                    </div>
+                    <p>생각하고 있습니다...</p>
+                </div>
+            `;
+            document.getElementById('chatMessages').appendChild(loadingDiv);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+            
+            try {
+                // CSRF 토큰 가져오기
+                const csrftoken = getCookie('csrftoken') || 
+                                document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                                document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                if (csrftoken) {
+                    headers['X-CSRFToken'] = csrftoken;
+                }
+                
+                // HTTP POST로 메시지 전송
+                const response = await fetch('/chat-message/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        'message': message
+                    })
+                });
+                
+                // 로딩 메시지 제거
+                const loadingElement = document.getElementById('loading-message');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 어시스턴트 응답 표시
+                    displayMessage({
+                        role: 'assistant',
+                        content: data.response || '응답을 생성했습니다.'
+                    });
+                } else {
+                    throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
+                }
+                
+            } catch (error) {
+                // 로딩 메시지 제거
+                const loadingElement = document.getElementById('loading-message');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                console.error('❌ 메시지 전송 오류:', error);
+                displayMessage({
+                    role: 'assistant',
+                    content: `오류가 발생했습니다: ${error.message}`
+                });
+            }
+        }
+
+        
+        function displayMessage(data) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            
+            if (data.role === 'user') {
+                messageDiv.className = 'flex justify-end';
+                messageDiv.innerHTML = `
+                    <div class="bg-blue-500 text-white p-3 rounded-lg max-w-md">
+                        <div class="flex items-center mb-1">
+                            <span class="mr-2">🧑‍💻</span>
+                            <span class="font-medium">사용자</span>
+                        </div>
+                        <p>${data.content}</p>
+                    </div>
+                `;
+            } else {
+                messageDiv.className = 'flex justify-start';
+                messageDiv.innerHTML = `
+                    <div class="bg-white border p-3 rounded-lg max-w-md">
+                        <div class="flex items-center mb-1">
+                            <span class="mr-2">🤖</span>
+                            <span class="font-medium">어시스턴트</span>
+                        </div>
+                        <p>${data.content}</p>
+                    </div>
+                `;
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // 유틸리티 함수들
+        function addTool() {
+            const config = document.getElementById('toolConfig').value;
+            // AJAX로 도구 추가 로직
+        }
+        
+        async function clearChat() {
+            try {
+                const response = await fetch('/clear-chat/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('chatMessages').innerHTML = '';
+                    alert('대화가 초기화되었습니다.');
+                } else {
+                    alert('대화 초기화 실패: ' + data.error);
+                }
+            } catch (error) {
+                alert('오류가 발생했습니다: ' + error.message);
+            }
+        }
+        
+        // Enter 키로 메시지 전송
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

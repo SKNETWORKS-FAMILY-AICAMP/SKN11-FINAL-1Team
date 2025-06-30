@@ -1,0 +1,30 @@
+{
+  "mcp-taskmanager": {
+    "command": "cmd",
+    "args": [
+      "/c",
+      "npx",
+      "-y",
+      "@smithery/cli@latest",
+      "run",
+      "@kazuph/mcp-taskmanager",
+      "--key",
+      "11c84f97-db9b-4302-a1c7-19ed23f52cb5"
+    ],
+    "transport": "stdio"
+  },
+  "desktop-commander": {
+    "command": "cmd",
+    "args": [
+      "/c",
+      "npx",
+      "-y",
+      "@smithery/cli@latest",
+      "run",
+      "@wonderwhy-er/desktop-commander",
+      "--key",
+      "11c84f97-db9b-4302-a1c7-19ed23f52cb5"
+    ],
+    "transport": "stdio"
+  }
+}
