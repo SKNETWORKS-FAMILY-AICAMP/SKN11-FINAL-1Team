@@ -104,10 +104,11 @@
             <!-- 메시지 입력 영역 -->
             <div class="bg-white border-t p-4">
                 <div class="flex space-x-2">
-                    <input type="text" id="messageInput" 
-                           placeholder="💬 질문을 입력하세요" 
-                           class="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button onclick="sendMessage()" 
+                    <textarea id="messageInput"
+                              placeholder="💬 질문을 입력하세요"
+                              rows="2"
+                              class="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[48px] max-h-40"></textarea>
+                    <button onclick="sendMessage()"
                             class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600">전송</button>
                 </div>
             </div>
@@ -276,16 +277,95 @@
             }
         }
 
-        // 페이지 로드 시 세션에서 사용자 설정 복원
         document.addEventListener('DOMContentLoaded', function() {
-            // 세션에서 사용자 설정 로드
+            // 1️⃣ WebSocket robust 연결 설정 (중복 제거, auto-reconnect)
+            let chatSocket = null;
+            let reconnectAttempts = 0;
+            const maxReconnectAttempts = 5;
+            let reconnectTimeout = null;
+            let currentAssistantMessage = '';
+            let assistantMessageDiv = null;
+
+            function connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                chatSocket = new WebSocket(protocol + '//' + window.location.host + '/ws/chat/');
+
+                chatSocket.onopen = function() {
+                    reconnectAttempts = 0;
+                    console.log('✅ WebSocket 연결됨');
+                };
+
+                chatSocket.onmessage = function(e) {
+                    const data = JSON.parse(e.data);
+                    console.log('📩 WebSocket 메시지 수신:', data);
+                    if (data.role === 'user') {
+                        displayMessage(data);
+                    } else if (data.role === 'assistant_stream') {
+                        // 스트리밍 응답 처리
+                        if (!assistantMessageDiv) {
+                            assistantMessageDiv = createAssistantMessageDiv();
+                            document.getElementById('chatMessages').appendChild(assistantMessageDiv);
+                        }
+                        currentAssistantMessage += data.content;
+                        updateAssistantMessage(assistantMessageDiv, currentAssistantMessage);
+                    } else if (data.role === 'system' && data.content === '✅ 응답 완료') {
+                        // 답변이 모두 끝난 뒤 후처리: JSON 코드블럭 토글 등 적용
+                        if (assistantMessageDiv && currentAssistantMessage) {
+                            const contentP = assistantMessageDiv.querySelector('.assistant-content');
+                            if (window.marked) {
+                                contentP.innerHTML = renderMarkdownWithJsonToggle(currentAssistantMessage);
+                            } else {
+                                contentP.textContent = currentAssistantMessage;
+                            }
+                        }
+                        assistantMessageDiv = null;
+                        currentAssistantMessage = '';
+                    } else {
+                        displayMessage(data);
+                    }
+                };
+
+                chatSocket.onclose = function(e) {
+                    console.error('❌ WebSocket 연결 종료됨', e);
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = 1000 * reconnectAttempts;
+                        reconnectTimeout = setTimeout(connectWebSocket, delay);
+                        console.warn(`재연결 시도 ${reconnectAttempts}/${maxReconnectAttempts}...`);
+                    } else {
+                        alert('WebSocket 연결이 반복적으로 끊어졌습니다. 새로고침 해주세요.');
+                    }
+                };
+
+                chatSocket.onerror = function(e) {
+                    console.error('❌ WebSocket 오류:', e);
+                    chatSocket.close();
+                };
+            }
+
+            connectWebSocket();
+
+            // 2️⃣ WebSocket 기반 메시지 전송 함수 (단일 정의, robust)
+            window.sendMessage = function() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+                if (!message) return;
+                if (!chatSocket || chatSocket.readyState !== 1) {
+                    alert('WebSocket 연결이 불안정합니다. 잠시 후 다시 시도하세요.');
+                    return;
+                }
+                chatSocket.send(JSON.stringify({ 'message': message }));
+                input.value = '';
+            };
+
+            // 3️⃣ 세션에서 사용자 설정 복원 (기존 로직 유지)
             fetch('/get-user-settings/')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.user_settings) {
                         console.log('🔄 세션에서 사용자 설정 복원:', data.user_settings);
                         
-                        // 모델 선택 복원 (중요!)
+                        // 모델 선택 복원
                         const modelSelect = document.getElementById('modelSelect');
                         if (modelSelect && data.user_settings.selected_model) {
                             modelSelect.value = data.user_settings.selected_model;
@@ -307,7 +387,7 @@
                 })
                 .catch(error => console.error('사용자 설정 로드 오류:', error));
             
-            // MCP 초기화
+            // 4️⃣ MCP 초기화 (기존 로직 유지)
             initializeMCP();
         });
 
@@ -344,151 +424,100 @@
             });
         }
 
-        // WebSocket 연결 및 채팅 로직
-        const chatSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/chat/'
-        );
-        
-        let messages = [];
-        
-        chatSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            displayMessage(data);
-        };
-        
-        // WebSocket 대신 HTTP 기반 채팅으로 변경
-        async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
-            
-            if (!message) {
-                return;
+        // Enter/Shift+Enter 입력 처리 (textarea용)
+        document.getElementById('messageInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                if (e.shiftKey) {
+                    // 줄바꿈 허용
+                    return;
+                } else {
+                    e.preventDefault();
+                    sendMessage();
+                }
             }
-            
-            // 사용자 메시지 표시
-            displayMessage({
-                role: 'user',
-                content: message
-            });
-            
-            // 입력 필드 초기화
-            input.value = '';
-            
-            // 로딩 메시지 표시
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = 'loading-message';
-            loadingDiv.className = 'flex justify-start';
-            loadingDiv.innerHTML = `
-                <div class="bg-white border p-3 rounded-lg max-w-md">
+        });
+
+        function createAssistantMessageDiv() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex justify-start';
+            messageDiv.innerHTML = `
+                <div class="bg-white border p-3 rounded-lg max-w-3xl">
                     <div class="flex items-center mb-1">
                         <span class="mr-2">🤖</span>
                         <span class="font-medium">어시스턴트</span>
                     </div>
-                    <p>생각하고 있습니다...</p>
+                    <p class="assistant-content"></p>
                 </div>
             `;
-            document.getElementById('chatMessages').appendChild(loadingDiv);
-            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
-            
-            try {
-                // CSRF 토큰 가져오기
-                const csrftoken = getCookie('csrftoken') || 
-                                document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                                document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                
-                if (csrftoken) {
-                    headers['X-CSRFToken'] = csrftoken;
-                }
-                
-                // HTTP POST로 메시지 전송
-                const response = await fetch('/chat-message/', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({
-                        'message': message
-                    })
-                });
-                
-                // 로딩 메시지 제거
-                const loadingElement = document.getElementById('loading-message');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // 어시스턴트 응답 표시
-                    displayMessage({
-                        role: 'assistant',
-                        content: data.response || '응답을 생성했습니다.'
-                    });
-                } else {
-                    throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
-                }
-                
-            } catch (error) {
-                // 로딩 메시지 제거
-                const loadingElement = document.getElementById('loading-message');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-                
-                console.error('❌ 메시지 전송 오류:', error);
-                displayMessage({
-                    role: 'assistant',
-                    content: `오류가 발생했습니다: ${error.message}`
-                });
-            }
+            return messageDiv;
         }
 
-        
+        function renderMarkdownWithJsonToggle(markdownText) {
+            // marked로 HTML 변환
+            let html = window.marked.parse(markdownText);
+            // JSON 코드블럭을 토글 가능한 div로 변환
+            html = html.replace(/<pre><code class="language-json">([\s\S]*?)<\/code><\/pre>/g, function(match, p1) {
+                const jsonText = p1.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+                const id = 'json-toggle-' + Math.random().toString(36).substr(2, 9);
+                return `
+                <div class="json-toggle-block border rounded bg-gray-100 my-2">
+                    <button onclick="const e=document.getElementById('${id}');e.style.display=e.style.display==='none'?'block':'none';this.textContent=e.style.display==='none'?'코드 보기 ▼':'코드 숨기기 ▲';" class="text-xs text-blue-600 px-2 py-1">코드 보기 ▼</button>
+                    <pre id="${id}" style="display:none;overflow-x:auto;"><code class="language-json">${jsonText}</code></pre>
+                </div>
+                `;
+            });
+            return html;
+        }
+
+        function updateAssistantMessage(messageDiv, content) {
+            const contentP = messageDiv.querySelector('.assistant-content');
+            if (window.marked) {
+                // 스트리밍 중에는 마크다운만 빠르게 렌더링 (JSON 토글 후처리는 마지막에만)
+                contentP.innerHTML = window.marked.parse(content);
+            } else {
+                contentP.textContent = content;
+            }
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
         function displayMessage(data) {
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
-            
             if (data.role === 'user') {
                 messageDiv.className = 'flex justify-end';
                 messageDiv.innerHTML = `
-                    <div class="bg-blue-500 text-white p-3 rounded-lg max-w-md">
+                    <div class="bg-blue-500 text-white p-3 rounded-lg max-w-3xl">
                         <div class="flex items-center mb-1">
                             <span class="mr-2">🧑‍💻</span>
                             <span class="font-medium">사용자</span>
                         </div>
-                        <p>${data.content}</p>
+                        <p style="white-space: pre-line;">${data.content}</p>
                     </div>
                 `;
             } else {
                 messageDiv.className = 'flex justify-start';
                 messageDiv.innerHTML = `
-                    <div class="bg-white border p-3 rounded-lg max-w-md">
+                    <div class="bg-white border p-3 rounded-lg max-w-3xl">
                         <div class="flex items-center mb-1">
                             <span class="mr-2">🤖</span>
                             <span class="font-medium">어시스턴트</span>
                         </div>
-                        <p>${data.content}</p>
+                        <p class="assistant-content"></p>
                     </div>
                 `;
+                const contentP = messageDiv.querySelector('.assistant-content');
+                if (window.marked) {
+                    contentP.innerHTML = renderMarkdownWithJsonToggle(data.content);
+                } else {
+                    contentP.textContent = data.content;
+                }
             }
-            
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
         
         // 유틸리티 함수들
-        function addTool() {
-            const config = document.getElementById('toolConfig').value;
-            // AJAX로 도구 추가 로직
-        }
-        
         async function clearChat() {
             try {
                 const response = await fetch('/clear-chat/', {
@@ -511,13 +540,11 @@
                 alert('오류가 발생했습니다: ' + error.message);
             }
         }
-        
-        // Enter 키로 메시지 전송
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
+
+        // marked.js CDN 추가 (마크다운 파싱용)
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        document.head.appendChild(script);
     </script>
 </body>
 </html>

@@ -81,8 +81,8 @@ OUTPUT_TOKEN_INFO = {
     "gpt-4o-mini": {"max_tokens": 16000},
 }
 
-# config.json 파일 경로 설정
-CONFIG_FILE_PATH = os.path.join(settings.BASE_DIR, "config.json")
+def get_config_file_path():
+    return os.path.join(settings.BASE_DIR, "config.json")
 
 def get_or_create_event_loop():
     """전역 이벤트 루프 생성 및 재사용"""
@@ -114,13 +114,13 @@ def load_config_from_json():
     }
     
     try:
-        if os.path.exists(CONFIG_FILE_PATH):
-            with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as f:
+        if os.path.exists(get_config_file_path()):
+            with open(get_config_file_path(), "r", encoding="utf-8") as f:
                 config = json.load(f)
                 print(f"✅ Config loaded: {config}")
                 return config
         else:
-            print(f"❌ Config file not found at: {CONFIG_FILE_PATH}")
+            print(f"❌ Config file not found at: {get_config_file_path()}")
             save_config_to_json(default_config)
             return default_config
     except Exception as e:
@@ -130,9 +130,9 @@ def load_config_from_json():
 def save_config_to_json(config):
     """설정을 config.json 파일에 저장합니다."""
     try:
-        with open(CONFIG_FILE_PATH, "w", encoding="utf-8") as f:
+        with open(get_config_file_path(), "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
-        print(f"✅ Config saved to {CONFIG_FILE_PATH}")
+        print(f"✅ Config saved to {get_config_file_path()}")
         return True
     except Exception as e:
         print(f"❌ 설정 파일 저장 중 오류 발생: {str(e)}")

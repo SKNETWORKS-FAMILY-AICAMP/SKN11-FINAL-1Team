@@ -41,14 +41,13 @@ INSTALLED_APPS = [
 ]
 
 # 비동기 지원을 위한 설정
-ASGI_APPLICATION = 'mcp_chatbot_project.asgi.application'
+ASGI_APPLICATION = 'dragon_intern.asgi.application'
 
-# 채널 레이어 설정 (Redis 사용)
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("172.23.218.75", 6379)],
         },
     },
 }
