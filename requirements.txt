@@ -1,0 +1,13 @@
+langchain==0.1.0
+langchain-openai==0.0.5
+langgraph==0.0.26
+qdrant-client==1.7.0
+sentence-transformers==2.2.2
+django==4.2.7
+djangorestframework==3.14.0
+python-dotenv==1.0.0
+openai==1.6.1
+numpy==1.24.3
+pandas==1.5.3
+requests==2.31.0
+django-cors-headers==4.3.1 
