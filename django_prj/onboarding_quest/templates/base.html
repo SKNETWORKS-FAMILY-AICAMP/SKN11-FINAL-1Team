@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}온보딩 시스템{% endblock %}</title>
+    <link rel="stylesheet" href="/static/common.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <h1>회사 온보딩 시스템</h1>
+        <nav>
+            <a href="/main/">메인</a> |
+            <a href="/task/">태스크</a> |
+            <a href="/doc/">문서</a> |
+            <a href="/template/">템플릿</a> |
+            <a href="/chatbot/">챗봇</a> |
+            <a href="/mentee/">멘티 관리</a> |
+            <a href="/supervisor/">관리자</a> |
+            <a href="/login/">로그인</a>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <hr>
+        <p>&copy; 2025 회사 온보딩 시스템</p>
+    </footer>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
