@@ -1,0 +1,19 @@
+
+.level-btn {
+    background: #ffbdbd;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 32px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    font-weight: bold;
+}
+.level-btn.selected {
+    background: #ff6b6b;
+    color: #fff;
+    box-shadow: 0 0 0 2px #ff6b6b33;
+}
+.level-btn:hover {
+    background: #ff8b8b;
+}
