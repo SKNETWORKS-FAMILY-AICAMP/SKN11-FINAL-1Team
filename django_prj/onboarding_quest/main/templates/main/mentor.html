@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>멘토 대시보드</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+
+    .main-content {
+      padding: 30px;
+      margin: 20px;
+      background-color: white;
+      border: 2px solid #ccc;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .header p {
+      font-size: 16px;
+      color: #666;
+    }
+
+    .mentor-section h2 {
+      font-size: 20px;
+      color: #333;
+      margin: 30px 0 20px;
+    }
+
+    .search-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .search-box {
+      flex: 1;
+      position: relative;
+      min-width: 200px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 12px 15px 12px 45px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      background-color: white;
+      box-sizing: border-box;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+    }
+
+    .filter-btn {
+      padding: 12px 20px;
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      white-space: nowrap;
+      transition: background-color 0.3s;
+    }
+
+    .filter-btn:hover {
+      background-color: #5a6268;
+    }
+
+    .mentors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .mentor-card {
+      background-color: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .mentor-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+
+    .mentor-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .mentor-avatar {
+      width: 60px;
+      height: 60px;
+      background-color: #ccc;
+      border-radius: 50%;
+      margin-right: 15px;
+    }
+
+    .mentor-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .progress-section {
+      margin-bottom: 20px;
+    }
+
+    .progress-label {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: #333;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    .tags-section {
+      margin-bottom: 20px;
+    }
+
+    .tags-label {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      background-color: #e9ecef;
+      color: #495057;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .mentor-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background-color: #545b62;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-content">
+    <div class="header">
+      <p>안녕하세요! 멘토님! 오늘도 멘티분들과 여정을 함께 하세요!</p>
+    </div>
+
+    <div class="mentor-section">
+      <h2>멘티 관리</h2>
+
+      <div class="search-container">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="멘티 이름을 검색해주세요...">
+        </div>
+        <button class="filter-btn">📊 필터</button>
+      </div>
+
+      <div class="mentors-grid">
+        <div class="mentor-card">
+          <div class="mentor-info">
+            <div class="mentor-avatar"></div>
+            <div class="mentor-name">김신입</div>
+          </div>
+          <div class="progress-section">
+            <div class="progress-label">진척도</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 65%;"></div>
+            </div>
+          </div>
+          <div class="tags-section">
+            <div class="tags-label">최근 활동</div>
+            <div class="tags">
+              <span class="tag">#react</span>
+              <span class="tag">#JS</span>
+            </div>
+          </div>
+          <div class="mentor-actions">
+            <button class="btn btn-primary">대화하기</button>
+            <button class="btn btn-secondary">진척도</button>
+          </div>
+        </div>
+
+        <div class="mentor-card">
+          <div class="mentor-info">
+            <div class="mentor-avatar"></div>
+            <div class="mentor-name">이신입</div>
+          </div>
+          <div class="progress-section">
+            <div class="progress-label">진척도</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 80%;"></div>
+            </div>
+          </div>
+          <div class="tags-section">
+            <div class="tags-label">최근 활동</div>
+            <div class="tags">
+              <span class="tag">#react</span>
+              <span class="tag">#JS</span>
+            </div>
+          </div>
+          <div class="mentor-actions">
+            <button class="btn btn-primary">대화하기</button>
+            <button class="btn btn-secondary">진척도</button>
+          </div>
+        </div>
+
+        <div class="mentor-card">
+          <div class="mentor-info">
+            <div class="mentor-avatar"></div>
+            <div class="mentor-name">방신입</div>
+          </div>
+          <div class="progress-section">
+            <div class="progress-label">진척도</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 90%;"></div>
+            </div>
+          </div>
+          <div class="tags-section">
+            <div class="tags-label">최근 활동</div>
+            <div class="tags">
+              <span class="tag">#react</span>
+              <span class="tag">#JS</span>
+            </div>
+          </div>
+          <div class="mentor-actions">
+            <button class="btn btn-primary">대화하기</button>
+            <button class="btn btn-secondary">진척도</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
