@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}템플릿 관리 페이지{% endblock %}
+{% block content %}
+<h2>템플릿 관리 페이지</h2>
+{% endblock %}
+
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>템플릿 생성</title>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: #f9f9f9;
+            padding: 40px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-bottom: 24px;
+        }
+
+        .template-form {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .column {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 16px;
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .column-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .column textarea,
+        .column input[type="text"] {
+            width: 100%;
+            font-size: 14px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .desc-box {
+            height: 340px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .desc-box textarea {
+            height: 100%;
+            resize: none;
+            white-space: pre-line;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .task-list input {
+            height: 32px;
+        }
+
+        .form-buttons {
+            margin-top: 24px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        button {
+            padding: 6px 12px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .add-task-button {
+            background-color: #444;
+            color: #fff;
+            text-decoration: none;
+            font-size: 13px;
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
+
+        .add-task-button:hover {
+            background-color: #333;
+        }
+
+        .create-button {
+            background-color: #1a2233;
+            color: #fff;
+        }
+
+        .cancel-button {
+            background-color: #ccc;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>템플릿 생성</h2>
+
+    <form class="template-form" id="create-form">
+        <!-- 왼쪽: 설명 -->
+        <div class="column">
+            <div class="column-title">조직 문화 적용 description</div>
+            <div class="desc-box">
+                <textarea readonly>
+# week1 조직문화 이해 및 관찰
+# week2 조직문화 실천 체험
+# week3 조직문화 실천 체험 발표 및 피드백
+# week4 팀워크 향상 프로그램 참여
+# week5 조직 내 비공식 커뮤니케이션 탐색
+# week6 사내 이벤트 참여 후기 작성
+# week7 동료 피드백 수렴 및 자기성찰
+# week8 사내 이슈 브리핑 참여
+# week9 부서 간 협업 업무 참여
+# week10 회사 미션/비전 재해석 활동
+# week11 역멘토링 활동
+# week12 평생 신입사원 되기 프로젝트
+                </textarea>
+            </div>
+        </div>
+
+        <!-- 오른쪽: task -->
+        <div class="column">
+            <div class="column-title">
+                세부 task
+                <a href="/task_create" class="add-task-button">추가</a>
+            </div>
+            <div class="task-list">
+                <input type="text" value="오리엔테이션 영상 시청" readonly>
+                <input type="text" value="조직문화 pdf 가이드 읽기" readonly>
+                <input type="text" value="사내 조직도 열람" readonly>
+                <input type="text" value="팀원과 소통하기" readonly>
+                <input type="text" value="관련 일지 작성하기" readonly>
+                <input type="text" value="팀원들과 커피챗" readonly>
+                <input type="text" value="Weekly 미팅" readonly>
+            </div>
+        </div>
+    </form>
+
+    <!-- 하단 버튼 -->
+    <div class="form-buttons">
+        <button type="button" class="create-button" onclick="window.location.href='/front/manage_template/'">생성</button>
+        <button type="button" class="cancel-button" onclick="window.location.href='/template/manage'">취소</button>
+    </div>
+
+</body>
+
+</html>

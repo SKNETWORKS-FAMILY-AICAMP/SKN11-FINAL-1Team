@@ -3,3 +3,138 @@
 {% block content %}
 <h2>템플릿 관리 페이지</h2>
 {% endblock %}
+
+
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>템플릿 관리</title>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: #f9f9f9;
+            margin: 40px;
+        }
+
+        .template-manager {
+            width: 400px;
+            margin: 0 auto;
+        }
+
+        .template-manager h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .search-bar input[type="text"] {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-bar button {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            background-color: #888;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .template-list {
+            background: #ddd;
+            border-radius: 4px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 180px;
+        }
+
+        .template-item {
+            background: #fff;
+            padding: 10px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .template-item:hover {
+            background: #eee;
+        }
+
+        .template-item.selected {
+            background: #1a2233;
+            color: #fff;
+        }
+
+        .create-button {
+            text-align: right;
+            margin-top: 12px;
+        }
+
+        .create-button button {
+            font-size: 14px;
+            background-color: #1a2233;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .create-button button:hover {
+            background-color: #2d3a5a;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="template-manager">
+        <h2>템플릿 관리</h2>
+
+        <div class="search-bar">
+            <input type="text" placeholder="검색">
+            <button>🔍검색</button>
+        </div>
+
+        <div class="template-list" id="template-list">
+            <!-- 아래 템플릿 항목에 각자 ID 값 할당 -->
+            <div class="template-item" data-id="1"># 조직적응하기</div>
+            <div class="template-item" data-id="2"># 개발팀 온보딩</div>
+            <div class="template-item" data-id="3"># 인사팀 온보딩</div>
+        </div>
+
+        <div class="create-button">
+            <button onclick="window.location.href='/template/create'">템플릿 생성하기</button>
+        </div>
+    </div>
+
+    <script>
+        // 템플릿 선택 시 상세 페이지 이동
+        const items = document.querySelectorAll('.template-item');
+        items.forEach(item => {
+            item.addEventListener('click', () => {
+                const templateId = item.getAttribute('data-id');
+                if (templateId) {
+                    window.location.href = `/template/detail/${templateId}/`;
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
