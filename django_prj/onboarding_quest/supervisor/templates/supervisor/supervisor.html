@@ -1,5 +1,133 @@
-{% extends 'base.html' %}
-{% block title %}관리자 페이지{% endblock %}
-{% block content %}
-<h2>관리자 페이지</h2>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>관리자 계정관리</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f8;
+      padding: 40px;
+    }
+
+    h2 {
+      color: #333;
+    }
+
+    .top-bar {
+      margin-bottom: 20px;
+    }
+
+    .add-user-btn {
+      display: inline-block;
+      text-decoration: none;
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .add-user-btn:hover {
+      background-color: #45a049;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: white;
+      box-shadow: 0 0 8px rgba(0,0,0,0.05);
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    .edit-link {
+      color: #1E90FF;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .delete-link {
+      color: #FF4500;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .edit-link:hover,
+    .delete-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>관리자 계정관리</h2>
+
+  <div class="top-bar">
+    <a href="#" class="add-user-btn">+ 신규 유저 등록</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>이름</th>
+        <th>입사일</th>
+        <th>직급</th>
+        <th>부서</th>
+        <th>액션</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>김하늘</td>
+        <td>2022-03-15</td>
+        <td>대리</td>
+        <td>개발팀</td>
+        <td><a href="#" class="edit-link">수정</a> | <a href="#" class="delete-link">삭제</a></td>
+      </tr>
+      <tr>
+        <td>이준석</td>
+        <td>2023-07-01</td>
+        <td>사원</td>
+        <td>마케팅팀</td>
+        <td><a href="#" class="edit-link">수정</a> | <a href="#" class="delete-link">삭제</a></td>
+      </tr>
+      <tr>
+        <td>박소영</td>
+        <td>2021-11-25</td>
+        <td>과장</td>
+        <td>인사팀</td>
+        <td><a href="#" class="edit-link">수정</a> | <a href="#" class="delete-link">삭제</a></td>
+      </tr>
+      <tr>
+        <td>정지훈</td>
+        <td>2024-01-10</td>
+        <td>사원</td>
+        <td>디자인팀</td>
+        <td><a href="#" class="edit-link">수정</a> | <a href="#" class="delete-link">삭제</a></td>
+      </tr>
+      <tr>
+        <td>최유진</td>
+        <td>2020-05-30</td>
+        <td>차장</td>
+        <td>영업팀</td>
+        <td><a href="#" class="edit-link">수정</a> | <a href="#" class="delete-link">삭제</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>
