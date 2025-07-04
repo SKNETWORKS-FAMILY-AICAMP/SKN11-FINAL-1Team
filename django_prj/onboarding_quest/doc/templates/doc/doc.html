@@ -1,5 +1,72 @@
-{% extends 'base.html' %}
-{% block title %}문서 관리 페이지{% endblock %}
+{% extends "accounts/base.html" %}
+{% load static %}
+
 {% block content %}
-<h2>문서 관리 페이지</h2>
+<!-- 파일 분류 버튼, 업로드 파일 목록 등은 실제 데이터와 연동 시 반복문% for %으로 구현 가능합니다. -->
+ <!-- 파일 분류 탭 -->
+<div style="display: flex; height: 80vh; background: #f7f7f7;">
+    <!-- 본문 영역 -->
+    <div style="flex: 1; display: flex; flex-direction: column; background: #e7edfd; border-radius: 20px; margin: 24px; padding: 24px;">
+        <!-- 업로드 박스 -->
+        <div style="background: #f5f7ff; border-radius: 20px; padding: 40px 0; text-align: center; margin-bottom: 24px;">
+            <img src="{% static 'img/smiling_mungmoonge.jpg' %}" alt="upload" style="width: 100px; margin-bottom: 16px;">
+            <div style="font-size: 2em; font-weight: bold; color: #555;">Upload PDF</div>
+            <div style="color: #888; margin-top: 8px;">or any document format: DOC, DOCX, TXT...</div>
+        </div>
+        <!-- 파일 선택 버튼 -->
+        <form method="post" enctype="multipart/form-data" style="text-align: center; margin-bottom: 24px;">
+            {% csrf_token %}
+            <label for="file-upload" style="display: inline-block; background: #ddd; border-radius: 16px; padding: 8px 32px; font-size: 1.1em; cursor: pointer;">
+                📂 Select Files
+            </label>
+            <input id="file-upload" type="file" name="documents" multiple style="display: none;">
+            <button type="submit" style="display: none;">업로드</button>
+        </form>
+        <!-- 파일 분류 탭 -->
+        <div style="margin-bottom: 8px;">
+            <button class="file-category-btn" onclick="showCategory('cat1')">파일 분류 1</button>
+            <button class="file-category-btn" onclick="showCategory('cat2')">파일 분류 2</button>
+            <button class="file-category-btn" onclick="showCategory('cat3')">파일 분류 3</button>
+        </div>
+        <!-- 업로드한 파일 목록 -->
+        <div style="background: #e9cfcf; border-radius: 8px; padding: 24px 16px; color: #333;">
+            <div id="cat1-list" class="file-list">
+                <ul>
+                    {% for file in uploaded_files_cat1 %}
+                        <li>{{ file.name }}</li>
+                    {% empty %}
+                        <li>분류 1에 업로드된 파일이 없습니다.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div id="cat2-list" class="file-list" style="display:none;">
+                <ul>
+                    {% for file in uploaded_files_cat2 %}
+                        <li>{{ file.name }}</li>
+                    {% empty %}
+                        <li>분류 2에 업로드된 파일이 없습니다.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div id="cat3-list" class="file-list" style="display:none;">
+                <ul>
+                    {% for file in uploaded_files_cat3 %}
+                        <li>{{ file.name }}</li>
+                    {% empty %}
+                        <li>분류 3에 업로드된 파일이 없습니다.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showCategory(cat) {
+    document.getElementById('cat1-list').style.display = 'none';
+    document.getElementById('cat2-list').style.display = 'none';
+    document.getElementById('cat3-list').style.display = 'none';
+    document.getElementById(cat + '-list').style.display = 'block';
+}
+</script>
 {% endblock %}
