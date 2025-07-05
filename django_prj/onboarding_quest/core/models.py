@@ -1,13 +1,23 @@
 from django.db import models
+from django.core.validators import RegexValidator
 
 # Create your models here.
 
 class Company(models.Model):
-    company_id = models.AutoField(primary_key=True)
+    company_id = models.CharField(
+        primary_key=True,
+        max_length=12,
+        validators=[
+            RegexValidator(
+                regex=r'^\d{3}-\d{2}-\d{5}$',
+                message='사업자번호 000-00-00000.'
+            )
+        ]
+    )
     company_name = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
-        return self.company_name
+        return self.company_name 
 
 class Department(models.Model):
     department_id = models.AutoField(primary_key=True)
@@ -23,24 +33,25 @@ class Mentorship(models.Model):
     mentor_id = models.IntegerField()
     mentee_id = models.IntegerField()
 
-class User(models.Model):
-    user_id = models.AutoField(primary_key=True)
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    password = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
+from django.contrib.auth.models import AbstractUser
+
+class User(AbstractUser):
+    ROLE_CHOICES = (
+        ('mentee', 'Mentee'),
+        ('mentor', 'Mentor'),
+        ('admin', 'Admin'),
+    )
     job_part = models.CharField(max_length=100)
-    position = models.IntegerField()
-    join_date = models.DateField()
+    position = models.IntegerField(null=True, blank=True)
+    join_date = models.DateField(auto_now_add=True, null=True, blank=True)
     exp = models.IntegerField(default=0)
     skill = models.CharField(max_length=255, null=True, blank=True)
-    role = models.CharField(max_length=20)
-    department = models.ForeignKey(Department, on_delete=models.CASCADE)
-    mentorship = models.ForeignKey(Mentorship, on_delete=models.CASCADE)
-    admin = models.BooleanField()
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
+    mentorship = models.ForeignKey(Mentorship, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return self.username
 
 class ChatSession(models.Model):
     session_id = models.AutoField(primary_key=True)
@@ -51,7 +62,7 @@ class ChatMessage(models.Model):
     message_id = models.AutoField(primary_key=True)
     message_type = models.CharField(max_length=50, null=True, blank=True)
     message_text = models.CharField(max_length=1000, null=True, blank=True)
-    create_time = models.DateField(null=True, blank=True)
+    create_time = models.DateField(auto_now_add=True, null=True, blank=True)
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
 
 class Docs(models.Model):
@@ -60,7 +71,7 @@ class Docs(models.Model):
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255, null=True, blank=True)
     file_path = models.CharField(max_length=255)
-    create_time = models.DateTimeField()
+    create_time = models.DateTimeField(auto_now_add=True)
     common_doc = models.BooleanField(default=False)
 
 class Template(models.Model):
@@ -99,7 +110,7 @@ class Subtask(models.Model):
 
 class Memo(models.Model):
     memo_id = models.AutoField(primary_key=True)
-    create_date = models.DateField(null=True, blank=True)
+    create_date = models.DateField(auto_now_add=True, null=True, blank=True)
     comment = models.CharField(max_length=1000, null=True, blank=True)
     task_assign = models.ForeignKey(TaskAssign, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
