@@ -1,12 +1,10 @@
-body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background: #f9f9f9;
-    margin: 40px;
-}
-
 .template-manager {
     width: 400px;
-    margin: 0 auto;
+    margin: 40px auto;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 24px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .template-manager h2 {

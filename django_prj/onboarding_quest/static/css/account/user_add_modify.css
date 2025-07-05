@@ -1,15 +1,6 @@
-body {
-  background-color: #f7f9fc;
-  font-family: 'Segoe UI', sans-serif;
-  margin: 0;
-  padding: 60px 20px;
-}
-
 .form-box {
   background-color: #ffffff;
   max-width: 600px;
-  margin: 0 auto;
-  padding: 40px 30px;
   border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }

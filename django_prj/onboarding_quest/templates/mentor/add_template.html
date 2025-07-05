@@ -8,6 +8,9 @@
 {% endblock %}
 
 {% block content %}
+<style>
+  body { padding: 0 !important; }
+</style>
     <h2>템플릿 생성</h2>
 
     <form class="template-form" id="create-form">
@@ -36,7 +39,7 @@
         <div class="column">
             <div class="column-title">
                 세부 task
-                <a href="/task_create" class="add-task-button">추가</a>
+                <a href="/common/task_add" class="add-task-button">추가</a>
             </div>
             <div class="task-list">
                 <input type="text" value="오리엔테이션 영상 시청" readonly>
@@ -52,7 +55,7 @@
 
     <!-- 하단 버튼 -->
     <div class="form-buttons">
-        <button type="button" class="create-button" onclick="window.location.href='/front/manage_template/'">생성</button>
-        <button type="button" class="cancel-button" onclick="window.location.href='/template/manage'">취소</button>
+        <button type="button" class="create-button" onclick="window.location.href='/mentor/manage_template'">생성</button>
+        <button type="button" class="cancel-button" onclick="window.location.href='/mentor/manage_template'">취소</button>
     </div>
 {% endblock %}

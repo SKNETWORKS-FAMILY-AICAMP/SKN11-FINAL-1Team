@@ -1,15 +1,12 @@
-body {
-    background: #f7f9fb;
-    font-family: 'Noto Sans KR', sans-serif;
-    margin: 0;
-    padding: 0;
-}
-
 .container {
     display: flex;
     gap: 32px;
     margin: 40px auto;
     max-width: 900px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 24px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .mentee-list {

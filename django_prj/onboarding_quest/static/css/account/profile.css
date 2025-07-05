@@ -1,28 +1,18 @@
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background-color: #f9f9f9;
-  padding: 60px 20px;
-}
-
 .profile-container {
   max-width: 700px;
-  margin: 0 auto;
   background-color: white;
-  padding: 40px 50px;
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.05);
 }
 
 h2 {
   text-align: center;
-  margin-bottom: 40px;
   font-size: 24px;
   color: #333;
 }
 
 .profile-row {
   display: flex;
-  margin-bottom: 20px;
 }
 
 .label {
@@ -43,16 +33,14 @@ h2 {
 }
 
 .button-row {
-  margin-top: 30px;
   text-align: right;
 }
 
-.button-row button {
+.button-row a, .button-row button {
   padding: 10px 18px;
   border: none;
   border-radius: 4px;
   font-weight: bold;
-  margin-left: 10px;
   cursor: pointer;
 }
 

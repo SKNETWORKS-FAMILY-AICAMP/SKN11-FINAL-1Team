@@ -1,3 +1,12 @@
+body {
+  padding: 0;
+}
+
 body, .sidebar-text, .sidebar-link, .themed-btn, .themed-card {
   font-family: 'Jua', 'Pretendard', 'Noto Sans KR', sans-serif;
+}
+
+.active-link {
+  background-color: #e2e2e2; /* 원하는 배경색으로 변경 */
+  font-weight: bold;
 }
