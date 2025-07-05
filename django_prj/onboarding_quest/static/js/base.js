@@ -85,6 +85,7 @@ function applyTheme(theme) {
 themeSelect.addEventListener('change', e => {
     applyTheme(e.target.value);
     localStorage.setItem('theme', e.target.value);
+    document.cookie = `theme=${e.target.value}; path=/`;
 });
 
 // 페이지 로드 시 테마 적용

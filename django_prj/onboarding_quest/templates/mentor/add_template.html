@@ -1,25 +1,174 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}템플릿 생성{% endblock %}
+{% block title %}퀘스트(템플릿) 등록{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/mentor/add_template.css' %}">
+<style>
+  body { background: #2d1b0e; }
+  .quest-add-bg {
+    min-height: 80vh;
+    background: url('https://www.transparenttextures.com/patterns/wood-pattern.png'), #3e2723;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+  }
+  .quest-add-panel {
+    background: #f9f6e3;
+    border: 8px solid #bfa76a;
+    border-radius: 32px;
+    box-shadow: 0 8px 32px 0 #0008, 0 1.5px 0 0 #bfa76a;
+    max-width: 700px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 38px 36px 28px 36px;
+    position: relative;
+    font-family: 'Jua', 'serif';
+  }
+  .quest-add-title {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #7c5c1e;
+    text-align: center;
+    margin-bottom: 32px;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 0 #fffbe6, 0 4px 8px #bfa76a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .quest-add-form {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 24px;
+  }
+  .quest-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #fffbe6;
+    border: 3px solid #e6c97a;
+    border-radius: 18px;
+    box-shadow: 0 2px 8px #bfa76a33;
+    padding: 24px 18px 18px 18px;
+    min-width: 0;
+  }
+  .quest-col-title {
+    font-size: 1.15em;
+    font-weight: bold;
+    color: #7c5c1e;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .quest-desc-box textarea {
+    width: 100%;
+    min-height: 260px;
+    border: none;
+    background: #f5ecd6;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 1em;
+    color: #a68a4a;
+    font-family: inherit;
+    resize: none;
+    font-weight: 500;
+  }
+  .quest-desc-box textarea:focus { outline: 2px solid #bfa76a; }
+  .quest-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .quest-task-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f5ecd6;
+    border-radius: 10px;
+    padding: 0 0 0 6px;
+    box-shadow: 0 1px 4px #bfa76a22;
+    cursor: grab;
+    border: 2px solid transparent;
+    transition: border 0.2s, background 0.2s;
+  }
+  .quest-task-item.dragging {
+    opacity: 0.5;
+    border: 2px dashed #bfa76a;
+    background: #fffbe6;
+  }
+  .quest-task-item.dragover {
+    border: 2px solid #bfa76a;
+    background: #fffbe6;
+  }
+  .quest-task-list input[type="text"] {
+    width: 100%;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 1em;
+    color: #7c5c1e;
+    font-family: inherit;
+    font-weight: 500;
+    margin-bottom: 2px;
+    pointer-events: none;
+  }
+  .quest-task-list input[type="text"]:focus { outline: 2px solid #bfa76a; }
+  .quest-add-task-btn {
+    background: #bfa76a;
+    color: #fffbe6;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 6px 18px;
+    font-size: 0.95em;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+  }
+  .quest-add-task-btn:hover { background: #e6c97a; color: #7c5c1e; }
+  .quest-form-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 30px;
+  }
+  .quest-create-btn, .quest-cancel-btn {
+    background: linear-gradient(90deg, #ffe066 0%, #bfa76a 100%);
+    color: #7c5c1e;
+    font-weight: bold;
+    border: 3px solid #bfa76a;
+    border-radius: 18px;
+    padding: 14px 38px;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 12px #bfa76a55;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    font-family: inherit;
+  }
+  .quest-create-btn:hover, .quest-cancel-btn:hover {
+    background: #ffe066;
+    color: #bfa76a;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<style>
-  body { padding: 0 !important; }
-</style>
-    <h2>템플릿 생성</h2>
-
-    <form class="template-form" id="create-form">
-        <!-- 왼쪽: 설명 -->
-        <div class="column">
-            <div class="column-title">조직 문화 적용 description</div>
-            <div class="desc-box">
-                <textarea readonly>
-# week1 조직문화 이해 및 관찰
+<div class="quest-add-bg">
+  <div class="quest-add-panel">
+    <div class="quest-add-title"><span>📝</span>퀘스트(템플릿) 등록</div>
+    <form class="quest-add-form" id="create-form">
+      <!-- 왼쪽: 설명 -->
+      <div class="quest-col">
+        <div class="quest-col-title">📜 조직 문화 적용 description</div>
+        <div class="quest-desc-box">
+          <textarea readonly># week1 조직문화 이해 및 관찰
 # week2 조직문화 실천 체험
 # week3 조직문화 실천 체험 발표 및 피드백
 # week4 팀워크 향상 프로그램 참여
@@ -30,32 +179,73 @@
 # week9 부서 간 협업 업무 참여
 # week10 회사 미션/비전 재해석 활동
 # week11 역멘토링 활동
-# week12 평생 신입사원 되기 프로젝트
-                </textarea>
-            </div>
+# week12 평생 신입사원 되기 프로젝트</textarea>
         </div>
-
-        <!-- 오른쪽: task -->
-        <div class="column">
-            <div class="column-title">
-                세부 task
-                <a href="/common/task_add" class="add-task-button">추가</a>
-            </div>
-            <div class="task-list">
-                <input type="text" value="오리엔테이션 영상 시청" readonly>
-                <input type="text" value="조직문화 pdf 가이드 읽기" readonly>
-                <input type="text" value="사내 조직도 열람" readonly>
-                <input type="text" value="팀원과 소통하기" readonly>
-                <input type="text" value="관련 일지 작성하기" readonly>
-                <input type="text" value="팀원들과 커피챗" readonly>
-                <input type="text" value="Weekly 미팅" readonly>
-            </div>
+      </div>
+      <!-- 오른쪽: task -->
+      <div class="quest-col">
+        <div class="quest-col-title">🗂️ 세부 task <a href="/common/task_add" class="quest-add-task-btn">추가</a></div>
+        <div class="quest-task-list" id="task-list">
+          <div class="quest-task-item" draggable="true"><span style="font-size:1.2em;">☰</span><input type="text" value="오리엔테이션 영상 시청" readonly></div>
+          <div class="quest-task-item" draggable="true"><span style="font-size:1.2em;">☰</span><input type="text" value="조직문화 pdf 가이드 읽기" readonly></div>
+          <div class="quest-task-item" draggable="true"><span style="font-size:1.2em;">☰</span><input type="text" value="사내 조직도 열람" readonly></div>
+          <div class="quest-task-item" draggable="true"><span style="font-size:1.2em;">☰</span><input type="text" value="팀원과 소통하기" readonly></div>
+          <div class="quest-task-item" draggable="true"><span style="font-size:1.2em;">☰</span><input type="text" value="관련 일지 작성하기" readonly></div>
+          <div class="quest-task-item" draggable="true"><span style="font-size:1.2em;">☰</span><input type="text" value="팀원들과 커피챗" readonly></div>
+          <div class="quest-task-item" draggable="true"><span style="font-size:1.2em;">☰</span><input type="text" value="Weekly 미팅" readonly></div>
         </div>
+      </div>
     </form>
-
     <!-- 하단 버튼 -->
-    <div class="form-buttons">
-        <button type="button" class="create-button" onclick="window.location.href='/mentor/manage_template'">생성</button>
-        <button type="button" class="cancel-button" onclick="window.location.href='/mentor/manage_template'">취소</button>
+    <div class="quest-form-buttons">
+      <button type="button" class="quest-create-btn" onclick="window.location.href='/mentor/manage_template'">생성</button>
+      <button type="button" class="quest-cancel-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
     </div>
+  </div>
+</div>
+<script>
+// Drag & Drop for quest-task-list
+const taskList = document.getElementById('task-list');
+let draggingElem = null;
+let dragOverElem = null;
+
+function handleDragStart(e) {
+  draggingElem = this;
+  this.classList.add('dragging');
+}
+function handleDragEnd(e) {
+  this.classList.remove('dragging');
+  draggingElem = null;
+  dragOverElem = null;
+  document.querySelectorAll('.quest-task-item').forEach(item => item.classList.remove('dragover'));
+}
+function handleDragOver(e) {
+  e.preventDefault();
+  if (this === draggingElem) return;
+  dragOverElem = this;
+  document.querySelectorAll('.quest-task-item').forEach(item => item.classList.remove('dragover'));
+  this.classList.add('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  if (this === draggingElem) return;
+  this.classList.remove('dragover');
+  // 순서 변경
+  const items = Array.from(taskList.children);
+  const draggingIndex = items.indexOf(draggingElem);
+  const dropIndex = items.indexOf(this);
+  if (draggingIndex < dropIndex) {
+    taskList.insertBefore(draggingElem, this.nextSibling);
+  } else {
+    taskList.insertBefore(draggingElem, this);
+  }
+}
+
+document.querySelectorAll('.quest-task-item').forEach(item => {
+  item.addEventListener('dragstart', handleDragStart);
+  item.addEventListener('dragend', handleDragEnd);
+  item.addEventListener('dragover', handleDragOver);
+  item.addEventListener('drop', handleDrop);
+});
+</script>
 {% endblock %}

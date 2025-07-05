@@ -1,68 +1,76 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/common/doc.css' %}">
-{% endblock %}
-
 {% block content %}
-<!-- 파일 분류 버튼, 업로드 파일 목록 등은 실제 데이터와 연동 시 반복문% for %으로 구현 가능합니다. -->
- <!-- 파일 분류 탭 -->
-<div class="doc-container">
-    <!-- 본문 영역 -->
-    <div class="doc-main-content">
-        <!-- 업로드 박스 -->
-        <div class="upload-box">
-            <img src="{% static 'img/smiling_mungmoonge.jpg' %}" alt="upload" style="width: 100px; margin-bottom: 16px;">
-            <div class="title">Upload PDF</div>
-            <div class="description">or any document format: DOC, DOCX, TXT...</div>
-        </div>
-        <!-- 파일 선택 버튼 -->
-        <form method="post" enctype="multipart/form-data" class="file-select-form">
-            {% csrf_token %}
-            <label for="file-upload" class="file-select-label">
-                📂 Select Files
-            </label>
-            <input id="file-upload" type="file" name="documents" multiple class="file-upload-input">
-            <button type="submit" class="file-upload-button">업로드</button>
-        </form>
-        <!-- 파일 분류 탭 -->
-        <div class="file-category-tabs">
-            <button class="file-category-btn" onclick="showCategory('cat1')">파일 분류 1</button>
-            <button class="file-category-btn" onclick="showCategory('cat2')">파일 분류 2</button>
-            <button class="file-category-btn" onclick="showCategory('cat3')">파일 분류 3</button>
-        </div>
-        <!-- 업로드한 파일 목록 -->
-        <div class="uploaded-file-list-container">
-            <div id="cat1-list" class="file-list">
-                <ul>
-                    {% for file in uploaded_files_cat1 %}
-                        <li>{{ file.name }}</li>
-                    {% empty %}
-                        <li>분류 1에 업로드된 파일이 없습니다.</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div id="cat2-list" class="file-list" style="display:none;">
-                <ul>
-                    {% for file in uploaded_files_cat2 %}
-                        <li>{{ file.name }}</li>
-                    {% empty %}
-                        <li>분류 2에 업로드된 파일이 없습니다.</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div id="cat3-list" class="file-list" style="display:none;">
-                <ul>
-                    {% for file in uploaded_files_cat3 %}
-                        <li>{{ file.name }}</li>
-                    {% empty %}
-                        <li>분류 3에 업로드된 파일이 없습니다.</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
+<div class="min-h-[80vh] flex items-center justify-center bg-gradient-to-br from-green-50 via-yellow-50 to-yellow-100 py-10">
+  <div class="w-full max-w-3xl mx-auto p-8 rounded-3xl shadow-2xl border-4 border-green-200 bg-white/90 relative">
+    <!-- 업로드 영역 -->
+    <div class="flex flex-col items-center justify-center p-8 mb-8 border-4 border-dashed border-yellow-300 rounded-2xl bg-gradient-to-br from-green-100 to-yellow-50 shadow-lg">
+      <div class="mb-4">
+        <!-- 게임 아이템 느낌 SVG -->
+        <svg width="56" height="56" viewBox="0 0 64 64" fill="none"><rect x="8" y="8" width="48" height="48" rx="12" fill="#a7f3d0" stroke="#fde68a" stroke-width="4"/><path d="M32 20v16M24 36h16" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/></svg>
+      </div>
+      <div class="text-2xl md:text-3xl font-extrabold text-yellow-600 drop-shadow">문서 업로드</div>
+      <div class="text-green-700 mt-2 font-semibold">PDF, DOC, DOCX, TXT 등 다양한 문서 지원</div>
     </div>
+    <!-- 파일 선택 버튼 -->
+    <form method="post" enctype="multipart/form-data" class="flex flex-col items-center space-y-4 mt-2">
+      {% csrf_token %}
+      <label for="file-upload" class="flex items-center space-x-2 cursor-pointer bg-green-100 hover:bg-green-200 text-green-800 font-bold px-5 py-2 rounded-xl border-2 border-green-200 shadow transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13.5" />
+        </svg>
+        <span>파일 선택</span>
+      </label>
+      <input id="file-upload" type="file" name="documents" multiple class="hidden">
+      <button type="submit" class="bg-yellow-300 hover:bg-yellow-400 text-yellow-900 font-bold px-6 py-2 rounded-xl border-2 border-yellow-300 shadow transition">업로드</button>
+    </form>
+    <!-- 파일 분류 탭 -->
+    <div class="flex justify-center space-x-4 mt-8">
+      <button class="px-4 py-2 rounded-xl bg-green-100 hover:bg-green-200 text-green-800 font-bold border-2 border-green-200 shadow transition" onclick="showCategory('cat1')">📁 분류 1</button>
+      <button class="px-4 py-2 rounded-xl bg-green-100 hover:bg-green-200 text-green-800 font-bold border-2 border-green-200 shadow transition" onclick="showCategory('cat2')">📁 분류 2</button>
+      <button class="px-4 py-2 rounded-xl bg-green-100 hover:bg-green-200 text-green-800 font-bold border-2 border-green-200 shadow transition" onclick="showCategory('cat3')">📁 분류 3</button>
+    </div>
+    <!-- 업로드한 파일 목록 -->
+    <div class="mt-8 p-4 bg-yellow-50 rounded-xl shadow-inner border-2 border-green-200">
+      <div id="cat1-list" class="space-y-2">
+        <ul>
+          {% for file in uploaded_files_cat1 %}
+            <li class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-green-100 shadow-sm">
+              <span class="font-semibold text-green-900">{{ file.name }}</span>
+              <span class="ml-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-bold">NEW</span>
+            </li>
+          {% empty %}
+            <li class="p-2 text-green-700">분류 1에 업로드된 파일이 없습니다.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div id="cat2-list" class="space-y-2 hidden">
+        <ul>
+          {% for file in uploaded_files_cat2 %}
+            <li class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-green-100 shadow-sm">
+              <span class="font-semibold text-green-900">{{ file.name }}</span>
+              <span class="ml-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-bold">NEW</span>
+            </li>
+          {% empty %}
+            <li class="p-2 text-green-700">분류 2에 업로드된 파일이 없습니다.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div id="cat3-list" class="space-y-2 hidden">
+        <ul>
+          {% for file in uploaded_files_cat3 %}
+            <li class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-green-100 shadow-sm">
+              <span class="font-semibold text-green-900">{{ file.name }}</span>
+              <span class="ml-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-bold">NEW</span>
+            </li>
+          {% empty %}
+            <li class="p-2 text-green-700">분류 3에 업로드된 파일이 없습니다.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 

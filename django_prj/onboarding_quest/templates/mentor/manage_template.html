@@ -1,31 +1,188 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}템플릿 관리 페이지{% endblock %}
+{% block title %}템플릿 퀘스트 게시판{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/mentor/manage_template.css' %}">
+<style>
+  body { background: #2d1b0e; }
+  .quest-board-bg {
+    min-height: 80vh;
+    background: url('https://www.transparenttextures.com/patterns/wood-pattern.png'), #3e2723;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+  }
+  .quest-board {
+    background: #f9f6e3;
+    border: 8px solid #bfa76a;
+    border-radius: 32px;
+    box-shadow: 0 8px 32px 0 #0008, 0 1.5px 0 0 #bfa76a;
+    max-width: 540px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 48px 36px 36px 36px;
+    position: relative;
+    font-family: 'Jua', 'serif';
+  }
+  .quest-board-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #7c5c1e;
+    text-align: center;
+    margin-bottom: 32px;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 0 #fffbe6, 0 4px 8px #bfa76a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .quest-search {
+    background: #f5ecd6;
+    border: 3px solid #bfa76a;
+    border-radius: 18px;
+    padding: 12px 18px;
+    margin-bottom: 28px;
+    display: flex;
+    gap: 10px;
+    box-shadow: 0 2px 8px #bfa76a33;
+  }
+  .quest-search input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 1.1rem;
+    color: #7c5c1e;
+    font-family: inherit;
+    outline: none;
+  }
+  .quest-search button {
+    background: #bfa76a;
+    color: #fffbe6;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    padding: 8px 22px;
+    font-size: 1rem;
+    box-shadow: 0 2px 8px #bfa76a55;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+  }
+  .quest-search button:hover {
+    background: #e6c97a;
+    color: #7c5c1e;
+  }
+  .quest-list {
+    margin-bottom: 36px;
+  }
+  .quest-card {
+    background: #fffbe6;
+    border: 3px solid #e6c97a;
+    border-radius: 18px;
+    box-shadow: 0 2px 8px #bfa76a33;
+    padding: 22px 24px 18px 24px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    position: relative;
+    transition: transform 0.15s;
+    cursor: pointer;
+  }
+  .quest-card:hover {
+    transform: scale(1.025) rotate(-1deg);
+    background: #f7e9b7;
+  }
+  .quest-icon {
+    font-size: 2.1em;
+    margin-top: 2px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 2px #bfa76a55);
+  }
+  .quest-info {
+    flex: 1;
+  }
+  .quest-title {
+    font-size: 1.25em;
+    font-weight: bold;
+    color: #7c5c1e;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .quest-desc {
+    color: #a68a4a;
+    font-size: 1em;
+    font-weight: 500;
+  }
+  .quest-create-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 18px;
+  }
+  .quest-create-btn {
+    background: linear-gradient(90deg, #ffe066 0%, #bfa76a 100%);
+    color: #7c5c1e;
+    font-weight: bold;
+    border: 3px solid #bfa76a;
+    border-radius: 18px;
+    padding: 16px 38px;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 12px #bfa76a55;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s, color 0.2s;
+    font-family: inherit;
+  }
+  .quest-create-btn:hover {
+    background: #ffe066;
+    color: #bfa76a;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="template-manager">
-    <h2>템플릿 관리</h2>
-
-    <div class="search-bar">
-        <input type="text" placeholder="검색">
-        <button>🔍검색</button>
+<div class="quest-board-bg">
+  <div class="quest-board">
+    <div class="quest-board-title"><span>📜</span>퀘스트 게시판</div>
+    <!-- 검색바 -->
+    <div class="quest-search">
+      <input type="text" placeholder="퀘스트(템플릿) 검색..." />
+      <button>검색</button>
     </div>
-
-    <div class="template-list" id="template-list">
-        <!-- 아래 템플릿 항목에 각자 ID 값 할당 -->
-        <div class="template-item" data-id="1"># 조직적응하기</div>
-        <div class="template-item" data-id="2"># 개발팀 온보딩</div>
-        <div class="template-item" data-id="3"># 인사팀 온보딩</div>
+    <!-- 퀘스트 리스트 -->
+    <div class="quest-list">
+      <div class="quest-card template-item" data-id="1">
+        <span class="quest-icon">🪧</span>
+        <div class="quest-info">
+          <div class="quest-title">조직적응하기</div>
+          <div class="quest-desc">회사 문화와 규칙을 익히고, 동료와 친해지기 위한 퀘스트입니다.</div>
+        </div>
+      </div>
+      <div class="quest-card template-item" data-id="2">
+        <span class="quest-icon">🏆</span>
+        <div class="quest-info">
+          <div class="quest-title">개발팀 온보딩</div>
+          <div class="quest-desc">개발 환경 세팅, 코드 컨벤션, 협업 툴 사용법을 익히는 미션!</div>
+        </div>
+      </div>
+      <div class="quest-card template-item" data-id="3">
+        <span class="quest-icon">📚</span>
+        <div class="quest-info">
+          <div class="quest-title">인사팀 온보딩</div>
+          <div class="quest-desc">인사 정책, 복지제도, 근태 관리 등 인사팀 필수 정보를 습득하세요.</div>
+        </div>
+      </div>
     </div>
-
-    <div class="create-button">
-        <button onclick="window.location.href='/mentor/add_template'">템플릿 생성하기</button>
+    <!-- 생성 버튼 -->
+    <div class="quest-create-wrap">
+      <button class="quest-create-btn" onclick="window.location.href='/mentor/add_template'"><span>🆕</span>새 퀘스트(템플릿) 등록</button>
     </div>
+  </div>
 </div>
 {% endblock %}
 
