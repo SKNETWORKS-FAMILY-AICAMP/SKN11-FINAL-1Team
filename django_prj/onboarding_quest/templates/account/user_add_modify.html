@@ -1,98 +1,13 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <title>관리자 계정 추가/수정</title>
-  <style>
-    body {
-      background-color: #f7f9fc;
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 60px 20px;
-    }
+{% extends 'base.html' %}
+{% load static %}
 
-    .form-box {
-      background-color: #ffffff;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 40px 30px;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    }
+{% block title %}관리자 계정 추가/수정{% endblock %}
 
-    .form-box h2 {
-      text-align: center;
-      margin-bottom: 32px;
-      color: #333;
-      font-size: 22px;
-    }
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/account/user_add_modify.css' %}">
+{% endblock %}
 
-    .form-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .form-row label {
-      width: 120px;
-      background-color: #f0f0f0;
-      padding: 12px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 14px;
-      border-radius: 4px;
-      margin-right: 12px;
-      color: #333;
-    }
-
-    .form-row input {
-      flex: 1;
-      padding: 12px;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #fff;
-      box-sizing: border-box;
-    }
-
-    .button-row {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-top: 30px;
-    }
-
-    .button-row button {
-      padding: 10px 22px;
-      font-size: 14px;
-      font-weight: bold;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    .button-row .btn-create {
-      background-color: #4CAF50;
-      color: white;
-    }
-
-    .button-row .btn-create:hover {
-      background-color: #43a047;
-    }
-
-    .button-row .btn-cancel {
-      background-color: #e0e0e0;
-      color: #333;
-    }
-
-    .button-row .btn-cancel:hover {
-      background-color: #c7c7c7;
-    }
-  </style>
-</head>
-<body>
-
+{% block content %}
   <div class="form-box">
     <h2>관리자 계정 추가/수정</h2>
 
@@ -126,6 +41,4 @@
       <button class="btn-cancel" onclick="history.back();">취소</button>
     </div>
   </div>
-
-</body>
-</html>
+{% endblock %}

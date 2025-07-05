@@ -1,0 +1,105 @@
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #f9f9f9;
+    padding: 40px;
+}
+
+h2 {
+    font-size: 18px;
+    margin-bottom: 24px;
+}
+
+.template-form {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.column {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 16px;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.column-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.column textarea,
+.column input[type="text"] {
+    width: 100%;
+    font-size: 14px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.desc-box {
+    height: 340px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.desc-box textarea {
+    height: 100%;
+    resize: none;
+    white-space: pre-line;
+}
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.task-list input {
+    height: 32px;
+}
+
+.form-buttons {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+button {
+    padding: 6px 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.add-task-button {
+    background-color: #444;
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 4px;
+}
+
+.add-task-button:hover {
+    background-color: #333;
+}
+
+.create-button {
+    background-color: #1a2233;
+    color: #fff;
+}
+
+.cancel-button {
+    background-color: #ccc;
+    color: #333;
+}

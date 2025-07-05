@@ -1,0 +1,155 @@
+body {
+    background: #f7f9fb;
+    font-family: 'Noto Sans KR', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    display: flex;
+    gap: 32px;
+    margin: 40px auto;
+    max-width: 900px;
+}
+
+.mentee-list {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    width: 200px;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.mentee-list input[type="text"] {
+    width: 85%;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 15px;
+}
+
+.mentee-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mentee-list li {
+    margin-bottom: 8px;
+}
+
+.mentee-list a {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #222;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.mentee-list a.selected,
+.mentee-list a:hover {
+    background: #1a2233;
+    color: #fff;
+}
+
+.mentee-profile {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    width: 240px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.mentee-profile .avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #e0e6f7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    color: #4a6fa1;
+    margin-bottom: 12px;
+}
+
+.mentee-profile .name {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.mentee-profile .role {
+    font-size: 14px;
+    color: #4a6fa1;
+    margin-bottom: 20px;
+}
+
+.mentee-profile .extra-info {
+    width: 100%;
+    background: #f7f9fb;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    color: #555;
+    min-height: 48px;
+    text-align: center;
+}
+
+.mentoring-settings {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    width: 300px;
+    padding: 32px 24px;
+}
+
+.mentoring-settings h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+}
+
+.mentoring-settings label {
+    display: block;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.mentoring-settings input[type="text"],
+.mentoring-settings input[type="date"],
+.mentoring-settings select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 15px;
+    margin-bottom: 18px;
+}
+
+.mentoring-settings button {
+    width: 100%;
+    padding: 10px 0;
+    background: #1a2233;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.mentoring-settings button:hover {
+    background: #2d3a5a;
+}

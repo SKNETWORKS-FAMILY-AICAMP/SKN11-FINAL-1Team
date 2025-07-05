@@ -23,9 +23,9 @@ def login_view(request):
                 if user.role == 'admin':
                     return redirect('account:supervisor')
                 elif user.role == 'mentor':
-                    return redirect('/common/mentor/')
+                    return redirect('/mentor/')
                 elif user.role == 'mentee':
-                    return redirect('/common/mentee/')
+                    return redirect('/mentee/')
                 else:
                     return redirect('/')
             else:

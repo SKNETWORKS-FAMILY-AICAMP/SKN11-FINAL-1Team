@@ -1,4 +1,4 @@
 from django.shortcuts import render
 
 def mentee(request):
-    return render(request, 'common/mentee.html')
+    return render(request, 'mentee/mentee.html')

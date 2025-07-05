@@ -1,81 +1,20 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <title>비밀번호 변경</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f5f5f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
+{% extends 'base.html' %}
+{% load static %}
 
-    .container {
-      width: 320px;
-      background-color: #e0e0e0;
-      padding: 40px 30px;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
+{% block title %}비밀번호 변경{% endblock %}
 
-    .title {
-      background-color: #000;
-      color: white;
-      text-align: center;
-      padding: 12px;
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 30px;
-      border-radius: 4px;
-    }
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/account/change_pwd.css' %}">
+{% endblock %}
 
-    .message {
-      color: red;
-      font-size: 13px;
-      text-align: center;
-      margin-bottom: 15px;
-    }
-
-    input[type="password"] {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 20px;
-      border: 1px solid #aaa;
-      border-radius: 4px;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-
-    .btn {
-      width: 100%;
-      padding: 12px;
-      background-color: #000;
-      color: white;
-      font-weight: bold;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 15px;
-    }
-
-    .btn:hover {
-      background-color: #333;
-    }
-  </style>
-</head>
-<body>
-
+{% block content %}
   <div class="container">
     <div class="title">비밀번호 변경</div>
 
     <div class="message">비밀번호가 일치하지 않습니다.</div> <!-- 필요시 메시지 출력 -->
 
     <form method="POST">
-      <!-- {% csrf_token %} -->
+      {% csrf_token %}
 
       <input type="password" name="new_password1" placeholder="변경할 비밀번호" required>
       <input type="password" name="new_password2" placeholder="비밀번호 재입력" required>
@@ -83,6 +22,4 @@
       <button class="btn" type="submit">변경</button>
     </form>
   </div>
-
-</body>
-</html>
+{% endblock %}

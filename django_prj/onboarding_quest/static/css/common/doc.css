@@ -1,0 +1,113 @@
+/* 파일 분류 버튼, 업로드 파일 목록 등은 실제 데이터와 연동 시 반복문% for %으로 구현 가능합니다. */
+ /* 파일 분류 탭 */
+.doc-container {
+    display: flex;
+    height: 80vh;
+    background: #f7f7f7;
+}
+
+/* 본문 영역 */
+.doc-main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #e7edfd;
+    border-radius: 20px;
+    margin: 24px;
+    padding: 24px;
+}
+
+/* 업로드 박스 */
+.upload-box {
+    background: #f5f7ff;
+    border-radius: 20px;
+    padding: 40px 0;
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.upload-box img {
+    width: 100px;
+    margin-bottom: 16px;
+}
+
+.upload-box .title {
+    font-size: 2em;
+    font-weight: bold;
+    color: #555;
+}
+
+.upload-box .description {
+    color: #888;
+    margin-top: 8px;
+}
+
+/* 파일 선택 버튼 */
+.file-select-form {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.file-select-label {
+    display: inline-block;
+    background: #ddd;
+    border-radius: 16px;
+    padding: 8px 32px;
+    font-size: 1.1em;
+    cursor: pointer;
+}
+
+.file-upload-input {
+    display: none;
+}
+
+.file-upload-button {
+    display: none;
+}
+
+/* 파일 분류 탭 */
+.file-category-tabs {
+    margin-bottom: 8px;
+}
+
+.file-category-btn {
+        padding: 6px 16px;
+        margin-right: 4px;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        background: #eee;
+        transition: background 0.2s, color 0.2s, border 0.2s;
+        cursor: pointer;
+    }
+.file-category-btn:hover {
+    background: #d0e2ff;
+    color: #1a4fa0;
+    border: 1.5px solid #1a4fa0;
+}
+.file-category-btn:active {
+    background: #a7c7e7;
+    color: #fff;
+    border: 1.5px solid #1a4fa0;
+}
+
+/* 업로드한 파일 목록 */
+.uploaded-file-list-container {
+    background: #e9cfcf;
+    border-radius: 8px;
+    padding: 24px 16px;
+    color: #333;
+}
+
+.file-list {
+    /* Add your file list styles here if needed */
+}
+
+.file-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.file-list li {
+    /* Add your list item styles here if needed */
+}

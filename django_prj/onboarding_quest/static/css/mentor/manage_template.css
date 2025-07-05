@@ -1,0 +1,87 @@
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #f9f9f9;
+    margin: 40px;
+}
+
+.template-manager {
+    width: 400px;
+    margin: 0 auto;
+}
+
+.template-manager h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+}
+
+.search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.search-bar input[type="text"] {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-bar button {
+    padding: 8px 16px;
+    font-size: 14px;
+    border: none;
+    background-color: #888;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.template-list {
+    background: #ddd;
+    border-radius: 4px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 180px;
+}
+
+.template-item {
+    background: #fff;
+    padding: 10px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.template-item:hover {
+    background: #eee;
+}
+
+.template-item.selected {
+    background: #1a2233;
+    color: #fff;
+}
+
+.create-button {
+    text-align: right;
+    margin-top: 12px;
+}
+
+.create-button button {
+    font-size: 14px;
+    background-color: #1a2233;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.create-button button:hover {
+    background-color: #2d3a5a;
+}

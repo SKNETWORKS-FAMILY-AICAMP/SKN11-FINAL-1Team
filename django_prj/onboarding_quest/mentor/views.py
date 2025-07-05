@@ -1,7 +1,7 @@
 from django.shortcuts import render
 
 def mentor(request):
-    return render(request, 'common/mentor.html')
+    return render(request, 'mentor/mentor.html')
 
 def add_template(request):
     return render(request, 'mentor/add_template.html')

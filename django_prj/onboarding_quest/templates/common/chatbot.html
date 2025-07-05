@@ -1,21 +1,25 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/common/chatbot.css' %}">
+{% endblock %}
+
 {% block content %}
-<div style="display: flex; height: 80vh; background: #f7f7f7;">
+<div class="chat-container">
     <!-- 채팅 영역 -->
-    <div style="flex: 1; display: flex; flex-direction: column; background: #e7edfd; border-radius: 20px; margin: 24px; padding: 24px; position: relative;">
-        <div style="flex: 1; overflow-y: auto;">
+    <div class="chat-main-content">
+        <div class="chat-messages">
             <!-- 예시 채팅 -->
-            <div style="display: flex; align-items: flex-start; margin-bottom: 16px;">
+            <div class="chat-message">
                 <img src="{% static 'img/bot.png' %}" alt="bot" style="width: 32px; height: 32px; margin-right: 8px;">
-                <div style="background: #fff; border-radius: 10px; padding: 12px 16px; min-width: 120px;">
+                <div class="chat-bubble">
                     안녕하세요! 무엇을 도와드릴까요?
                 </div>
             </div>
-            <div style="display: flex; align-items: flex-start; margin-bottom: 16px; flex-direction: row-reverse;">
+            <div class="chat-message user">
                 <img src="{% static 'img/user.png' %}" alt="user" style="width: 32px; height: 32px; margin-left: 8px;">
-                <div style="background: #fbeee0; border-radius: 10px; padding: 12px 16px; min-width: 120px;">
+                <div class="chat-bubble">
                     업무 매뉴얼을 알려주세요.
                 </div>
             </div>
@@ -27,10 +31,10 @@
             #}
         </div>
         <!-- 입력창 -->
-        <form method="post" style="display: flex; align-items: center; margin-top: 16px;">
+        <form method="post" class="chat-input-form">
             {% csrf_token %}
-            <input type="text" name="message" placeholder="메시지를 입력하세요..." style="flex: 1; border: none; border-radius: 20px; padding: 12px 16px; margin-right: 8px;">
-            <button type="submit" style="background: #fff; border: none; border-radius: 20px; padding: 8px 24px; font-weight: bold;">전송</button>
+            <input type="text" name="message" placeholder="메시지를 입력하세요..." >
+            <button type="submit">전송</button>
         </form>
     </div>
 </div>
