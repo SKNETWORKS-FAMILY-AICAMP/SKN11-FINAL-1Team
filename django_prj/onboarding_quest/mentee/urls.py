@@ -5,4 +5,5 @@ app_name = 'mentee'
 
 urlpatterns = [
     path('', views.mentee, name='mentee'),
+    path('task_list/', views.task_list, name='task_list'),
 ]

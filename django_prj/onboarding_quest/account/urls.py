@@ -7,7 +7,7 @@ urlpatterns = [
     path('user/add/', views.user_add_modify, name='user_add_modify'),
     path('user_add_modify/', views.user_add_modify, name='user_add_modify_direct'),
     path('change_pwd/', views.change_pwd, name='change_pwd'),
-    path('login/', views.login_view, name='account_login'),
+    path('login/', views.login_view, name='login'),
     path('profile/', views.profile, name='profile'),
     path('supervisor/', views.supervisor, name='supervisor'),
 ]
