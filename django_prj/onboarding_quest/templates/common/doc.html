@@ -1,71 +1,132 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load static %}
 
+{% block title %}문서 업로드{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/common/doc.css' %}">
+<style>
+.doc-container {
+  display: flex;
+  gap: 32px;
+  width: 100%;
+  min-height: 600px;
+}
+.doc-left {
+  flex: 1;
+  padding: 24px 0 24px 24px;
+  background: #fafbfc;
+  border-radius: 12px 0 0 12px;
+  min-width: 340px;
+  max-width: 500px;
+  overflow-y: auto;
+}
+.doc-title {
+  font-size: 1.3em;
+  font-weight: bold;
+  margin-bottom: 18px;
+  color: #222;
+}
+.doc-upload-box {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 18px 20px 14px 20px;
+  margin-bottom: 18px;
+  color: #555;
+  font-size: 15px;
+  text-align: center;
+}
+.doc-category-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.doc-category-btn {
+  background: #ffd600;
+  color: #222;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.doc-file-list {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 12px 16px;
+  font-size: 15px;
+  color: #222;
+  margin-bottom: 4px;
+}
+.doc-right {
+  flex: 2;
+  background: #fff;
+  border-radius: 0 16px 16px 0;
+  padding: 36px 48px 32px 48px;
+  min-width: 600px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+}
+</style>
 {% endblock %}
-
 {% block content %}
-<!-- 파일 분류 버튼, 업로드 파일 목록 등은 실제 데이터와 연동 시 반복문% for %으로 구현 가능합니다. -->
- <!-- 파일 분류 탭 -->
 <div class="doc-container">
-    <!-- 본문 영역 -->
-    <div class="doc-main-content">
-        <!-- 업로드 박스 -->
-        <div class="upload-box">
-            <img src="{% static 'img/smiling_mungmoonge.jpg' %}" alt="upload" style="width: 100px; margin-bottom: 16px;">
-            <div class="title">Upload PDF</div>
-            <div class="description">or any document format: DOC, DOCX, TXT...</div>
-        </div>
-        <!-- 파일 선택 버튼 -->
-        <form method="post" enctype="multipart/form-data" class="file-select-form">
-            {% csrf_token %}
-            <label for="file-upload" class="file-select-label">
-                📂 Select Files
-            </label>
-            <input id="file-upload" type="file" name="documents" multiple class="file-upload-input">
-            <button type="submit" class="file-upload-button">업로드</button>
-        </form>
-        <!-- 파일 분류 탭 -->
-        <div class="file-category-tabs">
-            <button class="file-category-btn" onclick="showCategory('cat1')">파일 분류 1</button>
-            <button class="file-category-btn" onclick="showCategory('cat2')">파일 분류 2</button>
-            <button class="file-category-btn" onclick="showCategory('cat3')">파일 분류 3</button>
-        </div>
-        <!-- 업로드한 파일 목록 -->
-        <div class="uploaded-file-list-container">
-            <div id="cat1-list" class="file-list">
-                <ul>
-                    {% for file in uploaded_files_cat1 %}
-                        <li>{{ file.name }}</li>
-                    {% empty %}
-                        <li>분류 1에 업로드된 파일이 없습니다.</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div id="cat2-list" class="file-list" style="display:none;">
-                <ul>
-                    {% for file in uploaded_files_cat2 %}
-                        <li>{{ file.name }}</li>
-                    {% empty %}
-                        <li>분류 2에 업로드된 파일이 없습니다.</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div id="cat3-list" class="file-list" style="display:none;">
-                <ul>
-                    {% for file in uploaded_files_cat3 %}
-                        <li>{{ file.name }}</li>
-                    {% empty %}
-                        <li>분류 3에 업로드된 파일이 없습니다.</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
+  <div class="doc-left">
+    <div class="doc-title">문서 업로드</div>
+    <div class="doc-upload-box">
+      <img src="{% static 'img/smiling_mungmoonge.jpg' %}" alt="upload" style="width: 80px; margin-bottom: 12px;">
+      <div style="font-size:1.1em; margin-bottom:8px;">Upload PDF or any document format: DOC, DOCX, TXT...</div>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="documents" multiple style="margin-bottom:10px;">
+        <button type="submit" class="doc-category-btn">업로드</button>
+      </form>
     </div>
+    <div class="doc-category-tabs">
+      <button class="doc-category-btn" onclick="showCategory('cat1')">파일 분류 1</button>
+      <button class="doc-category-btn" onclick="showCategory('cat2')">파일 분류 2</button>
+      <button class="doc-category-btn" onclick="showCategory('cat3')">파일 분류 3</button>
+    </div>
+    <div class="doc-file-list" id="cat1-list">
+      <ul>
+        {% for file in uploaded_files_cat1 %}
+          <li>{{ file.name }}</li>
+        {% empty %}
+          <li>분류 1에 업로드된 파일이 없습니다.</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="doc-file-list" id="cat2-list" style="display:none;">
+      <ul>
+        {% for file in uploaded_files_cat2 %}
+          <li>{{ file.name }}</li>
+        {% empty %}
+          <li>분류 2에 업로드된 파일이 없습니다.</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="doc-file-list" id="cat3-list" style="display:none;">
+      <ul>
+        {% for file in uploaded_files_cat3 %}
+          <li>{{ file.name }}</li>
+        {% empty %}
+          <li>분류 3에 업로드된 파일이 없습니다.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="doc-right">
+    <!-- 상세/미리보기 등 필요시 추가 영역 -->
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'js/common/doc.js' %}"></script>
+<script>
+function showCategory(cat) {
+    document.getElementById('cat1-list').style.display = (cat === 'cat1') ? '' : 'none';
+    document.getElementById('cat2-list').style.display = (cat === 'cat2') ? '' : 'none';
+    document.getElementById('cat3-list').style.display = (cat === 'cat3') ? '' : 'none';
+}
+</script>
 {% endblock %}

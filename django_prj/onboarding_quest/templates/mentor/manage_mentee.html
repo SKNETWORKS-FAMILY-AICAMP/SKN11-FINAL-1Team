@@ -1,50 +1,138 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}멘티 관리 페이지{% endblock %}
+{% block title %}멘티 관리{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/mentor/manage_mentee.css' %}">
+<style>
+  .mentee-container {
+    display: flex;
+    gap: 32px;
+    width: 100%;
+    min-height: 600px;
+  }
+  .mentee-left {
+    flex: 1;
+    padding: 24px 0 24px 24px;
+    background: #fafbfc;
+    border-radius: 12px 0 0 12px;
+    min-width: 340px;
+    max-width: 500px;
+    overflow-y: auto;
+  }
+  .mentee-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 18px;
+    color: #222;
+  }
+  .mentee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .mentee-item {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #222;
+    margin-bottom: 4px;
+    border-left: 5px solid #ffd600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .mentee-item.selected {
+    border-left: 5px solid #4caf50;
+    background: #f6fff6;
+  }
+  .mentee-item:last-child { margin-bottom: 0; }
+  .mentee-right {
+    flex: 2;
+    background: #fff;
+    border-radius: 0 16px 16px 0;
+    padding: 36px 48px 32px 48px;
+    min-width: 600px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+  }
+  .mentee-detail-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #222;
+    margin-bottom: 8px;
+  }
+  .mentee-detail-desc {
+    color: #555;
+    font-size: 15px;
+    margin-bottom: 18px;
+  }
+  .mentee-form-actions {
+    display: flex;
+    gap: 18px;
+    justify-content: flex-end;
+    margin-top: 30px;
+  }
+  .mentee-btn {
+    background: #ffd600;
+    color: #222;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 32px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .mentee-btn:hover { background: #ffe066; }
+  .mentee-profile-box {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 18px 12px;
+    margin-bottom: 18px;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <!-- 1. 사원 목록 및 검색 -->
-        <div class="mentee-list">
-            <input type="text" placeholder="검색">
-            <ul>
-                <li><a href="#" class="selected">사원_1</a></li>
-                <li><a href="#">사원_2</a></li>
-                <li><a href="#">사원_3</a></li>
-                <li><a href="#">사원_4</a></li>
-            </ul>
-        </div>
-
-        <!-- 2. 사원 프로필 및 추가 정보 -->
-        <div class="mentee-profile">
-            <div class="avatar">👤</div>
-            <div class="name">사원_1</div>
-            <div class="role">멘티</div>
-            <div class="extra-info">추가 정보 영역</div>
-        </div>
-
-        <!-- 3. 멘토링 설정 -->
-        <div class="mentoring-settings">
-            <h4>멘토링 설정</h4>
-            <form>
-                <label>선택된 멘티</label>
-                <input type="text" value="사원_1" readonly>
-                <label>시작일자</label>
-                <input type="date" value="2025-07-08">
-                <label>템플릿 선택</label>
-                <select>
-                    <option>기본 멘토링 템플릿</option>
-                    <option>신입사원 온보딩 템플릿</option>
-                    <option>기술 역량 강화 템플릿</option>
-                    <option>리더십 개발 템플릿</option>
-                </select>
-                <button type="submit">저장</button>
-            </form>
-        </div>
+<div class="mentee-container">
+  <!-- 왼쪽: 멘티 리스트 -->
+  <div class="mentee-left">
+    <div class="mentee-title">멘티 목록</div>
+    <div class="mentee-list">
+      <div class="mentee-item selected">사원_1</div>
+      <div class="mentee-item">사원_2</div>
+      <div class="mentee-item">사원_3</div>
     </div>
+  </div>
+  <!-- 오른쪽: 상세/설정 -->
+  <div class="mentee-right">
+    <div class="mentee-detail-title">사원_1</div>
+    <div class="mentee-profile-box">
+      <div style="font-size:1.2em; font-weight:bold;">사원_1</div>
+      <div style="color:#888;">멘티</div>
+      <div style="margin-top:8px;">추가 정보 영역</div>
+    </div>
+    <form>
+      <input type="text" class="tasklist-search" value="사원_1" readonly style="margin-bottom:8px;">
+      <input type="date" class="tasklist-search" value="2025-07-08" style="margin-bottom:8px;">
+      <select class="tasklist-search" style="margin-bottom:8px;">
+        <option>기본 멘토링 템플릿</option>
+        <option>신입사원 온보딩 템플릿</option>
+        <option>기술 역량 강화 템플릿</option>
+        <option>리더십 개발 템플릿</option>
+      </select>
+      <div class="mentee-form-actions">
+        <button type="submit" class="mentee-btn">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block title %}태스크 목록 페이지{% endblock %}
 {% block extra_head %}
 <style>
@@ -17,6 +19,12 @@
   max-width: 500px;
   overflow-y: auto;
 }
+.tasklist-title {
+  font-size: 1.3em;
+  font-weight: bold;
+  margin-bottom: 18px;
+  color: #222;
+}
 .tasklist-search-row {
   display: flex;
   gap: 8px;
@@ -31,8 +39,8 @@
 }
 .tasklist-create-btn {
   padding: 8px 18px;
-  background: #222;
-  color: #fff;
+  background: #ffd600;
+  color: #222;
   border: none;
   border-radius: 6px;
   font-weight: bold;
@@ -44,7 +52,7 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   margin-bottom: 18px;
   padding: 18px 20px 14px 20px;
-  border-left: 6px solid #e0e0e0;
+  border-left: 6px solid #ffd600;
   transition: box-shadow 0.2s, border-color 0.2s;
   cursor: pointer;
   position: relative;
@@ -130,7 +138,6 @@
 .subtask-badge.green { background: #4caf50; }
 .subtask-badge.yellow { background: #ffd600; color: #222; }
 
-/* 오른쪽 상세 UI 스타일 */
 .tasklist-right {
   flex: 2;
   background: #fff;
@@ -219,8 +226,8 @@
 }
 .chat-send-btn {
   padding: 0 24px;
-  background: #222;
-  color: #fff;
+  background: #ffd600;
+  color: #222;
   border: none;
   border-radius: 8px;
   font-weight: bold;
@@ -236,6 +243,7 @@
 <div class="tasklist-container">
   <!-- 좌측: 퀘스트 목록 -->
   <div class="tasklist-left" id="tasklist-left">
+    <div class="tasklist-title">퀘스트 목록</div>
     <div class="tasklist-search-row">
       <input type="text" class="tasklist-search" placeholder="퀘스트 검색...">
       <button class="tasklist-create-btn">생성</button>

@@ -4,22 +4,147 @@
 {% block title %}템플릿 생성{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/mentor/add_template.css' %}">
+<style>
+  .template-container {
+    display: flex;
+    gap: 32px;
+    width: 100%;
+    min-height: 600px;
+  }
+  .template-left {
+    flex: 1;
+    padding: 24px 0 24px 24px;
+    background: #fafbfc;
+    border-radius: 12px 0 0 12px;
+    min-width: 340px;
+    max-width: 500px;
+    overflow-y: auto;
+  }
+  .template-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 18px;
+    color: #222;
+  }
+  .template-desc {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 18px 20px 14px 20px;
+    margin-bottom: 18px;
+    color: #555;
+    font-size: 15px;
+    white-space: pre-line;
+  }
+  .template-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .template-task-item {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #222;
+    margin-bottom: 4px;
+    border-left: 5px solid #ffd600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: grab;
+    transition: background 0.2s;
+  }
+  .template-task-item.drag-over {
+    background: #fffbe6;
+    border-color: #ffecb3;
+  }
+  .template-task-item.dragging {
+    opacity: 0.5;
+  }
+  .add-task-btn {
+    background: #ffd600;
+    color: #222;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 18px;
+    margin-top: 8px;
+  }
+  .template-right {
+    flex: 2;
+    background: #fff;
+    border-radius: 0 16px 16px 0;
+    padding: 36px 48px 32px 48px;
+    min-width: 600px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+  }
+  .template-form-row {
+    margin-bottom: 18px;
+  }
+  .template-form-label {
+    font-weight: bold;
+    color: #7c5c1e;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .template-form-textarea {
+    width: 100%;
+    min-height: 180px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 1em;
+    color: #555;
+    background: #fafbfc;
+    resize: none;
+  }
+  .template-form-actions {
+    display: flex;
+    gap: 18px;
+    justify-content: flex-end;
+    margin-top: 30px;
+  }
+  .template-btn {
+    background: #ffd600;
+    color: #222;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 32px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .template-btn:hover { background: #ffe066; }
+</style>
 {% endblock %}
 
 {% block content %}
-<style>
-  body { padding: 0 !important; }
-</style>
-    <h2>템플릿 생성</h2>
-
-    <form class="template-form" id="create-form">
-        <!-- 왼쪽: 설명 -->
-        <div class="column">
-            <div class="column-title">조직 문화 적용 description</div>
-            <div class="desc-box">
-                <textarea readonly>
-# week1 조직문화 이해 및 관찰
+<div class="template-container" style="padding:0; background:none;">
+  <!-- 전체를 우측 2단 구조로만 구성 -->
+  <div class="template-right" style="width:100%; min-width:0; border-radius:16px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:36px 48px 32px 48px; display:flex; flex-direction:row; gap:50px;">
+    <!-- 좌측: 템플릿 입력폼+description -->
+    <div style="flex:1; min-width:340px; max-width:520px; display:flex; flex-direction:column;">
+      <form class="template-form" id="create-form">
+        <div class="template-form-row">
+          <label class="template-form-label">템플릿 제목</label>
+          <input type="text" class="tasklist-search" placeholder="템플릿 제목 입력">
+        </div>
+        <div class="template-form-row">
+          <label class="template-form-label">템플릿 설명</label>
+          <textarea class="template-form-textarea" placeholder="템플릿 설명을 입력하세요..." style="min-height: 120px;"></textarea>
+        </div>
+        <div class="template-form-row">
+          <label class="template-form-label">주차별 온보딩 과정</label>
+          <textarea class="template-form-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;"># week1 조직문화 이해 및 관찰
 # week2 조직문화 실천 체험
 # week3 조직문화 실천 체험 발표 및 피드백
 # week4 팀워크 향상 프로그램 참여
@@ -30,32 +155,73 @@
 # week9 부서 간 협업 업무 참여
 # week10 회사 미션/비전 재해석 활동
 # week11 역멘토링 활동
-# week12 평생 신입사원 되기 프로젝트
-                </textarea>
-            </div>
+# week12 평생 신입사원 되기 프로젝트</textarea>
         </div>
-
-        <!-- 오른쪽: task -->
-        <div class="column">
-            <div class="column-title">
-                세부 task
-                <a href="/common/task_add" class="add-task-button">추가</a>
-            </div>
-            <div class="task-list">
-                <input type="text" value="오리엔테이션 영상 시청" readonly>
-                <input type="text" value="조직문화 pdf 가이드 읽기" readonly>
-                <input type="text" value="사내 조직도 열람" readonly>
-                <input type="text" value="팀원과 소통하기" readonly>
-                <input type="text" value="관련 일지 작성하기" readonly>
-                <input type="text" value="팀원들과 커피챗" readonly>
-                <input type="text" value="Weekly 미팅" readonly>
-            </div>
+        <div class="template-form-actions">
+          <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">생성</button>
+          <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
         </div>
-    </form>
-
-    <!-- 하단 버튼 -->
-    <div class="form-buttons">
-        <button type="button" class="create-button" onclick="window.location.href='/mentor/manage_template'">생성</button>
-        <button type="button" class="cancel-button" onclick="window.location.href='/mentor/manage_template'">취소</button>
+      </form>
     </div>
+    <!-- 우측: 세부 task/추가 버튼 -->
+    <div style="flex:1; min-width:220px; display:flex; flex-direction:column; align-items:flex-start;">
+      <button class="add-task-btn" style="width:100%; margin-bottom:18px; margin-top:0;" onclick="window.location.href='/common/task_add'">세부 task 추가</button>
+      <div class="template-task-list" style="width:100%;" id="task-list">
+        <div class="template-task-item" draggable="true">오리엔테이션 영상 시청</div>
+        <div class="template-task-item" draggable="true">조직문화 pdf 가이드 읽기</div>
+        <div class="template-task-item" draggable="true">사내 조직도 열람</div>
+        <div class="template-task-item" draggable="true">팀원과 소통하기</div>
+        <div class="template-task-item" draggable="true">관련 일지 작성하기</div>
+        <div class="template-task-item" draggable="true">팀원들과 커피챗</div>
+        <div class="template-task-item" draggable="true">Weekly 미팅</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Drag & Drop for task list
+const taskList = document.getElementById('task-list');
+let draggingEl = null;
+let dragOverEl = null;
+Array.from(taskList.children).forEach(item => {
+  item.addEventListener('dragstart', e => {
+    draggingEl = item;
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  item.addEventListener('dragend', e => {
+    draggingEl = null;
+    item.classList.remove('dragging');
+    Array.from(taskList.children).forEach(i => i.classList.remove('drag-over'));
+  });
+  item.addEventListener('dragover', e => {
+    e.preventDefault();
+  });
+  item.addEventListener('dragenter', e => {
+    if (item !== draggingEl) {
+      item.classList.add('drag-over');
+      dragOverEl = item;
+    }
+  });
+  item.addEventListener('dragleave', e => {
+    item.classList.remove('drag-over');
+    dragOverEl = null;
+  });
+  item.addEventListener('drop', e => {
+    e.preventDefault();
+    if (item !== draggingEl) {
+      item.classList.remove('drag-over');
+      // 순서 변경
+      const children = Array.from(taskList.children);
+      const dropIdx = children.indexOf(item);
+      taskList.removeChild(draggingEl);
+      if (dropIdx < children.length - 1) {
+        taskList.insertBefore(draggingEl, item);
+      } else {
+        taskList.appendChild(draggingEl);
+      }
+    }
+  });
+});
+</script>
 {% endblock %}

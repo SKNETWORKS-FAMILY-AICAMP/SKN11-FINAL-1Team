@@ -1,34 +1,323 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}템플릿 관리 페이지{% endblock %}
+{% block title %}템플릿 관리{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/mentor/manage_template.css' %}">
+<style>
+  .template-container {
+    display: flex;
+    gap: 40px;
+    width: 100%;
+    min-height: 900px;
+    height: 80vh;
+    box-sizing: border-box;
+  }
+  .template-left {
+    flex: none;
+    width: 380px;
+    padding: 48px 0 48px 48px;
+    background: #fafbfc;
+    border-radius: 18px 0 0 18px;
+    min-width: 260px;
+    max-width: 420px;
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .template-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .template-title {
+    font-size: 1.35em;
+    font-weight: bold;
+    color: #222;
+    letter-spacing: -1px;
+  }
+  .add-template-btn, .template-btn, .template-edit-btn {
+    height: 38px;
+    min-height: 38px;
+    padding: 0 18px;
+    font-size: 1em;
+    border-radius: 8px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .add-template-btn, .template-btn {
+    background: #ffd600;
+    color: #222;
+    border: none;
+    cursor: pointer;
+    margin-left: 0;
+  }
+  .template-btn:hover, .template-edit-btn:hover, .add-template-btn:hover { background: #ffe066; }
+  .template-edit-btn {
+    background: #ffd600;
+    color: #222;
+    border: none;
+    cursor: pointer;
+    margin-left: 0;
+  }
+  .template-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .template-item {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 18px 20px;
+    font-size: 16px;
+    color: #222;
+    border-left: 5px solid #ffd600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    font-weight: 500;
+  }
+  .template-item.selected {
+    border-left: 5px solid #4caf50;
+    background: #f6fff6;
+  }
+  .template-item:last-child { margin-bottom: 0; }
+  .template-right {
+    flex: 1 1 0;
+    background: #fff;
+    border-radius: 0 18px 18px 0;
+    padding: 48px 56px 40px 56px;
+    min-width: 700px;
+    min-height: 900px;
+    max-width: 100vw;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+    height: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+  .template-detail-header {
+    display: flex;
+    justify-content: flex-end; /* 우측 정렬로 변경 */
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .template-detail-title {
+    font-size: 1.25em;
+    font-weight: bold;
+    color: #222;
+    margin-bottom: 8px;
+  }
+  .template-edit-btn {
+    background: #ffd600;
+    color: #222;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-weight: bold;
+    font-size: 1.05em;
+    cursor: pointer;
+    margin-left: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .template-detail-desc {
+    color: #555;
+    font-size: 16px;
+    margin-bottom: 28px;
+    min-height: 60px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafbfc;
+    padding: 18px 20px;
+  }
+  .template-detail-weeks {
+    margin-bottom: 32px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafbfc;
+    padding: 18px 20px;
+  }
+  .template-detail-weeks-title {
+    font-weight:bold; color:#333; margin-bottom:10px; font-size:1.08em;
+  }
+  .template-detail-weeks-list {
+    padding-left:18px; color:#444; font-size:15px; margin:0;
+  }
+  .template-form-actions {
+    display: flex;
+    gap: 18px;
+    justify-content: flex-end;
+    margin-top: 40px;
+  }
+  .template-btn {
+    background: #ffd600;
+    color: #222;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 38px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .template-btn:hover, .template-edit-btn:hover { background: #ffe066; }
+  .template-detail-input {
+    width: 100%;
+    margin-bottom: 12px;
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 1em;
+    font-weight: bold;
+    color: #222;
+  }
+  .template-detail-textarea {
+    width: 100%;
+    min-height: 120px; /* 기존 60px → 120px로 높임 */
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 1em;
+    color: #555;
+    margin-bottom: 18px;
+    resize: none;
+    overflow: visible;
+    height: auto;
+    max-height: none;
+  }
+  .template-task-list {
+    margin-bottom: 32px;
+  }
+  .template-task-item {
+    background: #fffbe6;
+    border-left: 5px solid #ffd600;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="template-manager">
-    <h2>템플릿 관리</h2>
-
-    <div class="search-bar">
-        <input type="text" placeholder="검색">
-        <button>🔍검색</button>
+<div class="template-container">
+  <!-- 왼쪽: 템플릿 리스트 + 생성 버튼 -->
+  <div class="template-left">
+    <div class="template-list-row">
+      <span class="template-title">템플릿 목록</span>
+      <button class="add-template-btn" onclick="window.location.href='/mentor/add_template'">템플릿 생성</button>
     </div>
-
     <div class="template-list" id="template-list">
-        <!-- 아래 템플릿 항목에 각자 ID 값 할당 -->
-        <div class="template-item" data-id="1"># 조직적응하기</div>
-        <div class="template-item" data-id="2"># 개발팀 온보딩</div>
-        <div class="template-item" data-id="3"># 인사팀 온보딩</div>
+      <div class="template-item selected"
+        data-title="# 조직적응하기"
+        data-desc="신입사원 조직 적응을 위한 온보딩 템플릿입니다. 회사 문화, 조직 구조, 팀워크를 빠르게 익히고 적응할 수 있도록 설계되었습니다."
+        data-weeks='["1주차: 회사 소개 및 조직 구조 이해", "2주차: 팀별 역할 및 업무 프로세스 학습", "3주차: 멘토링 및 실무 적응", "4주차: 팀워크 향상 프로그램 참여", "5주차: 사내 이벤트 참여 및 후기 작성"]'
+        data-tasks='["오리엔테이션 영상 시청", "조직문화 pdf 가이드 읽기", "사내 조직도 열람", "팀원과 소통하기", "관련 일지 작성하기", "팀원들과 커피챗", "Weekly 미팅"]'># 조직적응하기</div>
+      <div class="template-item"
+        data-title="# 개발팀 온보딩"
+        data-desc="개발팀 신입을 위한 온보딩 템플릿입니다. 개발 환경 세팅부터 실전 프로젝트 투입까지 단계별로 안내합니다."
+        data-weeks='["1주차: 개발 환경 세팅 및 툴 설치", "2주차: 코드베이스 이해 및 실습", "3주차: 프로젝트 참여 및 코드 리뷰", "4주차: 협업 툴 활용법 익히기"]'
+        data-tasks='["개발 환경 세팅 체크리스트", "Git 브랜치 전략 학습", "코드 리뷰 참여", "API 문서 읽기", "테스트 코드 작성 실습", "팀 프로젝트 첫 커밋"]'># 개발팀 온보딩</div>
+      <div class="template-item"
+        data-title="# 인사팀 온보딩"
+        data-desc="인사팀 신입을 위한 온보딩 템플릿입니다. 인사 정책, 실무 문서 작성, 부서 간 협업을 중심으로 구성되어 있습니다."
+        data-weeks='["1주차: 인사 정책 및 시스템 교육", "2주차: 실무 문서 작성 실습", "3주차: 부서 간 협업 경험", "4주차: 인사 데이터 관리 실습"]'
+        data-tasks='["인사 정책 매뉴얼 정독", "근태 관리 시스템 실습", "인사 관련 문서 작성", "부서 협업 회의 참석", "사내 공지 작성 실습"]'># 인사팀 온보딩</div>
     </div>
-
-    <div class="create-button">
-        <button onclick="window.location.href='/mentor/add_template'">템플릿 생성하기</button>
+  </div>
+  <!-- 오른쪽: 상세/버튼 -->
+  <div class="template-right">
+    <div class="template-detail-header">
+      <div style="display:flex; gap:12px; align-items:center; justify-content:flex-end; width:100%;">
+        <button class="template-btn" onclick="window.location.href='/mentor/add_template'">복제</button>
+        <button class="template-btn" onclick="window.location.href='/mentor/add_template'">삭제</button>
+        <button class="template-edit-btn" onclick="window.location.href='/mentor/add_template'">템플릿 편집</button>
+      </div>
     </div>
+    <div style="margin-bottom:22px;">
+      <div class="template-detail-weeks-title">템플릿 제목</div>
+      <input type="text" id="detail-title" class="template-detail-input" value="# 조직적응하기" readonly />
+      <div class="template-detail-weeks-title">템플릿 설명</div>
+      <textarea id="detail-desc" class="template-detail-textarea" readonly>신입사원 조직 적응을 위한 온보딩 템플릿입니다. 회사 문화, 조직 구조, 팀워크를 빠르게 익히고 적응할 수 있도록 설계되었습니다.</textarea>
+      <div class="template-detail-weeks-title">주차별 온보딩 과정</div>
+      <textarea id="detail-weeks-raw" class="template-detail-textarea" readonly>1주차: 회사 소개 및 조직 구조 이해
+2주차: 팀별 역할 및 업무 프로세스 학습
+3주차: 멘토링 및 실무 적응
+4주차: 팀워크 향상 프로그램 참여
+5주차: 사내 이벤트 참여 및 후기 작성</textarea>
+    </div>
+    <div class="template-detail-weeks-title" style="margin-bottom:10px;">세부 task</div>
+    <div class="template-task-list" id="detail-tasks" style="margin-bottom:32px;">
+      <!-- 세부 task 타이틀은 위에서만 한 번 출력, 아래는 실제 task만 렌더링 -->
+      <div class="template-task-item">오리엔테이션 영상 시청</div>
+      <div class="template-task-item">조직문화 pdf 가이드 읽기</div>
+      <div class="template-task-item">사내 조직도 열람</div>
+      <div class="template-task-item">팀원과 소통하기</div>
+      <div class="template-task-item">관련 일지 작성하기</div>
+      <div class="template-task-item">팀원들과 커피챗</div>
+      <div class="template-task-item">Weekly 미팅</div>
+    </div>
+    <div class="template-form-actions" style="display:none;"></div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{% static 'js/mentor/manage_template.js' %}"></script>
+<script>
+// 템플릿 목록 클릭 시 상세 연동
+const items = document.querySelectorAll('.template-item');
+const detailTitle = document.getElementById('detail-title');
+const detailDesc = document.getElementById('detail-desc');
+const detailWeeksRaw = document.getElementById('detail-weeks-raw');
+const detailTasks = document.getElementById('detail-tasks');
+items.forEach(item => {
+  item.addEventListener('click', function() {
+    items.forEach(i => i.classList.remove('selected'));
+    item.classList.add('selected');
+    detailTitle.value = item.getAttribute('data-title');
+    detailDesc.value = item.getAttribute('data-desc');
+    // 주차별 온보딩 과정 textarea 렌더링
+    let weeks = [];
+    try {
+      weeks = JSON.parse(item.getAttribute('data-weeks'));
+    } catch(e) {}
+    detailWeeksRaw.value = weeks.join('\n');
+    // 세부 task 렌더링
+    let tasks = [];
+    try {
+      tasks = JSON.parse(item.getAttribute('data-tasks'));
+    } catch(e) {}
+    detailTasks.innerHTML = '';
+    tasks.forEach(t => {
+      const div = document.createElement('div');
+      div.className = 'template-task-item';
+      div.textContent = t;
+      detailTasks.appendChild(div);
+    });
+    // 주차별 온보딩 textarea 높이 자동 조절
+    setTimeout(() => {
+      detailWeeksRaw.style.height = 'auto';
+      detailWeeksRaw.style.height = (detailWeeksRaw.scrollHeight + 2) + 'px';
+    }, 10);
+  });
+});
+// 페이지 로드시 주차별 온보딩 textarea 높이 자동 조절
+window.addEventListener('DOMContentLoaded', function() {
+  detailWeeksRaw.style.height = 'auto';
+  detailWeeksRaw.style.height = (detailWeeksRaw.scrollHeight + 2) + 'px';
+});
+</script>
 {% endblock %}
