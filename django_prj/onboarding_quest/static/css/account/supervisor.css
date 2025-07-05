@@ -1,11 +1,6 @@
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background-color: #f4f6f8;
-  padding: 40px;
-}
-
 h2 {
   color: #333;
+  margin-bottom: 24px;
 }
 
 .top-bar {

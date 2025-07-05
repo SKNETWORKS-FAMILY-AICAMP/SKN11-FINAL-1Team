@@ -4,6 +4,7 @@ from django.contrib.auth import login
 from django.contrib.auth.hashers import check_password
 from core.models import User
 from django.contrib.auth import authenticate
+from django.urls import reverse
 
 def user_add_modify(request):
     return render(request, 'account/user_add_modify.html')
@@ -23,9 +24,9 @@ def login_view(request):
                 if user.role == 'admin':
                     return redirect('account:supervisor')
                 elif user.role == 'mentor':
-                    return redirect('/mentor/')
+                    return redirect('mentor:mentor')
                 elif user.role == 'mentee':
-                    return redirect('/mentee/')
+                    return redirect('mentee:mentee')
                 else:
                     return redirect('/')
             else:
