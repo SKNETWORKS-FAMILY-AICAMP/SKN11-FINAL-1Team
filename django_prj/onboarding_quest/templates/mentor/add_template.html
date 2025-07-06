@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}템플릿 생성{% endblock %}
+{% block title %}커리큘럼 생성{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -131,19 +131,19 @@
 <div class="template-container" style="padding:0; background:none;">
   <!-- 전체를 우측 2단 구조로만 구성 -->
   <div class="template-right" style="width:100%; min-width:0; border-radius:16px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:36px 48px 32px 48px; display:flex; flex-direction:row; gap:50px;">
-    <!-- 좌측: 템플릿 입력폼+description -->
+    <!-- 좌측: 커리큘럼 입력폼+description -->
     <div style="flex:1; min-width:340px; max-width:520px; display:flex; flex-direction:column;">
       <form class="template-form" id="create-form">
         <div class="template-form-row">
-          <label class="template-form-label">템플릿 제목</label>
-          <input type="text" class="tasklist-search" placeholder="템플릿 제목 입력">
+          <label class="template-form-label">커리큘럼 제목</label>
+          <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력">
         </div>
         <div class="template-form-row">
-          <label class="template-form-label">템플릿 설명</label>
-          <textarea class="template-form-textarea" placeholder="템플릿 설명을 입력하세요..." style="min-height: 120px;"></textarea>
+          <label class="template-form-label">커리큘럼 설명</label>
+          <textarea class="template-form-textarea" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
         </div>
         <div class="template-form-row">
-          <label class="template-form-label">주차별 온보딩 과정</label>
+          <label class="template-form-label">주차별 커리큘럼 과정</label>
           <textarea class="template-form-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;"># week1 조직문화 이해 및 관찰
 # week2 조직문화 실천 체험
 # week3 조직문화 실천 체험 발표 및 피드백

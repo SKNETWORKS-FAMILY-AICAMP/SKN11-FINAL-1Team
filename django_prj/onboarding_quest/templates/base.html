@@ -77,7 +77,7 @@
                     <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-2 px-4 rounded hover:bg-yellow-100 flex items-center gap-2 {% if request.path == '/common/chatbot/' %}active-link{% endif %}"><span>🤖</span>채팅</a>
                     <a href="{% url 'common:doc' %}" class="sidebar-link block py-2 px-4 rounded hover:bg-yellow-100 flex items-center gap-2 {% if request.path == '/common/doc/' %}active-link{% endif %}"><span>📄</span>문서 업로드</a>
                     <a href="{% url 'mentor:manage_mentee' %}" class="sidebar-link block py-2 px-4 rounded hover:bg-yellow-100 flex items-center gap-2 {% if request.path == '/mentor/manage_mentee/' %}active-link{% endif %}"><span>👤</span>멘토쉽 생성</a>
-                    <a href="{% url 'mentor:manage_template' %}" class="sidebar-link block py-2 px-4 rounded hover:bg-yellow-100 flex items-center gap-2 {% if request.path == '/mentor/manage_template/' %}active-link{% endif %}"><span>📝</span>템플릿 관리</a>
+                    <a href="{% url 'mentor:manage_template' %}" class="sidebar-link block py-2 px-4 rounded hover:bg-yellow-100 flex items-center gap-2 {% if request.path == '/mentor/manage_template/' %}active-link{% endif %}"><span>📝</span>커리큘럼 관리</a>
                 {% elif request.user.role == 'mentee' %}
                     <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-2 px-4 rounded hover:bg-yellow-100 flex items-center gap-2 {% if request.path == '/mentee/' %}active-link{% endif %}"><span>🏠</span>메인</a>
                     <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-2 px-4 rounded hover:bg-yellow-100 flex items-center gap-2 {% if request.path == '/common/chatbot/' %}active-link{% endif %}"><span>🤖</span>채팅</a>

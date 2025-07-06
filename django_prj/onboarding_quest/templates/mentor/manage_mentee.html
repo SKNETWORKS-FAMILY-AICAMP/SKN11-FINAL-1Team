@@ -208,12 +208,12 @@
       <input type="text" id="selected-mentee" value="김신입" readonly>
       <label>멘토쉽 시작일자</label>
       <input type="date" id="start-date" value="2025-07-08">
-      <label>템플릿 선택</label>
+      <label>커리큘럼 선택</label>
       <select id="template-select">
-        <option value="4">기본 멘토링 템플릿 (4주)</option>
-        <option value="6">신입사원 온보딩 템플릿 (6주)</option>
-        <option value="8">기술 역량 강화 템플릿 (8주)</option>
-        <option value="12">리더십 개발 템플릿 (12주)</option>
+        <option value="4">기본 멘토링 커리큘럼 (4주)</option>
+        <option value="6">신입사원 온보딩 커리큘럼 (6주)</option>
+        <option value="8">기술 역량 강화 커리큘럼 (8주)</option>
+        <option value="12">리더십 개발 커리큘럼 (12주)</option>
       </select>
       <div class="end-date-label" id="end-date-label">종료일: 2025-08-05</div>
       <button type="submit">생성</button>
@@ -251,7 +251,7 @@ menteeLinks.forEach(link => {
     updateMenteeDetail(link.getAttribute('data-name'));
   });
 });
-// 템플릿/시작일 변경 시 종료일 자동 계산
+// 커리큘럼/시작일 변경 시 종료일 자동 계산
 const startDateInput = document.getElementById('start-date');
 const templateSelect = document.getElementById('template-select');
 const endDateLabel = document.getElementById('end-date-label');
