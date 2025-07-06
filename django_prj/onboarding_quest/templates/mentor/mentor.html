@@ -4,126 +4,100 @@
 {% block title %}멘토 대시보드{% endblock %}
 
 {% block extra_head %}
-<style>
-  .mentor-container {
-    display: flex;
-    gap: 32px;
-    width: 100%;
-    min-height: 600px;
-  }
-  .mentor-left {
-    flex: 1;
-    padding: 24px 0 24px 24px;
-    background: #fafbfc;
-    border-radius: 12px 0 0 12px;
-    min-width: 340px;
-    max-width: 500px;
-    overflow-y: auto;
-  }
-  .mentor-title {
-    font-size: 1.3em;
-    font-weight: bold;
-    margin-bottom: 18px;
-    color: #222;
-  }
-  .mentor-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .mentor-item {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    padding: 12px 16px;
-    font-size: 15px;
-    color: #222;
-    margin-bottom: 4px;
-    border-left: 5px solid #ffd600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-  }
-  .mentor-item.selected {
-    border-left: 5px solid #4caf50;
-    background: #f6fff6;
-  }
-  .mentor-item:last-child { margin-bottom: 0; }
-  .add-mentor-btn {
-    background: #ffd600;
-    color: #222;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 18px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-bottom: 18px;
-    margin-top: 8px;
-  }
-  .mentor-right {
-    flex: 2;
-    background: #fff;
-    border-radius: 0 16px 16px 0;
-    padding: 36px 48px 32px 48px;
-    min-width: 600px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    z-index: 10;
-  }
-  .mentor-detail-title {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #222;
-    margin-bottom: 8px;
-  }
-  .mentor-detail-desc {
-    color: #555;
-    font-size: 15px;
-    margin-bottom: 18px;
-  }
-  .mentor-form-actions {
-    display: flex;
-    gap: 18px;
-    justify-content: flex-end;
-    margin-top: 30px;
-  }
-  .mentor-btn {
-    background: #ffd600;
-    color: #222;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 32px;
-    font-size: 1.1em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-  }
-  .mentor-btn:hover { background: #ffe066; }
-</style>
+<link rel="stylesheet" href="{% static 'css/mentor/mentor.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="mentor-container">
-  <!-- 왼쪽: 멘토 리스트 -->
-  <div class="mentor-left">
-    <div class="mentor-title">멘토 목록</div>
-    <div class="mentor-list">
-      <div class="mentor-item selected">김신입 <span style="color:#888; font-size:0.95em;">#react #JS</span></div>
-      <div class="mentor-item">이신입 <span style="color:#888; font-size:0.95em;">#python #Django</span></div>
+  <div class="main-content">
+    <div class="header">
+      <p>안녕하세요! 멘토님! 오늘도 멘티분들과 여정을 함께 하세요!</p>
     </div>
-    <button class="add-mentor-btn">멘토 등록</button>
-  </div>
-  <!-- 오른쪽: 상세/버튼 -->
-  <div class="mentor-right">
-    <div class="mentor-detail-title">김신입</div>
-    <div class="mentor-detail-desc">프론트엔드/리액트 멘토</div>
-    <div class="mentor-form-actions">
-      <button class="mentor-btn">대화하기</button>
-      <button class="mentor-btn">진척도</button>
+
+    <div class="mentor-section">
+      <h2>멘티 관리</h2>
+
+      <div class="search-container">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="멘티 이름을 검색해주세요...">
+        </div>
+        <button class="filter-btn">📊 필터</button>
+      </div>
+
+      <div class="mentors-grid">
+        <div class="mentor-card cursor-pointer hover:shadow-lg transition" onclick="window.location.href='/mentee/task_list/'">
+          <div class="flex items-center gap-4 mb-2">
+            <div class="mentor-avatar"></div>
+            <div class="mentor-name font-bold">김신입</div>
+            <div class="ml-auto flex items-center gap-2">
+              <span class="bg-red-200 text-gray-800 text-xs font-bold px-3 py-1 rounded">D-10</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 mb-4">
+            <div class="flex-1 flex items-center gap-2">
+              <span class="tag bg-gray-100 text-xs px-2 py-1 rounded">#정직원</span>
+              <span class="tag bg-gray-100 text-xs px-2 py-1 rounded">#알잘딱깔센</span>
+            </div>            
+          </div>
+          <div class="w-32 flex items-center gap-2">
+            <div>
+              <div class="progress-label text-lg text-gray-500 mb-2">진척도</div>
+              <div class="progress-bar bg-gray-200 rounded-full h-2 w-72">
+                <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 90%;"></div>                
+              </div>
+            </div>
+            <span class="text-lg text-gray-600 font-bold mt-7">90%</span>
+          </div>
+        </div>
+        <div class="mentor-card cursor-pointer hover:shadow-lg transition" onclick="window.location.href='/mentee/task_list/'">
+          <div class="flex items-center gap-4 mb-2">
+            <div class="mentor-avatar"></div>
+            <div class="mentor-name font-bold">이신입</div>
+            <div class="ml-auto flex items-center gap-2">
+              <span class="bg-yellow-200 text-gray-800 text-xs font-bold px-3 py-1 rounded">D-30</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 mb-4">
+            <div class="flex-1 flex items-center gap-2">
+              <span class="tag bg-gray-100 text-xs px-2 py-1 rounded">#성장중</span>
+              <span class="tag bg-gray-100 text-xs px-2 py-1 rounded">#도전정신</span>
+            </div>
+          </div>
+          <div class="w-32 flex items-center gap-2">
+            <div>
+              <div class="progress-label text-lg text-gray-500 mb-2">진척도</div>
+              <div class="progress-bar bg-gray-200 rounded-full h-2 w-72">
+                <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 50%;"></div>
+              </div>
+            </div>
+            <span class="text-lg text-gray-600 font-bold mt-7">50%</span>
+          </div>
+        </div>
+        <div class="mentor-card cursor-pointer hover:shadow-lg transition" onclick="window.location.href='/mentee/task_list/'">
+          <div class="flex items-center gap-4 mb-2">
+            <div class="mentor-avatar"></div>
+            <div class="mentor-name font-bold">방신입</div>
+            <div class="ml-auto flex items-center gap-2">
+              <span class="bg-gray-200 text-gray-800 text-xs font-bold px-3 py-1 rounded">D-83</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 mb-4">
+            <div class="flex-1 flex items-center gap-2">
+              <span class="tag bg-gray-100 text-xs px-2 py-1 rounded">#배움의욕</span>
+              <span class="tag bg-gray-100 text-xs px-2 py-1 rounded">#팀워크중시</span>
+            </div>
+          </div>
+          <div class="w-32 flex items-center gap-2">
+            <div>
+              <div class="progress-label text-lg text-gray-500 mb-2">진척도</div>
+              <div class="progress-bar bg-gray-200 rounded-full h-2 w-72">
+                <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: 10%;"></div>
+              </div>
+            </div>
+            <span class="text-lg text-gray-600 font-bold mt-7">10%</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 {% endblock %}
