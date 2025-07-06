@@ -465,15 +465,22 @@
   </div>
   <!-- 우측: 상세 정보 -->
   <div class="tasklist-right">
-    <div class="task-detail-header">
-      <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
-      <span class="task-detail-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> <span id="detail-xp">100 XP</span></span>
+    <div class="task-detail-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
+        <span class="task-detail-xp" id="detail-xp" style="color:#888; font-size:17px; display:flex; align-items:center; gap:4px; font-weight:bold;"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
+      </div>
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="task-detail-edit-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">편집</button>
+        <button class="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">하위 테스크 생성</button>
+      </div>
     </div>
     <div class="task-detail-desc" id="detail-desc">간단한 프로젝트에 참여하여 워크플로우 이해하기</div>
     <div class="task-detail-meta-row">
       <span class="task-badge yellow" id="detail-badge">중급</span>
+    </div>    
+    <div class="task-detail-divider">
     </div>
-    <hr class="task-detail-divider">
     <div class="task-detail-list" id="detail-list">
       <ul>
         <li>프로젝트 준비</li>
@@ -696,13 +703,16 @@ function updateDetail(idx, subIdx = null) {
   else if(idx === 2) dday = 'D-1';
   else if(idx === 3) dday = 'D-DAY';
   let status = statusMap[idx];
+  // 타이틀+exp 한 줄에 배치
   titleEl.innerHTML = `<span class="status-badge ${status.color}">${status.text}</span> <span class="${d.status === '완료됨' ? 'done' : ''}">${d.title}</span>`;
   if(d.status === '완료됨') {
     titleEl.classList.add('done');
   } else {
     titleEl.classList.remove('done');
   }
-  document.getElementById('detail-xp').textContent = d.xp || '';
+  // exp도 같은 줄에 동적 반영
+  const xpEl = document.getElementById('detail-xp');
+  if (xpEl) xpEl.innerHTML = `<span class="icon-trophy" style="font-size:15px;">🏆</span> ${d.xp || ''}`;
   document.getElementById('detail-desc').textContent = d.desc;
   // 난이도/디데이 메타(중복 생성 방지)
   const metaRow = document.querySelector('.task-detail-meta-row');
