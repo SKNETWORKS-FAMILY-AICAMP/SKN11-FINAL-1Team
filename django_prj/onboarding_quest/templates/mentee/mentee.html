@@ -5,6 +5,24 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/mentee/mentee.css' %}">
+<style>
+.kanban-card.dragging {
+  opacity: 0.5;
+}
+.success-column .kanban-card {
+  text-decoration: line-through;
+  color: #888;
+}
+.kanban-card {
+  cursor: pointer;
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+.kanban-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  transform: translateY(-2px) scale(1.03);
+  z-index: 2;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -40,25 +58,45 @@
       </div>
 
       <div class="kanban-board">
-        <div class="kanban-column todo-column">
-          <div class="kanban-header">todo</div>
-          <div class="kanban-card" data-date="2025-07-04">
-            <input type="checkbox" id="task1"><label for="task1">업무 일지 작성하기</label>
+        <div class="kanban-column todo-column" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-header">Todo</div>
+          <div class="kanban-card" data-date="2025-07-04" draggable="true" id="task1">
+            <span>업무 일지 작성하기</span>
             <div class="task-date">2025-07-04</div>
           </div>
-        </div>
-        <div class="kanban-column processing-column">
-          <div class="kanban-header">processing</div>
-          <div class="kanban-card" data-date="2025-07-03">
-            <input type="checkbox" id="task2"><label for="task2">제품 프로토타입 제작하기</label>
-            <div class="task-date">2025-07-03</div>
+          <div class="kanban-card" data-date="2025-07-05" draggable="true" id="task5">
+            <span>팀 회의 준비</span>
+            <div class="task-date">2025-07-05</div>
+          </div>
+          <div class="kanban-card" data-date="2025-07-06" draggable="true" id="task6">
+            <span>신규 기능 아이디어 정리</span>
+            <div class="task-date">2025-07-06</div>
           </div>
         </div>
-        <div class="kanban-column success-column">
-          <div class="kanban-header">success</div>
-          <div class="kanban-card" data-date="2025-07-02">
-            <input type="checkbox" id="task4" checked><label for="task4">솔루션 자기소개 입력하기</label>
+        <div class="kanban-column processing-column" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-header">Processing</div>
+          <div class="kanban-card" data-date="2025-07-03" draggable="true" id="task2">
+            <span>제품 프로토타입 제작하기</span>
+            <div class="task-date">2025-07-03</div>
+          </div>
+          <div class="kanban-card" data-date="2025-07-05" draggable="true" id="task7">
+            <span>코드 리뷰 참여</span>
+            <div class="task-date">2025-07-05</div>
+          </div>
+        </div>
+        <div class="kanban-column success-column" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-header">Success</div>
+          <div class="kanban-card" data-date="2025-07-02" draggable="true" id="task4">
+            <span>솔루션 자기소개 입력하기</span>
             <div class="task-date">2025-07-02</div>
+          </div>
+          <div class="kanban-card" data-date="2025-07-01" draggable="true" id="task8">
+            <span>멘토와 1:1 미팅</span>
+            <div class="task-date">2025-07-01</div>
+          </div>
+          <div class="kanban-card" data-date="2025-06-30" draggable="true" id="task9">
+            <span>오리엔테이션 참석</span>
+            <div class="task-date">2025-06-30</div>
           </div>
         </div>
       </div>
@@ -67,12 +105,24 @@
     <div class="activity-section">
       <div class="activity-header">최근활동</div>
       <div class="activity-item">
-        <div>챗봇과 대화</div>
-        <div>5 minute ago</div>
+        <div>코드 리뷰 참여 진행 중입니다</div>
+        <div>1 minute ago</div>
       </div>
       <div class="activity-item">
-        <div>문서 업로드</div>
+        <div>제품 프로토타입 제작 진행 중입니다</div>
+        <div>10 minute ago</div>
+      </div>
+      <div class="activity-item">
+        <div>솔루션 자기소개 입력 완료했습니다</div>
+        <div>1 day ago</div>
+      </div>
+      <div class="activity-item">
+        <div>멘토와 1:1 미팅 완료했습니다</div>
         <div>2 day ago</div>
+      </div>
+      <div class="activity-item">
+        <div>오리엔테이션 참석 완료했습니다</div>
+        <div>3 day ago</div>
       </div>
     </div>
   </div>
@@ -80,4 +130,46 @@
 
 {% block extra_js %}
 <script src="{% static 'js/mentee/mentee.js' %}"></script>
+<script>
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+let dragged = null;
+document.querySelectorAll('.kanban-card').forEach(card => {
+  card.addEventListener('dragstart', function(e) {
+    dragged = card;
+    setTimeout(() => card.classList.add('dragging'), 0);
+  });
+  card.addEventListener('dragend', function(e) {
+    card.classList.remove('dragging');
+    dragged = null;
+  });
+});
+function drop(ev) {
+  ev.preventDefault();
+  if (dragged) {
+    const col = ev.currentTarget;
+    col.appendChild(dragged);
+    // Success 컬럼에 들어가면 취소선, 아니면 취소선 제거
+    if (col.classList.contains('success-column')) {
+      dragged.classList.add('success-task');
+    } else {
+      dragged.classList.remove('success-task');
+    }
+  }
+}
+// Success 컬럼에 있는 카드에 취소선 적용
+function updateSuccessLine() {
+  document.querySelectorAll('.success-column .kanban-card').forEach(card => {
+    card.classList.add('success-task');
+  });
+  document.querySelectorAll('.kanban-column:not(.success-column) .kanban-card').forEach(card => {
+    card.classList.remove('success-task');
+  });
+}
+document.querySelectorAll('.kanban-card').forEach(card => {
+  card.addEventListener('dragend', updateSuccessLine);
+});
+window.addEventListener('DOMContentLoaded', updateSuccessLine);
+</script>
 {% endblock %}
