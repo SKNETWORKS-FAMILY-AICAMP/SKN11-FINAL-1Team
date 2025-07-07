@@ -9,7 +9,18 @@
 .kanban-board { display: flex; gap: 24px; }
 .kanban-column { background: #f8f9fa; border-radius: 12px; padding: 12px 10px 24px 10px; min-height: 340px; }
 .kanban-header { font-weight: bold; font-size: 1.1em; margin-bottom: 12px; }
-.kanban-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 18px; padding: 16px 18px 12px 18px; border-left: 6px solid #ffd600; transition: box-shadow 0.2s, border-color 0.2s; position: relative; }
+.kanban-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 18px; padding: 16px 18px 12px 18px; border-left: 6px solid #ffd600; transition: box-shadow 0.2s, border-color 0.2s; position: relative; cursor: pointer; }
+.kanban-card.dragging {
+  opacity: 0.5;
+  box-shadow: 0 0 0 4px #ffd60099, 0 8px 24px rgba(0,0,0,0.10);
+  border-color: #ffd600;
+  z-index: 10;
+}
+.kanban-column.drop-hover {
+  background: #fffde7 !important;
+  box-shadow: 0 0 0 3px #ffd60055;
+  transition: background 0.2s, box-shadow 0.2s;
+}
 .kanban-card-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; margin-bottom: 6px; }
 .d-day-badge { font-weight: bold; color: #f44336; background: #fff3e0; border-radius: 8px; padding: 2px 10px; font-size: 13px; min-width: 54px; text-align: center; }
 .kanban-title { font-weight: bold; color: #222; font-size: 16px; flex: 1; margin-left: 6px; }
@@ -58,10 +69,33 @@
   font-size: 15px;
   letter-spacing: 1px;
 }
+.levelup-toast {
+  position: fixed;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffd600;
+  color: #222;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 16px 36px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  z-index: 9999;
+  display: none;
+  animation: fadeInOut 2s;
+}
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  90% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+}
 </style>
 {% endblock %}
 
 {% block content %}
+<div id="levelup-toast" class="levelup-toast"></div>
   <div class="main-content">
     <div class="welcome-section bg-gradient-to-r from-green-100 to-yellow-50 rounded-xl shadow p-6 mb-8 flex items-center gap-6">
       <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-300 bg-white" />
@@ -82,77 +116,178 @@
         <div class="kanban-column todo-column" style="flex:1; min-width:220px;" ondrop="drop(event)" ondragover="allowDrop(event)">
           <div class="kanban-header">진행 전</div>
           <div class="kanban-card" data-date="2025-07-04" draggable="true" id="task1">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-5</span>
+                <span class="kanban-diff diff-low">하</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 20 XP</span>
+              </div>
+            </div>
             <div class="kanban-card-row">
-              <span class="d-day-badge">D-5</span>
               <span class="kanban-title">온보딩 가이드 읽기</span>
-              <span class="kanban-diff diff-low">하</span>
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 20 XP</span>
             </div>
             <div class="kanban-desc">회사 온보딩 가이드 문서를 읽고, 궁금한 점을 정리해보세요.</div>
           </div>
           <div class="kanban-card" data-date="2025-07-05" draggable="true" id="task5">
-            <span>팀 회의 준비</span>
-            <div class="task-date">2025-07-05</div>
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-4</span>
+                <span class="kanban-diff diff-mid">중</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 30 XP</span>
+              </div>
+            </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">팀 회의 준비</span>
+            </div>
+            <div class="kanban-desc">팀 회의 자료 준비 및 안건 정리</div>
           </div>
           <div class="kanban-card" data-date="2025-07-06" draggable="true" id="task6">
-            <span>신규 기능 아이디어 정리</span>
-            <div class="task-date">2025-07-06</div>
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-3</span>
+                <span class="kanban-diff diff-low">하</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 10 XP</span>
+              </div>
+            </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">신규 기능 아이디어 정리</span>
+            </div>
+            <div class="kanban-desc">신규 기능 아이디어를 정리해보세요.</div>
           </div>
         </div>
         <div class="kanban-column processing-column" style="flex:1; min-width:220px;" ondrop="drop(event)" ondragover="allowDrop(event)">
           <div class="kanban-header">진행 중</div>
           <div class="kanban-card" data-date="2025-07-03" draggable="true" id="task2">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-2</span>
+                <span class="kanban-diff diff-mid">중</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 50 XP</span>
+              </div>
+            </div>
             <div class="kanban-card-row">
-              <span class="d-day-badge">D-2</span>
               <span class="kanban-title">회사 소개 및 조직도 이해하기</span>
-              <span class="kanban-diff diff-mid">중</span>
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 50 XP</span>
             </div>
             <div class="kanban-desc">회사 조직 구조와 각 부서 역할을 파악하고, 팀원들과 첫 인사를 나눠보세요.</div>
           </div>
           <div class="kanban-card" data-date="2025-07-05" draggable="true" id="task7">
-            <span>코드 리뷰 참여</span>
-            <div class="task-date">2025-07-05</div>
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-1</span>
+                <span class="kanban-diff diff-high">상</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 80 XP</span>
+              </div>
+            </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">코드 리뷰 참여</span>
+            </div>
+            <div class="kanban-desc">코드 리뷰에 참여해보세요.</div>
           </div>
         </div>
         <div class="kanban-column review-request-column" style="flex:1; min-width:220px;" ondrop="drop(event)" ondragover="allowDrop(event)">
           <div class="kanban-header">검토요청</div>
           <div class="kanban-card" data-date="2025-07-02" draggable="true" id="task3">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-1</span>
+                <span class="kanban-diff diff-high">상</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 80 XP</span>
+              </div>
+            </div>
             <div class="kanban-card-row">
-              <span class="d-day-badge">D-1</span>
               <span class="kanban-title">업무 프로세스 실습</span>
-              <span class="kanban-diff diff-high">상</span>
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 80 XP</span>
             </div>
             <div class="kanban-desc">실제 결재/보고 프로세스를 경험하고, 피드백을 받아보세요.</div>
           </div>
           <div class="kanban-card" data-date="2025-07-01" draggable="true" id="task8">
-            <span>멘토와 1:1 미팅</span>
-            <div class="task-date">2025-07-01</div>
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-0</span>
+                <span class="kanban-diff diff-mid">중</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 30 XP</span>
+              </div>
+            </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">멘토와 1:1 미팅</span>
+            </div>
+            <div class="kanban-desc">멘토와 1:1 미팅을 진행하세요.</div>
           </div>
           <div class="kanban-card" data-date="2025-06-30" draggable="true" id="task9">
-            <span>오리엔테이션 참석</span>
-            <div class="task-date">2025-06-30</div>
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-0</span>
+                <span class="kanban-diff diff-low">하</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 10 XP</span>
+              </div>
+            </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">오리엔테이션 참석</span>
+            </div>
+            <div class="kanban-desc">오리엔테이션에 참석하세요.</div>
           </div>
         </div>
         <div class="kanban-column success-column" style="flex:1; min-width:220px;" ondrop="drop(event)" ondragover="allowDrop(event)">
           <div class="kanban-header">완료</div>
           <div class="kanban-card" data-date="2025-07-01" draggable="true" id="task4">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-DAY</span>
+                <span class="kanban-diff diff-high">상</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 100 XP</span>
+              </div>
+            </div>
             <div class="kanban-card-row">
-              <span class="d-day-badge">D-DAY</span>
               <span class="kanban-title">첫 번째 프로젝트 참여하기</span>
-              <span class="kanban-diff diff-high">상</span>
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 100 XP</span>
             </div>
             <div class="kanban-desc">팀 프로젝트에 직접 참여하여 실무 경험을 쌓고, 결과를 공유하세요.</div>
           </div>
           <div class="kanban-card" data-date="2025-07-01" draggable="true" id="task8">
-            <span>멘토와 1:1 미팅</span>
-            <div class="task-date">2025-07-01</div>
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-0</span>
+                <span class="kanban-diff diff-mid">중</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 30 XP</span>
+              </div>
+            </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">멘토와 1:1 미팅</span>
+            </div>
+            <div class="kanban-desc">멘토와 1:1 미팅을 진행하세요.</div>
           </div>
           <div class="kanban-card" data-date="2025-06-30" draggable="true" id="task9">
-            <span>오리엔테이션 참석</span>
-            <div class="task-date">2025-06-30</div>
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="d-day-badge">D-0</span>
+                <span class="kanban-diff diff-low">하</span>
+              </div>
+              <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
+                <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 10 XP</span>
+              </div>
+            </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">오리엔테이션 참석</span>
+            </div>
+            <div class="kanban-desc">오리엔테이션에 참석하세요.</div>
           </div>
         </div>
       </div>
@@ -199,6 +334,23 @@ document.querySelectorAll('.kanban-card').forEach(card => {
   card.addEventListener('dragend', function(e) {
     card.classList.remove('dragging');
     dragged = null;
+    document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drop-hover'));
+  });
+  // 카드 클릭 시 task_add 페이지로 이동
+  card.addEventListener('click', function(e) {
+    window.location.href = '/common/task_add/';
+  });
+});
+document.querySelectorAll('.kanban-column').forEach(col => {
+  col.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    col.classList.add('drop-hover');
+  });
+  col.addEventListener('dragleave', function(e) {
+    col.classList.remove('drop-hover');
+  });
+  col.addEventListener('drop', function(e) {
+    col.classList.remove('drop-hover');
   });
 });
 function drop(ev) {
@@ -208,6 +360,7 @@ function drop(ev) {
     col.appendChild(dragged);
     updateSuccessLine();
     updateSuccessExp();
+    col.classList.remove('drop-hover');
   }
 }
 // Success 컬럼에 있는 카드에 취소선 적용
@@ -220,6 +373,7 @@ function updateSuccessLine() {
   });
 }
 // 완료 컬럼 EXP 합산 및 bar/레벨업 동적 표시 + welcome-section EXP 동기화
+let prevLevel = 1;
 function updateSuccessExp() {
   const maxExp = 300;
   let totalExp = 0;
@@ -230,6 +384,29 @@ function updateSuccessExp() {
       if (match) totalExp += parseInt(match[1], 10);
     }
   });
+  // 레벨업 계산
+  let level = 1;
+  let expForLevel = totalExp;
+  let maxExpForLevel = maxExp;
+  while (expForLevel >= maxExpForLevel) {
+    expForLevel -= maxExpForLevel;
+    level++;
+  }
+  // 레벨업 알림 (이전 레벨보다 증가 시)
+  if (level > prevLevel) {
+    showLevelupToast(level);
+  }
+  prevLevel = level;
+  // 상단 레벨/EXP/Bar 동기화
+  const userLevelTop = document.getElementById('userLevelTop');
+  const userExpTop = document.getElementById('userExpTop');
+  const userExpMaxTop = document.getElementById('userExpMaxTop');
+  const expBarTop = document.getElementById('expBarTop');
+  if (userLevelTop) userLevelTop.textContent = level;
+  if (userExpTop) userExpTop.textContent = expForLevel;
+  if (userExpMaxTop) userExpMaxTop.textContent = maxExpForLevel;
+  if (expBarTop) expBarTop.style.width = Math.min(100, (expForLevel / maxExpForLevel) * 100) + '%';
+  // 기존 summary bar/exp도 동기화
   const summary = document.getElementById('success-exp-summary');
   const barFill = summary ? summary.querySelector('.success-exp-bar-fill') : null;
   const expText = summary ? summary.querySelector('.success-exp-text') : null;
@@ -237,19 +414,30 @@ function updateSuccessExp() {
   if (summary) {
     if (totalExp > 0) {
       summary.style.display = '';
-      expText.textContent = `${totalExp} / ${maxExp} EXP`;
-      let percent = Math.min(100, (totalExp / maxExp) * 100);
-      barFill.style.width = percent + '%';
-      if (totalExp >= maxExp) {
+      if (expText) expText.textContent = `${totalExp} / ${maxExp} EXP`;
+      let percent = Math.min(100, (expForLevel / maxExpForLevel) * 100);
+      if (barFill) barFill.style.width = percent + '%';
+      if (level > 1 && levelUp) {
         levelUp.style.display = '';
-      } else {
+      } else if (levelUp) {
         levelUp.style.display = 'none';
       }
     } else {
       summary.style.display = 'none';
     }
   }
-  updateWelcomeExp(totalExp, maxExp);
+}
+// 레벨업 토스트 알림 함수
+function showLevelupToast(level) {
+  const toast = document.getElementById('levelup-toast');
+  if (toast) {
+    toast.textContent = `축하합니다! Lv.${level}로 레벨업!`;
+    toast.style.display = 'block';
+    toast.style.animation = 'fadeInOut 2s';
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 2000);
+  }
 }
 // welcome-section EXP/Bar 동기화 (base.html 스타일과 싱크)
 function updateWelcomeExp(totalExp, maxExp) {
