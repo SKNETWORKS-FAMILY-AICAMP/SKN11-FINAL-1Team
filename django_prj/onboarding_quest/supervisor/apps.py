@@ -4,3 +4,7 @@ from django.apps import AppConfig
 class AdminpageConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'supervisor'
+
+    def ready(self):
+        pass
+
