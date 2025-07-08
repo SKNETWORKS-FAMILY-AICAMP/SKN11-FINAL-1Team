@@ -51,7 +51,7 @@
     margin-bottom: 4px;
     border-left: 5px solid #ffd600;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     cursor: grab;
     transition: background 0.2s;
@@ -62,6 +62,43 @@
   }
   .template-task-item.dragging {
     opacity: 0.5;
+  }
+  .task-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .task-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+  }
+  .task-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+  }
+  .status-badge {
+    background: #9e9e9e;
+  }
+  .difficulty-high {
+    background: #f44336;
+  }
+  .difficulty-medium {
+    background: #4caf50;
+  }
+  .difficulty-low {
+    background: #ffc107;
+    color: #222;
+  }
+  .exp-badge {
+    background: #2196f3;
+    font-size: 11px;
   }
   .add-task-btn {
     background: #ffd600;
@@ -141,10 +178,110 @@
         <div class="template-form-row">
           <label class="template-form-label">커리큘럼 설명</label>
           <textarea class="template-form-textarea" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
+          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;" onclick="generateDraftContent()">커리큘럼 초안 생성</button>
         </div>
-        <div class="template-form-row">
+        <div class="template-form-row" id="draft-section">
           <label class="template-form-label">주차별 커리큘럼 과정</label>
-          <textarea class="template-form-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;"># week1 조직문화 이해 및 관찰
+          <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;" placeholder="예시:
+# week1 조직문화 이해 및 관찰
+# week2 조직문화 실천 체험
+# week3 조직문화 실천 체험 발표 및 피드백
+# week4 팀워크 향상 프로그램 참여
+...
+
+위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
+          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;" onclick="toggleTaskSection()">세부 Task 생성</button>
+        </div>
+      </form>
+    </div>
+    <!-- 우측: 세부 task/추가 버튼 -->
+    <div style="flex:1; min-width:220px; display:flex; flex-direction:column; align-items:flex-start; position: relative;" id="task-section">
+      <button class="add-task-btn" style="width:100%; margin-bottom:18px; margin-top:0;" onclick="window.location.href='/common/task_add'">세부 task 추가</button>
+      <div class="template-task-list" style="width:100%; display: none;" id="task-list">
+        <div class="template-task-item" draggable="true">
+          <div class="task-content">
+            <div class="task-badges">
+              <span class="task-badge status-badge">진행 전</span>
+              <span class="task-badge difficulty-low">하</span>
+              <span class="task-badge exp-badge">+10 EXP</span>
+            </div>
+            <span>오리엔테이션 영상 시청</span>
+          </div>
+        </div>
+        <div class="template-task-item" draggable="true">
+          <div class="task-content">
+            <div class="task-badges">
+              <span class="task-badge status-badge">진행 전</span>
+              <span class="task-badge difficulty-medium">중</span>
+              <span class="task-badge exp-badge">+20 EXP</span>
+            </div>
+            <span>조직문화 pdf 가이드 읽기</span>
+          </div>
+        </div>
+        <div class="template-task-item" draggable="true">
+          <div class="task-content">
+            <div class="task-badges">
+              <span class="task-badge status-badge">진행 전</span>
+              <span class="task-badge difficulty-low">하</span>
+              <span class="task-badge exp-badge">+10 EXP</span>
+            </div>
+            <span>사내 조직도 열람</span>
+          </div>
+        </div>
+        <div class="template-task-item" draggable="true">
+          <div class="task-content">
+            <div class="task-badges">
+              <span class="task-badge status-badge">진행 전</span>
+              <span class="task-badge difficulty-high">상</span>
+              <span class="task-badge exp-badge">+30 EXP</span>
+            </div>
+            <span>팀원과 소통하기</span>
+          </div>
+        </div>
+        <div class="template-task-item" draggable="true">
+          <div class="task-content">
+            <div class="task-badges">
+              <span class="task-badge status-badge">진행 전</span>
+              <span class="task-badge difficulty-medium">중</span>
+              <span class="task-badge exp-badge">+20 EXP</span>
+            </div>
+            <span>관련 일지 작성하기</span>
+          </div>
+        </div>
+        <div class="template-task-item" draggable="true">
+          <div class="task-content">
+            <div class="task-badges">
+              <span class="task-badge status-badge">진행 전</span>
+              <span class="task-badge difficulty-high">상</span>
+              <span class="task-badge exp-badge">+30 EXP</span>
+            </div>
+            <span>팀원들과 커피챗</span>
+          </div>
+        </div>
+        <div class="template-task-item" draggable="true">
+          <div class="task-content">
+            <div class="task-badges">
+              <span class="task-badge status-badge">진행 전</span>
+              <span class="task-badge difficulty-medium">중</span>
+              <span class="task-badge exp-badge">+20 EXP</span>
+            </div>
+            <span>Weekly 미팅</span>
+          </div>
+        </div>
+      </div>
+      <!-- 우측 하단에 버튼 배치 -->
+      <div class="template-form-actions" style="position: absolute; bottom: 0; right: 0; margin-top: 0;">
+        <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">생성</button>
+        <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// 커리큘럼 초안 생성 함수 (텍스트 추가)
+function generateDraftContent() {
+  const curriculumTextarea = document.getElementById('curriculum-textarea');
+  const draftContent = `# week1 조직문화 이해 및 관찰
 # week2 조직문화 실천 체험
 # week3 조직문화 실천 체험 발표 및 피드백
 # week4 팀워크 향상 프로그램 참여
@@ -155,30 +292,22 @@
 # week9 부서 간 협업 업무 참여
 # week10 회사 미션/비전 재해석 활동
 # week11 역멘토링 활동
-# week12 평생 신입사원 되기 프로젝트</textarea>
-        </div>
-        <div class="template-form-actions">
-          <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">생성</button>
-          <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
-        </div>
-      </form>
-    </div>
-    <!-- 우측: 세부 task/추가 버튼 -->
-    <div style="flex:1; min-width:220px; display:flex; flex-direction:column; align-items:flex-start;">
-      <button class="add-task-btn" style="width:100%; margin-bottom:18px; margin-top:0;" onclick="window.location.href='/common/task_add'">세부 task 추가</button>
-      <div class="template-task-list" style="width:100%;" id="task-list">
-        <div class="template-task-item" draggable="true">오리엔테이션 영상 시청</div>
-        <div class="template-task-item" draggable="true">조직문화 pdf 가이드 읽기</div>
-        <div class="template-task-item" draggable="true">사내 조직도 열람</div>
-        <div class="template-task-item" draggable="true">팀원과 소통하기</div>
-        <div class="template-task-item" draggable="true">관련 일지 작성하기</div>
-        <div class="template-task-item" draggable="true">팀원들과 커피챗</div>
-        <div class="template-task-item" draggable="true">Weekly 미팅</div>
-      </div>
-    </div>
-  </div>
-</div>
-<script>
+# week12 평생 신입사원 되기 프로젝트`;
+  
+  curriculumTextarea.value = draftContent;
+}
+
+// 세부 Task 생성 토글 함수
+function toggleTaskSection() {
+  const taskList = document.getElementById('task-list');
+  
+  if (taskList.style.display === 'none') {
+    taskList.style.display = 'flex';
+  } else {
+    taskList.style.display = 'none';
+  }
+}
+
 // Drag & Drop for task list
 const taskList = document.getElementById('task-list');
 let draggingEl = null;
