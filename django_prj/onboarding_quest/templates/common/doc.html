@@ -6,17 +6,16 @@
 <style>
 .doc-container {
   display: flex;
-  gap: 32px;
   width: 100%;
   min-height: 600px;
 }
 .doc-left {
   flex: 1;
-  padding: 24px 0 24px 24px;
+  padding: 40px 0 40px 40px;
   background: #fafbfc;
-  border-radius: 12px 0 0 12px;
-  min-width: 340px;
-  max-width: 500px;
+  border-radius: 18px 0 0 18px;
+  min-width: 480px;
+  max-width: 800px;
   overflow-y: auto;
 }
 .doc-title {
@@ -27,12 +26,12 @@
 }
 .doc-upload-box {
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  padding: 18px 20px 14px 20px;
-  margin-bottom: 18px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  padding: 36px 32px 28px 32px;
+  margin-bottom: 28px;
   color: #555;
-  font-size: 15px;
+  font-size: 18px;
   text-align: center;
 }
 .doc-category-tabs {
@@ -51,24 +50,97 @@
 }
 .doc-file-list {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  padding: 12px 16px;
-  font-size: 15px;
+  padding: 18px 20px;
+  font-size: 16px;
   color: #222;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
-.doc-right {
-  flex: 2;
-  background: #fff;
-  border-radius: 0 16px 16px 0;
-  padding: 36px 48px 32px 48px;
-  min-width: 600px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 10;
+.doc-drop-area {
+  border: 2.5px dashed #ffd600;
+  border-radius: 14px;
+  background: #fffbe7;
+  color: #888;
+  padding: 48px 0 36px 0;
+  text-align: center;
+  margin-bottom: 18px;
+  font-size: 1.2em;
+  transition: background 0.2s, border-color 0.2s;
+  cursor: pointer;
+}
+.doc-drop-area.dragover {
+  background: #fffde7;
+  border-color: #43a047;
+  color: #43a047;
+}
+.doc-upload-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  font-size: 1.08em;
+}
+.doc-upload-list-table th, .doc-upload-list-table td {
+  border-bottom: 1px solid #eee;
+  padding: 12px 8px;
+  text-align: left;
+}
+.doc-upload-list-table th {
+  background: #fafafa;
+  font-weight: bold;
+  font-size: 1.08em;
+}
+.doc-upload-btn {
+  background: #ffd600;
+  color: #222;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 36px;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  margin: 10px 0 18px 0;
+  float: right;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: background 0.18s, box-shadow 0.18s;
+}
+.doc-upload-btn:hover {
+  background: #ffe066;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+}
+.doc-file-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.08em;
+}
+.doc-file-list-table th, .doc-file-list-table td {
+  border-bottom: 1px solid #eee;
+  padding: 12px 8px;
+  text-align: left;
+}
+.doc-file-list-table th {
+  background: #fafafa;
+  font-weight: bold;
+  font-size: 1.08em;
+}
+.doc-file-list-table .doc-edit-btn {
+  background: linear-gradient(90deg, #ffd600 60%, #ffe066 100%);
+  color: #222;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 18px;
+  font-weight: bold;
+  font-size: 1em;
+  cursor: pointer;
+  margin-right: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
+}
+.doc-file-list-table .doc-edit-btn:hover {
+  background: linear-gradient(90deg, #ffe066 60%, #ffd600 100%);
+  color: #111;
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
 }
 </style>
 {% endblock %}
@@ -77,56 +149,166 @@
   <div class="doc-left">
     <div class="doc-title">문서 업로드</div>
     <div class="doc-upload-box">
-      <img src="{% static 'img/smiling_mungmoonge.jpg' %}" alt="upload" style="width: 80px; margin-bottom: 12px;">
-      <div style="font-size:1.1em; margin-bottom:8px;">Upload PDF or any document format: DOC, DOCX, TXT...</div>
-      <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <input type="file" name="documents" multiple style="margin-bottom:10px;">
-        <button type="submit" class="doc-category-btn">업로드</button>
-      </form>
+      <div id="doc-drop-area" class="doc-drop-area">
+        <div style="font-size:1.1em;">여기로 파일을 드래그하거나 클릭하여 선택하세요</div>
+        <div style="font-size:13px; color:#aaa; margin-top:4px;">PDF, DOC, DOCX, TXT 등 다양한 문서 포맷 지원</div>
+        <input type="file" id="doc-file-input" multiple style="display:none;">
+      </div>
     </div>
-    <div class="doc-category-tabs">
-      <button class="doc-category-btn" onclick="showCategory('cat1')">파일 분류 1</button>
-      <button class="doc-category-btn" onclick="showCategory('cat2')">파일 분류 2</button>
-      <button class="doc-category-btn" onclick="showCategory('cat3')">파일 분류 3</button>
+    <div class="doc-title" style="font-size:1.1em; margin:18px 0 8px 0;">추가된 파일</div>
+    <div class="doc-file-list">
+      <div style="width:100%; display:flex; flex-direction:column; gap:0;">
+        <table class="doc-upload-list-table" id="doc-upload-list-table">
+          <thead>
+            <tr><th>파일명</th><th>설명</th><th>분류(태그)</th></tr>
+          </thead>
+          <tbody id="doc-upload-list-tbody">
+          </tbody>
+        </table>
+        <div style="width:100%; display:flex; justify-content:flex-end;">
+          <button id="doc-upload-btn" class="doc-upload-btn" style="margin-top:10px; float:none;">업로드</button>
+        </div>
+      </div>
     </div>
-    <div class="doc-file-list" id="cat1-list">
-      <ul>
-        {% for file in uploaded_files_cat1 %}
-          <li>{{ file.name }}</li>
-        {% empty %}
-          <li>분류 1에 업로드된 파일이 없습니다.</li>
-        {% endfor %}
-      </ul>
-    </div>
-    <div class="doc-file-list" id="cat2-list" style="display:none;">
-      <ul>
-        {% for file in uploaded_files_cat2 %}
-          <li>{{ file.name }}</li>
-        {% empty %}
-          <li>분류 2에 업로드된 파일이 없습니다.</li>
-        {% endfor %}
-      </ul>
-    </div>
-    <div class="doc-file-list" id="cat3-list" style="display:none;">
-      <ul>
-        {% for file in uploaded_files_cat3 %}
-          <li>{{ file.name }}</li>
-        {% empty %}
-          <li>분류 3에 업로드된 파일이 없습니다.</li>
-        {% endfor %}
-      </ul>
+    <div class="doc-title" style="font-size:1.1em; margin:18px 0 8px 0;">업로드된 파일 목록</div>
+    <div class="doc-file-list">
+      <table class="doc-file-list-table">
+        <thead>
+          <tr><th>파일명</th><th>설명</th><th>분류(태그)</th><th>관리</th></tr>
+        </thead>
+        <tbody id="doc-file-list-tbody">
+          {% for file in uploaded_files %}
+          <tr>
+            <td>{{ file.name }}</td>
+            <td>{{ file.description|default:"-" }}</td>
+            <td>
+              {% for tag in file.tags.all %}
+                <span class="doc-tag">{{ tag.name }}</span>
+              {% empty %}-{% endfor %}
+            </td>
+            <td>
+              <button class="doc-edit-btn" onclick="editFileInfo('{{ file.id }}')">수정</button>
+              <button class="doc-edit-btn" onclick="deleteFile('{{ file.id }}')">삭제</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" style="color:#aaa; text-align:center;">업로드된 파일이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
-  <div class="doc-right">
-    <!-- 상세/미리보기 등 필요시 추가 영역 -->
-  </div>
+  <!-- .doc-right 완전히 제거 -->
 </div>
 <script>
-function showCategory(cat) {
-    document.getElementById('cat1-list').style.display = (cat === 'cat1') ? '' : 'none';
-    document.getElementById('cat2-list').style.display = (cat === 'cat2') ? '' : 'none';
-    document.getElementById('cat3-list').style.display = (cat === 'cat3') ? '' : 'none';
+// --- 파일 추가/drag&drop/리스트 관리 ---
+let addedFiles = [];
+let uploadedFiles = [];
+const dropArea = document.getElementById('doc-drop-area');
+const fileInput = document.getElementById('doc-file-input');
+const uploadListTbody = document.getElementById('doc-upload-list-tbody');
+const uploadBtn = document.getElementById('doc-upload-btn');
+const uploadedListTbody = document.getElementById('doc-file-list-tbody');
+
+// 파일 드래그&드롭
+['dragenter','dragover'].forEach(evt => dropArea.addEventListener(evt, e => {
+  e.preventDefault();
+  dropArea.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(evt => dropArea.addEventListener(evt, e => {
+  e.preventDefault();
+  dropArea.classList.remove('dragover');
+}));
+dropArea.addEventListener('drop', e => {
+  e.preventDefault();
+  handleFiles(e.dataTransfer.files);
+});
+dropArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(files) {
+  for (const file of files) {
+    if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+      addedFiles.push({
+        file,
+        name: file.name,
+        description: '',
+        tags: ''
+      });
+    }
+  }
+  renderUploadList();
 }
+function renderUploadList() {
+  uploadListTbody.innerHTML = '';
+  addedFiles.forEach((f, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${f.name}" onchange="addedFiles[${idx}].name=this.value"></td>
+      <td><input type="text" value="${f.description||''}" onchange="addedFiles[${idx}].description=this.value"></td>
+      <td><input type="text" class="doc-tag-input" value="${f.tags||''}" onchange="addedFiles[${idx}].tags=this.value" placeholder="쉼표로 구분"></td>
+    `;
+    uploadListTbody.appendChild(tr);
+  });
+}
+function editAddedFile(idx) {
+  uploadListTbody.querySelectorAll('tr')[idx].querySelector('input').focus();
+}
+function removeAddedFile(idx) {
+  addedFiles.splice(idx,1);
+  renderUploadList();
+}
+// 업로드 버튼 클릭 시 (프론트엔드에서 목록에 반영)
+uploadBtn.addEventListener('click', function(e) {
+  if (addedFiles.length === 0) {
+    alert('업로드할 파일을 추가하세요.');
+    return;
+  }
+  // 실제 업로드 대신 프론트엔드에서 목록에 반영
+  addedFiles.forEach(f => {
+    uploadedFiles.push({
+      id: Date.now() + Math.random(),
+      name: f.name,
+      description: f.description,
+      tags: f.tags.split(',').map(t => t.trim()).filter(Boolean)
+    });
+  });
+  addedFiles = [];
+  renderUploadList();
+  renderUploadedList();
+});
+// 업로드된 파일 목록 렌더링 및 수정/삭제
+function renderUploadedList() {
+  uploadedListTbody.innerHTML = '';
+  if (uploadedFiles.length === 0) {
+    uploadedListTbody.innerHTML = '<tr><td colspan="4" style="color:#aaa; text-align:center;">업로드된 파일이 없습니다.</td></tr>';
+    return;
+  }
+  uploadedFiles.forEach((f, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${f.name}" onchange="uploadedFiles[${idx}].name=this.value"></td>
+      <td><input type="text" value="${f.description||''}" onchange="uploadedFiles[${idx}].description=this.value"></td>
+      <td><input type="text" class="doc-tag-input" value="${f.tags ? f.tags.join(',') : ''}" onchange="uploadedFiles[${idx}].tags=this.value.split(',').map(t=>t.trim()).filter(Boolean)"></td>
+      <td>
+        <button class="doc-edit-btn" onclick="editUploadedFile(${idx})">수정</button>
+        <button class="doc-edit-btn" onclick="removeUploadedFile(${idx})">삭제</button>
+      </td>
+    `;
+    uploadedListTbody.appendChild(tr);
+  });
+}
+function editUploadedFile(idx) {
+  uploadedListTbody.querySelectorAll('tr')[idx].querySelector('input').focus();
+}
+function removeUploadedFile(idx) {
+  if (confirm('정말 삭제하시겠습니까?')) {
+    uploadedFiles.splice(idx,1);
+    renderUploadedList();
+  }
+}
+// 최초 렌더링
+renderUploadList();
+renderUploadedList();
 </script>
 {% endblock %}
