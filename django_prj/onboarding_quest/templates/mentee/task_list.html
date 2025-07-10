@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block title %}태스크 목록 페이지{% endblock %}
 {% block extra_head %}
 <style>
@@ -16,6 +18,13 @@
   min-width: 340px;
   max-width: 500px;
   overflow-y: auto;
+  max-height: 100vh;
+}
+.tasklist-title {
+  font-size: 1.3em;
+  font-weight: bold;
+  margin-bottom: 18px;
+  color: #222;
 }
 .tasklist-search-row {
   display: flex;
@@ -31,12 +40,58 @@
 }
 .tasklist-create-btn {
   padding: 8px 18px;
-  background: #222;
-  color: #fff;
+  background: #ffd600;
+  color: #222;
   border: none;
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
+}
+.tasklist-filter-btn {
+  padding: 8px 18px;
+  background: #e0e0e0;
+  color: #222;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.tasklist-filter-panel {
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 14px 18px 10px 18px;
+  margin-top: 4px;
+  font-size: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.filter-group {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.filter-label {
+  font-weight: bold;
+  margin-right: 8px;
+}
+.filter-group label {
+  margin-right: 8px;
+  font-weight: normal;
+}
+.filter-dday-sort {
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-left: 2px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.filter-dday-sort.active {
+  background: #ffd600;
+  color: #222;
+  border-color: #ffd600;
 }
 .task-card {
   background: #fff;
@@ -44,7 +99,7 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   margin-bottom: 18px;
   padding: 18px 20px 14px 20px;
-  border-left: 6px solid #e0e0e0;
+  border-left: 6px solid #ffd600;
   transition: box-shadow 0.2s, border-color 0.2s;
   cursor: pointer;
   position: relative;
@@ -52,23 +107,39 @@
 .task-card.in-progress { border-left-color: #4caf50; }
 .task-card.done { border-left-color: #ffd600; background: #f6fff6; }
 .task-card.selected { box-shadow: 0 0 0 3px #1976d233; border-left-color: #1976d2; }
+.task-card.not-started { border-left-color: #f44336; }
+.task-card.review-requested { border-left-color: #ffd600; }
+.task-title {
+  color: #222;
+}
+.task-title.done {
+  text-decoration: line-through;
+  color: #aaa;
+}
+.task-title.d-day {
+  margin-right: 8px;
+  text-align: left;
+  display: inline-block;
+}
 .task-card-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   font-size: 17px;
   font-weight: bold;
   margin-bottom: 6px;
+  gap: 10px;
 }
-.task-title { color: #222; }
 .task-xp { color: #888; font-size: 15px; display: flex; align-items: center; gap: 4px; }
 .icon-trophy { width: 18px; height: 18px; vertical-align: middle; }
 .task-desc { color: #555; font-size: 14px; margin-bottom: 8px; }
+.task-desc-row { margin-bottom: 8px; }
 .task-meta-row {
   display: flex;
   gap: 10px;
   align-items: center;
   font-size: 13px;
+  margin-bottom: 4px;
 }
 .task-week { color: #666; }
 .task-badge {
@@ -79,8 +150,25 @@
   color: #fff;
   display: inline-block;
 }
-.task-badge.green { background: #4caf50; }
-.task-badge.yellow { background: #ffd600; color: #222; }
+.task-badge.red { background: #f44336; color: #fff; }
+.task-badge.green { background: #4caf50; color: #fff; }
+.task-badge.yellow { background: #ffd600 !important; color: #222 !important; }
+
+.status-badge {
+  display: inline-block;
+  min-width: 60px;
+  padding: 2px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+.status-badge.not-started { background: #888; }
+.status-badge.in-progress { background: #1976d2; }
+.status-badge.review-requested { background: #f44336; }
+.status-badge.done { background: #43a047; }
 
 .subtask-toggle {
   display: flex;
@@ -128,9 +216,8 @@
   display: inline-block;
 }
 .subtask-badge.green { background: #4caf50; }
-.subtask-badge.yellow { background: #ffd600; color: #222; }
+.subtask-badge.yellow { background: #ffd600 !important; color: #222 !important; }
 
-/* 오른쪽 상세 UI 스타일 */
 .tasklist-right {
   flex: 2;
   background: #fff;
@@ -156,20 +243,22 @@
 .task-detail-desc { color: #222; font-size: 17px; margin-bottom: 12px; margin-top: 8px; }
 .task-detail-meta-row {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   align-items: center;
   font-size: 15px;
   margin-bottom: 12px;
 }
-.task-detail-status {
-  color: #fff;
-  background: #4caf50;
-  display: inline-block;
-  padding: 6px 32px;
-  border-radius: 12px;
+.task-detail-divider {
+  border: none;
+  border-top: 1.5px solid #e0e0e0;
+  margin: 18px 0 24px 0;
+}
+.task-detail-list {
+  margin: 0 0 24px 0;
+  padding-left: 0;
+  color: #222;
   font-size: 17px;
-  font-weight: bold;
-  margin-bottom: 18px;
+  list-style: none;
 }
 .task-detail-list ul {
   margin: 0 0 24px 0;
@@ -219,8 +308,8 @@
 }
 .chat-send-btn {
   padding: 0 24px;
-  background: #222;
-  color: #fff;
+  background: #ffd600;
+  color: #222;
   border: none;
   border-radius: 8px;
   font-weight: bold;
@@ -236,76 +325,162 @@
 <div class="tasklist-container">
   <!-- 좌측: 퀘스트 목록 -->
   <div class="tasklist-left" id="tasklist-left">
+    <div class="tasklist-title">Task 목록</div>
     <div class="tasklist-search-row">
-      <input type="text" class="tasklist-search" placeholder="퀘스트 검색...">
-      <button class="tasklist-create-btn">생성</button>
+      <input type="text" class="tasklist-search" placeholder="Task 검색...">
+      <button class="tasklist-filter-btn">필터</button>
     </div>
-    <div class="task-card in-progress selected" data-detail="0">
-      <div class="task-card-header">
-        <span class="task-title">회사 소개 및 조직도 이해하기</span>
-        <span class="task-xp"><img src="/static/img/trophy.svg" class="icon-trophy"> 50 XP</span>
+    <div class="tasklist-filter-panel" style="display:none; margin-bottom:18px;">
+      <div class="filter-group">
+        <span class="filter-label">난이도:</span>
+        <label><input type="checkbox" class="filter-diff" value="상"> 상</label>
+        <label><input type="checkbox" class="filter-diff" value="중"> 중</label>
+        <label><input type="checkbox" class="filter-diff" value="하"> 하</label>
       </div>
-      <div class="task-desc">회사의 비전, 미션, 조직 구조를 파악하고 팀원들과 인사하기</div>
-      <div class="task-meta-row">
-        <span class="task-week">1개월차 1주차</span>
-        <span class="task-badge green">초급</span>
+      <div class="filter-group">
+        <span class="filter-label">상태:</span>
+        <label><input type="checkbox" class="filter-status" value="진행 전"> 진행 전</label>
+        <label><input type="checkbox" class="filter-status" value="진행 중"> 진행 중</label>
+        <label><input type="checkbox" class="filter-status" value="검토 요청"> 검토요청</label>
+        <label><input type="checkbox" class="filter-status" value="완료됨"> 완료</label>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">D-day 정렬:</span>
+        <button class="filter-dday-sort" data-order="desc">▼</button>
+      </div>
+    </div>
+    <div class="task-card not-started" data-detail="0">
+      <div class="task-card-header">
+        <span class="status-badge not-started">진행 전</span>
+        <span class="task-title d-day">온보딩 가이드 읽기</span>
+        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 20 XP</span>
+      </div>
+      <div class="task-desc-row">
+        <div class="task-desc">회사 온보딩 가이드 문서를 읽고, 궁금한 점을 정리해보세요.</div>
+        <div class="task-meta-row">
+          <span class="task-badge yellow">하</span>
+          <span class="d-day-badge">D-5</span>
+        </div>
       </div>
       <div class="subtask-toggle" data-toggle="0">▼</div>
       <div class="subtask-list" id="subtask-list-0">
         <div class="subtask-card" data-detail="0-0">
-          <span class="subtask-title">업무 환경 설정 및 도구 익히기</span>
-          <span class="subtask-desc">개발 환경, 툴 설치, 사내 시스템 접근 안내</span>
-          <div class="subtask-meta-row">
-            <span class="subtask-week">1개월차 2주차</span>
-            <span class="subtask-badge yellow">초급</span>
-          </div>
+          <span class="subtask-title">가이드 문서 다운로드</span>
+          <span class="subtask-desc">최신 온보딩 가이드 PDF 받기</span>
+          <div class="subtask-meta-row"><span class="subtask-badge yellow">하</span></div>
         </div>
-        <!-- 여러 개의 하위 태스크 예시 -->
         <div class="subtask-card" data-detail="0-1">
-          <span class="subtask-title">코드 컨벤션 숙지</span>
-          <span class="subtask-desc">팀 내 코드 스타일, 리뷰 프로세스 안내</span>
-          <div class="subtask-meta-row">
-            <span class="subtask-week">1개월차 2주차</span>
-            <span class="subtask-badge green">초급</span>
-          </div>
+          <span class="subtask-title">중요 내용 정리</span>
+          <span class="subtask-desc">핵심 체크리스트 작성</span>
+          <div class="subtask-meta-row"><span class="subtask-badge yellow">하</span></div>
         </div>
       </div>
     </div>
-    <div class="task-card done" data-detail="1">
+    <div class="task-card in-progress selected" data-detail="1">
       <div class="task-card-header">
-        <span class="task-title">첫 번째 프로젝트 참여하기</span>
-        <span class="task-xp"><img src="/static/img/trophy.svg" class="icon-trophy"> 100 XP</span>
+        <span class="status-badge in-progress">진행 중</span>
+        <span class="task-title d-day">회사 소개 및 조직도 이해하기</span>
+        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 50 XP</span>
       </div>
-      <div class="task-desc">간단한 프로젝트에 참여하여 워크플로우 이해하기</div>
-      <div class="task-meta-row">
-        <span class="task-week">1개월차 3주차</span>
-        <span class="task-badge yellow">중급</span>
+      <div class="task-desc-row">
+        <div class="task-desc">회사 조직 구조와 각 부서 역할을 파악하고, 팀원들과 첫 인사를 나눠보세요.</div>
+        <div class="task-meta-row">
+          <span class="task-badge green">중</span>
+          <span class="d-day-badge">D-2</span>
+        </div>
       </div>
       <div class="subtask-toggle" data-toggle="1">▼</div>
       <div class="subtask-list" id="subtask-list-1">
         <div class="subtask-card" data-detail="1-0">
+          <span class="subtask-title">조직도 열람</span>
+          <span class="subtask-desc">사내 인트라넷에서 조직도 확인</span>
+          <div class="subtask-meta-row"><span class="subtask-badge green">중</span></div>
+        </div>
+        <div class="subtask-card" data-detail="1-1">
+          <span class="subtask-title">팀원 인사</span>
+          <span class="subtask-desc">팀 채팅방에서 자기소개 남기기</span>
+          <div class="subtask-meta-row"><span class="subtask-badge green">중</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="task-card review-requested" data-detail="2">
+      <div class="task-card-header">
+        <span class="status-badge review-requested">검토요청</span>
+        <span class="task-title d-day">업무 프로세스 실습</span>
+        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 80 XP</span>
+      </div>
+      <div class="task-desc-row">
+        <div class="task-desc">실제 결재/보고 프로세스를 경험하고, 피드백을 받아보세요.</div>
+        <div class="task-meta-row">
+          <span class="task-badge red">상</span>
+          <span class="d-day-badge">D-1</span>
+        </div>
+      </div>
+      <div class="subtask-toggle" data-toggle="2">▼</div>
+      <div class="subtask-list" id="subtask-list-2">
+        <div class="subtask-card" data-detail="2-0">
+          <span class="subtask-title">업무 요청서 작성</span>
+          <span class="subtask-desc">업무 요청서 양식에 맞게 작성</span>
+          <div class="subtask-meta-row"><span class="subtask-badge red">상</span></div>
+        </div>
+        <div class="subtask-card" data-detail="2-1">
+          <span class="subtask-title">결재 프로세스 경험</span>
+          <span class="subtask-desc">결재 요청 및 승인 경험</span>
+          <div class="subtask-meta-row"><span class="subtask-badge red">상</span></div>
+        </div>
+        <div class="subtask-card" data-detail="2-2">
+          <span class="subtask-title">피드백 정리</span>
+          <span class="subtask-desc">멘토 피드백 정리 및 개선점 도출</span>
+          <div class="subtask-meta-row"><span class="subtask-badge red">상</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="task-card done" data-detail="3">
+      <div class="task-card-header">
+        <span class="status-badge done">완료</span>
+        <span class="task-title d-day done">첫 번째 프로젝트 참여하기</span>
+        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
+      </div>
+      <div class="task-desc-row">
+        <div class="task-desc">팀 프로젝트에 직접 참여하여 실무 경험을 쌓고, 결과를 공유하세요.</div>
+        <div class="task-meta-row">
+          <span class="task-badge red">상</span>
+          <span class="d-day-badge">D-DAY</span>
+        </div>
+      </div>
+      <div class="subtask-toggle" data-toggle="3">▼</div>
+      <div class="subtask-list" id="subtask-list-3">
+        <div class="subtask-card" data-detail="3-0">
           <span class="subtask-title">프로젝트 환경 세팅</span>
-          <span class="subtask-desc">프로젝트 저장소 클론, 의존성 설치</span>
-          <div class="subtask-meta-row">
-            <span class="subtask-week">1개월차 3주차</span>
-            <span class="subtask-badge yellow">중급</span>
-          </div>
+          <span class="subtask-desc">저장소 클론, 패키지 설치, 초기 세팅</span>
+          <div class="subtask-meta-row"><span class="subtask-badge red">상</span></div>
+        </div>
+        <div class="subtask-card" data-detail="3-1">
+          <span class="subtask-title">첫 커밋 및 PR</span>
+          <span class="subtask-desc">첫 커밋 후 Pull Request 생성</span>
+          <div class="subtask-meta-row"><span class="subtask-badge red">상</span></div>
         </div>
       </div>
     </div>
   </div>
   <!-- 우측: 상세 정보 -->
   <div class="tasklist-right">
-    <div class="task-detail-header">
-      <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
-      <span class="task-detail-xp"><img src="/static/img/trophy.svg" class="icon-trophy"> <span id="detail-xp">100 XP</span></span>
+    <div class="task-detail-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
+        <span class="task-detail-xp" id="detail-xp" style="color:#888; font-size:17px; display:flex; align-items:center; gap:4px; font-weight:bold;"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
+      </div>
+      <div style="display:flex; gap:10px; margin-left:auto;">
+        <button class="task-detail-edit-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">편집</button>
+        <button class="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">하위 테스크 생성</button>
+      </div>
     </div>
     <div class="task-detail-desc" id="detail-desc">간단한 프로젝트에 참여하여 워크플로우 이해하기</div>
     <div class="task-detail-meta-row">
-      <span class="task-week" id="detail-week">1개월차 3주차</span>
       <span class="task-badge yellow" id="detail-badge">중급</span>
+    </div>    
+    <div class="task-detail-divider">
     </div>
-    <div class="task-detail-status" id="detail-status">완료됨</div>
     <div class="task-detail-list" id="detail-list">
       <ul>
         <li>프로젝트 준비</li>
@@ -335,52 +510,178 @@
 // 카드별 상세 데이터 샘플
 const details = [
   {
-    title: '회사 소개 및 조직도 이해하기',
-    xp: '50 XP',
-    desc: '회사의 비전, 미션, 조직 구조를 파악하고 팀원들과 인사하기',
-    week: '1개월차 1주차',
-    badge: { text: '초급', color: 'green' },
-    status: '진행중',
-    list: ['회사 소개 영상 시청', '조직도 열람', '팀원 인사'],
+    title: '온보딩 가이드 읽기',
+    xp: '20 XP',
+    desc: '회사 온보딩 가이드 문서를 읽고, 궁금한 점을 정리해보세요.',
+    badge: { text: '하', color: 'yellow' },
+    status: '진행 전',
+    list: ['가이드 문서 다운로드', '중요 내용 정리', '질문 리스트 작성'],
     subtasks: [
       {
-        title: '업무 환경 설정 및 도구 익히기',
-        desc: '개발 환경, 툴 설치, 사내 시스템 접근 안내',
-        week: '1개월차 2주차',
-        badge: { text: '초급', color: 'yellow' },
-        status: '진행중',
-        list: ['개발 환경 설치', '사내 시스템 계정 발급'],
+        title: '가이드 문서 다운로드',
+        desc: '최신 온보딩 가이드 PDF 받기',
+        badge: { text: '하', color: 'yellow' },
+        status: '진행 전',
+        list: [],
       },
       {
-        title: '코드 컨벤션 숙지',
-        desc: '팀 내 코드 스타일, 리뷰 프로세스 안내',
-        week: '1개월차 2주차',
-        badge: { text: '초급', color: 'green' },
-        status: '진행중',
-        list: ['코딩 규칙 문서 읽기', '리뷰 예시 확인'],
+        title: '중요 내용 정리',
+        desc: '핵심 체크리스트 작성',
+        badge: { text: '하', color: 'yellow' },
+        status: '진행 전',
+        list: [],
       },
+      {
+        title: '질문 리스트 작성',
+        desc: '궁금한 점을 3개 이상 정리',
+        badge: { text: '하', color: 'yellow' },
+        status: '진행 전',
+        list: [],
+      },
+    ],
+    comments: [
+      { user: '멘토A', text: '가이드에서 헷갈리는 부분 있으면 질문 남겨주세요!', time: '2025.07.01 09:12' },
+      { user: '나', text: '네! 읽고 궁금한 점 정리해서 올릴게요.', time: '2025.07.01 09:15' },
+    ],
+  },
+  {
+    title: '회사 소개 및 조직도 이해하기',
+    xp: '50 XP',
+    desc: '회사 조직 구조와 각 부서 역할을 파악하고, 팀원들과 첫 인사를 나눠보세요.',
+    badge: { text: '중', color: 'green' },
+    status: '진행 중',
+    list: ['조직도 열람', '팀원 인사', '회사 비전 공유'],
+    subtasks: [
+      {
+        title: '조직도 열람',
+        desc: '사내 인트라넷에서 조직도 확인',
+        badge: { text: '중', color: 'green' },
+        status: '진행 중',
+        list: [],
+      },
+      {
+        title: '팀원 인사',
+        desc: '팀 채팅방에서 자기소개 남기기',
+        badge: { text: '중', color: 'green' },
+        status: '진행 중',
+        list: [],
+      },
+    ],
+    comments: [
+      { user: '팀장', text: '팀 채팅방에 자기소개 남겨주세요~', time: '2025.07.02 10:00' },
+      { user: '나', text: '네! 방금 인사 남겼습니다.', time: '2025.07.02 10:05' },
+    ],
+  },
+  {
+    title: '업무 프로세스 실습',
+    xp: '80 XP',
+    desc: '실제 결재/보고 프로세스를 경험하고, 피드백을 받아보세요.',
+    badge: { text: '상', color: 'red' },
+    status: '검토 요청',
+    list: ['업무 요청서 작성', '결재 프로세스 경험', '피드백 정리'],
+    subtasks: [
+      {
+        title: '업무 요청서 작성',
+        desc: '업무 요청서 양식에 맞게 작성',
+        badge: { text: '상', color: 'red' },
+        status: '진행 중',
+        list: [],
+      },
+      {
+        title: '결재 프로세스 경험',
+        desc: '결재 요청 및 승인 경험',
+        badge: { text: '상', color: 'red' },
+        status: '진행 중',
+        list: [],
+      },
+      {
+        title: '피드백 정리',
+        desc: '멘토 피드백 정리 및 개선점 도출',
+        badge: { text: '상', color: 'red' },
+        status: '진행 중',
+        list: [],
+      },
+    ],
+    comments: [
+      { user: '멘토B', text: '결재 프로세스에서 어려운 점 있으면 알려주세요.', time: '2025.07.03 14:20' },
+      { user: '나', text: '결재 승인 절차가 생각보다 복잡하네요. 정리해서 공유드릴게요.', time: '2025.07.03 14:25' },
     ],
   },
   {
     title: '첫 번째 프로젝트 참여하기',
     xp: '100 XP',
-    desc: '간단한 프로젝트에 참여하여 워크플로우 이해하기',
-    week: '1개월차 3주차',
-    badge: { text: '중급', color: 'yellow' },
+    desc: '팀 프로젝트에 직접 참여하여 실무 경험을 쌓고, 결과를 공유하세요.',
+    badge: { text: '상', color: 'red' },
     status: '완료됨',
-    list: ['프로젝트 준비', '첫 프로젝트 진행', '프로젝트 결과 공유'],
+    list: ['프로젝트 환경 세팅', '첫 커밋 및 PR', '결과 발표'],
     subtasks: [
       {
         title: '프로젝트 환경 세팅',
-        desc: '프로젝트 저장소 클론, 의존성 설치',
-        week: '1개월차 3주차',
-        badge: { text: '중급', color: 'yellow' },
-        status: '진행중',
-        list: ['저장소 클론', '패키지 설치'],
+        desc: '저장소 클론, 패키지 설치, 초기 세팅',
+        badge: { text: '상', color: 'red' },
+        status: '진행 중',
+        list: [],
       },
+      {
+        title: '첫 커밋 및 PR',
+        desc: '첫 커밋 후 Pull Request 생성',
+        badge: { text: '상', color: 'red' },
+        status: '진행 중',
+        list: [],
+      },
+    ],
+    comments: [
+      { user: '멘토C', text: '프로젝트 결과 발표 자료도 꼭 준비해 주세요!', time: '2025.07.04 17:00' },
+      { user: '나', text: '네, 발표자료 준비해서 공유드리겠습니다.', time: '2025.07.04 17:10' },
     ],
   },
 ];
+
+// --- 필터/정렬 관련 변수 선언 및 유틸 함수 추가 ---
+const filterDiffs = document.querySelectorAll('.filter-diff');
+const filterStatuses = document.querySelectorAll('.filter-status');
+const ddaySortBtn = document.querySelector('.filter-dday-sort');
+const taskCardContainer = Array.from(document.querySelectorAll('.task-card'));
+
+let ddayOrder = 'desc'; // 기본값
+
+// D-day 텍스트를 숫자값으로 변환 (D-5 → 5, D-2 → 2, D-1 → 1, D-DAY → 0)
+function getDdayValue(text) {
+  if (!text) return 9999;
+  if (text.includes('D-DAY')) return 0;
+  const match = text.match(/D-(\d+)/);
+  if (match) return parseInt(match[1]);
+  return 9999;
+}
+
+// 검색 필터링 기능
+const searchInput = document.querySelector('.tasklist-search');
+const cards = document.querySelectorAll('.task-card');
+const toggles = document.querySelectorAll('.subtask-toggle');
+const subtaskCards = document.querySelectorAll('.subtask-card');
+
+searchInput.addEventListener('input', function() {
+  const keyword = searchInput.value.trim().toLowerCase();
+  cards.forEach((card, idx) => {
+    const titleEl = card.querySelector('.task-title');
+    const titleText = titleEl.textContent.toLowerCase();
+    if (keyword === '' || titleText.includes(keyword)) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+});
+
+// 완료 Task에 취소선 적용 (좌측 목록)
+cards.forEach((card, idx) => {
+  const titleEl = card.querySelector('.task-title');
+  if (details[idx] && (details[idx].status === '완료됨' || details[idx].status === '완료')) {
+    titleEl.classList.add('done');
+  } else {
+    titleEl.classList.remove('done');
+  }
+});
 
 // 상세 정보 업데이트 함수
 function updateDetail(idx, subIdx = null) {
@@ -388,13 +689,34 @@ function updateDetail(idx, subIdx = null) {
   if (subIdx !== null && d.subtasks && d.subtasks[subIdx]) {
     d = d.subtasks[subIdx];
   }
-  document.getElementById('detail-title').textContent = d.title;
-  document.getElementById('detail-xp').textContent = d.xp || '';
+  // 상태, D-day, 난이도 동적 적용
+  const titleEl = document.getElementById('detail-title');
+  let statusMap = [
+    { text: '진행 전', color: 'not-started' },
+    { text: '진행 중', color: 'in-progress' },
+    { text: '검토요청', color: 'review-requested' },
+    { text: '완료', color: 'done' }
+  ];
+  let dday = '';
+  if(idx === 0) dday = 'D-5';
+  else if(idx === 1) dday = 'D-2';
+  else if(idx === 2) dday = 'D-1';
+  else if(idx === 3) dday = 'D-DAY';
+  let status = statusMap[idx];
+  // 타이틀+exp 한 줄에 배치
+  titleEl.innerHTML = `<span class="status-badge ${status.color}">${status.text}</span> <span class="${d.status === '완료됨' ? 'done' : ''}">${d.title}</span>`;
+  if(d.status === '완료됨') {
+    titleEl.classList.add('done');
+  } else {
+    titleEl.classList.remove('done');
+  }
+  // exp도 같은 줄에 동적 반영
+  const xpEl = document.getElementById('detail-xp');
+  if (xpEl) xpEl.innerHTML = `<span class="icon-trophy" style="font-size:15px;">🏆</span> ${d.xp || ''}`;
   document.getElementById('detail-desc').textContent = d.desc;
-  document.getElementById('detail-week').textContent = d.week;
-  document.getElementById('detail-badge').textContent = d.badge.text;
-  document.getElementById('detail-badge').className = 'task-badge ' + d.badge.color;
-  document.getElementById('detail-status').textContent = d.status || '';
+  // 난이도/디데이 메타(중복 생성 방지)
+  const metaRow = document.querySelector('.task-detail-meta-row');
+  metaRow.innerHTML = `<span class="task-badge ${d.badge.color}" id="detail-badge">${d.badge.text}</span> <span class="d-day-badge">${dday}</span>`;
   // 리스트
   const ul = document.createElement('ul');
   (d.list || []).forEach(item => {
@@ -405,9 +727,19 @@ function updateDetail(idx, subIdx = null) {
   const listDiv = document.getElementById('detail-list');
   listDiv.innerHTML = '';
   listDiv.appendChild(ul);
+  // 댓글
+  const chatDiv = document.querySelector('.task-detail-chat');
+  const chatMsgs = (d.comments || []).map(c =>
+    `<div class="chat-message${c.user === '나' ? ' mine' : ''}">
+      <span class="chat-user">${c.user}</span>
+      <span class="chat-text">${c.text}</span>
+      <span class="chat-time">${c.time}</span>
+    </div>`
+  ).join('');
+  chatDiv.innerHTML = chatMsgs + chatDiv.innerHTML.substring(chatDiv.innerHTML.indexOf('<div class="chat-input-row"'));
 }
+
 // 카드 클릭
-const cards = document.querySelectorAll('.task-card');
 cards.forEach((card, idx) => {
   card.addEventListener('click', function() {
     cards.forEach(c => c.classList.remove('selected'));
@@ -416,7 +748,6 @@ cards.forEach((card, idx) => {
   });
 });
 // 하위 태스크 토글
-const toggles = document.querySelectorAll('.subtask-toggle');
 toggles.forEach(toggle => {
   toggle.addEventListener('click', function(e) {
     e.stopPropagation();
@@ -432,7 +763,6 @@ toggles.forEach(toggle => {
   });
 });
 // 하위 태스크 클릭 시 상세 표시
-const subtaskCards = document.querySelectorAll('.subtask-card');
 subtaskCards.forEach(card => {
   card.addEventListener('click', function(e) {
     e.stopPropagation();
@@ -445,5 +775,90 @@ subtaskCards.forEach(card => {
 });
 // 최초 로딩 시 첫 번째 카드 상세 표시
 updateDetail(0);
+
+// 필터 버튼 토글
+const filterBtn = document.querySelector('.tasklist-filter-btn');
+const filterPanel = document.querySelector('.tasklist-filter-panel');
+filterBtn.addEventListener('click', function() {
+  if (filterPanel.style.display === 'none') {
+    filterPanel.style.display = 'block';
+  } else {
+    filterPanel.style.display = 'none';
+  }
+});
+
+// 필터 + 검색 동시 적용 함수
+function getFilteredSortedIdxs() {
+  // 필터링
+  const diffChecked = Array.from(filterDiffs).filter(cb => cb.checked).map(cb => cb.value);
+  const statusChecked = Array.from(filterStatuses).filter(cb => cb.checked).map(cb => cb.value);
+  let idxs = details.map((d, i) => i);
+  if (diffChecked.length > 0) {
+    idxs = idxs.filter(i => diffChecked.includes(details[i].badge.text));
+  }
+  if (statusChecked.length > 0) {
+    idxs = idxs.filter(i => statusChecked.includes(details[i].status));
+  }
+  // 검색
+  const keyword = searchInput.value.trim().toLowerCase();
+  if (keyword) {
+    idxs = idxs.filter(i => details[i].title.toLowerCase().includes(keyword));
+  }
+  // D-day 정렬
+  if (ddayOrder) {
+    idxs.sort((a, b) => {
+      // details에서 D-day 값을 직접 비교
+      const ddayMap = ['D-5', 'D-2', 'D-1', 'D-DAY'];
+      function getDetailDday(idx) {
+        if (idx === 0) return 5;
+        if (idx === 1) return 2;
+        if (idx === 2) return 1;
+        if (idx === 3) return 0;
+        return 9999;
+      }
+      const aD = getDetailDday(a);
+      const bD = getDetailDday(b);
+      return ddayOrder === 'desc' ? aD - bD : bD - aD;
+    });
+  }
+  return idxs;
+}
+
+function applyTaskFilterSort() {
+  const idxs = getFilteredSortedIdxs();
+  // 카드 표시/숨김
+  taskCardContainer.forEach((card, i) => card.style.display = 'none');
+  idxs.forEach(idx => taskCardContainer[idx].style.display = '');
+  // DOM 순서도 재배치
+  renderTaskCards(idxs);
+}
+
+// 카드 DOM을 idxs 순서대로 재배치하는 함수 추가
+function renderTaskCards(idxs) {
+  const container = document.getElementById('tasklist-left');
+  // 기존 카드들만 추출 (task-card 클래스)
+  const allCards = Array.from(container.querySelectorAll('.task-card'));
+  // idxs 순서대로 append (카드가 숨겨져 있어도 순서 유지)
+  idxs.forEach(idx => {
+    container.appendChild(allCards[idx]);
+  });
+}
+
+// 검색 입력 시에도 필터+정렬 동작
+searchInput.addEventListener('input', applyTaskFilterSort);
+// 체크박스/정렬 버튼 이벤트
+[...filterDiffs, ...filterStatuses].forEach(cb => cb.addEventListener('change', applyTaskFilterSort));
+ddaySortBtn.addEventListener('click', function() {
+  // 토글 asc/desc
+  ddayOrder = ddayOrder === 'desc' ? 'asc' : 'desc';
+  ddaySortBtn.dataset.order = ddayOrder;
+  ddaySortBtn.textContent = ddayOrder === 'desc' ? '▼' : '▲';
+  // 정렬 방향이 바뀔 때마다 항상 정렬 적용
+  applyTaskFilterSort();
+});
+// 필터 패널 열릴 때마다 적용
+filterBtn.addEventListener('click', applyTaskFilterSort);
+// 최초 로딩 시에도 적용
+applyTaskFilterSort();
 </script>
 {% endblock %}

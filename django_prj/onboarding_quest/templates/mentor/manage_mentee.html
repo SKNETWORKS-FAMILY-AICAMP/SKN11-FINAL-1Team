@@ -5,46 +5,340 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/mentor/manage_mentee.css' %}">
+<style>
+.mentee-container {
+  display: flex;
+  gap: 40px;
+  width: 100%;
+  min-height: 700px;
+  margin-top: 40px;
+}
+.mentee-list-area {
+  flex: none;
+  width: 260px;
+  background: #fafbfc;
+  border-radius: 16px;
+  padding: 32px 18px 32px 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+}
+.mentee-list-search {
+  margin-bottom: 18px;
+}
+.mentee-list-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 1em;
+}
+.mentee-list-ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mentee-list-ul li {
+  margin-bottom: 8px;
+}
+.mentee-list-ul li:last-child { margin-bottom: 0; }
+.mentee-list-ul a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fff;
+  color: #222;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.mentee-list-ul a.selected, .mentee-list-ul a:hover {
+  background: #ffd600;
+  color: #222;
+}
+.mentee-profile-area {
+  flex: 1 1 0;
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 32px;
+  min-width: 340px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: fit-content;
+}
+.mentee-avatar {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: #e6f9e6;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8em;
+  margin-bottom: 18px;
+  border: 2px solid #b2e5b2;
+}
+.mentee-name {
+  font-size: 1.3em;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.mentee-role {
+  color: #4caf50;
+  font-size: 1em;
+  margin-bottom: 10px;
+}
+.mentee-extra {
+  color: #555;
+  font-size: 1em;
+  background: #fafbfc;
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 0;
+  min-width: 180px;
+  text-align: center;
+}
+.mentoring-settings-area {
+  flex: none;
+  width: 320px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 28px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+}
+.mentoring-settings-area h4 {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-bottom: 18px;
+}
+.mentoring-settings-area label {
+  font-size: 0.98em;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: block;
+}
+.mentoring-settings-area input[type="text"],
+.mentoring-settings-area input[type="date"],
+.mentoring-settings-area select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 1em;
+  margin-bottom: 14px;
+}
+.mentoring-settings-area button[type="submit"] {
+  width: 100%;
+  background: #ffd600;
+  color: #222;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 0;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.mentoring-settings-area .end-date-label {
+  margin-top: 8px;
+  font-size: 0.97em;
+  color: #888;
+}
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <!-- 1. 사원 목록 및 검색 -->
-        <div class="mentee-list">
-            <input type="text" placeholder="검색">
-            <ul>
-                <li><a href="#" class="selected">사원_1</a></li>
-                <li><a href="#">사원_2</a></li>
-                <li><a href="#">사원_3</a></li>
-                <li><a href="#">사원_4</a></li>
-            </ul>
-        </div>
-
-        <!-- 2. 사원 프로필 및 추가 정보 -->
-        <div class="mentee-profile">
-            <div class="avatar">👤</div>
-            <div class="name">사원_1</div>
-            <div class="role">멘티</div>
-            <div class="extra-info">추가 정보 영역</div>
-        </div>
-
-        <!-- 3. 멘토링 설정 -->
-        <div class="mentoring-settings">
-            <h4>멘토링 설정</h4>
-            <form>
-                <label>선택된 멘티</label>
-                <input type="text" value="사원_1" readonly>
-                <label>시작일자</label>
-                <input type="date" value="2025-07-08">
-                <label>템플릿 선택</label>
-                <select>
-                    <option>기본 멘토링 템플릿</option>
-                    <option>신입사원 온보딩 템플릿</option>
-                    <option>기술 역량 강화 템플릿</option>
-                    <option>리더십 개발 템플릿</option>
-                </select>
-                <button type="submit">저장</button>
-            </form>
-        </div>
+<div class="mentee-container">
+  <!-- 1. 멘티(신입사원) 검색/리스트 -->
+  <div class="mentee-list-area">
+    <div class="mentee-list-search">
+      <input type="text" id="mentee-search" placeholder="사원명 검색...">
     </div>
+    <ul class="mentee-list-ul" id="mentee-list">
+      <li><a href="#" class="selected" data-name="김신입" data-role="멘티" data-extra="포부: 빠른 성장과 정직한 신입!">김신입</a></li>
+      <li><a href="#" data-name="이멘티" data-role="멘티" data-extra="포부: 팀워크와 소통의 달인!">이멘티</a></li>
+      <li><a href="#" data-name="박인턴" data-role="인턴" data-extra="포부: 실무 경험과 배움에 집중!">박인턴</a></li>
+      <li><a href="#" data-name="최신입" data-role="신입" data-extra="포부: 도전정신과 책임감!">최신입</a></li>
+    </ul>
+  </div>
+  <!-- 2. 멘티 정보 -->
+  <div class="mentee-profile-area" id="mentee-profile">
+    <div class="mentee-avatar" id="mentee-avatar">👤</div>
+    <div class="mentee-name" id="mentee-name">김신입</div>
+    <div class="mentee-tags" id="mentee-tags" style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+      <span class="tag bg-gray-100 text-sm px-2 py-1 rounded">#성장러</span>
+      <span class="tag bg-gray-100 text-sm px-2 py-1 rounded">#리액트마스터</span>
+      <span class="tag bg-gray-100 text-sm px-2 py-1 rounded">#커피</span>
+    </div>
+    <div class="mentee-info-table" style="margin-top:8px; width:100%;">
+      <div style="margin-bottom:10px;">
+        <div class="font-bold text-sm mb-1">사원번호</div>
+        <textarea id="mentee-id" class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" rows="1" readonly>2025001</textarea>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="font-bold text-sm mb-1">부서</div>
+        <textarea id="mentee-dept" class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" rows="1" readonly>개발팀</textarea>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="font-bold text-sm mb-1">직무</div>
+        <textarea id="mentee-job" class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" rows="1" readonly>프론트엔드</textarea>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="font-bold text-sm mb-1">직급</div>
+        <textarea id="mentee-position" class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" rows="1" readonly>사원</textarea>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="font-bold text-sm mb-1">입사일</div>
+        <textarea id="mentee-join" class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" rows="1" readonly>2025-07-01</textarea>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="font-bold text-sm mb-1">자기소개</div>
+        <textarea id="mentee-intro" class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-sm" rows="2" readonly>안녕하세요! 빠르게 성장하는 신입입니다.</textarea>
+      </div>
+    </div>
+  </div>
+  <!-- 3. 멘토링 설정 -->
+  <div class="mentoring-settings-area">
+    <h4>멘토링 설정</h4>
+    <form id="mentoring-form">
+      <label>선택된 멘티</label>
+      <input type="text" id="selected-mentee" value="김신입" readonly>
+      <label>멘토쉽 시작일자</label>
+      <input type="date" id="start-date" value="2025-07-08">
+      <label>커리큘럼 선택</label>
+      <select id="template-select">
+        <option value="4">기본 멘토링 커리큘럼 (4주)</option>
+        <option value="6">신입사원 온보딩 커리큘럼 (6주)</option>
+        <option value="8">기술 역량 강화 커리큘럼 (8주)</option>
+        <option value="12">리더십 개발 커리큘럼 (12주)</option>
+      </select>
+      <div class="end-date-label" id="end-date-label">종료일: 2025-08-05</div>
+      <button type="submit">생성</button>
+    </form>
+  </div>
+</div>
+<script>
+// 실시간 검색 필터링
+const menteeSearch = document.getElementById('mentee-search');
+const menteeList = document.getElementById('mentee-list');
+const menteeLinks = menteeList.querySelectorAll('a');
+menteeSearch.addEventListener('input', function() {
+  const val = menteeSearch.value.trim();
+  menteeLinks.forEach(link => {
+    if (link.textContent.includes(val) || link.getAttribute('data-name').includes(val)) {
+      link.parentElement.style.display = '';
+    } else {
+      link.parentElement.style.display = 'none';
+    }
+  });
+});
+// 멘티 선택 시 프로필/설정 연동
+const menteeProfile = document.getElementById('mentee-profile');
+const menteeName = document.getElementById('mentee-name');
+const menteeRole = document.getElementById('mentee-role');
+const menteeExtra = document.getElementById('mentee-extra');
+const selectedMentee = document.getElementById('selected-mentee');
+menteeLinks.forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    menteeLinks.forEach(l => l.classList.remove('selected'));
+    link.classList.add('selected');
+    menteeName.textContent = link.getAttribute('data-name');
+    selectedMentee.value = link.getAttribute('data-name');
+    updateMenteeDetail(link.getAttribute('data-name'));
+  });
+});
+// 커리큘럼/시작일 변경 시 종료일 자동 계산
+const startDateInput = document.getElementById('start-date');
+const templateSelect = document.getElementById('template-select');
+const endDateLabel = document.getElementById('end-date-label');
+function updateEndDate() {
+  const start = new Date(startDateInput.value);
+  const weeks = parseInt(templateSelect.value);
+  if (!isNaN(start.getTime()) && weeks) {
+    const end = new Date(start);
+    end.setDate(end.getDate() + weeks * 7 - 1);
+    const yyyy = end.getFullYear();
+    const mm = String(end.getMonth() + 1).padStart(2, '0');
+    const dd = String(end.getDate()).padStart(2, '0');
+    endDateLabel.textContent = `종료일: ${yyyy}-${mm}-${dd}`;
+  } else {
+    endDateLabel.textContent = '';
+  }
+}
+startDateInput.addEventListener('change', updateEndDate);
+templateSelect.addEventListener('change', updateEndDate);
+window.addEventListener('DOMContentLoaded', updateEndDate);
+// 멘티별 상세 정보 데이터
+const menteeData = {
+  '김신입': {
+    id: '2025001', dept: '개발팀', job: '프론트엔드', position: '사원', join: '2025-07-01', intro: '안녕하세요! 빠르게 성장하는 신입입니다.',
+    tags: ['#성장러', '#리액트마스터', '#커피']
+  },
+  '이멘티': {
+    id: '2025002', dept: '인사팀', job: 'HR', position: '주임', join: '2025-06-15', intro: '소통과 팀워크를 중시하는 멘티입니다.',
+    tags: ['#소통왕', '#엑셀', '#여행', '#긍정']
+  },
+  '박인턴': {
+    id: '2025003', dept: '마케팅', job: '인턴', position: '인턴', join: '2025-07-03', intro: '실무 경험을 쌓고 싶어요!',
+    tags: ['#마케팅', '#긍정에너지', '#유튜브', '#트렌드']
+  },
+  '최신입': {
+    id: '2025004', dept: '기획팀', job: '기획', position: '사원', join: '2025-07-05', intro: '도전정신과 책임감을 가진 신입입니다.',
+    tags: ['#기획', '#책임감', '#독서', '#도전']
+  }
+};
+const menteeId = document.getElementById('mentee-id');
+const menteeDept = document.getElementById('mentee-dept');
+const menteeJob = document.getElementById('mentee-job');
+const menteePosition = document.getElementById('mentee-position');
+const menteeJoin = document.getElementById('mentee-join');
+const menteeIntro = document.getElementById('mentee-intro');
+const menteeTags = document.getElementById('mentee-tags');
+function updateMenteeDetail(name) {
+  const d = menteeData[name];
+  if (d) {
+    menteeId.value = d.id;
+    menteeDept.value = d.dept;
+    menteeJob.value = d.job;
+    menteePosition.value = d.position;
+    menteeJoin.value = d.join;
+    menteeIntro.value = d.intro;
+    menteeRole.textContent = d.position === '인턴' ? '인턴' : (d.position === '사원' && d.job === '기획' ? '신입' : '멘티');
+    // 태그 렌더링
+    menteeTags.innerHTML = '';
+    d.tags.forEach(tag => {
+      const span = document.createElement('span');
+      span.className = 'tag bg-gray-100 text-sm px-2 py-1 rounded';
+      span.textContent = tag;
+      menteeTags.appendChild(span);
+    });
+  }
+}
+// 멘티 선택 시 상세 정보도 연동
+menteeLinks.forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    menteeLinks.forEach(l => l.classList.remove('selected'));
+    link.classList.add('selected');
+    menteeName.textContent = link.getAttribute('data-name');
+    selectedMentee.value = link.getAttribute('data-name');
+    updateMenteeDetail(link.getAttribute('data-name'));
+  });
+});
+// 최초 로드 시 기본 정보
+window.addEventListener('DOMContentLoaded', function() {
+  updateMenteeDetail('김신입');
+  updateEndDate();
+});
+// 생성 버튼 클릭 시 mentor 페이지로 이동
+const mentoringForm = document.getElementById('mentoring-form');
+mentoringForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  window.location.href = '/mentor/';
+});
+</script>
 {% endblock %}

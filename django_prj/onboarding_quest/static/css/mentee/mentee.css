@@ -158,34 +158,89 @@ body {
 }
 
 .kanban-board {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
+  display: flex;
+  gap: 24px;
 }
 
+/* 기본 칸반 컬럼 스타일 */
 .kanban-column {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 15px;
-  min-height: 300px;
-  border: 1px solid #ddd;
+  border-radius: 16px;
+  padding: 20px 16px 24px 16px;
+  min-height: 340px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+  flex: 1;
+  min-width: 220px;
+}
+
+/* 각 컬럼별 배경색 */
+.todo-column { 
+  background: #f8f9fa; 
+}
+.processing-column { 
+  background: #fefce8; 
+}
+.review-request-column { 
+  background: #fef2f2; 
+}
+.success-column { 
+  background: #f0fdf4; 
 }
 
 .kanban-header {
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #dee2e6;
+  font-weight: 600;
+  font-size: 1.1em;
+  margin-bottom: 16px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
 }
 
+/* 기본 카드 스타일 - 모든 카드는 화이트 */
 .kanban-card {
-  background-color: white;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 10px;
-  border: 1px solid #dee2e6;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+  padding: 16px 18px 14px 18px;
+  border-left: 4px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid #f3f4f6;
+}
+
+/* 카드 호버 및 선택 효과 */
+.kanban-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+.kanban-card:active,
+.kanban-card.selected {
+  border-left: 4px solid #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+/* 컬럼별 카드 좌측 테두리 색상 (선택 시) */
+.todo-column .kanban-card:active,
+.todo-column .kanban-card.selected {
+  border-left-color: #6b7280;
+}
+
+.processing-column .kanban-card:active,
+.processing-column .kanban-card.selected {
+  border-left-color: #f59e0b;
+}
+
+.review-request-column .kanban-card:active,
+.review-request-column .kanban-card.selected {
+  border-left-color: #dc2626;
+}
+
+.success-column .kanban-card:active,
+.success-column .kanban-card.selected {
+  border-left-color: #10b981;
 }
 
 .kanban-card input[type="checkbox"] {
@@ -205,38 +260,42 @@ body {
 
 .activity-section {
   padding: 25px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-top: 24px;
 }
 
 .activity-header {
   font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .activity-item {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 15px;
-  border: 1px solid #dee2e6;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f9fafb;
 }
 
-.todo-column {
-  background-color: #fff5f5;
-  border-color: #fecaca;
+.activity-item:last-child {
+  border-bottom: none;
 }
 
-.processing-column {
-  background-color: #fef3c7;
-  border-color: #fcd34d;
+.activity-item div:first-child {
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
 }
 
-.success-column {
-  background-color: #f0fdf4;
-  border-color: #bbf7d0;
+.activity-item div:last-child {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 500;
 }
-
-.todo-column .kanban-header { color: #dc2626; }
-.processing-column .kanban-header { color: #d97706; }
-.success-column .kanban-header { color: #059669; }
