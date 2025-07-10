@@ -92,7 +92,7 @@ def department_create(request):
         company = request.user.company
 
         if department_name:
-            # 🔁 1. 비활성화된 부서가 있으면 되살림
+            # 1. 비활성화된 부서가 있으면 되살림
             inactive = Department.objects.filter(
                 department_name=department_name,
                 company=company,
@@ -105,7 +105,7 @@ def department_create(request):
                 inactive.save()
                 return redirect('admin_dashboard_filtered', department_id=inactive.department_id)
 
-            # ✅ 2. 이미 존재하는 활성 부서인지 확인
+            #  2. 이미 존재하는 활성 부서인지 확인
             if Department.objects.filter(
                 department_name=department_name,
                 company=company,
@@ -113,7 +113,7 @@ def department_create(request):
             ).exists():
                 error = '이미 존재하는 부서명입니다.'
             else:
-                # ✅ 3. 새로운 부서 생성
+                #  3. 새로운 부서 생성
                 department = Department.objects.create(
                     department_name=department_name,
                     description=description,
