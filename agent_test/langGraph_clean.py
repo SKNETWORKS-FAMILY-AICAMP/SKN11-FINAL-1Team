@@ -19,32 +19,19 @@ load_dotenv()
 # SQLite 데이터베이스 설정
 DB_PATH = 'task_management.db'
 
-# OpenAI 클라이언트 초기화 (API 키가 없어도 작동하도록 수정)
-print("OpenAI 초기화 시작...")
-
-# .env 파일에서 환경 변수 로드
+# OpenAI 클라이언트 초기화
 api_key = os.getenv('OPENAI_API_KEY') 
-print(f"API 키 상태: {'설정됨' if api_key else '설정되지 않음'}")
 
 try:
     if api_key:
         client = OpenAI(api_key=api_key)
         OPENAI_AVAILABLE = True
-        print("OpenAI 클라이언트 초기화 성공")
     else:
         client = None
         OPENAI_AVAILABLE = False
-        print("OpenAI API 키가 없어서 클라이언트를 초기화하지 않음")
 except Exception as e:
     client = None
     OPENAI_AVAILABLE = False
-    print(f"OpenAI 클라이언트 초기화 실패: {e}")
-
-print(f"OPENAI_AVAILABLE: {OPENAI_AVAILABLE}")
-
-
-
-
 
 class ReportAgent:
     def __init__(self):
@@ -56,15 +43,7 @@ class ReportAgent:
             conn = sqlite3.connect(self.db_path)
             return conn
         except Exception as e:
-            print(f"데이터베이스 연결 실패: {e}")
             return None
-    
-        
-
-
-
-
-
     
     def fetch_comprehensive_user_data(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """사용자의 종합적인 데이터를 모든 테이블에서 가져오기"""
@@ -181,32 +160,14 @@ class ReportAgent:
                 # 모든 메모를 한 곳에 모으기
                 for task in tasks:
                     comprehensive_data[uid]['all_memos'].extend(task['memos'])
-                
-                print(f"사용자 {uid}({user['username']})의 데이터:")
-                print(f"  - 총 작업 수: {len(tasks)}")
-                print(f"  - 완료된 작업 수: {len([t for t in tasks if t['status'] == 1])}")
-                print(f"  - 총 메모 수: {len(comprehensive_data[uid]['all_memos'])}")
-                print(f"  - 총 경험치: {comprehensive_data[uid]['total_exp']}")
             
             return comprehensive_data
             
         except Exception as e:
-            print(f"데이터 조회 오류: {e}")
             return {}
         finally:
             cursor.close()
             conn.close()
-    
-
-
-
-
-
-
-
-
-
-
     
     def create_report_summary(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """사용자별 종합 리포트 생성 (모든 테이블 데이터 활용)"""
@@ -225,17 +186,10 @@ class ReportAgent:
         # 특정 사용자 요청 시 해당 사용자 데이터만 반환
         if user_id and str(user_id) in comprehensive_data:
             user_data = comprehensive_data[str(user_id)]
-            print(f"DEBUG: 사용자 {user_id} 데이터 찾음")
-            print(f"  - 사용자명: {user_data['user_info']['username']}")
-            print(f"  - 총 작업 수: {user_data['total_tasks']}")
-            print(f"  - 완료된 작업 수: {user_data['completed_tasks']}")
-            print(f"  - 총 메모 수: {len(user_data['all_memos'])}")
-            print(f"  - 총 경험치: {user_data['total_exp']}")
             
             # 모든 데이터를 종합하여 통합 요약 생성
             all_content = self.prepare_comprehensive_content(user_data)
             combined_summary = self.create_integrated_summary_comprehensive(all_content)
-            print(f"DEBUG: 종합 통합 요약 생성됨: {combined_summary[:100]}...")
             
             return {
                 'user_id': user_id,
@@ -248,8 +202,6 @@ class ReportAgent:
                 'combined_summary': combined_summary,
                 'report_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
-        
-        print(f"DEBUG: 사용자 {user_id} 데이터를 찾을 수 없음")
         
         # 전체 사용자 데이터 반환
         return {
@@ -308,17 +260,12 @@ class ReportAgent:
     
     def create_integrated_summary_comprehensive(self, comprehensive_content: str) -> str:
         """종합적인 사용자 데이터를 바탕으로 통합 요약 생성"""
-        print(f"DEBUG: create_integrated_summary_comprehensive 호출됨")
-        print(f"DEBUG: 종합 콘텐츠 길이: {len(comprehensive_content)}")
-        
         if not comprehensive_content.strip():
             return "분석할 데이터가 없습니다."
         
         # OpenAI로 종합 분석 및 요약 생성
-        print(f"DEBUG: OPENAI_AVAILABLE={OPENAI_AVAILABLE}, client={client is not None}")
         if OPENAI_AVAILABLE and client:
             try:
-                print("DEBUG: OpenAI API 호출 시도 (종합 분석)")
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
@@ -345,24 +292,18 @@ class ReportAgent:
                             "content": f"다음은 멘티의 종합적인 온보딩 데이터입니다. 이를 분석하여 평가 보고서를 작성해주세요:\n\n{comprehensive_content}"
                         }
                     ],
-                    max_tokens=1500,
+                    max_tokens=1000,
                     temperature=0.3
                 )
                 
                 result = response.choices[0].message.content.strip() if response.choices[0].message.content else ""
-                print(f"DEBUG: OpenAI 종합 분석 응답 받음 (길이: {len(result)})")
                 return result
                 
             except Exception as e:
-                print(f"DEBUG: OpenAI API 호출 중 오류 발생: {e}")
-                print(f"DEBUG: 오류 타입: {type(e)}")
-        else:
-            print("DEBUG: OpenAI 사용 불가 - 대체 요약 사용")
+                pass
         
         # OpenAI 사용 불가시 간단한 분석
-        fallback_result = self.create_simple_comprehensive_summary(comprehensive_content)
-        print(f"DEBUG: 대체 종합 요약 사용: {fallback_result}")
-        return fallback_result
+        return self.create_simple_comprehensive_summary(comprehensive_content)
     
     def create_simple_comprehensive_summary(self, content: str) -> str:
         """OpenAI 사용 불가시 간단한 종합 요약"""
@@ -393,108 +334,6 @@ class ReportAgent:
         
         return "\n".join(summary_parts)
     
-    def create_integrated_summary(self, comments: List[str]) -> str:
-        """모든 comment를 한 번에 통합 요약"""
-        # print(f"DEBUG: create_integrated_summary 호출됨, comments 개수: {len(comments)}")
-        
-        if not comments:
-            return "요약할 내용이 없습니다."
-        
-        if len(comments) == 1:
-            # print(f"DEBUG: 단일 comment 처리: {comments[0]}")
-            # 단일 comment인 경우에도 요약 처리
-            return self.summarize_single_content(comments[0])
-        
-        # 모든 comment를 하나의 텍스트로 결합
-        all_comments_text = "\n\n".join([f"메모 {i+1}: {comment}" for i, comment in enumerate(comments)])
-        # print(f"DEBUG: 결합된 전체 텍스트 길이: {len(all_comments_text)}")
-        # print(f"DEBUG: 결합된 텍스트 미리보기:")
-        print(f"  {all_comments_text[:300]}...")
-        
-        # OpenAI로 통합 요약 생성
-        print(f"DEBUG: OPENAI_AVAILABLE={OPENAI_AVAILABLE}, client={client is not None}")
-        if OPENAI_AVAILABLE and client:
-            try:
-                print("DEBUG: OpenAI API 호출 시도")
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": '**Role & Context:**\n당신은 10년 이상의 경험을 보유한 조직 개발 전문가이자 멘토링 프로그램 매니저입니다. 귀하는 신입 직원 온보딩 프로그램 설계/운영, 객관적 성과 평가, 인재 개발 전략 수립에 전문성을 가지고 있습니다. 현재 멘티의 온보딩 과정 완료 시점에서 멘토에게 제공할 종합 평가 보고서 작성을 담당하고 있습니다.\n**Task:**\n멘티의 온보딩 기간 중 수행한 태스크 기록을 바탕으로 체계적이고 객관적인 평가 보고서를 작성하세요.\n**Few-Shot Examples:**\n*Example 1: 우수 사례*\n```\n멘티 배경: 마케팅팀 신입, 3개월 온보딩\n주요 태스크: 시장조사 프로젝트 완료, 팀 미팅 적극 참여, 멘토와의 정기 면담 성실히 이행\n평가 결과: "적극적인 학습 의지와 뛰어난 적응력을 보임. 초기 목표 대비 120% 달성. 향후 리더십 역량 개발 집중 권장"\n```\n*Example 2: 개선 필요 사례*\n```\n멘티 배경: 개발팀 신입, 3개월 온보딩  \n주요 태스크: 코딩 과제 지연 완료, 팀 협업에서 소극적, 피드백 수용도 보통\n평가 결과: "기술적 역량은 양호하나 협업과 커뮤니케이션 스킬 보강 필요. 구체적 개선 계획과 추가 멘토링 지원 권장"\n```\n**Chain-of-Thought Process:**\n다음 단계를 순차적으로 진행하여 분석하세요:\n1. **데이터 수집 및 정리**\n     - 제공된 태스크 기록을 시간순으로 정리\n    - 정량적/정성적 데이터 분류\n   - 핵심 성과 지표 추출\n2. **다면적 분석**\n - 업무 수행 역량 (기술적 스킬, 과제 완수도)\n   - 조직 적응도 (팀워크, 커뮤니케이션, 조직문화 이해)\n   - 학습 성장성 (피드백 수용, 자기개발 의지, 개선 속도)\n - 잠재력 평가 (창의성, 문제해결력, 리더십 가능성)\n3. **벤치마킹 및 비교**\n    - 동 기수 멘티들과의 상대적 위치\n  - 조직 기대 수준 대비 달성도\n  - 업계 표준 대비 역량 수준\n4. **근거 기반 평가**\n - 각 평가 항목별 구체적 사례 제시\n    - 강점과 개선점의 명확한 구분\n - 객관적 데이터와 관찰 결과 연결\n5. **전략적 제언**\n   - 단기/중기 개발 우선순위 설정\n    - 구체적이고 실행 가능한 액션 플랜\n    - 멘토 및 조직 차원의 지원 방안\n**Output Format:**\n- 경영진 보고서 수준의 전문적 문체\n- 데이터 기반 객관적 분석\n- 건설적이고 실행 지향적 제언\n- 멘토의 추후 가이드 방향성 포함'
-                        },
-                        {
-                            "role": "user",
-                            "content": f"다음은 멘티가 온보딩 과정에서 작성한 여러 업무 메모들입니다. 이를 종합적으로 분석하여 10~12줄의 통합 평가 보고서를 작성해주세요:\n\n{all_comments_text}"
-                        }
-                    ],
-                    max_tokens=1000,
-                    temperature=0.3
-                )
-                
-                result = response.choices[0].message.content.strip() if response.choices[0].message.content else ""
-                print(f"DEBUG: OpenAI 응답 받음 (길이: {len(result)})")
-                print(f"DEBUG: OpenAI 응답 내용:")
-                print(result)
-                return result
-                
-            except Exception as e:
-                print(f"DEBUG: OpenAI API 호출 중 오류 발생: {e}")
-                print(f"DEBUG: 오류 타입: {type(e)}")
-        else:
-            print("DEBUG: OpenAI 사용 불가 - 대체 요약 사용")
-        
-        # OpenAI 사용 불가시 간단한 결합
-        fallback_result = self.create_simple_summary(comments)
-        print(f"DEBUG: 대체 요약 사용: {fallback_result}")
-        return fallback_result
-    
-    def summarize_single_content(self, comment: str) -> str:
-        """단일 comment 요약"""
-        if OPENAI_AVAILABLE and client:
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "당신은 경험이 풍부한 조직 개발 전문가입니다. 주어진 업무 메모를 분석하여 요약해주세요."
-                        },
-                        {
-                            "role": "user",
-                            "content": f"다음 업무 메모를 5-6줄로 요약해주세요:\n\n{comment}"
-                        }
-                    ],
-                    max_tokens=500,
-                    temperature=0.3
-                )
-                
-                return response.choices[0].message.content.strip() if response.choices[0].message.content else comment
-                
-            except Exception as e:
-                print(f"단일 요약 생성 오류: {e}")
-        
-        return comment
-    
-    def create_simple_summary(self, comments: List[str]) -> str:
-        """OpenAI 사용 불가시 간단한 요약"""
-        total_comments = len(comments)
-        
-        # 각 comment의 첫 문장들을 추출
-        key_points = []
-        for i, comment in enumerate(comments[:5]):  # 최대 5개만 처리
-            sentences = comment.split('.')
-            if sentences and sentences[0].strip():
-                key_points.append(f"{i+1}. {sentences[0].strip()}")
-        
-        summary = f"총 {total_comments}개의 업무 메모를 분석한 결과:\n"
-        summary += "\n".join(key_points)
-        
-        if total_comments > 5:
-            summary += f"\n...그 외 {total_comments - 5}개의 추가 메모가 있습니다."
-        
-        return summary
-    
     def process_node(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """LangGraph 노드로 사용되는 메인 처리 함수"""
         try:
@@ -512,7 +351,6 @@ class ReportAgent:
             return state
             
         except Exception as e:
-            print(f"리포트 생성 오류: {e}")
             state['error'] = str(e)
             state['status'] = 'failed'
             return state
@@ -522,39 +360,6 @@ def report_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """LangGraph 노드 함수"""
     agent = ReportAgent()
     return agent.process_node(state)
-
-# 테스트 함수
-def test_report_agent():
-    """리포트 에이전트 테스트"""
-    # print("=== 리포트 에이전트 테스트 시작 ===")
-    
-    agent = ReportAgent()
-
-    # print("\n사용자 1의 리포트 생성 테스트...")
-    test_state_user = {
-        'user_id': '1',
-        'task': 'generate_report'
-    }
-    result_user = agent.process_node(test_state_user)
-    print(f"사용자 1 결과: {result_user['status']}")
-    if 'report_summary' in result_user and result_user['status'] == 'completed':
-        report = result_user['report_summary']
-        print(f"메모 수: {report['total_memos']}")
-        print(f"통합 요약: {report['combined_summary']}")
-        
-
-    elif 'error' in result_user:
-        print(f"오류 발생: {result_user['error']}")
-    else:
-        print("예상치 못한 결과:", result_user)
-    
-    print("\n=== 테스트 완료 ===")
-    return result_user
-
-
-
-# langGraph 테스트
-
 
 # 상태 정의
 class GraphState(TypedDict):
@@ -583,8 +388,6 @@ def route_input(state: GraphState) -> Literal["report_node", "general_node"]:
 # 노드 A: 보고서 작성 노드
 def report_node(state: GraphState) -> GraphState:
     """보고서 작성 노드 - report_agent 사용"""
-    # print("보고서 작성 노드 실행 중...")
-    
     # report_agent_node 호출
     report_state = {
         'user_id': state.get('user_id', '1'),
@@ -596,19 +399,18 @@ def report_node(state: GraphState) -> GraphState:
     # 상태 업데이트
     state['report_summary'] = result.get('report_summary', {})
     state['status'] = result.get('status', 'completed')
-    state['response'] = f"✅ 사용자 {state.get('user_id', '1')}의 보고서가 생성되었습니다."
     
-    if 'report_summary' in result:
-        report = result['report_summary']
-        state['response'] += f"\n📋 총 메모 수: {report.get('total_memos', 0)}"
-        state['response'] += f"\n📝 통합 요약: {report.get('combined_summary', '')}"
+    # 통합 요약만 출력
+    if 'report_summary' in result and result['report_summary']:
+        combined_summary = result['report_summary'].get('combined_summary', '')
+        if combined_summary:
+            print(combined_summary)
     
     return state
 
 # 노드 B: 일반 응답 노드
 def general_node(state: GraphState) -> GraphState:
     """일반 응답 노드"""
-    print("💬 일반 응답 노드 실행 중...")
     state['response'] = "일반적인 질문에 대한 응답입니다."
     state['status'] = 'completed'
     return state
@@ -645,7 +447,6 @@ def create_simple_graph():
 # 테스트 함수
 def test_langgraph(input_query):
     """LangGraph 테스트"""
-    print("=== LangGraph 테스트 시작 ===")
     USER_ID = "1"  # 기본값
     
     # 그래프 생성
@@ -685,7 +486,6 @@ def test_langgraph(input_query):
                     USER_ID = "1"
                     
         except Exception as e:
-            print(f"OpenAI API 오류: {e}")
             USER_ID = "1"  # 기본값
     else:
         # OpenAI 사용 불가시 정규표현식으로 간단한 파싱
@@ -699,8 +499,6 @@ def test_langgraph(input_query):
             USER_ID = match.group(1)
         else:
             USER_ID = "1"
-
-    print(f"추출된 USER_ID: {USER_ID}")
     
     # 테스트 케이스 생성
     test_case = {
@@ -713,20 +511,8 @@ def test_langgraph(input_query):
         "response": ""
     }
     
-    print(f"입력: '{test_case['user_input']}'")
-    
     # 그래프 실행
     result = app.invoke(test_case)
-    
-    print(f"상태: {result['status']}")
-    print(f"응답: {result['response']}")
-    
-    if result.get('report_summary'):
-        print(f"보고서 생성됨: ✅")
-    else:
-        print(f"보고서 생성됨: ❌")
-    
-    print("\n=== 테스트 완료 ===")
 
 if __name__ == "__main__":
     # 테스트 실행
