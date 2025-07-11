@@ -1,38 +1,9 @@
-# 사용 예시 (다른 LangGraph 워크플로우에 통합할 때)
-"""
-워크플로우에 추가하는 방법:
-
-from your_report_module import report_generator_node
-
-# 워크플로우 생성 시
-workflow = StateGraph(GraphState)
-workflow.add_node("report_generator", report_generator_node)
-
-# 다른 노드들과 연결
-workflow.add_edge("router", "report_generator")  # 라우터에서 보고서 노드로
-workflow.add_edge("report_generator", "end")     # 보고서 노드에서 종료로
-
-# 또는 조건부 라우팅
-workflow.add_conditional_edges(
-    "router",
-    route_to_appropriate_node,
-    {
-        "report": "report_generator",
-        "other_task": "other_node",
-        # ...
-    }
-)
-"""
-
-
-
-from typing import Dict, Any, Optional, TypedDict
+from typing import Dict, Any, Optional
 from openai import OpenAI
 from datetime import datetime
 import os
 import sqlite3
 from dotenv import load_dotenv
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
 load_dotenv()
 
@@ -43,16 +14,7 @@ DB_PATH = 'task_management.db'
 api_key = os.getenv('OPENAI_API_KEY') 
 client = OpenAI(api_key=api_key)
 
-# LangGraph 상태 정의 (전체 시스템에서 사용되는 상태)
-class GraphState(TypedDict):
-    messages: list[BaseMessage]
-    user_input: Optional[str]
-    current_task: Optional[str]
-    # 다른 노드들에서 사용할 수 있는 추가 상태들...
-
-class ReportGeneratorNode:
-    """LangGraph용 보고서 생성 노드 - 단일 노드로 동작"""
-    
+class ReportAgent:
     def __init__(self):
         self.db_path = DB_PATH
     
@@ -63,45 +25,6 @@ class ReportGeneratorNode:
             return conn
         except Exception as e:
             return None
-    
-    def extract_user_id(self, input_query: str) -> str:
-        """입력 쿼리에서 사용자 ID 추출"""
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """사용자가 "[누군가]의 보고서를 작성해줘" 또는 "[누군가]에 대한 보고서를 써줘" 형식의 요청을 할 때, 
-                        그 사람의 이름이나 식별자만 추출해서 응답하세요. 
-                        예시:
-                        - "User123의 보고서를 작성해줘" → "User123"
-                        - "김철수에 대한 보고서를 써줘" → "김철수"
-                        - "user2의 보고서를 작성해줘" → "2"
-                        - "2번 사용자의 보고서를 작성해줘" → "2"
-                        
-                        만약 명확한 대상이 없다면 "2"라고 응답하세요. (멘티 기본값)"""
-                    },
-                    {
-                        "role": "user",
-                        "content": f"{input_query}"
-                    }
-                ],
-                max_tokens=50,
-                temperature=0.1
-            )
-            
-            if response.choices[0].message.content:
-                extracted_id = response.choices[0].message.content.strip()
-                
-                # 추가 검증: 만약 응답이 너무 길거나 이상하면 기본값 사용
-                if len(extracted_id) <= 10 and "보고서" not in extracted_id:
-                    return extracted_id
-                    
-        except Exception as e:
-            pass
-        
-        return "2"  # 기본값
     
     def get_mentorship_info(self, mentee_user_id: str) -> Dict[str, Any]:
         """멘티의 멘토쉽 정보 및 멘토 정보 가져오기"""
@@ -124,7 +47,8 @@ class ReportGeneratorNode:
             
             mentorship_id = mentorship_result[0]
             
-            # 해당 멘토쉽의 멘토 정보 찾기
+            # 해당 멘토쉽의 멘토 정보 찾기 (수정된 로직)
+            # 멘토쉽 ID에 따른 멘토 user_id 계산: 멘토쉽 1 -> 멘토 user_id 1, 멘토쉽 2 -> 멘토 user_id 3, 등등
             mentor_user_id = (mentorship_id - 1) * 2 + 1
             
             cursor.execute('''
@@ -156,7 +80,7 @@ class ReportGeneratorNode:
             conn.close()
     
     def fetch_comprehensive_user_data(self, user_id: str) -> Dict[str, Any]:
-        """사용자의 종합적인 데이터를 모든 테이블에서 가져오기"""
+        """사용자의 종합적인 데이터를 모든 테이블에서 가져오기 (멘토 메모 포함)"""
         conn = self.create_connection()
         if not conn:
             return {}
@@ -173,10 +97,12 @@ class ReportGeneratorNode:
             
             user_result = cursor.fetchone()
             if not user_result:
+                print(f"사용자 ID {user_id}를 찾을 수 없습니다.")
                 return {}
             
             # 멘티가 아닌 경우 체크
             if user_result[3] != 'mentee':
+                print(f"사용자 ID {user_id}는 멘티가 아닙니다. (역할: {user_result[3]})")
                 return {}
             
             user_info = {
@@ -186,6 +112,8 @@ class ReportGeneratorNode:
                 'role': user_result[3],
                 'created_at': user_result[4]
             }
+            
+            print(f"멘티 정보 확인: {user_info['username']} (ID: {user_info['user_id']})")
             
             # 멘토쉽 정보 가져오기
             mentorship_info = self.get_mentorship_info(user_info['user_id'])
@@ -200,6 +128,7 @@ class ReportGeneratorNode:
             ''', (user_info['user_id'],))
             
             task_results = cursor.fetchall()
+            print(f"할당된 작업 수: {len(task_results)}")
             
             tasks = []
             for row in task_results:
@@ -234,7 +163,7 @@ class ReportGeneratorNode:
                 
                 task_data['subtasks'] = subtasks
                 
-                # 각 작업의 메모 정보
+                # 각 작업의 메모 정보 (멘토와 멘티 메모 모두 포함)
                 cursor.execute('''
                     SELECT m.memo_id, m.create_date, m.comment, m.user_id, u.username, u.role
                     FROM memo m
@@ -258,6 +187,7 @@ class ReportGeneratorNode:
                     }
                     memos.append(memo_data)
                     
+                    # 역할별로 메모 분류
                     if memo_row[5] == 'mentor':
                         mentor_memos.append(memo_data)
                     elif memo_row[5] == 'mentee':
@@ -287,9 +217,11 @@ class ReportGeneratorNode:
                 user_data['all_mentor_memos'].extend(task['mentor_memos'])
                 user_data['all_mentee_memos'].extend(task['mentee_memos'])
             
+            print(f"총 메모 수: {len(user_data['all_memos'])}")
             return user_data
             
         except Exception as e:
+            print(f"데이터 조회 중 오류: {e}")
             return {}
         finally:
             cursor.close()
@@ -322,12 +254,13 @@ class ReportGeneratorNode:
             content_parts.append(f"멘토쉽 ID: {mentorship_info['mentorship_id']}")
             content_parts.append("")
         
-        # 작업별 상세 정보
+        # 작업별 상세 정보 (멘토-멘티 대화 포함)
         for i, task in enumerate(tasks, 1):
             content_parts.append(f"=== 작업 {i}: {task['title']} ===")
             content_parts.append(f"기간: {task['start_date']} ~ {task['end_date']}")
             content_parts.append(f"난이도: {task['difficulty']}")
             
+            # 상태 표시 개선
             status_text = {0: '시작 전', 1: '진행중', 2: '완료'}.get(task['status'], '알 수 없음')
             content_parts.append(f"상태: {status_text}")
             content_parts.append(f"경험치: {task['exp']}")
@@ -345,7 +278,7 @@ class ReportGeneratorNode:
                     if subtask['guide']:
                         content_parts.append(f"     가이드: {subtask['guide']}")
             
-            # 멘토-멘티 대화 메모
+            # 멘토-멘티 대화 메모 (시간순 정렬)
             if task['memos']:
                 content_parts.append("멘토링 대화 기록:")
                 for memo in task['memos']:
@@ -415,128 +348,111 @@ class ReportGeneratorNode:
         except Exception as e:
             return f"보고서 생성 중 오류가 발생했습니다: {str(e)}"
     
-    def get_available_mentees(self) -> list:
-        """사용 가능한 멘티 목록 조회"""
-        conn = self.create_connection()
-        if not conn:
-            return []
+    def create_report_summary(self, user_id: str) -> str:
+        """사용자별 종합 리포트 생성 (멘토 메모 포함)"""
+        comprehensive_data = self.fetch_comprehensive_user_data(user_id)
         
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT user_id, username, role FROM users WHERE role = 'mentee' ORDER BY user_id")
-            mentees = cursor.fetchall()
-            return mentees
-        except Exception as e:
-            return []
-        finally:
-            cursor.close()
-            conn.close()
+        if not comprehensive_data:
+            return "해당 멘티의 데이터가 없습니다."
+        
+        # 모든 데이터를 종합하여 통합 요약 생성
+        all_content = self.prepare_comprehensive_content_with_mentor(comprehensive_data)
+        combined_summary = self.create_integrated_summary_with_mentor(all_content)
+        
+        return combined_summary
 
-# LangGraph 노드 함수 (단일 노드로 동작)
-def report_generator_node(state: GraphState) -> GraphState:
-    """보고서 생성 노드 - 입력을 받아 보고서를 생성하고 응답을 반환"""
+def extract_user_id(input_query: str) -> str:
+    """입력 쿼리에서 사용자 ID 추출"""
     try:
-        # 입력 메시지에서 사용자 요청 추출
-        messages = state.get("messages", [])
-        if not messages:
-            # 메시지가 없으면 그대로 반환
-            return state
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """사용자가 "[누군가]의 보고서를 작성해줘" 또는 "[누군가]에 대한 보고서를 써줘" 형식의 요청을 할 때, 
+                    그 사람의 이름이나 식별자만 추출해서 응답하세요. 
+                    예시:
+                    - "User123의 보고서를 작성해줘" → "User123"
+                    - "김철수에 대한 보고서를 써줘" → "김철수"
+                    - "user2의 보고서를 작성해줘" → "2"
+                    - "2번 사용자의 보고서를 작성해줘" → "2"
+                    
+                    만약 명확한 대상이 없다면 "2"라고 응답하세요. (멘티 기본값)"""
+                },
+                {
+                    "role": "user",
+                    "content": f"{input_query}"
+                }
+            ],
+            max_tokens=50,
+            temperature=0.1
+        )
         
-        # 마지막 사용자 메시지 가져오기
-        last_message = messages[-1]
-        if isinstance(last_message, HumanMessage):
-            user_query = last_message.content
-        else:
-            user_query = str(last_message.content) if hasattr(last_message, 'content') else ""
-        
-        # 보고서 관련 키워드 체크
-        report_keywords = ["보고서", "리포트", "report", "요약", "summary", "평가"]
-        
-        if not any(keyword in user_query.lower() for keyword in report_keywords):
-            # 보고서 요청이 아니면 그대로 반환 (다른 노드에서 처리)
-            return state
-        
-        # 보고서 생성 로직 실행
-        agent = ReportGeneratorNode()
-        
-        # 1. 사용자 ID 추출
-        user_id = agent.extract_user_id(user_query)
-        
-        # 2. 데이터 조회
-        report_data = agent.fetch_comprehensive_user_data(user_id)
-        
-        if not report_data:
-            # 데이터가 없는 경우 오류 메시지와 함께 사용 가능한 멘티 목록 제공
-            available_mentees = agent.get_available_mentees()
+        if response.choices[0].message.content:
+            extracted_id = response.choices[0].message.content.strip()
             
-            error_message = f"사용자 ID '{user_id}'에 해당하는 멘티 데이터를 찾을 수 없습니다."
-            
-            if available_mentees:
-                error_message += "\n\n사용 가능한 멘티 목록:\n"
-                for mentee in available_mentees:
-                    error_message += f"  - ID {mentee[0]}: {mentee[1]} ({mentee[2]})\n"
-                error_message += "\n예시: '2번 멘티의 보고서를 작성해줘'"
-            
-            ai_message = AIMessage(content=error_message)
-            state["messages"] = messages + [ai_message]
-            return state
-        
-        # 3. 보고서 생성
-        all_content = agent.prepare_comprehensive_content_with_mentor(report_data)
-        report_content = agent.create_integrated_summary_with_mentor(all_content)
-        
-        # 4. 응답 메시지 생성
-        response_content = f"""📋 **멘토링 기반 종합 평가 보고서**
-
-👨‍💻 **대상 멘티**: {report_data['user_info']['username']} (ID: {user_id})
-🎓 **담당 멘토**: {report_data['mentorship_info']['mentor_info']['username'] if report_data.get('mentorship_info') and report_data['mentorship_info'].get('mentor_info') else 'N/A'}
-
----
-
-{report_content}
-
----
-📊 **요약 통계**
-- 총 작업 수: {report_data['total_tasks']}개
-- 완료된 작업: {report_data['completed_tasks']}개
-- 진행중인 작업: {report_data['in_progress_tasks']}개
-- 총 획득 경험치: {report_data['total_exp']}점
-"""
-        
-        ai_message = AIMessage(content=response_content)
-        state["messages"] = messages + [ai_message]
-        
-        # 현재 작업을 보고서 생성으로 설정 (다른 노드에서 참조 가능)
-        state["current_task"] = "report_generated"
-        
-        return state
-        
+            # 추가 검증: 만약 응답이 너무 길거나 이상하면 기본값 사용
+            if len(extracted_id) <= 10 and "보고서" not in extracted_id:
+                return extracted_id
+                
     except Exception as e:
-        # 오류 발생 시 오류 메시지 반환
-        error_message = f"보고서 생성 중 오류가 발생했습니다: {str(e)}"
-        ai_message = AIMessage(content=error_message)
+        pass
+    
+    return "2"  # 기본값
+
+def generate_report(input_query: str):
+    """메인 보고서 생성 함수"""
+    # 보고서 관련 키워드 체크
+    report_keywords = ["보고서", "리포트", "report", "요약", "summary", "평가"]
+    
+    if not any(keyword in input_query.lower() for keyword in report_keywords):
+        print("일반적인 질문에 대한 응답입니다.")
+        return
+    
+    # 사용자 ID 추출
+    user_id = extract_user_id(input_query)
+    print(f"요청된 사용자 ID: {user_id}")
+    
+    # 보고서 생성 및 출력
+    agent = ReportAgent()
+    report = agent.create_report_summary(user_id)
+    
+    if report == "해당 멘티의 데이터가 없습니다.":
+        print(f"사용자 ID {user_id}에 해당하는 멘티 데이터를 찾을 수 없습니다.")
+        print("데이터베이스에 존재하는 멘티 목록을 확인해보세요.")
         
-        messages = state.get("messages", [])
-        state["messages"] = messages + [ai_message]
-        state["current_task"] = "error"
-        
-        return state
+        # 가능한 멘티 목록 조회
+        conn = agent.create_connection()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT user_id, username, role FROM users WHERE role = 'mentee' ORDER BY user_id")
+                mentees = cursor.fetchall()
+                if mentees:
+                    print("\n사용 가능한 멘티 목록:")
+                    for mentee in mentees:
+                        print(f"  - ID {mentee[0]}: {mentee[1]} ({mentee[2]})")
+                else:
+                    print("멘티가 없습니다.")
+                cursor.close()
+            except Exception as e:
+                print(f"멘티 목록 조회 중 오류: {e}")
+            finally:
+                conn.close()
+    else:
+        print("\n" + "="*80)
+        print("멘토링 기반 종합 평가 보고서")
+        print("="*80)
+        print(report)
+        print("="*80)
 
-
-
-# 단독 테스트용
 if __name__ == "__main__":
-    # 테스트 실행
-    test_state = {
-        "messages": [HumanMessage(content="2번 멘티의 보고서를 작성해줘")],
-        "user_input": None,
-        "current_task": None
-    }
+    import sys
     
-    result = report_generator_node(test_state)
-    
-    # 결과 출력
-    if result.get("messages"):
-        for message in result["messages"]:
-            if isinstance(message, AIMessage):
-                print(message.content)
+    if len(sys.argv) > 1:
+        # 명령행 인자가 있으면 해당 쿼리로 실행
+        query = " ".join(sys.argv[1:])
+        generate_report(query)
+    else:
+        # 기본 테스트 실행
+        generate_report("2번 멘티의 보고서를 작성해줘")
