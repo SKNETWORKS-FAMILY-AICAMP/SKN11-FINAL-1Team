@@ -1,6 +1,19 @@
 from django import forms
 from core.models import User, Department
 
+class DepartmentForm(forms.ModelForm):
+    class Meta:
+        model = Department
+        fields = ['department_name', 'description']
+        labels = {
+            'department_name': '부서명',
+            'description': '설명',
+        }
+        widgets = {
+            'department_name': forms.TextInput(attrs={'placeholder': '부서명', 'class': 'form-control', 'required': True}),
+            'description': forms.TextInput(attrs={'placeholder': '설명', 'class': 'form-control'}),
+        }
+
 class UserForm(forms.ModelForm):
     class Meta:
         model = User

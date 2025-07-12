@@ -1,3 +1,4 @@
+from django.views.decorators.http import require_GET
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import authenticate, login, logout
@@ -6,56 +7,86 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.http import HttpResponseForbidden
 from core.models import User, Department
-from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm
-import json
-from django.core.serializers.json import DjangoJSONEncoder
+from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm, DepartmentForm
 
-def profile(request):
-    return render(request, 'account/profile.html')
-
+# 사용자 프로필 뷰 (누락된 함수 추가)
 @login_required
-def department_detail(request, department_id):
-    dept = get_object_or_404(Department, pk=department_id)
-    departments = Department.objects.all()
-    users = User.objects.filter(is_active=True, department=dept)
-    return render(request, 'account/supervisor.html', {
-        'departments': departments,
-        'users': users,
-        'selected_department_id': dept.department_id,
-        'dept_detail': dept,
-        'view_mode': request.GET.get('view', None),
-    })
+def profile(request):
+    return render(request, 'account/profile.html', {'user': request.user})
 
 @login_required
 def supervisor(request):
-    departments = Department.objects.all()
-    dept_id = request.GET.get('dept')
-    if dept_id:
-        users = User.objects.filter(is_active=True, department__department_id=dept_id)
-        selected_department_id = int(dept_id)
+    company = request.user.company
+    departments = Department.objects.filter(company=company)
+    dept_form = DepartmentForm()
+    # 부서 선택 쿼리 파라미터
+    selected_department_id = request.GET.get('dept')
+    dept_detail = None
+    if selected_department_id:
+        try:
+            dept_detail = Department.objects.get(department_id=selected_department_id, company=company)
+            users = User.objects.filter(company=company, department=dept_detail)
+        except Department.DoesNotExist:
+            users = User.objects.filter(company=company)
+            dept_detail = None
     else:
-        users = User.objects.filter(is_active=True)
-        selected_department_id = None
-
-    # departments를 list of dict로 변환
-    departments_json = json.dumps([
-        {
-            'department_id': d.department_id,
-            'department_name': d.department_name,
-            'description': d.description,
-            'company': {'company_name': d.company.company_name if d.company else None} if hasattr(d, 'company') else None,
-            'is_active': d.is_active,
-        }
-        for d in departments
-    ], cls=DjangoJSONEncoder)
-
+        users = User.objects.filter(company=company)
     return render(request, 'account/supervisor.html', {
-        'users': users,
         'departments': departments,
-        'departments_json': departments_json,
-        'selected_department_id': selected_department_id,
+        'users': users,
+        'dept_form': dept_form,
+        'selected_department_id': int(selected_department_id) if selected_department_id else None,
+        'dept_detail': dept_detail,
     })
 
+@login_required
+def department_create(request):
+    company = request.user.company
+    if request.method == 'POST':
+        form = DepartmentForm(request.POST)
+        if form.is_valid():
+            department_name = form.cleaned_data['department_name']
+            description = form.cleaned_data.get('description', '')
+            # 🔁 1. 비활성화된 부서가 있으면 되살림
+            inactive = Department.objects.filter(
+                department_name=department_name,
+                company=company,
+                is_active=False
+            ).first()
+            if inactive:
+                inactive.is_active = True
+                inactive.description = description
+                inactive.save()
+                return redirect('admin_dashboard_filtered', department_id=inactive.department_id)
+            # ✅ 2. 이미 존재하는 활성 부서인지 확인
+            if Department.objects.filter(
+                department_name=department_name,
+                company=company,
+                is_active=True
+            ).exists():
+                error = '이미 존재하는 부서명입니다.'
+            else:
+                # ✅ 3. 새로운 부서 생성
+                dept = form.save(commit=False)
+                dept.company = company
+                dept.is_active = True
+                dept.save()
+                return redirect('admin_dashboard_filtered', department_id=dept.department_id)
+        else:
+            error = '부서명 입력이 올바르지 않습니다.'
+        # 실패 시 다시 대시보드 렌더링
+        departments = Department.objects.filter(company=company)
+        users = User.objects.filter(company=company)
+        selected_department_id = None
+        return render(request, 'account/supervisor.html', {
+            'departments': departments,
+            'users': users,
+            'selected_department_id': selected_department_id,
+            'dept_form': form,
+            'error': error
+        })
+    # GET 요청은 대시보드로 리다이렉트
+    return redirect('admin_dashboard')
 
 
 #region 로그인/로그아웃
@@ -182,6 +213,20 @@ def department_create(request):
     return redirect('admin_dashboard')
 
 @login_required
+@require_GET
+def department_detail(request, department_id):
+    dept = get_object_or_404(Department, pk=department_id)
+    departments = Department.objects.filter(company=request.user.company)
+    users = User.objects.filter(is_active=True, department=dept)
+    return render(request, 'account/supervisor.html', {
+        'departments': departments,
+        'users': users,
+        'selected_department_id': dept.department_id,
+        'dept_detail': dept,
+        'view_mode': request.GET.get('view', None),
+    })
+
+@login_required
 def department_delete(request, department_id):
     department = get_object_or_404(Department, pk=department_id, company=request.user.company)
     department.delete()
@@ -291,17 +336,17 @@ def department_update(request, department_id):
     dept = get_object_or_404(Department, pk=department_id)
     departments = Department.objects.all()
     if request.method == 'POST':
-        new_name = request.POST.get('department_name')
-        new_desc = request.POST.get('description', '')
-        if new_name:
-            dept.department_name = new_name
-            dept.description = new_desc
-            dept.save()
+        form = DepartmentForm(request.POST, instance=dept)
+        if form.is_valid():
+            form.save()
             return redirect('account:department_detail', department_id=dept.department_id)
-    # GET: 수정 폼 렌더링
+    else:
+        form = DepartmentForm(instance=dept)
+    # GET 또는 실패 시 수정 폼 렌더링
     return render(request, 'account/supervisor.html', {
         'departments': departments,
         'dept_edit': dept,
+        'dept_form': form,
         'selected_department_id': dept.department_id,
         'edit_mode': True,
     })
