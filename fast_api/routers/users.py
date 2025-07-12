@@ -64,9 +64,30 @@ async def update_user(user_id: int, user: schemas.UserCreate, db: Session = Depe
     return crud.update_user(db=db, user_id=user_id, user_update=user)
 
 
+@router.delete("/{user_id}/company/{company_id}/department/{department_id}")
+async def delete_user_with_validation(
+    user_id: int, 
+    company_id: int, 
+    department_id: int, 
+    db: Session = Depends(get_db)
+):
+    """회사, 부서 정보 검증 후 사용자 삭제"""
+    user, message = crud.delete_user_with_company_department(
+        db=db, 
+        user_id=user_id, 
+        company_id=company_id, 
+        department_id=department_id
+    )
+    
+    if user is None:
+        raise HTTPException(status_code=400, detail=message)
+    
+    return {"message": message}
+
+
 @router.delete("/{user_id}")
 async def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """사용자 삭제"""
+    """사용자 삭제 (기본 방식)"""
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")

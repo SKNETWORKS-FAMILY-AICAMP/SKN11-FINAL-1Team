@@ -57,7 +57,7 @@ async def chatbot_message(chat_message: ChatMessage):
     else:
         response = "죄송합니다. 아직 해당 질문에 대한 답변을 준비하지 못했습니다. '도움말'이라고 입력하시면 사용 가능한 명령을 확인하실 수 있습니다."
     
-    # 챗봇 응답 저장
+    # # 챗봇 응답 저장
     chat_history[chat_message.user_id].append({
         "type": "bot",
         "message": response

@@ -13,6 +13,7 @@ class Company(Base):
     
     # 관계 설정
     departments = relationship("Department", back_populates="company")
+    users = relationship("User", back_populates="company")
 
 
 class Department(Base):
@@ -48,9 +49,11 @@ class User(Base):
     exp = Column(Integer, default=0, comment="경험치")
     admin = Column(Boolean, default=False, comment="관리자")
     department_id = Column(Integer, ForeignKey("department.department_id"), comment="부서 id")
+    company_id = Column(Integer, ForeignKey("company.company_id"), comment="회사 id")
     
     # 관계 설정
     department = relationship("Department", back_populates="users")
+    company = relationship("Company", back_populates="users")
     task_assignments = relationship("TaskAssign", back_populates="user")
     memos = relationship("Memo", back_populates="user")
     mentor_relationships = relationship("Mentorship", foreign_keys="[Mentorship.mentor_id]", back_populates="mentor")
@@ -88,6 +91,7 @@ class TaskManage(Base):
     
     # 관계 설정
     template = relationship("Template", back_populates="task_manages")
+    task_assignments = relationship("TaskAssign", back_populates="task_manage")
 
 
 class TaskAssign(Base):
@@ -101,13 +105,15 @@ class TaskAssign(Base):
     status = Column(Integer, nullable=False, comment="상태")
     difficulty = Column(String(50), comment="난이도(5단계)")
     description = Column(Text, comment="설명")
-    exp = Column(DECIMAL(10, 2), comment="경험치")
+    exp = Column(Integer, comment="경험치")
     order = Column(Integer, comment="태스크 할당 순서")
     user_id = Column(Integer, ForeignKey("user.user_id"), comment="유저 아이디(사번)")
+    task_manage_id = Column(Integer, ForeignKey("task_manage.task_manage_id"), comment="테스크 관리 id")
     mentorship_id = Column(Integer, ForeignKey("mentorship.mentorship_id"), comment="멘토쉽 id")
     
     # 관계 설정
     user = relationship("User", back_populates="task_assignments")
+    task_manage = relationship("TaskManage", back_populates="task_assignments")
     mentorship = relationship("Mentorship", back_populates="task_assigns")
     subtasks = relationship("Subtask", back_populates="task_assign")
     memos = relationship("Memo", back_populates="task_assign")

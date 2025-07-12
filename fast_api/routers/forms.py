@@ -80,6 +80,11 @@ async def create_department_form(
 ):
     """부서 생성 폼 처리"""
     try:
+        # 회사 존재 확인
+        db_company = crud.get_company(db, company_id=company_id)
+        if db_company is None:
+            raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
+        
         department_data = schemas.DepartmentCreate(
             department_name=department_name,
             description=description,
@@ -126,7 +131,6 @@ async def create_user_form(
     skill: Optional[str] = Form(None),
     role: str = Form(...),
     exp: Optional[int] = Form(0),
-    level: Optional[int] = Form(1),
     admin: Optional[bool] = Form(False),
     department_id: int = Form(...),
     company_id: int = Form(...),
@@ -148,7 +152,6 @@ async def create_user_form(
             skill=skill,
             role=role,
             exp=exp,
-            level=level,
             admin=admin,
             department_id=department_id,
             company_id=company_id
@@ -358,3 +361,241 @@ async def uploaded_files(request: Request):
             "files": [],
             "error": str(e)
         }) 
+
+# 부서 수정 및 삭제 엔드포인트
+@router.get("/departments/{department_id}/edit", response_class=HTMLResponse)
+async def department_edit_form(request: Request, department_id: int, db: Session = Depends(get_db)):
+    """부서 수정 폼"""
+    department = crud.get_department(db, department_id=department_id)
+    if not department:
+        raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
+    
+    companies = crud.get_companies(db)
+    departments = crud.get_departments(db)
+    return templates.TemplateResponse("forms/department_edit.html", {
+        "request": request,
+        "department": department,
+        "companies": companies,
+        "departments": departments
+    })
+
+
+@router.post("/departments/{department_id}/edit")
+async def update_department_form(
+    request: Request,
+    department_id: int,
+    department_name: str = Form(...),
+    description: Optional[str] = Form(None),
+    company_id: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    """부서 수정 폼 처리"""
+    try:
+        # 회사 존재 확인
+        db_company = crud.get_company(db, company_id=company_id)
+        if db_company is None:
+            raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다")
+        
+        department_data = schemas.DepartmentCreate(
+            department_name=department_name,
+            description=description,
+            company_id=company_id
+        )
+        department = crud.update_department(db=db, department_id=department_id, department_update=department_data)
+        if not department:
+            raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
+        return RedirectResponse(url="/forms/departments?success=updated", status_code=303)
+    except Exception as e:
+        department = crud.get_department(db, department_id=department_id)
+        companies = crud.get_companies(db)
+        departments = crud.get_departments(db)
+        return templates.TemplateResponse("forms/department_edit.html", {
+            "request": request,
+            "department": department,
+            "companies": companies,
+            "departments": departments,
+            "error": str(e)
+        })
+
+
+@router.post("/departments/{department_id}/delete")
+async def delete_department_form(
+    request: Request,
+    department_id: int,
+    db: Session = Depends(get_db)
+):
+    """부서 삭제 폼 처리"""
+    try:
+        department = crud.get_department(db, department_id=department_id)
+        if not department:
+            raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
+        
+        crud.delete_department(db, department_id=department_id)
+        return RedirectResponse(url="/forms/departments?success=deleted", status_code=303)
+    except Exception as e:
+        return RedirectResponse(url=f"/forms/departments?error={str(e)}", status_code=303)
+
+
+# 사용자 수정 및 삭제 엔드포인트
+@router.get("/users/{user_id}/edit", response_class=HTMLResponse)
+async def user_edit_form(request: Request, user_id: int, db: Session = Depends(get_db)):
+    """사용자 수정 폼"""
+    user = crud.get_user(db, user_id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+    
+    companies = crud.get_companies(db)
+    departments = crud.get_departments(db)
+    users = crud.get_users(db)
+    return templates.TemplateResponse("forms/user_edit.html", {
+        "request": request,
+        "user": user,
+        "companies": companies,
+        "departments": departments,
+        "users": users
+    })
+
+
+@router.post("/users/{user_id}/edit")
+async def update_user_form(
+    request: Request,
+    user_id: int,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    job_part: str = Form(...),
+    position: int = Form(...),
+    join_date: str = Form(...),
+    skill: Optional[str] = Form(None),
+    role: str = Form(...),
+    exp: Optional[int] = Form(0),
+    admin: Optional[bool] = Form(False),
+    department_id: Optional[int] = Form(None),
+    company_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """사용자 수정 폼 처리"""
+    try:
+        from datetime import datetime
+        join_date_obj = datetime.strptime(join_date, "%Y-%m-%d").date()
+        
+        user_data = schemas.UserCreate(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            password=password,
+            job_part=job_part,
+            position=position,
+            join_date=join_date_obj,
+            skill=skill,
+            role=role,
+            exp=exp,
+            admin=admin,
+            department_id=department_id,
+            company_id=company_id
+        )
+        user = crud.update_user(db=db, user_id=user_id, user_update=user_data)
+        if not user:
+            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+        return RedirectResponse(url="/forms/users?success=updated", status_code=303)
+    except Exception as e:
+        user = crud.get_user(db, user_id=user_id)
+        companies = crud.get_companies(db)
+        departments = crud.get_departments(db)
+        users = crud.get_users(db)
+        return templates.TemplateResponse("forms/user_edit.html", {
+            "request": request,
+            "user": user,
+            "companies": companies,
+            "departments": departments,
+            "users": users,
+            "error": str(e)
+        })
+
+
+@router.post("/users/{user_id}/delete")
+async def delete_user_form(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """사용자 삭제 폼 처리"""
+    try:
+        user = crud.get_user(db, user_id=user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+        
+        crud.delete_user(db, user_id=user_id)
+        return RedirectResponse(url="/forms/users?success=deleted", status_code=303)
+    except Exception as e:
+        return RedirectResponse(url=f"/forms/users?error={str(e)}", status_code=303)
+
+
+# 템플릿 수정 및 삭제 엔드포인트
+@router.get("/templates/{template_id}/edit", response_class=HTMLResponse)
+async def template_edit_form(request: Request, template_id: int, db: Session = Depends(get_db)):
+    """템플릿 수정 폼"""
+    template = crud.get_template(db, template_id=template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
+    
+    departments = crud.get_departments(db)
+    templates_list = crud.get_templates(db)
+    return templates.TemplateResponse("forms/template_edit.html", {
+        "request": request,
+        "template": template,
+        "departments": departments,
+        "templates_list": templates_list
+    })
+
+
+@router.post("/templates/{template_id}/edit")
+async def update_template_form(
+    request: Request,
+    template_id: int,
+    template_title: str = Form(...),
+    template_description: Optional[str] = Form(None),
+    department_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """템플릿 수정 폼 처리"""
+    try:
+        template_data = schemas.TemplateCreate(
+            template_title=template_title,
+            template_description=template_description,
+            department_id=department_id
+        )
+        template = crud.update_template(db=db, template_id=template_id, template_update=template_data)
+        if not template:
+            raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
+        return RedirectResponse(url="/forms/templates?success=updated", status_code=303)
+    except Exception as e:
+        template = crud.get_template(db, template_id=template_id)
+        departments = crud.get_departments(db)
+        templates_list = crud.get_templates(db)
+        return templates.TemplateResponse("forms/template_edit.html", {
+            "request": request,
+            "template": template,
+            "departments": departments,
+            "templates_list": templates_list,
+            "error": str(e)
+        })
+
+
+@router.post("/templates/{template_id}/delete")
+async def delete_template_form(
+    request: Request,
+    template_id: int,
+    db: Session = Depends(get_db)
+):
+    """템플릿 삭제 폼 처리"""
+    try:
+        template = crud.get_template(db, template_id=template_id)
+        if not template:
+            raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
+        
+        crud.delete_template(db, template_id=template_id)
+        return RedirectResponse(url="/forms/templates?success=deleted", status_code=303)
+    except Exception as e:
+        return RedirectResponse(url=f"/forms/templates?error={str(e)}", status_code=303)

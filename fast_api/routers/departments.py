@@ -44,9 +44,28 @@ async def update_department(department_id: int, department: schemas.DepartmentCr
     return crud.update_department(db=db, department_id=department_id, department_update=department)
 
 
+@router.delete("/{department_id}/company/{company_id}")
+async def delete_department_with_validation(
+    department_id: int, 
+    company_id: int, 
+    db: Session = Depends(get_db)
+):
+    """회사 정보 검증 후 부서 삭제"""
+    department, message = crud.delete_department_with_company(
+        db=db, 
+        department_id=department_id, 
+        company_id=company_id
+    )
+    
+    if department is None:
+        raise HTTPException(status_code=400, detail=message)
+    
+    return {"message": message}
+
+
 @router.delete("/{department_id}")
 async def delete_department(department_id: int, db: Session = Depends(get_db)):
-    """부서 삭제"""
+    """부서 삭제 (기본 방식)"""
     db_department = crud.get_department(db, department_id=department_id)
     if db_department is None:
         raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")

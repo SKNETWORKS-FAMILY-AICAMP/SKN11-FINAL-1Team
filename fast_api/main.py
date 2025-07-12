@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 from config import settings
 from database import engine, Base
-from routers import users, tasks, chatbot, companies, departments, templates, forms
+from routers import users, tasks, chatbot, companies, departments, templates as templates_router, forms
 import models  # 모델을 임포트하여 테이블 생성
 
 # 데이터베이스 테이블 생성
@@ -37,7 +37,7 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(companies.router)
 app.include_router(departments.router)
-app.include_router(templates.router)
+app.include_router(templates_router.router)
 app.include_router(users.router)
 app.include_router(tasks.router)
 app.include_router(forms.router)

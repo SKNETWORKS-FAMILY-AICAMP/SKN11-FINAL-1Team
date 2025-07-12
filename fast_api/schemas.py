@@ -1,13 +1,18 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List
 from datetime import date, datetime
-from decimal import Decimal
 from fastapi import Form, UploadFile, File
 
 
 # Base schemas
 class CompanyBase(BaseModel):
     company_name: str
+    
+    @validator('company_name')
+    def company_name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('회사명은 비어있을 수 없습니다')
+        return v.strip()
 
 class CompanyCreate(CompanyBase):
     pass
@@ -22,6 +27,18 @@ class Company(CompanyBase):
 class DepartmentBase(BaseModel):
     department_name: str
     description: Optional[str] = None
+    
+    @validator('department_name')
+    def department_name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('부서명은 비어있을 수 없습니다')
+        return v.strip()
+    
+    @validator('description')
+    def description_strip_whitespace(cls, v):
+        if v is not None:
+            return v.strip() if v.strip() else None
+        return v
 
 class DepartmentCreate(DepartmentBase):
     company_id: int
@@ -47,16 +64,40 @@ class UserBase(BaseModel):
     role: str
     exp: Optional[int] = 0
     admin: Optional[bool] = False
+    
+    @validator('first_name', 'last_name', 'job_part', 'role')
+    def name_fields_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('필수 텍스트 필드는 비어있을 수 없습니다')
+        return v.strip()
+    
+    @validator('position')
+    def position_must_be_positive(cls, v):
+        if v <= 0:
+            raise ValueError('직급은 양수여야 합니다')
+        return v
+    
+    @validator('exp')
+    def exp_must_not_be_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('경험치는 음수일 수 없습니다')
+        return v
+    
+    @validator('skill')
+    def skill_strip_whitespace(cls, v):
+        if v is not None:
+            return v.strip() if v.strip() else None
+        return v
 
 class UserCreate(UserBase):
     password: str
-    department_id: int
-    company_id: int
+    department_id: Optional[int] = None
+    company_id: Optional[int] = None
 
 class User(UserBase):
     user_id: int
-    department_id: int
-    company_id: int
+    department_id: Optional[int] = None
+    company_id: Optional[int] = None
     department: Optional[Department] = None
     company: Optional[Company] = None
     
@@ -69,11 +110,11 @@ class TemplateBase(BaseModel):
     template_description: Optional[str] = None
 
 class TemplateCreate(TemplateBase):
-    department_id: int
+    department_id: Optional[int] = None
 
 class Template(TemplateBase):
     template_id: int
-    department_id: int
+    department_id: Optional[int] = None
     department: Optional[Department] = None
     
     class Config:
@@ -108,7 +149,7 @@ class TaskAssignBase(BaseModel):
     status: int
     difficulty: Optional[str] = None
     description: Optional[str] = None
-    exp: Optional[Decimal] = None
+    exp: Optional[int] = None
     order: Optional[int] = None
 
 class TaskAssignCreate(TaskAssignBase):
@@ -244,10 +285,9 @@ class UserFormData(BaseModel):
     skill: Optional[str] = None
     role: str
     exp: Optional[int] = 0
-    level: Optional[int] = 1
     admin: Optional[bool] = False
-    department_id: int
-    company_id: int
+    department_id: Optional[int] = None
+    company_id: Optional[int] = None
 
 
 class TaskFormData(BaseModel):
@@ -278,7 +318,7 @@ class TemplateFormData(BaseModel):
     """템플릿 폼 데이터 스키마"""
     template_title: str
     template_description: Optional[str] = None
-    department_id: int
+    department_id: Optional[int] = None
 
 
 class FileUploadResponse(BaseModel):
