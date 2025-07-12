@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
+from fastapi import Form, UploadFile, File
 
 
 # Base schemas
@@ -27,6 +28,7 @@ class DepartmentCreate(DepartmentBase):
 
 class Department(DepartmentBase):
     department_id: int
+    department_name: str
     company_id: int
     company: Optional[Company] = None
     
@@ -44,7 +46,6 @@ class UserBase(BaseModel):
     skill: Optional[str] = None
     role: str
     exp: Optional[int] = 0
-    level: Optional[int] = 1
     admin: Optional[bool] = False
 
 class UserCreate(UserBase):
@@ -227,4 +228,63 @@ class Docs(DocsBase):
     department: Optional[Department] = None
     
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+
+# 폼 데이터 처리용 스키마
+class UserFormData(BaseModel):
+    """사용자 폼 데이터 스키마"""
+    first_name: str
+    last_name: str
+    email: EmailStr
+    password: str
+    job_part: str
+    position: int
+    join_date: date
+    skill: Optional[str] = None
+    role: str
+    exp: Optional[int] = 0
+    level: Optional[int] = 1
+    admin: Optional[bool] = False
+    department_id: int
+    company_id: int
+
+
+class TaskFormData(BaseModel):
+    """태스크 폼 데이터 스키마"""
+    title: str
+    start_date: date
+    end_date: date
+    difficulty: Optional[str] = None
+    description: Optional[str] = None
+    exp: int
+    order: Optional[int] = None
+    template_id: int
+
+
+class CompanyFormData(BaseModel):
+    """회사 폼 데이터 스키마"""
+    company_name: str
+
+
+class DepartmentFormData(BaseModel):
+    """부서 폼 데이터 스키마"""
+    department_name: str
+    description: Optional[str] = None
+    company_id: int
+
+
+class TemplateFormData(BaseModel):
+    """템플릿 폼 데이터 스키마"""
+    template_title: str
+    template_description: Optional[str] = None
+    department_id: int
+
+
+class FileUploadResponse(BaseModel):
+    """파일 업로드 응답 스키마"""
+    filename: str
+    file_path: str
+    file_size: int
+    content_type: str
+    upload_time: datetime 

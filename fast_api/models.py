@@ -13,7 +13,6 @@ class Company(Base):
     
     # 관계 설정
     departments = relationship("Department", back_populates="company")
-    users = relationship("User", back_populates="company")
 
 
 class Department(Base):
@@ -47,14 +46,11 @@ class User(Base):
     skill = Column(String(255), comment="자기소개 태그")
     role = Column(String(50), nullable=False, comment="mentor 또는 mentee")
     exp = Column(Integer, default=0, comment="경험치")
-    level = Column(Integer, default=1, comment="사용자 레벨")
     admin = Column(Boolean, default=False, comment="관리자")
     department_id = Column(Integer, ForeignKey("department.department_id"), comment="부서 id")
-    company_id = Column(Integer, ForeignKey("company.company_id"), comment="사업자 번호")
     
     # 관계 설정
     department = relationship("Department", back_populates="users")
-    company = relationship("Company", back_populates="users")
     task_assignments = relationship("TaskAssign", back_populates="user")
     memos = relationship("Memo", back_populates="user")
     mentor_relationships = relationship("Mentorship", foreign_keys="[Mentorship.mentor_id]", back_populates="mentor")
@@ -92,7 +88,6 @@ class TaskManage(Base):
     
     # 관계 설정
     template = relationship("Template", back_populates="task_manages")
-    task_assigns = relationship("TaskAssign", back_populates="task_manage")
 
 
 class TaskAssign(Base):
@@ -109,12 +104,10 @@ class TaskAssign(Base):
     exp = Column(DECIMAL(10, 2), comment="경험치")
     order = Column(Integer, comment="태스크 할당 순서")
     user_id = Column(Integer, ForeignKey("user.user_id"), comment="유저 아이디(사번)")
-    task_manage_id = Column(Integer, ForeignKey("task_manage.task_manage_id"), comment="테스크 관리 id")
     mentorship_id = Column(Integer, ForeignKey("mentorship.mentorship_id"), comment="멘토쉽 id")
     
     # 관계 설정
     user = relationship("User", back_populates="task_assignments")
-    task_manage = relationship("TaskManage", back_populates="task_assigns")
     mentorship = relationship("Mentorship", back_populates="task_assigns")
     subtasks = relationship("Subtask", back_populates="task_assign")
     memos = relationship("Memo", back_populates="task_assign")
@@ -167,8 +160,7 @@ class ChatSession(Base):
     session_id = Column(Integer, primary_key=True, index=True, comment="검색 기록 고유 id")
     user_id = Column(Integer, ForeignKey("user.user_id"), comment="유저 아이디(사번)")
     summary = Column(Text, comment="채팅 내용 요약")
-    started_time = Column(DateTime, nullable=False, comment="시작 시간 로그")
-    ended_time = Column(DateTime, nullable=False, comment="종료 시간 로그")
+
     
     # 관계 설정
     user = relationship("User", back_populates="chat_sessions")

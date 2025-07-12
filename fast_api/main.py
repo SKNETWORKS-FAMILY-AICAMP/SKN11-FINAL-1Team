@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 import uvicorn
 from config import settings
 from database import engine, Base
-from routers import users, tasks, chatbot, companies, departments, templates
+from routers import users, tasks, chatbot, companies, departments, templates, forms
 import models  # 모델을 임포트하여 테이블 생성
 
 # 데이터베이스 테이블 생성
@@ -16,6 +18,12 @@ app = FastAPI(
     version=settings.app_version,
     debug=settings.debug
 )
+
+# 정적 파일 서빙 설정
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 템플릿 설정
+templates = Jinja2Templates(directory="templates")
 
 # CORS 설정
 app.add_middleware(
@@ -32,11 +40,19 @@ app.include_router(departments.router)
 app.include_router(templates.router)
 app.include_router(users.router)
 app.include_router(tasks.router)
+app.include_router(forms.router)
 app.include_router(chatbot.router)
 
 @app.get("/")
 async def root():
-    """루트 엔드포인트"""
+    """루트 엔드포인트 - 폼 관리 홈으로 리다이렉트"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/forms/")
+
+
+@app.get("/api/")
+async def api_root():
+    """API 루트 엔드포인트"""
     return {
         "message": "Onboarding Quest FastAPI 서버가 실행 중입니다! (SQLite3 DB 기반)",
         "version": settings.app_version,
