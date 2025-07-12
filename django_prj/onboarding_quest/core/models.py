@@ -64,11 +64,11 @@ class Mentorship(models.Model):
     mentorship_id = models.AutoField(primary_key=True)
     mentor_id = models.IntegerField()
     mentee_id = models.IntegerField()
-
+    
 class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True)
     employee_number = models.IntegerField(unique=True,null=True, blank=True)
-    admin = models.BooleanField(default=False)
+    is_admin = models.BooleanField(default=False)
     mentorship_id = models.IntegerField(null=True, blank=True)
     company = models.ForeignKey(  
         Company,
@@ -82,16 +82,22 @@ class User(AbstractBaseUser, PermissionsMixin):
         on_delete=models.SET_NULL,
         null=True
     )
-    role = models.BooleanField(default=False)  # mentor=True, mentee=False
     tag = models.CharField(max_length=255, null=True, blank=True)
     exp = models.IntegerField(default=0)
+    ROLE_CHOICES = (
+        ('mentee', 'Mentee'),
+        ('mentor', 'Mentor')
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     join_date = models.DateField(auto_now_add=True, null=True, blank=True)
     position = models.CharField(max_length=50)
     job_part = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=128)
+
     last_name = models.CharField(max_length=50)
     first_name = models.CharField(max_length=50)
+    last_login = models.DateTimeField(auto_now=True, null=True, blank=True)  # 로그인 시 자동 기록
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

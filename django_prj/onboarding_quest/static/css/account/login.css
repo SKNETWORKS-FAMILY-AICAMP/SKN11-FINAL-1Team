@@ -1,5 +1,8 @@
+html {
+  font-family: 'Pretendard', Pretendard, sans-serif;
+}
+
 body {
-  font-family: 'Segoe UI', sans-serif;
   background-color: #f9f9f9;
   display: flex;
   justify-content: center;
@@ -51,8 +54,8 @@ input[type="password"] {
   margin-top: 24px;
   width: 100%;
   padding: 12px;
-  background-color: #007bff;
-  color: white;
+  background: #007bff;
+  color: #fff;
   font-size: 15px;
   font-weight: bold;
   border: none;
@@ -61,5 +64,5 @@ input[type="password"] {
 }
 
 .btn-login:hover {
-  background-color: #0056d6;
+  background: #0056d6;
 }

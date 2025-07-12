@@ -15,6 +15,8 @@ urlpatterns = [
     path('<int:department_id>/', views.admin_dashboard, name='admin_dashboard'),  # 부서 필터용
     path('department/add/', views.department_create, name='department_create'),
     path('department/<int:department_id>/delete/', views.department_delete, name='department_delete'),
+    path('department/<int:department_id>/update/', views.department_update, name='department_update'),
+    path('department/<int:department_id>/detail/', views.department_detail, name='department_detail'),
 
 
 

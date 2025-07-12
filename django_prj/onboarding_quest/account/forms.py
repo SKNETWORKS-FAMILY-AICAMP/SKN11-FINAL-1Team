@@ -5,13 +5,37 @@ class UserForm(forms.ModelForm):
     class Meta:
         model = User
         fields = [
-            'first_name', 'last_name', 'email', 'password',
-            'position', 'department', 'employee_number',
+            'employee_number',  # 사번이 제일 위
+            'first_name',
+            'last_name',
+            'email',
+            'position',
+            'department',
         ]
+        labels = {
+            'employee_number': '사번',
+            'first_name': '이름',
+            'last_name': '성',
+            'email': '이메일',
+            'position': '직급',
+            'department': '부서명',
+        }
+        widgets = {
+            'employee_number': forms.NumberInput(attrs={'placeholder': '사번', 'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'placeholder': '이름', 'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'placeholder': '성', 'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'placeholder': '이메일', 'class': 'form-control'}),
+            'position': forms.TextInput(attrs={'placeholder': '직급', 'class': 'form-control'}),
+            'department': forms.Select(attrs={'class': 'form-control'}),
+        }
 
     def __init__(self, *args, **kwargs):
         company = kwargs.pop('company', None)  # views에서 넘겨줄 값
         super().__init__(*args, **kwargs)
+
+        # 비밀번호 필드는 폼에서 제거
+        if 'password' in self.fields:
+            self.fields.pop('password')
 
         if company:
             self.fields['department'].queryset = Department.objects.filter(

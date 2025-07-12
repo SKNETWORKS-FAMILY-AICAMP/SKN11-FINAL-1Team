@@ -7,13 +7,54 @@ from django.contrib.auth import update_session_auth_hash
 from django.http import HttpResponseForbidden
 from core.models import User, Department
 from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm
-
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 
 def profile(request):
     return render(request, 'account/profile.html')
 
+@login_required
+def department_detail(request, department_id):
+    dept = get_object_or_404(Department, pk=department_id)
+    departments = Department.objects.all()
+    users = User.objects.filter(is_active=True, department=dept)
+    return render(request, 'account/supervisor.html', {
+        'departments': departments,
+        'users': users,
+        'selected_department_id': dept.department_id,
+        'dept_detail': dept,
+        'view_mode': request.GET.get('view', None),
+    })
+
+@login_required
 def supervisor(request):
-    return render(request, 'account/supervisor.html')
+    departments = Department.objects.all()
+    dept_id = request.GET.get('dept')
+    if dept_id:
+        users = User.objects.filter(is_active=True, department__department_id=dept_id)
+        selected_department_id = int(dept_id)
+    else:
+        users = User.objects.filter(is_active=True)
+        selected_department_id = None
+
+    # departments를 list of dict로 변환
+    departments_json = json.dumps([
+        {
+            'department_id': d.department_id,
+            'department_name': d.department_name,
+            'description': d.description,
+            'company': {'company_name': d.company.company_name if d.company else None} if hasattr(d, 'company') else None,
+            'is_active': d.is_active,
+        }
+        for d in departments
+    ], cls=DjangoJSONEncoder)
+
+    return render(request, 'account/supervisor.html', {
+        'users': users,
+        'departments': departments,
+        'departments_json': departments_json,
+        'selected_department_id': selected_department_id,
+    })
 
 
 
@@ -122,7 +163,7 @@ def department_create(request):
                     company=company,
                     is_active=True  # 중요
                 )
-                return redirect('admin_dashboard_filtered', department_id=department.department_id)
+                return redirect('account:supervisor')
         else:
             error = '부서명을 입력해주세요.'
 
@@ -131,7 +172,7 @@ def department_create(request):
         users = User.objects.filter(company=company)
         selected_department_id = None
 
-        return render(request, 'users/admin_dashboard.html', {
+        return render(request, 'account/supervisor.html', {
             'departments': departments,
             'users': users,
             'selected_department_id': selected_department_id,
@@ -144,7 +185,7 @@ def department_create(request):
 def department_delete(request, department_id):
     department = get_object_or_404(Department, pk=department_id, company=request.user.company)
     department.delete()
-    return redirect('admin_dashboard')
+    return redirect('account:supervisor')
 #endregion > 부서
 
 
@@ -244,3 +285,23 @@ def user_edit_view(request):
     else:
         form = UserEditForm(instance=user)
     return render(request, 'account/profile_edit.html', {'form': form})
+
+@login_required
+def department_update(request, department_id):
+    dept = get_object_or_404(Department, pk=department_id)
+    departments = Department.objects.all()
+    if request.method == 'POST':
+        new_name = request.POST.get('department_name')
+        new_desc = request.POST.get('description', '')
+        if new_name:
+            dept.department_name = new_name
+            dept.description = new_desc
+            dept.save()
+            return redirect('account:department_detail', department_id=dept.department_id)
+    # GET: 수정 폼 렌더링
+    return render(request, 'account/supervisor.html', {
+        'departments': departments,
+        'dept_edit': dept,
+        'selected_department_id': dept.department_id,
+        'edit_mode': True,
+    })

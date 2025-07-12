@@ -3,24 +3,29 @@ h2 {
   margin-bottom: 24px;
 }
 
-.top-bar {
-  margin-bottom: 20px;
+/* 좌측(부서), 우측(사원) 패널 배치 */
+.dashboard {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
 }
-
-.add-user-btn {
-  display: inline-block;
-  text-decoration: none;
-  background-color: #4CAF50;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 4px;
-  font-weight: bold;
+.panel {
+    background-color: white;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    min-width: 260px;
+    border-radius: 8px;
 }
-
-.add-user-btn:hover {
-  background-color: #45a049;
+.panel:first-child {
+    width: 320px;
+    min-width: 220px;
+    max-width: 340px;
+    flex-shrink: 0;
 }
-
+.panel:last-child {
+    flex: 1 1 0%;
+    min-width: 0;
+}
 table {
   width: 100%;
   border-collapse: collapse;

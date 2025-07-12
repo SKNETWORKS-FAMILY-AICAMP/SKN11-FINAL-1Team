@@ -1,181 +1,164 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>관리자 대시보드</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f4f6f8;
-            margin: 30px;
-        }
+{% extends 'base.html' %}
+{% load static %}
 
-        h2 {
-            color: #333;
-        }
+{% block title %}관리자 대시보드{% endblock %}
 
-        .dashboard {
-            display: flex;
-            gap: 30px;
-        }
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/account/supervisor.css' %}">
+{% endblock %}
 
-        .panel {
-            flex: 1;
-            background-color: white;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-
-        .top-bar {
-            margin-bottom: 15px;
-        }
-
-        .btn {
-            text-decoration: none;
-            background-color: #4CAF50;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-
-        .btn:hover {
-            background-color: #45a049;
-        }
-
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px 16px;
-            text-align: center;
-        }
-
-        th {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        .edit-link {
-            color: #1E90FF;
-            font-weight: bold;
-        }
-
-        .delete-link {
-            color: #FF4500;
-            font-weight: bold;
-        }
-
-        .action-link:hover {
-            text-decoration: underline;
-        }
-
-        .input-inline {
-            padding: 6px;
-            width: 70%;
-            margin-right: 10px;
-        }
-
-        .dept-link {
-            color: #333;
-            font-weight: bold;
-            text-decoration: none;
-        }
-
-        .dept-link:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-
-    <h2>관리자 대시보드</h2>
-
-    <div class="dashboard">
-
-        <!-- 왼쪽: 부서 관리 -->
-        <div class="panel">
-            <div class="top-bar">
-                <form method="post" action="{% url 'department_create' %}" style="display: flex;">
-                    {% csrf_token %}
-                    <input type="text" name="department_name" placeholder="부서명 입력" required class="input-inline">
-                    <button type="submit" class="btn">+ 부서 추가</button>
-                </form>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>부서명</th>
-                        <th>액션</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for dept in departments %}
-                        <tr>
-                            <td>
-                                <a href="{% url 'admin_dashboard' dept.department_id %}" class="dept-link">
-                                    {{ dept.department_name }}
-                                </a>
-                            </td>
-                            <td>
-                                <a href="{% url 'department_delete' dept.pk %}" class="delete-link action-link"
-                                   onclick="return confirm('정말 삭제하시겠습니까?');">삭제</a>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="2">등록된 부서가 없습니다.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+{% block content %}
+<h1>관리자 대시보드</h1>
+<div class="dashboard" style="display:flex; gap:30px; align-items:flex-start;">
+    <!-- 왼쪽: 부서 관리 -->
+    <div style="flex:1; min-width:260px; max-width:400px;">
+        <div class="top-bar">
+            <form method="post" action="{% url 'account:department_create' %}" style="display: flex;">
+                {% csrf_token %}
+                <input type="text" name="department_name" placeholder="부서명 입력" required class="input-inline">
+                <button type="submit" class="btn">+ 부서 추가</button>
+            </form>
         </div>
-
-        <!-- 오른쪽: 유저 관리 -->
-        <div class="panel">
-            <div class="top-bar">
-                <a href="{% url 'user_create' %}" class="btn">+ 신규 유저 등록</a>
-            </div>
-            <table>
-                <thead>
+        <table>
+            <thead>
+                <tr>
+                    <th>부서명</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept in departments %}
                     <tr>
-                        <th>이름</th>
-                        <th>입사일</th>
-                        <th>직급</th>
-                        <th>부서</th>
-                        <th>액션</th>
+                        <td>
+                            <a href="?dept={{ dept.department_id }}" class="dept-link {% if dept.department_id == selected_department_id %}selected{% endif %}">
+                                {{ dept.department_name }}
+                            </a>
+                            <form method="post" action="{% url 'account:department_update' dept.department_id %}" class="inline-edit-form" style="display:none; margin-top:4px;">
+                                {% csrf_token %}
+                                <input type="text" name="department_name" value="{{ dept.department_name }}" required style="width:70%; font-family:'Pretendard',sans-serif;">
+                                <button type="submit" class="btn" style="padding:2px 8px; font-size:12px; font-family:'Pretendard',sans-serif;">저장</button>
+                                <button type="button" class="btn-cancel" style="padding:2px 8px; font-size:12px; background:#eee; color:#333; font-family:'Pretendard',sans-serif;" onclick="this.closest('form').style.display='none';">취소</button>
+                            </form>
+                        </td>
+                        <td>
+                            <!-- 2. 수정 버튼을 액션 칼럼(삭제 왼쪽)으로 이동, 6. 펜 아이콘으로 변경 -->
+                            <button type="button" class="edit-link action-link" title="수정" style="background:none; border:none; padding:0; margin-right:6px; cursor:pointer; vertical-align:middle;" onclick="this.closest('tr').querySelector('.inline-edit-form').style.display='block';">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="vertical-align:middle;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L5.232 11.232a2 2 0 010-2.828L9 13z"/></svg>
+                            </button>
+                            <a href="{% url 'account:department_delete' dept.pk %}" class="delete-link action-link" title="삭제"
+                               onclick="return confirm('정말 삭제하시겠습니까?');" style="display:inline-block; vertical-align:middle;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="vertical-align:middle;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </a>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    {% for u in users %}
-                        <tr>
-                            <td>{{ u.last_name }}{{ u.first_name }}</td>
-                            <td>{{ u.join_date|date:"Y-m-d" }}</td>
-                            <td>{{ u.position }}</td>
-                            <td>{{ u.department.department_name }}</td>
-                            <td>
-                                <a href="{% url 'user_update' u.pk %}" class="edit-link action-link">수정</a> |
-                                <a href="{% url 'user_delete' u.pk %}" class="delete-link action-link"
-                                   onclick="return confirm('정말 삭제하시겠습니까?');">삭제</a>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="5">등록된 유저가 없습니다.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                {% empty %}
+                    <tr><td colspan="2">등록된 부서가 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
+        <!-- 부서 등록/수정/조회 폼 (서버 렌더링) -->
+        <div id="dept-form-box" style="margin-top:24px; background:#f8f8f8; border-radius:10px; padding:18px 16px;">
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <a href="{% url 'account:supervisor' %}" class="dept-form-tab{% if not edit_mode and not view_mode %} active{% endif %}">등록</a>
+            <a href="{% if dept_edit %}{% url 'account:department_update' dept_edit.department_id %}{% else %}#{% endif %}" class="dept-form-tab{% if edit_mode %} active{% endif %}">수정</a>
+            <a href="{% if dept_detail %}{% url 'account:department_detail' dept_detail.department_id %}?view=1{% else %}#{% endif %}" class="dept-form-tab{% if view_mode %} active{% endif %}">조회</a>
+          </div>
+          {% if edit_mode and dept_edit %}
+          <!-- 수정 폼 -->
+          <form method="post" action="{% url 'account:department_update' dept_edit.department_id %}">
+            {% csrf_token %}
+            <div style="margin-bottom:8px;">
+              <label>부서명</label><br>
+              <input type="text" name="department_name" value="{{ dept_edit.department_name }}" required style="width:90%;">
+            </div>
+            <div style="margin-bottom:8px;">
+              <label>설명</label><br>
+              <input type="text" name="description" value="{{ dept_edit.description }}" style="width:90%;">
+            </div>
+            <button type="submit" class="btn">수정 저장</button>
+          </form>
+          {% elif view_mode and dept_detail %}
+          <!-- 조회 폼 -->
+          <div style="margin-bottom:8px;">
+            <b>부서명:</b> {{ dept_detail.department_name|default:"-" }}<br>
+            <b>설명:</b> {{ dept_detail.description|default:"-" }}<br>
+            <b>회사:</b> {{ dept_detail.company.company_name|default:"-" }}<br>
+            <b>활성화:</b> {{ dept_detail.is_active|yesno:"Y,N" }}
+          </div>
+          {% else %}
+          <!-- 등록 폼 -->
+          <form method="post" action="{% url 'account:department_create' %}">
+            {% csrf_token %}
+            <div style="margin-bottom:8px;">
+              <label>부서명</label><br>
+              <input type="text" name="department_name" required style="width:90%;">
+            </div>
+            <div style="margin-bottom:8px;">
+              <label>설명</label><br>
+              <input type="text" name="description" style="width:90%;">
+            </div>
+            <button type="submit" class="btn">부서 등록</button>
+          </form>
+          {% endif %}
+          <!-- 부서 선택 드롭다운 (수정/조회용) -->
+          <form method="get" action="{% url 'account:department_detail' 0 %}">
+            <div style="margin-top:12px;">
+              <label>부서 선택</label><br>
+              <select name="department_id" style="width:90%;" onchange="this.form.action=this.form.action.replace('0', this.value); this.form.submit();">
+                <option value="">부서 선택</option>
+                {% for dept in departments %}
+                <option value="{{ dept.department_id }}">{{ dept.department_name }}</option>
+                {% endfor %}
+              </select>
+              <input type="hidden" name="view" value="1">
+            </div>
+          </form>
+        </div>
     </div>
-
-</body>
-</html>
+    <!-- 오른쪽: 유저 관리 -->
+    <div style="flex:2; min-width:340px;">
+        <div class="top-bar" style="display:flex; justify-content:flex-end;">
+            <a href="{% url 'account:user_create' %}" class="btn">+ 신규 유저 등록</a>
+        </div>
+        <style>
+        .dept-form-tab.active { font-weight:bold; color:#222; }
+        </style>
+        <table>
+            <thead>
+                <tr>
+                    <th>사번</th>
+                    <th>이름</th>
+                    <th>부서</th>
+                    <th>직급</th>
+                    <th>입사일</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                    <tr>
+                        <td>{{ u.employee_number }}</td>
+                        <td>{{ u.last_name }}{{ u.first_name }}</td>
+                        <td>{{ u.department.department_name }}</td>
+                        <td>{{ u.position }}</td>
+                        <td>{{ u.join_date|date:"Y-m-d" }}</td>
+                        <td>
+                            <a href="{% url 'account:user_update' u.pk %}" class="edit-link action-link" title="수정" style="margin-right:6px; display:inline-block; vertical-align:middle;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="vertical-align:middle;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L5.232 11.232a2 2 0 010-2.828L9 13z"/></svg>
+                            </a>
+                            <a href="{% url 'account:user_delete' u.pk %}" class="delete-link action-link" title="삭제"
+                               onclick="return confirm('정말 삭제하시겠습니까?');" style="display:inline-block; vertical-align:middle;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="vertical-align:middle;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6">등록된 유저가 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% comment %} JS 제거, 서버 렌더링 방식으로 변경 {% endcomment %}
