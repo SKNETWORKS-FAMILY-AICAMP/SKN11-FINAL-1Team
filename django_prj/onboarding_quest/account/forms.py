@@ -14,47 +14,62 @@ class DepartmentForm(forms.ModelForm):
             'description': forms.TextInput(attrs={'placeholder': '설명', 'class': 'form-control'}),
         }
 
+
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
         fields = [
-            'employee_number',  # 사번이 제일 위
+            'employee_number',
             'first_name',
             'last_name',
             'email',
-            'position',
             'department',
+            'position',
+            'job_part',
+            'role',
+            'tag',
+            'exp',
+            'mentorship_id',
+            'is_admin',
+            'is_active',
         ]
         labels = {
             'employee_number': '사번',
             'first_name': '이름',
             'last_name': '성',
             'email': '이메일',
+            'department': '부서',
             'position': '직급',
-            'department': '부서명',
+            'job_part': '직무',
+            'role': '역할',
+            'tag': '태그',
+            'exp': '경험치',
+            'mentorship_id': '멘토십ID',
+            'is_admin': '관리자여부',
+            'is_active': '활성화',
         }
         widgets = {
             'employee_number': forms.NumberInput(attrs={'placeholder': '사번', 'class': 'form-control'}),
             'first_name': forms.TextInput(attrs={'placeholder': '이름', 'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'placeholder': '성', 'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'placeholder': '이메일', 'class': 'form-control'}),
-            'position': forms.TextInput(attrs={'placeholder': '직급', 'class': 'form-control'}),
+            'company': forms.Select(attrs={'class': 'form-control'}),
             'department': forms.Select(attrs={'class': 'form-control'}),
+            'position': forms.TextInput(attrs={'placeholder': '직급', 'class': 'form-control'}),
+            'job_part': forms.TextInput(attrs={'placeholder': '직무', 'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-control'}),
+            'tag': forms.TextInput(attrs={'placeholder': '태그', 'class': 'form-control'}),
+            'exp': forms.NumberInput(attrs={'placeholder': '경험치', 'class': 'form-control'}),
+            'mentorship_id': forms.NumberInput(attrs={'placeholder': '멘토십ID', 'class': 'form-control'}),
+            'is_admin': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def __init__(self, *args, **kwargs):
-        company = kwargs.pop('company', None)  # views에서 넘겨줄 값
+        company = kwargs.pop('company', None)
         super().__init__(*args, **kwargs)
-
-        # 비밀번호 필드는 폼에서 제거
-        if 'password' in self.fields:
-            self.fields.pop('password')
-
         if company:
-            self.fields['department'].queryset = Department.objects.filter(
-                is_active=True,
-                company=company
-            )
+            self.fields['department'].queryset = Department.objects.filter(is_active=True, company=company)
         else:
             self.fields['department'].queryset = Department.objects.none()
 

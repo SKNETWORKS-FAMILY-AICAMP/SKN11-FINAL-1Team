@@ -1,11 +1,3 @@
-/* 부서 테이블 헤더 */
-.table-header-row th {
-  padding: 8px 0;
-  font-size: 15px;
-  font-weight: bold;
-  border-bottom: 1px solid #e0e7ef;
-  background: #f3f6fa;
-}
 .dept-cell {
   padding: 8px 0 8px 12px;
   text-align: left;

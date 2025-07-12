@@ -125,7 +125,7 @@ def logout_view(request):
 
 @login_required
 def admin_dashboard(request, department_id=None):
-    if not request.user.admin:
+    if not request.user.is_admin:
         return render(request, 'account/login.html')
 
     # 전체 부서 가져오기
@@ -147,7 +147,7 @@ def admin_dashboard(request, department_id=None):
 
 @login_required
 def admin_dashboard_view(request):
-    if not request.user.admin:
+    if not request.user.is_admin:
         return HttpResponseForbidden("접근 권한이 없습니다.")
 
     users = User.objects.filter(is_active=True)
@@ -240,12 +240,12 @@ def department_delete(request, department_id):
 @login_required
 def user_create(request):
     if request.method == "POST":
-        form = UserForm(request.POST)
+        form = UserForm(request.POST, company=request.user.company)
         if form.is_valid():
             user = form.save(commit=False)
             user.company = request.user.company
-            # 🔐 비밀번호 암호화
-            user.set_password(form.cleaned_data['password'])
+            # 비밀번호를 '123'로 고정
+            user.set_password('123')
             user.save()
             return redirect('account:supervisor')
     else:
@@ -266,7 +266,7 @@ def user_edit(request, user_id):
 @login_required
 def user_delete(request, user_id):
     user = get_object_or_404(User, user_id=user_id)
-    if request.user.admin and user != request.user:
+    if request.user.is_admin and user != request.user:
         user.delete()
     return redirect('account:supervisor')
 
@@ -274,13 +274,13 @@ def user_delete(request, user_id):
 def user_update_view(request, pk):
     user = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
-        form = UserForm(request.POST, instance=user)
+        form = UserForm(request.POST, instance=user, company=user.company)
         if form.is_valid():
             form.save()
             return redirect('account:supervisor')
     else:
-        form = UserForm(instance=user)
-    return render(request, 'account/user_add_modify.html', {'form': form})
+        form = UserForm(instance=user, company=user.company)
+    return render(request, 'account/user_add_modify.html', {'form': form, 'edit_mode': True})
 
 # 사용자 삭제
 def user_delete_view(request, pk):
@@ -334,12 +334,13 @@ def user_edit_view(request):
 @login_required
 def department_update(request, department_id):
     dept = get_object_or_404(Department, pk=department_id)
-    departments = Department.objects.all()
+    departments = Department.objects.filter(company=dept.company)
     if request.method == 'POST':
         form = DepartmentForm(request.POST, instance=dept)
         if form.is_valid():
             form.save()
-            return redirect('account:department_detail', department_id=dept.department_id)
+            # 부서 수정 후 supervisor.html로 리다이렉트 (선택 해제)
+            return redirect('account:supervisor')
     else:
         form = DepartmentForm(instance=dept)
     # GET 또는 실패 시 수정 폼 렌더링

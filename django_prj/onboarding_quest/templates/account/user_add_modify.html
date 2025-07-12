@@ -1,214 +1,38 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <title>관리자 계정 추가/수정</title>
-  <style>
-    body {
-      background-color: #f7f9fc;
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 60px 20px;
-    }
+{% extends 'base.html' %}
+{% load static %}
 
-    .form-box {
-      background-color: #ffffff;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 40px 30px;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    }
+{% block title %}계정 추가/수정{% endblock %}
 
-    .form-box h2 {
-      text-align: center;
-      margin-bottom: 32px;
-      color: #333;
-      font-size: 22px;
-    }
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/account/user_add_modify.css' %}">
+    <script src="{% static 'js/account/user_add_modify.js' %}"></script>
+{% endblock %}
 
-    .form-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .form-row label {
-      width: 120px;
-      background-color: #f0f0f0;
-      padding: 12px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 14px;
-      border-radius: 4px;
-      margin-right: 12px;
-      color: #333;
-    }
-
-    .form-row input {
-      flex: 1;
-      padding: 12px;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #fff;
-      box-sizing: border-box;
-    }
-
-    .button-row {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-top: 30px;
-    }
-
-    .button-row button {
-      padding: 10px 22px;
-      font-size: 14px;
-      font-weight: bold;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    .button-row .btn-create {
-      background-color: #4CAF50;
-      color: white;
-    }
-
-    .button-row .btn-create:hover {
-      background-color: #43a047;
-    }
-
-    .button-row .btn-cancel {
-      background-color: #e0e0e0;
-      color: #333;
-    }
-
-    .button-row .btn-cancel:hover {
-      background-color: #c7c7c7;
-    }
-  </style>
-</head>
-<body>
-
+{% block content %}
   <div class="form-box">
-    <h2>관리자 계정 추가/수정</h2>
-
-    <div class="form-row">
-      <label for="name">이름</label>
-      <input type="text" id="name" value="홍길동">
-    </div>
-
-    <div class="form-row">
-      <label for="join_date">입사일</label>
-      <input type="date" id="join_date" value="2025-06-20">
-    </div>
-
-    <div class="form-row">
-      <label for="position">직급</label>
-      <input type="text" id="position" value="사원">
-    </div>
-
-    <div class="form-row">
-      <label for="department">부서</label>
-      <input type="text" id="department" value="개발팀">
-    </div>
-
-    <div class="form-row">
-      <label for="employee_id">사번</label>
-      <input type="text" id="employee_id" value="230101">
-    </div>
-
-    <div class="button-row">
-      <button class="btn-create">생성</button>
-      <button class="btn-cancel" onclick="history.back();">취소</button>
-    </div>
-  </div>
-
-</body><!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>유저 정보 입력</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f4f6f8;
-            padding: 40px;
-        }
-
-        .form-container {
-            background-color: white;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 30px 40px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-radius: 8px;
-        }
-
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 24px;
-        }
-
-        label {
-            display: block;
-            margin-top: 16px;
-            font-weight: bold;
-            color: #444;
-        }
-
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[type="date"],
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-top: 6px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-
-        .errorlist {
-            color: #d9534f;
-            font-size: 13px;
-            margin-top: 4px;
-        }
-
-        button {
-            margin-top: 24px;
-            width: 100%;
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-    </style>
-</head>
-<body>
-<div class="form-container">
-    <h2>유저 정보 입력</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">저장</button>
+    <h2>{% if edit_mode %}사원 정보 수정{% else %}계정 추가/수정{% endif %}</h2>
+    <form method="post" autocomplete="off">
+      {% csrf_token %}
+      {% for field in form.visible_fields %}
+        <div class="form-row">
+          <label for="{{ field.id_for_label }}">
+            {{ field.label }}
+          </label>
+          <div class="form-input-col">
+            {{ field }}
+            {% if field.help_text %}
+              <div class="help-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+              <div class="error-text">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      <div class="button-row">
+        <button class="btn-create" type="submit">{% if edit_mode %}수정{% else %}생성{% endif %}</button>
+        <button class="btn-cancel" type="button" onclick="history.back();">취소</button>
+      </div>
     </form>
-</div>
-</body>
-</html>
-
-</html>
+  </div>
+{% endblock %}
