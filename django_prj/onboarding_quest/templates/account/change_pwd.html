@@ -1,25 +1,61 @@
-{% extends 'base.html' %}
-{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>비밀번호 변경</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
 
-{% block title %}비밀번호 변경{% endblock %}
+        .container {
+            width: 300px;
+            background-color: #e5e5e5;
+            padding: 40px 20px;
+            text-align: center;
+        }
 
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/account/change_pwd.css' %}">
-{% endblock %}
+        .title {
+            background-color: black;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
 
-{% block content %}
-  <div class="container">
-    <div class="title">비밀번호 변경</div>
+        .input-box {
+            background-color: white;
+            border: 1px solid black;
+            padding: 12px;
+            margin-bottom: 25px;
+        }
 
-    <div class="message">비밀번호가 일치하지 않습니다.</div> <!-- 필요시 메시지 출력 -->
+        .button {
+            background-color: black;
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            width: 100px;
+        }
 
-    <form method="POST">
-      {% csrf_token %}
-
-      <input type="password" name="new_password1" placeholder="변경할 비밀번호" required>
-      <input type="password" name="new_password2" placeholder="비밀번호 재입력" required>
-
-      <button class="btn" type="submit">변경</button>
-    </form>
-  </div>
-{% endblock %}
+        .button:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">비밀번호 변경</div>
+        <div class="input-box">변경 할 비밀번호 입력</div>
+        <div class="input-box">비밀번호 재입력</div>
+        <button class="button">변경</button>
+    </div>
+</body>
+</html>

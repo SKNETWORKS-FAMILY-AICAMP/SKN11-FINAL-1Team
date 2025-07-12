@@ -1,85 +1,181 @@
-{% extends 'base.html' %}
-{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>관리자 대시보드</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f4f6f8;
+            margin: 30px;
+        }
 
-{% block title %}관리자 계정관리{% endblock %}
+        h2 {
+            color: #333;
+        }
 
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/account/supervisor.css' %}">
-{% endblock %}
+        .dashboard {
+            display: flex;
+            gap: 30px;
+        }
 
-{% block content %}
-  <h2>관리자 계정관리</h2>
+        .panel {
+            flex: 1;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
 
-  <div class="top-bar">
-    <a href="/account/user_add_modify/" class="add-user-btn">+ 신규 유저 등록</a>
-  </div>
+        .top-bar {
+            margin-bottom: 15px;
+        }
 
-  <table>
-    <thead>
-      <tr>
-        <th>이름</th>
-        <th>입사일</th>
-        <th>직급</th>
-        <th>부서</th>
-        <th>액션</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>김하늘</td>
-        <td>2022-03-15</td>
-        <td>대리</td>
-        <td>개발팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>이준석</td>
-        <td>2023-07-01</td>
-        <td>사원</td>
-        <td>마케팅팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>박소영</td>
-        <td>2021-11-25</td>
-        <td>과장</td>
-        <td>인사팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>정지훈</td>
-        <td>2024-01-10</td>
-        <td>사원</td>
-        <td>디자인팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>최유진</td>
-        <td>2020-05-30</td>
-        <td>차장</td>
-        <td>영업팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-{% endblock %}
+        .btn {
+            text-decoration: none;
+            background-color: #4CAF50;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px 16px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .edit-link {
+            color: #1E90FF;
+            font-weight: bold;
+        }
+
+        .delete-link {
+            color: #FF4500;
+            font-weight: bold;
+        }
+
+        .action-link:hover {
+            text-decoration: underline;
+        }
+
+        .input-inline {
+            padding: 6px;
+            width: 70%;
+            margin-right: 10px;
+        }
+
+        .dept-link {
+            color: #333;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .dept-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>관리자 대시보드</h2>
+
+    <div class="dashboard">
+
+        <!-- 왼쪽: 부서 관리 -->
+        <div class="panel">
+            <div class="top-bar">
+                <form method="post" action="{% url 'department_create' %}" style="display: flex;">
+                    {% csrf_token %}
+                    <input type="text" name="department_name" placeholder="부서명 입력" required class="input-inline">
+                    <button type="submit" class="btn">+ 부서 추가</button>
+                </form>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>부서명</th>
+                        <th>액션</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dept in departments %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'admin_dashboard' dept.department_id %}" class="dept-link">
+                                    {{ dept.department_name }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{% url 'department_delete' dept.pk %}" class="delete-link action-link"
+                                   onclick="return confirm('정말 삭제하시겠습니까?');">삭제</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="2">등록된 부서가 없습니다.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 오른쪽: 유저 관리 -->
+        <div class="panel">
+            <div class="top-bar">
+                <a href="{% url 'user_create' %}" class="btn">+ 신규 유저 등록</a>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>이름</th>
+                        <th>입사일</th>
+                        <th>직급</th>
+                        <th>부서</th>
+                        <th>액션</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                        <tr>
+                            <td>{{ u.last_name }}{{ u.first_name }}</td>
+                            <td>{{ u.join_date|date:"Y-m-d" }}</td>
+                            <td>{{ u.position }}</td>
+                            <td>{{ u.department.department_name }}</td>
+                            <td>
+                                <a href="{% url 'user_update' u.pk %}" class="edit-link action-link">수정</a> |
+                                <a href="{% url 'user_delete' u.pk %}" class="delete-link action-link"
+                                   onclick="return confirm('정말 삭제하시겠습니까?');">삭제</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5">등록된 유저가 없습니다.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+</body>
+</html>

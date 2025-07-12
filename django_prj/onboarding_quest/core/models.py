@@ -1,7 +1,29 @@
 from django.db import models
 from django.core.validators import RegexValidator
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from datetime import date
+from django.conf import settings
 
-# Create your models here.
+
+
+# 유저를 만들면 → 우리가 만든 User 모델 구조에 맞게 DB에 저장
+# 우리가 만든 User 모델에서 유저를 만들 때 쓰는 도우미
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('이메일은 필수입니다.')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)  # 비밀번호 해시
+        user.save()
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('admin', True)
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        return self.create_user(email, password, **extra_fields)
+
 
 class Company(models.Model):
     company_id = models.CharField(
@@ -14,16 +36,26 @@ class Company(models.Model):
             )
         ]
     )
-    company_name = models.CharField(max_length=255, unique=True)
+    company_name = models.CharField(max_length=255)
 
     def __str__(self):
         return self.company_name 
 
 class Department(models.Model):
     department_id = models.AutoField(primary_key=True)
-    department_name = models.CharField(max_length=255, unique=True)
+    department_name = models.CharField(max_length=50)
     description = models.CharField(max_length=255, null=True, blank=True)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="departments"
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('department_name', 'company') 
 
     def __str__(self):
         return self.department_name
@@ -33,25 +65,45 @@ class Mentorship(models.Model):
     mentor_id = models.IntegerField()
     mentee_id = models.IntegerField()
 
-from django.contrib.auth.models import AbstractUser
-
-class User(AbstractUser):
-    ROLE_CHOICES = (
-        ('mentee', 'Mentee'),
-        ('mentor', 'Mentor'),
-        ('admin', 'Admin'),
+class User(AbstractBaseUser, PermissionsMixin):
+    user_id = models.AutoField(primary_key=True)
+    employee_number = models.IntegerField(unique=True,null=True, blank=True)
+    admin = models.BooleanField(default=False)
+    mentorship_id = models.IntegerField(null=True, blank=True)
+    company = models.ForeignKey(  
+        Company,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users'
     )
-    job_part = models.CharField(max_length=100)
-    position = models.IntegerField(null=True, blank=True)
-    join_date = models.DateField(auto_now_add=True, null=True, blank=True)
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+    role = models.BooleanField(default=False)  # mentor=True, mentee=False
+    tag = models.CharField(max_length=255, null=True, blank=True)
     exp = models.IntegerField(default=0)
-    skill = models.CharField(max_length=255, null=True, blank=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
-    mentorship = models.ForeignKey(Mentorship, on_delete=models.CASCADE, null=True, blank=True)
+    join_date = models.DateField(auto_now_add=True, null=True, blank=True)
+    position = models.CharField(max_length=50)
+    job_part = models.CharField(max_length=50)
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=128)
+    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50)
+
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'employee_number']
+
+    objects = CustomUserManager()
 
     def __str__(self):
-        return self.username
+        return f'{self.first_name} {self.last_name}'
+
 
 class ChatSession(models.Model):
     session_id = models.AutoField(primary_key=True)
