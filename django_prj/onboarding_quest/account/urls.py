@@ -4,10 +4,6 @@ from . import views
 app_name = 'account'
 
 urlpatterns = [
-    #로그인/로그아웃/비밀번호 변경
-    path('password-change/', views.password_change, name='password_change'),
-    path('profile/edit/', views.user_edit_view, name='profile_edit'),
-
     # 관리자 페이지
     path('', views.admin_dashboard, name='admin_dashboard'), 
     path('dashboard/', views.admin_dashboard, name='admin_dashboard'),#기본
@@ -29,6 +25,7 @@ urlpatterns = [
     # path('user_add_modify/', views.user_add_modify, name='user_add_modify_direct'),
     # path('change_pwd/', views.change_pwd, name='change_pwd'),
     path('profile/', views.profile, name='profile'),
+    path('password_change/', views.password_change, name='password_change'),
     path('supervisor/', views.supervisor, name='supervisor'),
 
     #사원 생성, 삭제, 수정

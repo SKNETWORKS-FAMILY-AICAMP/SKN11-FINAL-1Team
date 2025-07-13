@@ -8,85 +8,10 @@ from django.contrib.auth import update_session_auth_hash
 from django.http import HttpResponseForbidden
 from core.models import User, Department
 from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm, DepartmentForm
+from django.http import JsonResponse
 
-# 사용자 프로필 뷰 (누락된 함수 추가)
-@login_required
-def profile(request):
-    return render(request, 'account/profile.html', {'user': request.user})
 
-@login_required
-def supervisor(request):
-    company = request.user.company
-    departments = Department.objects.filter(company=company)
-    dept_form = DepartmentForm()
-    # 부서 선택 쿼리 파라미터
-    selected_department_id = request.GET.get('dept')
-    dept_detail = None
-    if selected_department_id:
-        try:
-            dept_detail = Department.objects.get(department_id=selected_department_id, company=company)
-            users = User.objects.filter(company=company, department=dept_detail)
-        except Department.DoesNotExist:
-            users = User.objects.filter(company=company)
-            dept_detail = None
-    else:
-        users = User.objects.filter(company=company)
-    return render(request, 'account/supervisor.html', {
-        'departments': departments,
-        'users': users,
-        'dept_form': dept_form,
-        'selected_department_id': int(selected_department_id) if selected_department_id else None,
-        'dept_detail': dept_detail,
-    })
 
-@login_required
-def department_create(request):
-    company = request.user.company
-    if request.method == 'POST':
-        form = DepartmentForm(request.POST)
-        if form.is_valid():
-            department_name = form.cleaned_data['department_name']
-            description = form.cleaned_data.get('description', '')
-            # 🔁 1. 비활성화된 부서가 있으면 되살림
-            inactive = Department.objects.filter(
-                department_name=department_name,
-                company=company,
-                is_active=False
-            ).first()
-            if inactive:
-                inactive.is_active = True
-                inactive.description = description
-                inactive.save()
-                return redirect('admin_dashboard_filtered', department_id=inactive.department_id)
-            # ✅ 2. 이미 존재하는 활성 부서인지 확인
-            if Department.objects.filter(
-                department_name=department_name,
-                company=company,
-                is_active=True
-            ).exists():
-                error = '이미 존재하는 부서명입니다.'
-            else:
-                # ✅ 3. 새로운 부서 생성
-                dept = form.save(commit=False)
-                dept.company = company
-                dept.is_active = True
-                dept.save()
-                return redirect('admin_dashboard_filtered', department_id=dept.department_id)
-        else:
-            error = '부서명 입력이 올바르지 않습니다.'
-        # 실패 시 다시 대시보드 렌더링
-        departments = Department.objects.filter(company=company)
-        users = User.objects.filter(company=company)
-        selected_department_id = None
-        return render(request, 'account/supervisor.html', {
-            'departments': departments,
-            'users': users,
-            'selected_department_id': selected_department_id,
-            'dept_form': form,
-            'error': error
-        })
-    # GET 요청은 대시보드로 리다이렉트
-    return redirect('admin_dashboard')
 
 
 #region 로그인/로그아웃
@@ -121,7 +46,34 @@ def logout_view(request):
 
 
 
+
+
 #region 관리자
+
+@login_required
+def supervisor(request):
+    company = request.user.company
+    departments = Department.objects.filter(company=company)
+    dept_form = DepartmentForm()
+    # 부서 선택 쿼리 파라미터
+    selected_department_id = request.GET.get('dept')
+    dept_detail = None
+    if selected_department_id:
+        try:
+            dept_detail = Department.objects.get(department_id=selected_department_id, company=company)
+            users = User.objects.filter(company=company, department=dept_detail)
+        except Department.DoesNotExist:
+            users = User.objects.filter(company=company)
+            dept_detail = None
+    else:
+        users = User.objects.filter(company=company)
+    return render(request, 'account/supervisor.html', {
+        'departments': departments,
+        'users': users,
+        'dept_form': dept_form,
+        'selected_department_id': int(selected_department_id) if selected_department_id else None,
+        'dept_detail': dept_detail,
+    })
 
 @login_required
 def admin_dashboard(request, department_id=None):
@@ -157,7 +109,7 @@ def admin_dashboard_view(request):
 
 
 
-#region > 부서 생성/삭제
+#region > 부서 생성/조회/수정/삭제
 @login_required
 def department_create(request):
     if request.method == 'POST':
@@ -226,6 +178,28 @@ def department_detail(request, department_id):
         'view_mode': request.GET.get('view', None),
     })
 
+# 부서 수정
+@login_required
+def department_update(request, department_id):
+    dept = get_object_or_404(Department, pk=department_id)
+    departments = Department.objects.filter(company=dept.company)
+    if request.method == 'POST':
+        form = DepartmentForm(request.POST, instance=dept)
+        if form.is_valid():
+            form.save()
+            # 부서 수정 후 supervisor.html로 리다이렉트 (선택 해제)
+            return redirect('account:supervisor')
+    else:
+        form = DepartmentForm(instance=dept)
+    # GET 또는 실패 시 수정 폼 렌더링
+    return render(request, 'account/supervisor.html', {
+        'departments': departments,
+        'dept_edit': dept,
+        'dept_form': form,
+        'selected_department_id': dept.department_id,
+        'edit_mode': True,
+    })
+
 @login_required
 def department_delete(request, department_id):
     department = get_object_or_404(Department, pk=department_id, company=request.user.company)
@@ -256,11 +230,22 @@ def user_create(request):
 @login_required
 def user_edit(request, user_id):
     user = get_object_or_404(User, id=user_id)
-    form = UserForm(request.POST or None, instance=user)
-    if form.is_valid():
-        form.save()
-        return redirect('account:supervisor')
-    return render(request, 'account/profile.html', {'form': form})
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=user, company=user.company)
+        if form.is_valid():
+            changed = False
+            for field in form.changed_data:
+                changed = True
+                break
+            if changed:
+                form.save()
+                messages.success(request, '프로필 정보가 저장되었습니다.')
+            else:
+                messages.info(request, '변경된 내용이 없습니다.')
+            return redirect('account:user_edit', user_id=user.id)
+    else:
+        form = UserForm(instance=user, company=user.company)
+    return render(request, 'account/profile.html', {'form': form, 'user': user})
 
 # 사용자 삭제
 @login_required
@@ -295,59 +280,41 @@ def user_delete_view(request, pk):
 
 
 
+
+
 #region 사용자
+
+# 사용자 프로필 뷰 (누락된 함수 추가)
+@login_required
+def profile(request):
+    return render(request, 'account/profile.html', {'user': request.user})
+
+# 비밀번호 변경
 @login_required
 def password_change(request):
+    from .forms import CustomPasswordChangeForm
     if request.method == 'POST':
-        form = CustomPasswordChangeForm(user=request.user, data=request.POST)
+        form = CustomPasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             new_password = form.cleaned_data['new_password']
-
-            # db에 암호화 저장하는 것
             request.user.set_password(new_password)
             request.user.save()
-            update_session_auth_hash(request, request.user)  # 로그인 유지
-            messages.success(request, '비밀번호가 성공적으로 변경되었습니다.')
-            return redirect('account:profile')  # 또는 너의 메인 페이지
+            logout(request)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'redirect_url': '/account/login/'})
+            else:
+                messages.success(request, '비밀번호가 성공적으로 변경되었습니다. 다시 로그인해 주세요.')
+                return redirect('account:login')
+        else:
+            error_msgs = [str(e) for errs in form.errors.values() for e in errs]
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': error_msgs})
+            else:
+                for error in error_msgs:
+                    messages.error(request, error)
+                return redirect('account:profile')
     else:
-        form = CustomPasswordChangeForm(user=request.user)
-    
-    return render(request, 'account/change_pwd.html', {'form': form})
+        return redirect('account:profile')
+# 비밀번호 변경
+
 #endregion 사용자
-
-
-
-
-
-@login_required
-def user_edit_view(request):
-    user = request.user
-    if request.method == 'POST':
-        form = UserEditForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            return redirect('account:profile')
-    else:
-        form = UserEditForm(instance=user)
-    return render(request, 'account/profile_edit.html', {'form': form})
-
-@login_required
-def department_update(request, department_id):
-    dept = get_object_or_404(Department, pk=department_id)
-    departments = Department.objects.filter(company=dept.company)
-    if request.method == 'POST':
-        form = DepartmentForm(request.POST, instance=dept)
-        if form.is_valid():
-            form.save()
-            # 부서 수정 후 supervisor.html로 리다이렉트 (선택 해제)
-            return redirect('account:supervisor')
-    else:
-        form = DepartmentForm(instance=dept)
-    # GET 또는 실패 시 수정 폼 렌더링
-    return render(request, 'account/supervisor.html', {
-        'departments': departments,
-        'dept_edit': dept,
-        'dept_form': form,
-        'selected_department_id': dept.department_id,
-        'edit_mode': True,
-    })

@@ -1,161 +1,129 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <title>프로필 수정</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f9f9f9;
-      padding: 50px;
-    }
+{% extends 'base.html' %}
 
-    .form-container {
-      max-width: 600px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
+{% block content %}
+<div class="form-container mx-auto max-w-xl bg-white p-8 rounded-xl shadow-md mt-8">
+  <h2 class="text-2xl font-bold text-center mb-8">프로필 수정</h2>
 
-    h2 {
-      text-align: center;
-      margin-bottom: 30px;
-    }
+  <!-- ✅ 메시지 출력 부분 -->
+  {% if messages %}
+    <div class="messages text-center mb-4 text-green-600 font-bold">
+      {% for message in messages %}
+        {{ message }}
+      {% endfor %}
+    </div>
+  {% endif %}
 
-    .form-group {
-      margin-bottom: 20px;
-    }
+  <form method="post">
+    {% csrf_token %}
 
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">성</label>
+      <input type="text" value="{{ user.last_name }}" readonly class="w-full bg-gray-100 border border-gray-300 p-2 rounded" />
+    </div>
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">이름</label>
+      <input type="text" value="{{ user.first_name }}" readonly class="w-full bg-gray-100 border border-gray-300 p-2 rounded" />
+    </div>
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">이메일</label>
+      <input type="email" value="{{ user.email }}" readonly class="w-full bg-gray-100 border border-gray-300 p-2 rounded" />
+    </div>
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">부서</label>
+      <div class="w-full bg-gray-100 border border-gray-300 p-2 rounded">{{ user.department }}</div>
+    </div>
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">직급</label>
+      <div class="w-full bg-gray-100 border border-gray-300 p-2 rounded">{{ user.position }}</div>
+    </div>
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">업무 파트</label>
+      <div class="w-full bg-gray-100 border border-gray-300 p-2 rounded">{{ user.job_part }}</div>
+    </div>
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">회사</label>
+      <div class="w-full bg-gray-100 border border-gray-300 p-2 rounded">{{ user.company }}</div>
+    </div>
+    <div class="form-group mb-4">
+      <label class="block mb-1 font-bold">역할</label>
+      <div class="w-full bg-gray-100 border border-gray-300 p-2 rounded">{{ user.role|yesno:"멘토,멘티" }}</div>
+    </div>
 
-    input[readonly] {
-      background-color: #eee;
-      border: 1px solid #ccc;
-      padding: 10px;
-      border-radius: 6px;
-      width: 100%;
-    }
+    <div class="btn-container flex justify-end gap-3 mt-8">
+      <button type="button" id="openPasswordModal" class="btn-link bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">비밀번호 변경</button>
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">저장</button>
+    </div>
+  </form>
+</div>
 
-    .readonly {
-      background-color: #eee;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-
-    .btn-container {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 30px;
-    }
-
-    .btn-link, button {
-      padding: 10px 16px;
-      font-size: 14px;
-      font-weight: bold;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-    }
-
-    .btn-link {
-      background-color: #6c757d;
-      color: white;
-    }
-
-    .btn-link:hover {
-      background-color: #5a6268;
-    }
-
-    button {
-      background-color: #007bff;
-      color: white;
-    }
-
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    .messages {
-      text-align: center;
-      margin-bottom: 20px;
-      color: green;
-      font-weight: bold;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="form-container">
-    <h2>프로필 수정</h2>
-
-    <!-- ✅ 메시지 출력 부분 -->
-    {% if messages %}
-      <div class="messages">
-        {% for message in messages %}
-          {{ message }}
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    <form method="post">
+<!-- 비밀번호 변경 모달 -->
+<div id="passwordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+  <div class="bg-white rounded-xl shadow-lg p-8 w-full max-w-md relative">
+    <button id="closePasswordModal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+    <h3 class="text-xl font-bold mb-6 text-center">비밀번호 변경</h3>
+    <form id="passwordChangeForm" method="post" autocomplete="off">
       {% csrf_token %}
-
-      <div class="form-group">
-        <label>이름 (성)</label>
-        <input type="text" value="{{ user.last_name }}" readonly>
+      <div class="mb-4">
+        <label class="block mb-1 font-bold">현재 비밀번호</label>
+        <input type="password" name="current_password" class="w-full border border-gray-300 p-2 rounded" required />
       </div>
-
-      <div class="form-group">
-        <label>이름 (이름)</label>
-        <input type="text" value="{{ user.first_name }}" readonly>
+      <div class="mb-4">
+        <label class="block mb-1 font-bold">새 비밀번호</label>
+        <input type="password" name="new_password" class="w-full border border-gray-300 p-2 rounded" required />
       </div>
-
-      <div class="form-group">
-        <label>이메일</label>
-        <input type="email" value="{{ user.email }}" readonly>
+      <div class="mb-4">
+        <label class="block mb-1 font-bold">새 비밀번호 확인</label>
+        <input type="password" name="confirm_password" class="w-full border border-gray-300 p-2 rounded" required />
       </div>
-
-      <div class="form-group">
-        <label>부서</label>
-        <div class="readonly">{{ user.department }}</div>
-      </div>
-
-      <div class="form-group">
-        <label>직급</label>
-        <div class="readonly">{{ user.position }}</div>
-      </div>
-
-      <div class="form-group">
-        <label>업무 파트</label>
-        <div class="readonly">{{ user.job_part }}</div>
-      </div>
-
-      <div class="form-group">
-        <label>회사</label>
-        <div class="readonly">{{ user.company }}</div>
-      </div>
-
-      <div class="form-group">
-        <label>역할</label>
-        <div class="readonly">{{ user.role|yesno:"멘토,멘티" }}</div>
-      </div>
-
-      <div class="btn-container">
-        <a href="{% url 'password_change' %}" class="btn-link">비밀번호 변경</a>
-        <button type="submit">저장</button>
+      <div id="passwordError" class="text-red-600 text-sm mb-2"></div>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="cancelPasswordModal" class="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">취소</button>
+        <button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">변경</button>
       </div>
     </form>
   </div>
+</div>
 
-</body>
-</html>
+<script>
+// 모달 열기/닫기
+document.getElementById('openPasswordModal').onclick = function() {
+  document.getElementById('passwordModal').classList.remove('hidden');
+  document.getElementById('passwordError').textContent = '';
+  document.getElementById('passwordChangeForm').reset();
+};
+document.getElementById('closePasswordModal').onclick = function() {
+  document.getElementById('passwordModal').classList.add('hidden');
+};
+document.getElementById('cancelPasswordModal').onclick = function() {
+  document.getElementById('passwordModal').classList.add('hidden');
+};
+
+// 비밀번호 변경 Ajax
+document.getElementById('passwordChangeForm').onsubmit = async function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+  const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+  const errorDiv = document.getElementById('passwordError');
+  errorDiv.textContent = '';
+  try {
+    const response = await fetch("{% url 'account:password_change' %}", {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: data
+    });
+    const result = await response.json();
+    if (result.success) {
+      window.location.href = result.redirect_url;
+    } else {
+      errorDiv.textContent = (result.errors && result.errors.length) ? result.errors.join('\n') : '비밀번호 변경에 실패했습니다.';
+    }
+  } catch (err) {
+    errorDiv.textContent = '서버 오류가 발생했습니다.';
+  }
+};
+</script>
+{% endblock %}
