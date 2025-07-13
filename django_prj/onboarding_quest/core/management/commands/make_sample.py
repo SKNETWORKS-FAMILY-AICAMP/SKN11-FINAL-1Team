@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from core.models import (
-    Company, Department, User, Mentorship, Template, TaskManage,
+    Company, Department, User, Mentorship, Curriculum, TaskManage,
     TaskAssign, Subtask, Memo, ChatSession, ChatMessage, Docs
 )
 from django.contrib.auth.hashers import make_password
@@ -8,8 +8,10 @@ from datetime import date, timedelta
 from random import sample, randint
 
 
+
+
+
 class Command(BaseCommand):
-    help = '샘플 사용자 데이터를 데이터베이스에 채웁니다.'
 
     def handle(self, *args, **options):
 
@@ -134,54 +136,6 @@ class Command(BaseCommand):
             )
             mentorships[dept_name] = mentorship
 
-        # 6. 템플릿 2개 (개발자 온보딩, 영업 온보딩)
-        self.stdout.write('6. 템플릿(커리큘럼) 생성...')
-        template_dev, _ = Template.objects.get_or_create(
-            template_title='개발자 온보딩',
-            department=departments['개발'],
-            defaults={'template_description': '개발자 온보딩 커리큘럼'}
-        )
-        template_sales, _ = Template.objects.get_or_create(
-            template_title='영업 온보딩',
-            department=departments['영업'],
-            defaults={'template_description': '영업 온보딩 커리큘럼'}
-        )
-
-        # 6-1. 템플릿별 TaskManage(커리큘럼 단계) 샘플 생성
-        self.stdout.write('6-1. 템플릿별 TaskManage(커리큘럼 단계) 생성...')
-        from datetime import date, timedelta
-        taskmanages = {}
-        taskmanages['개발'] = []
-        for i, title in enumerate(['Git 사용법', 'Python 기초', 'Django 실습'], 1):
-            tm, _ = TaskManage.objects.get_or_create(
-                title=title,
-                template=template_dev,
-                defaults={
-                    'start_date': date.today() + timedelta(days=i-1),
-                    'end_date': date.today() + timedelta(days=i),
-                    'difficulty': '중',
-                    'description': f'{title} 학습',
-                    'exp': 100 * i,
-                    'order': i
-                }
-            )
-            taskmanages['개발'].append(tm)
-        taskmanages['영업'] = []
-        for i, title in enumerate(['고객사 DB관리', '영업 스크립트 작성', '계약 프로세스'], 1):
-            tm, _ = TaskManage.objects.get_or_create(
-                title=title,
-                template=template_sales,
-                defaults={
-                    'start_date': date.today() + timedelta(days=i-1),
-                    'end_date': date.today() + timedelta(days=i),
-                    'difficulty': '중',
-                    'description': f'{title} 실습',
-                    'exp': 100 * i,
-                    'order': i
-                }
-            )
-            taskmanages['영업'].append(tm)
-
         # 7. Docs (공통, 개발, 영업)
         self.stdout.write('7. 부서별 문서(Docs) 생성...')
         Docs.objects.get_or_create(
@@ -212,26 +166,177 @@ class Command(BaseCommand):
             }
         )
 
-        # 8. 멘토쉽의 멘티 직무에 맞는 TaskAssign 샘플 생성 (멘토-멘티 1쌍씩)
-        self.stdout.write('8. 멘토쉽-멘티별 TaskAssign(실습과제) 생성...')
-        for dept_name, mentorship in mentorships.items():
-            mentee = users_by_dept[dept_name]['mentees'][0]
-            mentor = users_by_dept[dept_name]['mentors'][0]
-            # 해당 부서 템플릿의 TaskManage 목록
-            tms = taskmanages.get(dept_name, [])
-            for tm in tms:
-                TaskAssign.objects.get_or_create(
-                    title=f"{tm.title} 실습과제",
-                    mentorship=mentorship,
-                    user=mentee,
+        # 8. 멘토쉽의 멘티 직무에 맞는 Curriculum 및 TaskManage 샘플 생성
+        self.stdout.write('8. 공용/부서별 온보딩 커리큘럼(Curriculum) 및 세부 Task(TaskManage) 생성...')
+        curriculum_data = [
+            {
+                'title': '조직문화 적응하기',
+                'desc': '신입사원을 위한 회사 조직문화 및 기본 소양 온보딩',
+                'common': True,
+                'department': None,
+                'week_schedule': '1주차: 회사 소개 및 조직 구조 이해\n2주차: 사내 규정 및 동료 소개\n3주차: 커뮤니케이션 채널 가입 및 사내 이벤트\n4주차: 복지제도 및 FAQ 안내\n5주차: 사내 시설 투어 및 보안교육\n6주차: 시스템 계정 발급 및 입사서류 제출\n7주차: 멘토/멘티 매칭 및 온보딩 피드백 제출',
+                'tasks': [
+                    (1, '사내 조직도 열람', '회사 조직구성 파악'),
+                    (1, '오리엔테이션 시청', '회사 소개 영상 시청'),
+                    (2, '사내 규정 숙지', '근태, 복장, 보안 등 규정 확인'),
+                    (2, '동료 소개받기', '부서 동료 및 타부서 주요 인물 소개'),
+                    (3, '사내 커뮤니케이션 채널 가입', '메신저, 그룹웨어 등 가입'),
+                    (4, '사내 이벤트 참여', '사내 행사, 동호회 등 참여'),
+                    (5, '사내 복지제도 안내', '복지제도 및 지원제도 확인'),
+                    (6, '사내 FAQ 확인', '자주 묻는 질문 확인'),
+                    (7, '사내 시설 투어', '사무실, 회의실, 휴게공간 등 투어'),
+                    (8, '보안교육 이수', '정보보안, 개인정보보호 교육'),
+                    (9, '사내 시스템 계정 발급', '메일, 인트라넷 등 계정 발급'),
+                    (10, '입사서류 제출', '입사 관련 서류 제출'),
+                    (11, '멘토/멘티 매칭', '멘토링 프로그램 안내 및 매칭'),
+                    (12, '온보딩 피드백 제출', '온보딩 과정 소감 및 개선의견 제출'),
+                ]
+            },
+            {
+                'title': '개발부서 온보딩',
+                'desc': '개발팀 신입사원을 위한 실무 온보딩',
+                'common': False,
+                'department': '개발',
+                'week_schedule': '1주차: 개발환경 세팅 및 코드리뷰 참여\n2주차: 개발가이드 숙지 및 빌드/배포 실습\n3주차: API 문서 활용 및 테스트 코드 작성\n4주차: 이슈트래커 사용법 및 개발팀 회의 참석\n5주차: 신규 기능 구현 및 배포 프로세스 이해\n6주차: 기술부채 관리 및 성장계획 수립',
+                'tasks': [
+                    (1, '개발환경 세팅', 'IDE, Git, 패키지 설치'),
+                    (1, '코드리뷰 참여하기', '팀 코드리뷰 프로세스 체험'),
+                    (2, '사내 개발가이드 숙지', '코딩 컨벤션, 브랜치 전략 등'),
+                    (2, '프로젝트 빌드/배포 실습', '로컬 빌드, 테스트, 배포'),
+                    (3, 'API 문서 활용', 'Swagger 등 API 문서 확인'),
+                    (3, '테스트 코드 작성', '단위테스트, 통합테스트 실습'),
+                    (4, '이슈트래커 사용법', 'Jira, GitHub Issues 등 실습'),
+                    (4, '개발팀 회의 참석', '정기/비정기 회의 참여'),
+                    (5, '프로젝트 신규 기능 구현', '작은 기능 직접 구현'),
+                    (5, '배포 프로세스 이해', 'CI/CD 파이프라인 체험'),
+                    (6, '기술부채 관리', '리팩토링, 문서화 실습'),
+                    (6, '개발자 성장계획 수립', '멘토와 성장목표 설정'),
+                ]
+            },
+            {
+                'title': '영업팀 온보딩',
+                'desc': '영업팀 신입사원을 위한 실무 온보딩',
+                'common': False,
+                'department': '영업',
+                'week_schedule': '1주차: 고객사 DB 열람 및 영업 스크립트 학습\n2주차: 계약 프로세스 실습 및 고객 미팅 동행\n3주차: 경쟁사 분석 및 실적 보고 작성\n4주차: 프로모션 정책 이해 및 회의 참석\n5주차: 신규 고객사 발굴 및 불만 처리\n6주차: 계약서 작성 및 영업 목표 설정',
+                'tasks': [
+                    (1, '고객사 DB 열람', 'CRM 시스템 사용법 익히기'),
+                    (1, '영업 스크립트 학습', '기본/상황별 스크립트 숙지'),
+                    (2, '계약 프로세스 실습', '견적, 계약, 청구 흐름 실습'),
+                    (2, '고객 미팅 동행', '선임과 미팅 동행 실습'),
+                    (3, '경쟁사 분석', '경쟁사 자료 조사 및 발표'),
+                    (3, '실적 보고 작성', '주간/월간 실적 보고서 작성'),
+                    (4, '프로모션 정책 이해', '프로모션/이벤트 정책 숙지'),
+                    (4, '영업팀 회의 참석', '정기 회의 참여 및 발표'),
+                    (5, '신규 고객사 발굴', '리스트업 및 콜드콜 실습'),
+                    (5, '고객 불만 처리', 'CS 프로세스 실습'),
+                    (6, '계약서 양식 작성', '표준 계약서 작성 실습'),
+                    (6, '영업 목표 설정', '멘토와 목표 설정 및 피드백'),
+                ]
+            },
+            {
+                'title': '인사팀 온보딩',
+                'desc': 'HR팀 신입사원을 위한 실무 온보딩',
+                'common': False,
+                'department': 'HR',
+                'week_schedule': '1주차: 인사관리 시스템 실습 및 규정 관리\n2주차: 복리후생 안내 및 평가/보상 프로세스 이해\n3주차: 교육 프로그램 운영 및 채용 프로세스 실습\n4주차: 인사발령 공지 및 회의 참석\n5주차: 사내 이벤트 기획 및 근태 기록 관리\n6주차: 퇴직 절차 안내 및 성장계획 수립',
+                'tasks': [
+                    (1, '인사관리 시스템 실습', '입/퇴사, 휴가, 근태 관리 실습'),
+                    (1, '사내 규정 관리', '규정 개정/공지 실습'),
+                    (2, '복리후생 안내', '복지제도 안내 및 질의응답'),
+                    (2, '평가/보상 프로세스 이해', '평가, 연봉, 보상 흐름 숙지'),
+                    (3, '교육 프로그램 운영', '사내/외 교육 기획 및 운영'),
+                    (3, '채용 프로세스 실습', '공고, 서류, 면접, 입사 실습'),
+                    (4, '인사발령 공지', '발령 공지 및 시스템 반영'),
+                    (4, 'HR팀 회의 참석', '정기 회의 참여 및 발표'),
+                    (5, '사내 이벤트 기획', '행사, 워크샵 등 기획 실습'),
+                    (5, '근태 기록 관리', '근태 시스템 실습'),
+                    (6, '퇴직 절차 안내', '퇴직 프로세스 실습'),
+                    (6, 'HR 성장계획 수립', '멘토와 성장목표 설정'),
+                ]
+            },
+            {
+                'title': '신입사원 기본 온보딩',
+                'desc': '모든 신입사원이 공통으로 이수해야 하는 기본 온보딩',
+                'common': True,
+                'department': None,
+                'week_schedule': '1주차: 입사 오리엔테이션 및 보안/윤리 교육\n2주차: 시스템 계정 세팅 및 시설 안내\n3주차: 멘토링 프로그램 안내 및 커뮤니티 가입\n4주차: 업무 매뉴얼 숙지 및 FAQ 확인\n5주차: 입사서류 제출 및 온보딩 피드백 제출\n6주차: 사내 이벤트 참여 및 기본 업무 실습',
+                'tasks': [
+                    (1, '입사 오리엔테이션', '회사 및 부서 소개'),
+                    (1, '보안/윤리 교육', '정보보안, 윤리교육 이수'),
+                    (2, '사내 시스템 계정 세팅', '메일, 그룹웨어 등 계정 세팅'),
+                    (2, '사내 시설 안내', '사무실, 회의실, 복지시설 안내'),
+                    (3, '멘토링 프로그램 안내', '멘토/멘티 제도 소개'),
+                    (3, '사내 커뮤니티 가입', '동호회, 사내 커뮤니티 가입'),
+                    (4, '업무 매뉴얼 숙지', '업무 프로세스, 매뉴얼 확인'),
+                    (4, '사내 FAQ 확인', '자주 묻는 질문 확인'),
+                    (5, '입사서류 제출', '입사 관련 서류 제출'),
+                    (5, '온보딩 피드백 제출', '온보딩 과정 소감 및 개선의견 제출'),
+                    (6, '사내 이벤트 참여', '사내 행사, 워크샵 등 참여'),
+                    (6, '기본 업무 실습', '간단한 실무 과제 수행'),
+                ]
+            },
+        ]
+        dept_map = {d.department_name: d for d in Department.objects.all()}
+        for c in curriculum_data:
+            # 총 주차 수 계산
+            total_weeks = max([t[0] for t in c['tasks']]) if c['tasks'] else 0
+            # 공용 커리큘럼은 HR 부서로만 할당
+            department_obj = None
+            if c['department']:
+                department_obj = dept_map.get(c['department'])
+            elif c['common']:
+                department_obj = dept_map.get('HR')
+            curriculum, _ = Curriculum.objects.get_or_create(
+                curriculum_title=c['title'],
+                defaults={
+                    'curriculum_description': c['desc'],
+                    'common': c['common'],
+                    'department': department_obj,
+                    'total_weeks': total_weeks,
+                    'week_schedule': c.get('week_schedule', None)
+                }
+            )
+            # 주차별 세부 Task 생성 (주차별 온보딩 일정 참고)
+            for idx, (week, t_title, t_desc) in enumerate(c['tasks'], start=1):
+                # 주차별 온보딩 일정에서 해당 주차 설명 추출
+                week_schedule = c.get('week_schedule', '')
+                week_intro = None
+                for line in week_schedule.split('\n'):
+                    if line.startswith(f'{week}주차:'):
+                        week_intro = line.split(':', 1)[1].strip()
+                        break
+                # 가이드라인
+                guideline = None
+                if '코드' in t_title or '실습' in t_title or '작성' in t_title:
+                    guideline = '실제 예시를 참고하여 작성해보세요.'
+                elif '숙지' in t_title or '확인' in t_title:
+                    guideline = '관련 문서를 꼼꼼히 읽고 이해하세요.'
+                elif '참여' in t_title or '회의' in t_title:
+                    guideline = '팀원과 적극적으로 소통하세요.'
+                elif '제출' in t_title:
+                    guideline = '마감일을 준수하세요.'
+                elif '이해' in t_title or '학습' in t_title:
+                    guideline = '핵심 개념을 정리해보세요.'
+                # 과제 기간: 주차별 7일, 시작일은 오늘 기준 + (week-1)*7
+                start_date = date.today() + timedelta(days=(week-1)*7)
+                period = start_date + timedelta(days=6)
+                # 우선순위: 랜덤(상/중/하)
+                priority = random.choice(['상', '중', '하'])
+                # 세부 Task 설명에 주차별 온보딩 일정 내용 추가
+                task_desc = t_desc
+                if week_intro:
+                    task_desc = f'[{week_intro}] {t_desc}'
+                TaskManage.objects.get_or_create(
+                    curriculum_id=curriculum,
+                    title=t_title,
+                    week=week,
                     defaults={
-                        'start_date': tm.start_date,
-                        'end_date': tm.end_date,
-                        'status': 1,
-                        'difficulty': tm.difficulty,
-                        'description': tm.description,
-                        'exp': tm.exp,
-                        'order': tm.order
+                        'description': task_desc,
+                        'guideline': guideline,
+                        'order': idx,
+                        'period': period,
+                        'priority': priority
                     }
                 )
 
