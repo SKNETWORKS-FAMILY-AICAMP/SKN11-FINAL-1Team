@@ -17,17 +17,20 @@
     </div>
     <div class="template-list" id="template-list">
       {% for curriculum in curriculums %}
-        <div class="template-item {% if forloop.first %}selected{% endif %}"
-             data-id="{{ curriculum.curriculum_id }}"
-             data-common="{{ curriculum.common }}"
-             data-title="{{ curriculum.curriculum_title|escapejs }}"
-             data-desc="{{ curriculum.curriculum_description|default:''|escapejs }}"
-             data-weeks="{{ curriculum.week_schedule|default:''|escapejs }}">
-          {% if curriculum.common %}
-            <span class="common-badge">[공용]</span>
-          {% endif %}
-          {{ curriculum.curriculum_title }}
-        </div>
+        {% with cid=curriculum.curriculum_id|default:curriculum.pk %}
+          <div class="template-item {% if forloop.first %}selected{% endif %}"
+               data-id="{{ cid }}"
+               data-curriculum_id="{{ cid }}"
+               data-common="{{ curriculum.common }}"
+               data-title="{{ curriculum.curriculum_title|escapejs }}"
+               data-desc="{{ curriculum.curriculum_description|default:''|escapejs }}"
+               data-weeks="{{ curriculum.week_schedule|default:''|escapejs }}">
+            {% if curriculum.common %}
+              <span class="common-badge">[공용]</span>
+            {% endif %}
+            {{ curriculum.curriculum_title }}
+          </div>
+        {% endwith %}
       {% empty %}
         <div class="no-curricula">표시할 커리큘럼이 없습니다.</div>
       {% endfor %}

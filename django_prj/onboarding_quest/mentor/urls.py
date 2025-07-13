@@ -11,4 +11,5 @@ urlpatterns = [
     path('clone_template/<int:curriculum_id>/', views.clone_template, name='clone_template'),
     path('delete_template/<int:curriculum_id>/', views.delete_template, name='delete_template'),
     path('edit_template/<int:curriculum_id>/', views.edit_template, name='edit_template'),
+    path('api/save_curriculum/', views.save_curriculum, name='save_curriculum'),
 ]

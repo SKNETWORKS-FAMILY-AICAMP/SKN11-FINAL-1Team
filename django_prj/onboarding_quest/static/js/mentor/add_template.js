@@ -136,20 +136,6 @@ document.addEventListener('DOMContentLoaded', function() {
     taskList.style.display = 'flex';
   }
 
-  // 예시 Task (edit_mode 아닐 때)
-  function renderExampleTasks() {
-    const exampleTasks = [
-      { week: 1, title: '오리엔테이션 영상 시청', guideline: '영상 시청 후 소감 작성', description: '회사 문화 이해', period: '2025-07-15', priority: '하' },
-      { week: 1, title: '조직문화 pdf 가이드 읽기', guideline: '가이드 숙지', description: '조직문화 파악', period: '2025-07-16', priority: '중' },
-      { week: 2, title: '사내 조직도 열람', guideline: '', description: '조직 구조 파악', period: '2025-07-17', priority: '하' },
-      { week: 2, title: '팀원과 소통하기', guideline: '팀원 3명과 대화', description: '팀워크 증진', period: '2025-07-18', priority: '상' },
-      { week: 3, title: '관련 일지 작성하기', guideline: '', description: '일지 작성', period: '2025-07-19', priority: '중' },
-      { week: 3, title: '팀원들과 커피챗', guideline: '', description: '비공식 소통', period: '2025-07-20', priority: '상' },
-      { week: 4, title: 'Weekly 미팅', guideline: '주간 회의 참석', description: '업무 공유', period: '2025-07-21', priority: '중' },
-    ];
-    renderTasksByWeek(exampleTasks);
-  }
-
   if (window.edit_mode && window.curriculum) {
     document.querySelector('input.tasklist-search').value = window.curriculum.curriculum_title || '';
     document.getElementById('curriculum-desc').value = window.curriculum.curriculum_description || '';
@@ -163,7 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initTaskListDnD();
   } 
   else {
-    renderExampleTasks();
     initTaskListDnD();
   }
 });

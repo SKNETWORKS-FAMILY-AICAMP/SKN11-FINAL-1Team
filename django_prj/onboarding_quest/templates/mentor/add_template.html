@@ -143,6 +143,8 @@
     border-radius: 0 16px 16px 0;
     padding: 36px 48px 32px 48px;
     min-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     display: flex;
     flex-direction: column;
@@ -169,6 +171,11 @@
     background: #fafbfc;
     resize: none;
   }
+  /* 모달 우선순위 select 텍스트 명확하게 */
+  select.template-form-textarea {
+    color: #222;
+    background: #fafbfc;
+  }
   .template-form-actions {
     display: flex;
     gap: 18px;
@@ -188,53 +195,113 @@
   }
   .template-btn:hover { background: #ffe066; }
 </style>
+  <style>
+    /* 좌측 하단 고정 버튼 스타일 */
+    .fixed-bottom-actions {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      width: 100vw;
+      background: rgba(255,255,255,0.98);
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+      display: flex;
+      gap: 18px;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 18px 48px 18px 48px;
+      z-index: 10000;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
 <div class="template-container" style="padding:0; background:none;">
   <!-- 전체를 우측 2단 구조로만 구성 -->
-  <div class="template-right" style="width:100%; min-width:0; border-radius:16px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:36px 48px 32px 48px; display:flex; flex-direction:row; gap:50px;">
-    <!-- 좌측: 커리큘럼 입력폼+description -->
-    <div style="flex:1; min-width:340px; max-width:520px; display:flex; flex-direction:column;">
-      <form class="template-form" id="create-form">
+  <div class="template-left">
+    <form class="template-form" id="create-form">
       <!-- 공용 커리큘럼 여부 표시 -->
       <div class="public-curriculum-indicator">
         <input type="checkbox" id="is-public-curriculum">
         <label for="is-public-curriculum">공용 커리큘럼</label>
       </div>
-        <div class="template-form-row">
-          <label class="template-form-label">커리큘럼 제목</label>
-          <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력">
-        </div>
-        <div class="template-form-row">
-          <label class="template-form-label">커리큘럼 설명</label>
-          <textarea class="template-form-textarea" id="curriculum-desc" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
+      <div class="template-form-row">
+        <label class="template-form-label">커리큘럼 제목</label>
+        <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력">
+      </div>
+      <div class="template-form-row">
+        <label class="template-form-label">커리큘럼 설명</label>
+        <textarea class="template-form-textarea" id="curriculum-desc" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
+        <div style="display: flex; justify-content: flex-end;">
           <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;">커리큘럼 초안 생성</button>
         </div>
-        <div class="template-form-row" id="draft-section">
-          <label class="template-form-label">주차별 커리큘럼 일정</label>
-          <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;" placeholder="예시:
+      </div>
+      <div class="template-form-row" id="draft-section">
+        <label class="template-form-label">주차별 커리큘럼 일정</label>
+        <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;" placeholder="예시:
 # week1 조직문화 이해 및 관찰
 # week2 조직문화 실천 체험
 # week3 조직문화 실천 체험 발표 및 피드백
 # week4 팀워크 향상 프로그램 참여
-...
+# ...
 
 위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
+        <div style="display: flex; justify-content: flex-end;">
           <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;">세부 Task 생성</button>
         </div>
-      </form>
-    </div>
-    <!-- 우측: 세부 task/추가 버튼 -->
-    <div style="flex:1; min-width:220px; display:flex; flex-direction:column; align-items:flex-start; position: relative;" id="task-section">
-      <button class="add-task-btn" style="width:100%; margin-bottom:18px; margin-top:0;" onclick="window.location.href='/common/task_add'">세부 task 추가</button>
-      <div class="template-task-list" style="width:100%; display: none; flex-direction:column; gap:18px;" id="task-list">
-        <!-- JS로 주차별 그룹핑된 Task 카드가 렌더링됩니다. -->
       </div>
-      <!-- 우측 하단에 버튼 배치 -->
-      <div class="template-form-actions" style="position: absolute; bottom: 0; right: 0; margin-top: 0;">
-        <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">생성</button>
-        <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
+    </form>
+  </div>
+  <div class="template-right">
+      
+    <div class="template-task-list" style="width:100%; display: none; flex-direction:column; gap:18px;" id="task-list">
+      <!-- JS로 주차별 그룹핑된 Task 카드가 렌더링됩니다. -->      
+    </div>
+    <div class="template-form-actions" style="display:flex; gap:18px; justify-content:flex-end; margin-top:30px;">
+      <button class="add-task-btn" id="add-week-btn" type="button" style="margin-bottom:0; margin-top:0;">주차 추가</button>
+      <button type="button" class="template-btn" id="save-curriculum-btn">저장</button>
+      <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
+    </div>
+    <!-- Task 추가/수정 모달 -->
+    <div id="task-modal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:9999; align-items:center; justify-content:center;">
+      <div style="background:#fff; border-radius:12px; min-width:340px; max-width:420px; padding:32px 28px 24px 28px; box-shadow:0 4px 24px rgba(0,0,0,0.18); position:relative;">
+        <button id="close-modal-btn" style="position:absolute; right:18px; top:14px; background:none; border:none; font-size:1.5em; color:#888; cursor:pointer;">&times;</button>
+        <form id="task-form">
+          <input type="hidden" name="edit-index" id="modal-edit-index">
+          <input type="hidden" name="week" id="modal-week">
+          <div style="margin-bottom:14px;">
+            <label>과제 제목</label>
+            <input type="text" name="title" id="modal-title" class="template-form-textarea" style="min-height:unset; height:32px;">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label>과제 설명</label>
+            <textarea name="description" id="modal-description" class="template-form-textarea"></textarea>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label>가이드라인</label>
+            <input type="text" name="guideline" id="modal-guideline" class="template-form-textarea" style="min-height:unset; height:32px;">
+          </div>
+          <div style="margin-bottom:14px; display:flex; gap:10px; align-items:flex-end;">
+            <div style="flex:1;">
+              <label>주차</label>
+              <input type="number" name="week" id="modal-week-input" class="template-form-textarea" style="min-height:unset; height:32px;">
+            </div>
+            <div style="flex:1;">
+              <label>기간(일)</label>
+              <input type="number" name="period" id="modal-period" class="template-form-textarea" style="min-height:unset; height:32px;">
+            </div>
+            <div style="flex:1;">
+              <label>우선순위</label>
+              <select name="priority" id="modal-priority" style="min-height:unset; height:32px; width:100%; border:1px solid #bbb; border-radius:8px; padding:5px; font-size:1em; color:#222; background:#fafbfc; appearance:auto;">
+                <option value="상">상</option>
+                <option value="중">중</option>
+                <option value="하" selected>하</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; gap:16px; justify-content:flex-end; margin-top:18px;">
+            <button type="submit" class="template-btn" id="modal-save-btn">저장</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -242,6 +309,23 @@
 <script>
 // 공용 커리큘럼 체크박스 체크 상태 JS로 처리
 document.addEventListener('DOMContentLoaded', function() {
+  // '주차 추가' 버튼 동작 구현
+  document.getElementById('add-week-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    // 현재 tasks_json에서 가장 큰 week 값 찾기
+    let maxWeek = 0;
+    if (Array.isArray(window.tasks_json) && window.tasks_json.length > 0) {
+      maxWeek = Math.max(...window.tasks_json.map(t => Number(t.week) || 0));
+    }
+    const newWeek = maxWeek + 1;
+    // 이미 해당 주차가 있으면 추가하지 않음
+    const weekExists = window.tasks_json.some(t => Number(t.week) === newWeek);
+    if (!weekExists) {
+      // 빈 Task를 추가해서 주차 섹션을 생성 (title 등은 빈 값)
+      window.tasks_json.push({ week: newWeek, title: '', description: '', guideline: '', order: 1, period: '', priority: '하' });
+      renderTasksByWeek(window.tasks_json);
+    }
+  });
   if (window.edit_mode && window.curriculum && window.curriculum.is_common) {
     document.getElementById('is-public-curriculum').checked = true;
   } else {
@@ -252,6 +336,14 @@ document.addEventListener('DOMContentLoaded', function() {
 // edit_mode가 'True', 'true', '1' 등 다양한 값으로 올 수 있으니 모두 True로 인식
 window.edit_mode = ["true", "True", "1"].includes("{{ edit_mode|default:'false' }}");
 window.curriculum = JSON.parse('{{ curriculum|escapejs|default:"null" }}');
+// curriculum_id가 없으면 pk, id 중 하나로 보정
+if (window.curriculum && !window.curriculum.curriculum_id) {
+  if (window.curriculum.pk) {
+    window.curriculum.curriculum_id = window.curriculum.pk;
+  } else if (window.curriculum.id) {
+    window.curriculum.curriculum_id = window.curriculum.id;
+  }
+}
 window.tasks_json = JSON.parse('{{ tasks_json|escapejs|default:"[]" }}');
 
 // 커리큘럼 초안 생성 함수 (텍스트 추가)
@@ -282,49 +374,90 @@ function toggleTaskSection() {
   }
 }
 
-// Drag & Drop for task list
+// Drag & Drop for task list (주차별 이동 및 주차 내 순서만 변경)
 function initTaskListDnD() {
   const taskList = document.getElementById('task-list');
+  let draggingIdx = null;
+  let draggingWeek = null;
   let draggingEl = null;
-  let dragOverEl = null;
-  Array.from(taskList.children).forEach(item => {
+
+  // 드래그 시작/종료 이벤트를 각 카드에 등록
+  Array.from(taskList.querySelectorAll('.template-task-item')).forEach(item => {
     item.addEventListener('dragstart', e => {
+      // 이미 draggingEl이 있으면 무시 (한 번에 하나만)
+      if (draggingEl) {
+        e.preventDefault();
+        return false;
+      }
       draggingEl = item;
+      draggingIdx = Number(item.dataset.idx);
+      draggingWeek = Number(item.dataset.week);
       item.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
     });
     item.addEventListener('dragend', e => {
       draggingEl = null;
+      draggingIdx = null;
+      draggingWeek = null;
       item.classList.remove('dragging');
-      Array.from(taskList.children).forEach(i => i.classList.remove('drag-over'));
+      Array.from(taskList.querySelectorAll('.template-task-item')).forEach(i => i.classList.remove('drag-over'));
     });
-    item.addEventListener('dragover', e => {
+  });
+
+  // 각 주차별 영역에 drop 이벤트 등록
+  Array.from(taskList.querySelectorAll('.week-section')).forEach(weekSection => {
+    weekSection.addEventListener('dragover', e => {
       e.preventDefault();
+      // 드롭 위치 시각화(선택적)
     });
-    item.addEventListener('dragenter', e => {
-      if (item !== draggingEl) {
-        item.classList.add('drag-over');
-        dragOverEl = item;
-      }
-    });
-    item.addEventListener('dragleave', e => {
-      item.classList.remove('drag-over');
-      dragOverEl = null;
-    });
-    item.addEventListener('drop', e => {
+    weekSection.addEventListener('drop', e => {
       e.preventDefault();
-      if (item !== draggingEl) {
-        item.classList.remove('drag-over');
-        // 순서 변경
-        const children = Array.from(taskList.children);
-        const dropIdx = children.indexOf(item);
-        taskList.removeChild(draggingEl);
-        if (dropIdx < children.length - 1) {
-          taskList.insertBefore(draggingEl, item);
-        } else {
-          taskList.appendChild(draggingEl);
+      if (draggingIdx === null) return;
+      const targetWeek = Number(weekSection.dataset.week);
+      // 드롭 위치 계산 (마우스 위치 기준)
+      const items = Array.from(weekSection.querySelectorAll('.template-task-item'));
+      let insertIdx = items.length;
+      for (let i = 0; i < items.length; i++) {
+        const rect = items[i].getBoundingClientRect();
+        if (e.clientY < rect.top + rect.height / 2) {
+          insertIdx = i;
+          break;
         }
       }
+      // draggingIdx는 window.tasks_json의 인덱스
+      const movingTask = window.tasks_json[draggingIdx];
+      if (!movingTask) return;
+      // 실제 데이터에서 제거 (splice는 원본 배열을 변경하므로, 제거 후 인덱스가 바뀜)
+      window.tasks_json.splice(draggingIdx, 1);
+      // 주차 변경
+      movingTask.week = targetWeek;
+      // targetWeek의 Task들만 추출 (이동 후 기준)
+      const weekTasks = window.tasks_json.filter(t => Number(t.week) === targetWeek);
+      // insertIdx 위치 계산 (weekTasks 내에서)
+      // window.tasks_json에서 targetWeek의 insertIdx번째 위치를 찾음
+      let realInsertIdx = -1;
+      let cnt = 0;
+      for (let i = 0; i <= window.tasks_json.length; i++) {
+        if (i === window.tasks_json.length) {
+          // 끝까지 도달하면 마지막에 삽입
+          realInsertIdx = window.tasks_json.length;
+          break;
+        }
+        if (Number(window.tasks_json[i].week) === targetWeek) {
+          if (cnt === insertIdx) {
+            realInsertIdx = i;
+            break;
+          }
+          cnt++;
+        }
+      }
+      // 해당 위치에 삽입
+      if (realInsertIdx === -1) realInsertIdx = window.tasks_json.length;
+      window.tasks_json.splice(realInsertIdx, 0, movingTask);
+      // 렌더링 갱신
+      renderTasksByWeek(window.tasks_json);
+      // 드래그 이벤트 재등록
+      setTimeout(initTaskListDnD, 0);
     });
   });
 }
@@ -335,6 +468,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 주차별로 그룹핑하여 카드 렌더링
   function renderTasksByWeek(tasks) {
+    // 외부에서 호출 가능하도록 window에 할당
+    window.renderTasksByWeek = renderTasksByWeek;
+    // 모든 주차 번호를 구함 (tasks에 있는 week + 빈 주차도 유지)
+    // 1. 현재 tasks에 있는 week
+    const weekSet = new Set();
+    tasks.forEach(task => {
+      const week = task.week || 1;
+      weekSet.add(Number(week));
+    });
+    // 2. 이미 렌더된 week-section의 주차도 유지 (카드가 0개가 되어도 영역 유지)
+    if (window.persistedWeeks) {
+      window.persistedWeeks.forEach(w => weekSet.add(Number(w)));
+    }
+    // 3. 주차 추가 버튼으로 추가된 빈 주차도 유지
+    // (tasks_json에 빈 Task로 추가되므로 위에서 이미 포함됨)
+
+    // 주차 오름차순 정렬
+    const sortedWeeks = Array.from(weekSet).sort((a, b) => a - b);
+    // 렌더된 주차를 window.persistedWeeks에 저장
+    window.persistedWeeks = sortedWeeks;
+
     // week 기준 그룹핑
     const weekMap = {};
     tasks.forEach(task => {
@@ -342,28 +496,31 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!weekMap[week]) weekMap[week] = [];
       weekMap[week].push(task);
     });
-    // 주차 오름차순 정렬
-    const sortedWeeks = Object.keys(weekMap).sort((a, b) => a - b);
+
     taskList.innerHTML = '';
     sortedWeeks.forEach(week => {
-      const weekTasks = weekMap[week];
+      const weekTasks = weekMap[week] || [];
       // 주차별 영역
       const weekSection = document.createElement('div');
       weekSection.className = 'week-section';
-      // 주차 헤더
+      weekSection.dataset.week = week;
+      // 주차 헤더 + Task 추가 버튼
       const weekHeader = document.createElement('div');
-      weekHeader.style = 'font-weight:bold; font-size:1.1em; margin-bottom:10px; color:#7c5c1e;';
-      weekHeader.textContent = `${week}주차`;
+      weekHeader.style = 'font-weight:bold; font-size:1.1em; margin-bottom:10px; color:#7c5c1e; display:flex; align-items:center; justify-content:space-between;';
+      // Task 추가 버튼은 이벤트 위임으로 처리
+      weekHeader.innerHTML = `<span>${week}주차</span><button class='template-btn add-task-modal-btn' style='padding:2px 14px; font-size:13px; margin-left:10px;' data-week="${week}">Task 추가</button>`;
       weekSection.appendChild(weekHeader);
       // 각 Task 카드
-      weekTasks.forEach(task => {
+      weekTasks.forEach((task, idx) => {
         const item = document.createElement('div');
         item.className = 'template-task-item';
         item.setAttribute('draggable', 'true');
+        item.dataset.idx = window.tasks_json.findIndex(t => t === task);
+        item.dataset.week = week;
         item.innerHTML = `
           <div class="task-content">
             <div class="task-badges">
-              <span class="task-badge difficulty-${task.priority === '상' ? 'high' : (task.priority === '중' ? 'medium' : 'low')}" >${task.priority || '하'}</span>
+              <span class="task-badge difficulty-${task.priority === '상' ? 'high' : (task.priority === '중' ? 'medium' : 'low')}">${task.priority || '하'}</span>
               ${task.period ? `<span class='task-badge exp-badge'>${task.period}일</span>` : ''}
             </div>
             <div style="font-weight:bold; color:#222;">${task.title || ''}</div>
@@ -371,25 +528,188 @@ document.addEventListener('DOMContentLoaded', function() {
             ${task.description ? `<div style='color:#555; font-size:13px;'>설명: ${task.description}</div>` : ''}
           </div>
         `;
+        // 카드 클릭 시 모달 오픈
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openTaskModal({ ...task, idx: window.tasks_json.findIndex(t => t === task) }, week);
+        });
         weekSection.appendChild(item);
       });
       taskList.appendChild(weekSection);
     });
     taskList.style.display = 'flex';
+    // 드래그&드롭 이벤트 재등록
+    setTimeout(initTaskListDnD, 0);
   }
 
-  // 예시 Task (edit_mode 아닐 때)
+  // 이벤트 위임: Task 추가 버튼 클릭 시 모달 오픈
+  taskList.addEventListener('click', function(e) {
+    if (e.target.classList.contains('add-task-modal-btn')) {
+      e.stopPropagation();
+      const week = Number(e.target.getAttribute('data-week'));
+      openTaskModal(null, week);
+    }
+  });
+// Task 추가/수정 모달 관련 함수
+function openTaskModal(task, week) {
+  const modal = document.getElementById('task-modal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  // 값 세팅
+  document.getElementById('modal-title').value = task?.title || '';
+  document.getElementById('modal-description').value = task?.description || '';
+  document.getElementById('modal-guideline').value = task?.guideline || '';
+  document.getElementById('modal-week-input').value = week || task?.week || '';
+  document.getElementById('modal-period').value = task?.period || '';
+  // 우선순위 select 값 세팅 (option과 정확히 일치하는 값만 허용, 기본값 '하')
+  const prioritySelect = document.getElementById('modal-priority');
+  const validPriorities = ['상', '중', '하'];
+  let priorityValue = (task?.priority || '하');
+  if (!validPriorities.includes(priorityValue)) priorityValue = '하';
+  prioritySelect.value = priorityValue;
+  document.getElementById('modal-edit-index').value = task?.idx ?? '';
+  document.getElementById('modal-week').value = week || task?.week || '';
+}
+function closeTaskModal() {
+  document.getElementById('task-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.getElementById('close-modal-btn').onclick = closeTaskModal;
+document.getElementById('task-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeTaskModal();
+});
+document.getElementById('task-form').onsubmit = function(e) {
+  e.preventDefault();
+  // 입력값 가져오기
+  const title = document.getElementById('modal-title').value.trim();
+  const description = document.getElementById('modal-description').value.trim();
+  const guideline = document.getElementById('modal-guideline').value.trim();
+  const week = Number(document.getElementById('modal-week-input').value);
+  // 순서 입력란 제거됨
+  const order = 1;
+  const period = document.getElementById('modal-period').value.trim();
+  const priority = document.getElementById('modal-priority').value;
+  const editIdx = document.getElementById('modal-edit-index').value;
+
+  if (!title) {
+    alert('과제 제목을 입력하세요.');
+    return;
+  }
+
+  // 수정 모드: editIdx가 있으면 해당 인덱스 수정
+  if (editIdx !== '') {
+    const idx = Number(editIdx);
+    if (window.tasks_json[idx]) {
+      window.tasks_json[idx] = { title, description, guideline, week, order, period, priority };
+    }
+  } else {
+    // 추가 모드: 해당 주차에 추가
+    window.tasks_json.push({ title, description, guideline, week, order, period, priority });
+  }
+  renderTasksByWeek(window.tasks_json);
+  closeTaskModal();
+};
+
+// 저장 버튼 AJAX 핸들러
+document.getElementById('save-curriculum-btn').onclick = async function() {
+  // 커리큘럼 정보
+  const curriculum_title = document.querySelector('input.tasklist-search').value.trim();
+  const curriculum_description = document.getElementById('curriculum-desc').value.trim();
+  const week_schedule = document.getElementById('curriculum-textarea').value.trim();
+  const is_common = document.getElementById('is-public-curriculum').checked;
+
+  // Task 리스트: 주차별, 카드 순서대로 order 부여
+  let tasks = [];
+  // task-list의 DOM에서 주차별, 카드 순서대로 추출
+  const taskList = document.getElementById('task-list');
+  const weekSections = taskList.querySelectorAll('.week-section');
+  weekSections.forEach(weekSection => {
+    const week = Number(weekSection.dataset.week);
+    const cards = weekSection.querySelectorAll('.template-task-item');
+    cards.forEach((card, idx) => {
+      // 카드의 idx에 해당하는 window.tasks_json에서 정보 추출
+      // title로 매칭 (title+week+description+guideline+period+priority)
+      const title = card.querySelector('.task-content > div[style*="font-weight:bold"]')?.textContent.trim() || '';
+      const badge = card.querySelector('.task-badge');
+      const priority = badge ? badge.textContent.trim() : '하';
+      const period = card.querySelector('.exp-badge') ? (card.querySelector('.exp-badge').textContent.replace('일','').trim()) : '';
+      const guideline = card.querySelector('div[style*="color:#1976d2"]') ? card.querySelector('div[style*="color:#1976d2"]').textContent.replace('가이드:','').trim() : '';
+      const description = card.querySelector('div[style*="color:#555"]') ? card.querySelector('div[style*="color:#555"]').textContent.replace('설명:','').trim() : '';
+      tasks.push({
+        week,
+        order: idx + 1,
+        title,
+        guideline,
+        description,
+        period,
+        priority
+      });
+    });
+  });
+
+  // edit_mode와 curriculum이 있으면 curriculum_id도 전송
+  let curriculum_id = null;
+  if (window.edit_mode && window.curriculum) {
+    curriculum_id = window.curriculum.curriculum_id || window.curriculum.pk || window.curriculum.id;
+  }
+  
+  console.log('Edit mode:', window.edit_mode);
+  console.log('Curriculum:', window.curriculum);
+  console.log('Curriculum ID to send:', curriculum_id);
+
+  // CSRF 토큰
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // AJAX POST
+  try {
+    const resp = await fetch('/mentor/api/save_curriculum/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrftoken
+      },
+      body: JSON.stringify({
+        curriculum_id,
+        curriculum_title,
+        curriculum_description,
+        week_schedule,
+        is_common,
+        tasks
+      })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      alert('저장되었습니다.');
+      window.location.href = '/mentor/manage_template';
+    } else {
+      alert('저장 실패: ' + (data.message || '오류'));
+    }
+  } catch (e) {
+    alert('저장 중 오류 발생: ' + e);
+  }
+};
+
+  // edit_mode가 아닐 때: 1주차 영역만 보이고, Task 카드는 없음
+  // edit_mode가 아닐 때: 1주차 영역만 보이고, Task 카드는 없음
   function renderExampleTasks() {
-    const exampleTasks = [
-      { week: 1, title: '오리엔테이션 영상 시청', guideline: '영상 시청 후 소감 작성', description: '회사 문화 이해', period: '2025-07-15', priority: '하' },
-      { week: 1, title: '조직문화 pdf 가이드 읽기', guideline: '가이드 숙지', description: '조직문화 파악', period: '2025-07-16', priority: '중' },
-      { week: 2, title: '사내 조직도 열람', guideline: '', description: '조직 구조 파악', period: '2025-07-17', priority: '하' },
-      { week: 2, title: '팀원과 소통하기', guideline: '팀원 3명과 대화', description: '팀워크 증진', period: '2025-07-18', priority: '상' },
-      { week: 3, title: '관련 일지 작성하기', guideline: '', description: '일지 작성', period: '2025-07-19', priority: '중' },
-      { week: 3, title: '팀원들과 커피챗', guideline: '', description: '비공식 소통', period: '2025-07-20', priority: '상' },
-      { week: 4, title: 'Weekly 미팅', guideline: '주간 회의 참석', description: '업무 공유', period: '2025-07-21', priority: '중' },
-    ];
-    renderTasksByWeek(exampleTasks);
+    // 1주차 영역만 빈 상태로 렌더링 & 내부 상태도 1주차만 있도록 초기화
+    window.tasks_json = [];
+    window.persistedWeeks = [1];
+    renderTasksByWeek(window.tasks_json);
   }
 
   if (window.edit_mode && window.curriculum) {
@@ -403,8 +723,8 @@ document.addEventListener('DOMContentLoaded', function() {
       taskList.style.display = 'none';
     }
     initTaskListDnD();
-  } 
-  else {
+  } else {
+    // edit_mode가 아닐 때는 1주차 빈 영역만 보이게 (Task 카드 없음)
     renderExampleTasks();
     initTaskListDnD();
   }

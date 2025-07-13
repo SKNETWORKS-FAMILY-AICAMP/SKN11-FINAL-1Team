@@ -1,3 +1,4 @@
+
 from django.shortcuts import render
 from django.db import models
 from django.contrib.auth.decorators import login_required
@@ -6,7 +7,57 @@ import json
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse
 from django.db import transaction
+from django.views.decorators.csrf import csrf_exempt
 
+# 커리큘럼+Task 저장 API
+@require_POST
+@login_required
+@csrf_exempt
+def save_curriculum(request):
+    import json
+    from core.models import Curriculum, TaskManage
+    from django.db import transaction
+    try:
+        data = json.loads(request.body)
+        user = request.user
+        curriculum_id = data.get('curriculum_id')
+        with transaction.atomic():
+            if curriculum_id:
+                # 기존 커리큘럼 수정
+                curriculum = Curriculum.objects.get(pk=curriculum_id)
+                curriculum.curriculum_title = data.get('curriculum_title')
+                curriculum.curriculum_description = data.get('curriculum_description')
+                curriculum.week_schedule = data.get('week_schedule')
+                curriculum.common = data.get('is_common', False)
+                curriculum.total_weeks = max([t['week'] for t in data.get('tasks', [])] or [0])
+                curriculum.save()
+                # 기존 Task 모두 삭제 후 재생성(덮어쓰기)
+                TaskManage.objects.filter(curriculum_id=curriculum).delete()
+            else:
+                # 새 커리큘럼 생성
+                curriculum = Curriculum.objects.create(
+                    curriculum_title=data.get('curriculum_title'),
+                    curriculum_description=data.get('curriculum_description'),
+                    week_schedule=data.get('week_schedule'),
+                    department=user.department,
+                    common=data.get('is_common', False),
+                    total_weeks=max([t['week'] for t in data.get('tasks', [])] or [0])
+                )
+            # Task 리스트 저장 (order 반영)
+            for t in data.get('tasks', []):
+                TaskManage.objects.create(
+                    curriculum_id=curriculum,
+                    title=t.get('title'),
+                    description=t.get('description'),
+                    guideline=t.get('guideline'),
+                    week=t.get('week'),
+                    order=t.get('order'),
+                    period=t.get('period') or None,
+                    priority=t.get('priority')
+                )
+        return JsonResponse({'success': True, 'curriculum_id': curriculum.pk})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 @login_required
 def mentor(request):
@@ -111,9 +162,11 @@ def edit_template(request, curriculum_id):
         for t in tasks
     ]
     curriculum_dict = {
+        'curriculum_id': curriculum.pk,
         'curriculum_title': curriculum.curriculum_title,
         'curriculum_description': curriculum.curriculum_description,
         'week_schedule': curriculum.week_schedule,
+        'is_common': curriculum.common,
         # 필요시 추가 필드
     }
     return render(request, 'mentor/add_template.html', {
