@@ -2,7 +2,9 @@
 {% load static %}
 
 {% block title %}챗봇{% endblock %}
+
 {% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/common/chatbot.css' %}">
 <style>
 .chatbot-container {
   display: flex;
@@ -13,60 +15,24 @@
   box-sizing: border-box;
 }
 .chatbot-left {
-  flex: none;
-  width: 340px;
-  padding: 36px 0 36px 36px;
+  flex: 1 1 0;
+  min-width: 180px;
+  max-width: 260px;
   background: #fafbfc;
   border-radius: 18px 0 0 18px;
-  min-width: 260px;
-  max-width: 380px;
+  padding: 24px 0 24px 18px;
   overflow-y: auto;
   height: 100%;
   box-sizing: border-box;
-}
-.chatbot-session-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-.chatbot-session-item {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  padding: 14px 16px;
-  font-size: 15px;
-  color: #222;
-  margin-bottom: 4px;
-  border-left: 5px solid #ffd600;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-.chatbot-session-item.selected {
-  border-left: 5px solid #4caf50;
-  background: #f6fff6;
-}
-.chatbot-session-title {
-  font-weight: bold;
-  color: #222;
-  font-size: 1.05em;
-  margin-bottom: 2px;
-}
-.chatbot-session-preview {
-  color: #666;
-  font-size: 0.97em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .chatbot-right {
-  flex: 1 1 0;
+  flex: 2 1 0;
   background: #fff;
   border-radius: 0 18px 18px 0;
-  padding: 48px 56px 40px 56px;
-  min-width: 700px;
+  padding: 32px 32px 24px 32px;
+  min-width: 400px;
   min-height: 900px;
   max-width: 100vw;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
@@ -78,149 +44,242 @@
   box-sizing: border-box;
 }
 .chatbot-chat-area {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
-  margin-bottom: 24px;
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
   gap: 18px;
   max-height: none;
-  min-height: 600px;
+  min-height: 400px;
+  padding-bottom: 8px;
 }
+.chatbot-form-row {
+  margin-top: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  position: relative;
+  bottom: 0;
+  width: 100%;
+  background: #fff;
+  z-index: 2;
+  box-sizing: border-box;
+  padding: 0;
+  border-top: 1.5px solid #e0e0e0;
+  padding-top: 14px;
+}
+.chatbot-input {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 15px;
+  font-size: 15px;
+  background: #f7f7f7;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  width: 100%;
+  box-sizing: border-box;
+}
+.chatbot-send-btn {
+  background: #ffd600;
+  color: #222;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255,214,0,0.10);
+  transition: background-color 0.2s;
+}
+.chatbot-send-btn:hover {
+  background: #e6c100;
+}
+
+/* 카드형 세션 스타일 개선 */
+.chatbot-session-item {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  padding: 10px 12px;
+  font-size: 15px;
+  color: #222;
+  margin-bottom: 8px;
+  border-left: 4px solid #ffd600;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.chatbot-session-item.selected {
+  border-left: 4px solid #4caf50;
+  background: #f6fff6;
+  box-shadow: 0 2px 8px rgba(76,175,80,0.08);
+}
+.chatbot-session-item:hover {
+  background: #f8f9fa;
+  box-shadow: 0 2px 8px rgba(255,214,0,0.10);
+}
+.chatbot-session-title {
+  font-weight: bold;
+  color: #222;
+  font-size: 1em;
+  margin-bottom: 1px;
+  letter-spacing: -0.5px;
+}
+.chatbot-session-preview {
+  color: #888;
+  font-size: 0.93em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 채팅 메시지 카드 스타일 */
 .chatbot-msg-row {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 10px;
+  margin-bottom: 8px;
 }
-.chatbot-msg-bot {
-  background: #f5f5f5;
-  color: #333;
-  border-radius: 10px 10px 10px 0;
-  padding: 12px 18px;
-  max-width: 70%;
+.chatbot-msg-row.user {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+.chatbot-msg-row.bot {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+.chatbot-msg-chabot, .chatbot-msg-user {
+  border-radius: 14px;
   font-size: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  max-width: 70%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  word-break: break-word;
+}
+.chatbot-msg-chabot {
+  background: #685555;
+  color: #333;
+  border-bottom-left-radius: 0;
+  align-self: flex-start;
+  padding: 12px 16px;
 }
 .chatbot-msg-user {
   background: #ffd600;
   color: #222;
-  border-radius: 10px 10px 0 10px;
-  padding: 12px 18px;
-  max-width: 70%;
-  font-size: 15px;
+  border-bottom-right-radius: 0;
+  align-self: flex-end;
   margin-left: auto;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-.chatbot-form-row {
-  margin-top: auto;
-  display: flex;
-  gap: 8px;
-}
-.chatbot-input {
-  flex: 1;
-  padding: 12px 16px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 16px;
-  background: #fff;
-}
-.chatbot-send-btn {
-  padding: 0 24px;
-  background: #ffd600;
-  color: #222;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 8px 12px;
 }
 </style>
 {% endblock %}
+
 {% block content %}
 <div class="chatbot-container">
-  <!-- 좌측: 채팅 세션 목록 -->
+  <!-- 좌측: 채팅 세션 목록 (카드형) -->
   <div class="chatbot-left">
     <div class="chatbot-title">채팅 세션</div>
     <div class="chatbot-session-list">
-      <div class="chatbot-session-item selected" data-chats='[{"bot":"안녕하세요! 무엇을 도와드릴까요?"},{"user":"복장 규정이 어떻게 되나요?","bot":"네, 자율 복장이 원칙이나 공식 회의 및 외부 미팅 시에는 단정한 복장을 권장합니다."}]'>
-        <div class="chatbot-session-title">사내 복장 규정 문의</div>
-        <div class="chatbot-session-preview">복장 규정이 어떻게 되나요? - 네, 자율 복장이 원칙이나...</div>
-      </div>
-      <div class="chatbot-session-item" data-chats='[{"bot":"안녕하세요! 무엇을 도와드릴까요?"},{"user":"연차는 어떻게 신청하나요?","bot":"사내 인트라넷에서 연차 신청이 가능하며, 부서장 승인 후 사용하실 수 있습니다."}]'>
-        <div class="chatbot-session-title">연차 사용 안내</div>
-        <div class="chatbot-session-preview">연차는 어떻게 신청하나요? - 사내 인트라넷에서...</div>
-      </div>
-      <div class="chatbot-session-item" data-chats='[{"bot":"안녕하세요! 무엇을 도와드릴까요?"},{"user":"재택근무가 가능한가요?","bot":"네, 부서장 승인 하에 주 2회까지 재택근무가 가능합니다."}]'>
-        <div class="chatbot-session-title">재택근무 정책</div>
-        <div class="chatbot-session-preview">재택근무가 가능한가요? - 네, 부서장 승인 하에...</div>
-      </div>
+      {% if chat_sessions %}
+        {% for session_data in chat_sessions %}
+          {% with session=session_data.session messages=session_data.messages %}
+            <div class="chatbot-session-item {% if forloop.first %}selected{% endif %}"
+                 data-session-id="{{ session.session_id }}"
+                 data-messages="[{% for msg in messages %}{'text':'{{ msg.message_text|escapejs }}','type':'{{ msg.message_type }}'}{% if not forloop.last %},{% endif %}{% endfor %}]">
+              <div class="chatbot-session-title">
+                {% if session.summary %}
+                  {{ session.summary }}
+                {% else %}
+                  채팅 세션 #{{ session.session_id }}
+                {% endif %}
+              </div>
+              <div class="chatbot-session-preview">
+                {% if messages %}
+                  {% with preview=None %}
+                    {% for msg in messages %}
+                      {% if msg.message_type == 'user' and not preview %}
+                        {% with preview=msg.message_text %}{% endwith %}
+                      {% endif %}
+                    {% endfor %}
+                    {% if preview %}
+                      {{ preview|truncatechars:50 }}
+                    {% else %}
+                      {{ session.create_time|date:'Y-m-d H:i' }}
+                    {% endif %}
+                  {% endwith %}
+                {% else %}
+                  {{ session.create_time|date:'Y-m-d H:i' }}
+                {% endif %}
+              </div>
+            </div>
+          {% endwith %}
+        {% endfor %}
+      {% else %}
+        <div class="no-sessions">채팅 세션이 없습니다.</div>
+      {% endif %}
     </div>
   </div>
-  <!-- 우측: 채팅 대화 영역 -->
+  
+  <!-- 우측: 채팅 대화 영역 (카드형) -->
   <div class="chatbot-right">
     <div class="chatbot-chat-area" id="chatbot-chat-area">
-      <div class="chatbot-msg-row">
-        <div class="chatbot-msg-bot">안녕하세요! 무엇을 도와드릴까요?</div>
-      </div>
-      <div class="chatbot-msg-row">
-        <div class="chatbot-msg-user">복장 규정이 어떻게 되나요?</div>
-      </div>
-      <div class="chatbot-msg-row">
-        <div class="chatbot-msg-bot">네, 자율 복장이 원칙이나 공식 회의 및 외부 미팅 시에는 단정한 복장을 권장합니다.</div>
-      </div>
+      {% if chat_sessions %}
+        {% with messages=chat_sessions.0.messages %}
+          {% for msg in messages %}
+            <div class="chatbot-msg-row {% if msg.message_type == 'user' %}user{% else %}bot{% endif %}">
+              <div class="chatbot-msg-{{ msg.message_type }}">{{ msg.message_text }}</div>
+            </div>
+          {% endfor %}
+        {% endwith %}
+      {% else %}
+        <div class="empty-chat">채팅 세션을 선택해주세요.</div>
+      {% endif %}
     </div>
-    <form method="post" class="chatbot-form-row">
+    <div style="height: 12px;"></div>
+    <form method="post" class="chatbot-form-row" style="margin-top:auto;">
       {% csrf_token %}
-      <input type="text" name="message" class="chatbot-input" placeholder="메시지를 입력하세요...">
+      <input type="text" name="message" class="chatbot-input" placeholder="메시지를 입력하세요..." required>
       <button type="submit" class="chatbot-send-btn">전송</button>
     </form>
   </div>
 </div>
+
+<script src="{% static 'js/common/chatbot.js' %}"></script>
 <script>
-// 채팅 세션 클릭 시 대화 교체
+// 카드형 세션 클릭 시 해당 세션 메시지 표시 (좌우 정렬)
 const sessionItems = document.querySelectorAll('.chatbot-session-item');
 const chatArea = document.getElementById('chatbot-chat-area');
-sessionItems.forEach((item) => {
+
+function renderMessages(messages) {
+  chatArea.innerHTML = '';
+  if (!messages || messages.length === 0) {
+    chatArea.innerHTML = '<div class="empty-chat">메시지가 없습니다.</div>';
+    return;
+  }
+  messages.forEach(msg => {
+    const row = document.createElement('div');
+    row.className = 'chatbot-msg-row ' + (msg.type === 'user' ? 'user' : 'bot');
+    const bubble = document.createElement('div');
+    bubble.className = 'chatbot-msg-' + msg.type;
+    bubble.textContent = msg.text;
+    row.appendChild(bubble);
+    chatArea.appendChild(row);
+  });
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+sessionItems.forEach((item, idx) => {
   item.addEventListener('click', function() {
     sessionItems.forEach(i => i.classList.remove('selected'));
     item.classList.add('selected');
-    let chats = [];
+    let messages = [];
     try {
-      chats = JSON.parse(item.getAttribute('data-chats'));
+      messages = JSON.parse(item.getAttribute('data-messages').replace(/'/g, '"'));
     } catch(e) {}
-    chatArea.innerHTML = '';
-    chats.forEach(msg => {
-      if (msg.bot && !msg.user) {
-        const botRow = document.createElement('div');
-        botRow.className = 'chatbot-msg-row';
-        const botMsg = document.createElement('div');
-        botMsg.className = 'chatbot-msg-bot';
-        botMsg.textContent = msg.bot;
-        botRow.appendChild(botMsg);
-        chatArea.appendChild(botRow);
-      }
-      if (msg.user) {
-        const userRow = document.createElement('div');
-        userRow.className = 'chatbot-msg-row';
-        const userMsg = document.createElement('div');
-        userMsg.className = 'chatbot-msg-user';
-        userMsg.textContent = msg.user;
-        userRow.appendChild(userMsg);
-        chatArea.appendChild(userRow);
-        if (msg.bot) {
-          const botRow = document.createElement('div');
-          botRow.className = 'chatbot-msg-row';
-          const botMsg = document.createElement('div');
-          botMsg.className = 'chatbot-msg-bot';
-          botMsg.textContent = msg.bot;
-          botRow.appendChild(botMsg);
-          chatArea.appendChild(botRow);
-        }
-      }
-    });
+    renderMessages(messages);
   });
 });
 </script>

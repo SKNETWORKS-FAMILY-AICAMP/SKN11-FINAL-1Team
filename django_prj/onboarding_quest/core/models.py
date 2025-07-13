@@ -112,16 +112,26 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class ChatSession(models.Model):
-    session_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    summary = models.CharField(max_length=255, null=True, blank=True)
+    session_id = models.AutoField(primary_key=True) # 세션 ID
+    user = models.ForeignKey(User, on_delete=models.CASCADE)    # 사용자 ID
+    summary = models.CharField(max_length=255, null=True, blank=True)   # 세션 요약
 
 class ChatMessage(models.Model):
-    message_id = models.AutoField(primary_key=True)
-    message_type = models.CharField(max_length=50, null=True, blank=True)
-    message_text = models.CharField(max_length=1000, null=True, blank=True)
-    create_time = models.DateField(auto_now_add=True, null=True, blank=True)
-    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
+    message_id = models.AutoField(primary_key=True)   # 메시지 ID
+    MESSAGE_TYPE_CHOICES = [
+        ('user', 'User'),
+        ('chatbot', 'Chatbot')
+    ]
+    message_type = models.CharField(
+        max_length=10,
+        choices=MESSAGE_TYPE_CHOICES,
+        null=False,
+        blank=False,
+        help_text='메시지 타입: user 또는 chatbot'
+    )
+    message_text = models.CharField(max_length=1000, null=True, blank=True) # 메시지 내용
+    create_time = models.DateField(auto_now_add=True, null=True, blank=True)    # 메시지 생성 시간
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)  # 채팅 세션 ID
 
 class Docs(models.Model):
     docs_id = models.AutoField(primary_key=True)

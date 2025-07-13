@@ -4,14 +4,14 @@ from core.models import (
     TaskAssign, Subtask, Memo, ChatSession, ChatMessage, Docs
 )
 from django.contrib.auth.hashers import make_password
+from datetime import date, timedelta
+from random import sample, randint
+
 
 class Command(BaseCommand):
     help = '샘플 사용자 데이터를 데이터베이스에 채웁니다.'
 
     def handle(self, *args, **options):
-
-
-        from datetime import date, timedelta
 
         self.stdout.write('샘플 데이터 생성 시작...')
 
@@ -235,4 +235,125 @@ class Command(BaseCommand):
                     }
                 )
 
-        self.stdout.write(self.style.SUCCESS('요구사항에 맞는 샘플 데이터 생성 완료!'))
+        # 9. ChatSession별 ChatMessage 샘플 생성 (직무별 3~5개, 내용 다르게)
+        self.stdout.write('9. ChatSession/ChatMessage 샘플 생성...')
+        job_message_samples = {
+            '개발': [
+                '프로그램 매뉴얼을 어디서 볼 수 있나요?',
+                'Git 사용법이 잘 이해가 안돼요.',
+                'Django에서 모델을 추가하려면 어떻게 해야 하나요?',
+                '코드 리뷰는 어떤 방식으로 진행되나요?',
+                '개발 환경 세팅이 궁금합니다.',
+                '테스트 코드는 어떻게 작성하나요?',
+                '배포 프로세스가 궁금합니다.',
+                'API 문서는 어디에 있나요?',
+                '코드 컨벤션은 어떻게 되나요?',
+                '신규 프로젝트 세팅 방법이 궁금해요.',
+                '에러 로그는 어디서 확인하나요?',
+                'CI/CD 파이프라인 설명 부탁드립니다.'
+            ],
+            '영업': [
+                '고객사 DB는 어디서 관리하나요?',
+                '영업 스크립트 예시가 있을까요?',
+                '계약 프로세스가 궁금합니다.',
+                '고객사 미팅 준비는 어떻게 하나요?',
+                '영업 목표 설정 방법이 궁금해요.',
+                '신규 고객사 발굴 방법이 있나요?',
+                '경쟁사 분석 자료는 어디서 볼 수 있나요?',
+                '실적 보고는 어떻게 하나요?',
+                '영업팀 회의 일정은 어떻게 확인하나요?',
+                '고객 불만 처리 프로세스가 궁금합니다.',
+                '프로모션 정책 안내 부탁드립니다.',
+                '계약서 양식은 어디 있나요?'
+            ],
+            'HR': [
+                '인사관리 시스템은 어디서 접속하나요?',
+                '휴가 신청 절차가 궁금합니다.',
+                '사내 규정은 어디서 확인할 수 있나요?',
+                '평가 기준이 어떻게 되나요?',
+                '복리후생 안내 부탁드립니다.',
+                '연봉 협상은 언제 진행되나요?',
+                '교육 프로그램 일정은 어떻게 확인하나요?',
+                '재택근무 정책이 궁금합니다.',
+                '퇴직 절차 안내 부탁드립니다.',
+                '사내 이벤트 일정은 어디서 확인하나요?',
+                '인사 발령 공지는 어디서 확인하나요?',
+                '근태 기록은 어떻게 확인하나요?'
+            ]
+        }
+        job_chatbot_answers = {
+            '개발': [
+                '프로그램 매뉴얼은 사내 위키 또는 개발팀 공유 폴더에서 확인하실 수 있습니다.',
+                'Git 사용법 관련 자료는 온보딩 문서와 사내 교육 영상을 참고해 주세요.',
+                'Django 모델 추가는 models.py에 클래스 정의 후 makemigrations, migrate 하시면 됩니다.',
+                '코드 리뷰는 GitHub PR을 통해 진행하며, 팀원들이 코멘트를 남깁니다.',
+                '개발 환경 세팅 가이드는 사내 위키에 상세히 안내되어 있습니다.',
+                '테스트 코드는 pytest 예제와 사내 가이드 문서를 참고해 주세요.',
+                '배포 프로세스는 Jenkins를 통해 자동화되어 있습니다.',
+                'API 문서는 Swagger에서 확인 가능합니다.',
+                '코드 컨벤션은 사내 개발 가이드 문서를 참고해 주세요.',
+                '신규 프로젝트 세팅은 템플릿 저장소를 복제해 시작합니다.',
+                '에러 로그는 Sentry와 서버 로그에서 확인할 수 있습니다.',
+                'CI/CD 파이프라인은 개발팀 위키에 상세히 설명되어 있습니다.'
+            ],
+            '영업': [
+                '고객사 DB는 CRM 시스템에서 관리합니다. 접근 권한은 영업팀장에게 문의하세요.',
+                '영업 스크립트 예시는 사내 자료실에서 다운로드 가능합니다.',
+                '계약 프로세스는 영업 매뉴얼 3장을 참고해 주세요.',
+                '고객사 미팅 준비 체크리스트는 팀 공유 폴더에 있습니다.',
+                '영업 목표는 분기별로 설정하며, 팀장과 상의해 주세요.',
+                '신규 고객사 발굴은 영업팀 내부 교육 자료를 참고해 주세요.',
+                '경쟁사 분석 자료는 전략기획팀에서 제공합니다.',
+                '실적 보고는 매주 금요일까지 시스템에 입력해 주세요.',
+                '영업팀 회의 일정은 구글 캘린더에서 확인 가능합니다.',
+                '고객 불만 처리는 CS팀과 협업하여 진행합니다.',
+                '프로모션 정책은 마케팅팀 공지사항을 참고해 주세요.',
+                '계약서 양식은 사내 문서함에 있습니다.'
+            ],
+            'HR': [
+                '인사관리 시스템은 인트라넷에서 접속 가능합니다.',
+                '휴가 신청은 인사관리 시스템에서 온라인으로 가능합니다.',
+                '사내 규정은 HR팀 공유 폴더 또는 인트라넷에서 확인할 수 있습니다.',
+                '평가 기준은 연 2회 공지되며, HR팀에 문의해 주세요.',
+                '복리후생 안내 자료는 인트라넷 공지사항을 참고해 주세요.',
+                '연봉 협상은 연초에 진행되며, 일정은 HR팀에서 공지합니다.',
+                '교육 프로그램 일정은 사내 교육 포털에서 확인 가능합니다.',
+                '재택근무 정책은 인트라넷 정책 게시판을 참고해 주세요.',
+                '퇴직 절차는 HR팀에 문의하시면 안내해 드립니다.',
+                '사내 이벤트 일정은 사내 캘린더에서 확인할 수 있습니다.',
+                '인사 발령 공지는 인트라넷 공지사항에 게시됩니다.',
+                '근태 기록은 인사관리 시스템에서 확인 가능합니다.'
+            ]
+        }
+
+        for dept_name, dept in departments.items():
+            all_users = users_by_dept[dept_name]['mentors'] + users_by_dept[dept_name]['mentees']
+            for user in all_users:
+                num_sessions = randint(3, 5)
+                for s in range(num_sessions):
+                    chat_session = ChatSession.objects.create(user=user)
+                    job_part = getattr(user, 'job_part', dept_name)
+                    msg_pool = job_message_samples.get(job_part, job_message_samples[dept_name])
+                    ans_pool = job_chatbot_answers.get(job_part, job_chatbot_answers[dept_name])
+                    num_msgs = randint(5, 8)
+                    idxs = sample(range(len(msg_pool)), num_msgs)
+                    user_msgs = [msg_pool[i] for i in idxs]
+                    bot_msgs = [ans_pool[i] for i in idxs]
+                    summary_set = False
+                    for i in range(num_msgs):
+                        user_msg = ChatMessage.objects.create(
+                            session=chat_session,
+                            message_type='user',
+                            message_text=user_msgs[i]
+                        )
+                        if not summary_set:
+                            chat_session.summary = user_msgs[i]
+                            chat_session.save()
+                            summary_set = True
+                        ChatMessage.objects.create(
+                            session=chat_session,
+                            message_type='chatbot',
+                            message_text=bot_msgs[i]
+                        )
+
+        self.stdout.write(self.style.SUCCESS('샘플 데이터 생성 완료!'))

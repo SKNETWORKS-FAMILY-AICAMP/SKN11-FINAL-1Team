@@ -26,11 +26,60 @@ def doc_upload(request):
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
-from django.shortcuts import render
-from core.models import Docs
+from django.shortcuts import render, redirect
+from core.models import Docs, ChatSession, ChatMessage
 
 def chatbot(request):
-    return render(request, 'common/chatbot.html')
+    if request.method == 'POST':
+        # 메시지 전송 처리
+        if request.user.is_authenticated:
+            message_text = request.POST.get('message', '').strip()
+            if message_text:
+                # 사용자의 최신 세션을 가져오거나 새로 생성
+                latest_session = ChatSession.objects.filter(user=request.user).order_by('-session_id').first()
+                
+                if not latest_session:
+                    # 첫 번째 세션 생성
+                    session = ChatSession.objects.create(
+                        user=request.user,
+                        summary=message_text[:50] + '...' if len(message_text) > 50 else message_text
+                    )
+                else:
+                    session = latest_session
+                
+                # 사용자 메시지 저장
+                ChatMessage.objects.create(
+                    session=session,
+                    message_type='user',
+                    message_text=message_text
+                )
+                
+                # 간단한 챗봇 응답 (실제로는 AI 모델과 연동)
+                bot_response = f"'{message_text}'에 대한 답변을 준비 중입니다."
+                ChatMessage.objects.create(
+                    session=session,
+                    message_type='chatbot',
+                    message_text=bot_response
+                )
+        
+        return redirect('common:chatbot')
+    
+    # GET 요청 처리
+    chat_sessions = []
+    if request.user.is_authenticated:
+        # 로그인한 사용자의 채팅 세션들을 가져옴
+        sessions = ChatSession.objects.filter(user=request.user).order_by('-session_id')
+        for session in sessions:
+            # 각 세션의 메시지들을 가져옴
+            messages = ChatMessage.objects.filter(session=session).order_by('create_time')
+            chat_sessions.append({
+                'session': session,
+                'messages': messages
+            })
+    
+    return render(request, 'common/chatbot.html', {
+        'chat_sessions': chat_sessions
+    })
 
 def doc(request):
     user = request.user
