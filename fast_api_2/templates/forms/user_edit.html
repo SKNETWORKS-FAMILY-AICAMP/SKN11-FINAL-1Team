@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}사용자 수정 - 온보딩 퀘스트 시스템{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">사용자 수정</h1>
+        <p class="text-gray-600">사용자 정보를 수정합니다.</p>
+    </div>
+
+    <!-- 에러 메시지 -->
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <strong>오류:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">사용자 정보 수정</h2>
+        <form method="POST" action="/forms/users/{{ user.user_id }}/edit" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="first_name" class="block text-sm font-medium text-gray-700 mb-2">이름</label>
+                    <input type="text" 
+                           id="first_name" 
+                           name="first_name" 
+                           value="{{ user.first_name }}"
+                           required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label for="last_name" class="block text-sm font-medium text-gray-700 mb-2">성</label>
+                    <input type="text" 
+                           id="last_name" 
+                           name="last_name" 
+                           value="{{ user.last_name }}"
+                           required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+            </div>
+            
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">이메일</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       value="{{ user.email }}"
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                <input type="password" 
+                       id="password" 
+                       name="password" 
+                       placeholder="새 비밀번호를 입력하세요"
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="job_part" class="block text-sm font-medium text-gray-700 mb-2">직무</label>
+                    <input type="text" 
+                           id="job_part" 
+                           name="job_part" 
+                           value="{{ user.job_part }}"
+                           required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label for="position" class="block text-sm font-medium text-gray-700 mb-2">직급 (숫자)</label>
+                    <input type="number" 
+                           id="position" 
+                           name="position" 
+                           value="{{ user.position }}"
+                           required
+                           min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+            </div>
+            
+            <div>
+                <label for="join_date" class="block text-sm font-medium text-gray-700 mb-2">입사일</label>
+                <input type="date" 
+                       id="join_date" 
+                       name="join_date" 
+                       value="{{ user.join_date }}"
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            
+            <div>
+                <label for="skill" class="block text-sm font-medium text-gray-700 mb-2">기술 스택 (선택사항)</label>
+                <textarea id="skill" 
+                          name="skill" 
+                          rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="기술 스택을 입력하세요">{{ user.skill or '' }}</textarea>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700 mb-2">역할</label>
+                    <select id="role" 
+                            name="role" 
+                            required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">역할을 선택하세요</option>
+                        <option value="mentor" {% if user.role == 'mentor' %}selected{% endif %}>멘토</option>
+                        <option value="mentee" {% if user.role == 'mentee' %}selected{% endif %}>멘티</option>
+                        <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>관리자</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="exp" class="block text-sm font-medium text-gray-700 mb-2">경험 (년)</label>
+                    <input type="number" 
+                           id="exp" 
+                           name="exp" 
+                           value="{{ user.exp or 0 }}"
+                           min="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="company_id" class="block text-sm font-medium text-gray-700 mb-2">회사</label>
+                    <select id="company_id" 
+                            name="company_id" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">회사를 선택하세요</option>
+                        {% for company in companies %}
+                        <option value="{{ company.company_id }}" 
+                                {% if company.company_id == user.company_id %}selected{% endif %}>
+                            {{ company.company_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="department_id" class="block text-sm font-medium text-gray-700 mb-2">부서</label>
+                    <select id="department_id" 
+                            name="department_id" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">부서를 선택하세요</option>
+                        {% for department in departments %}
+                        <option value="{{ department.department_id }}" 
+                                {% if department.department_id == user.department_id %}selected{% endif %}>
+                            {{ department.department_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div>
+                <label class="flex items-center">
+                    <input type="checkbox" 
+                           id="admin" 
+                           name="admin" 
+                           {% if user.admin %}checked{% endif %}
+                           class="mr-2 rounded border-gray-300 text-purple-600 focus:ring-purple-500 focus:ring-2">
+                    <span class="text-sm font-medium text-gray-700">관리자 권한</span>
+                </label>
+            </div>
+            
+            <div class="flex gap-4">
+                <button type="submit" 
+                        class="flex-1 bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600 transition-colors">
+                    사용자 수정
+                </button>
+                <a href="/forms/users" 
+                   class="flex-1 text-center py-2 px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                    취소
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 현재 사용자 정보 -->
+    <div class="mt-8 bg-gray-50 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">현재 사용자 정보</h3>
+        <div class="space-y-2">
+            <div class="flex justify-between">
+                <span class="text-gray-600">사용자 ID:</span>
+                <span class="text-gray-900">{{ user.user_id }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">이름:</span>
+                <span class="text-gray-900">{{ user.first_name }} {{ user.last_name }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">이메일:</span>
+                <span class="text-gray-900">{{ user.email }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">역할:</span>
+                <span class="text-gray-900">{{ user.role }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">부서:</span>
+                <span class="text-gray-900">{{ user.department.department_name if user.department else '없음' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

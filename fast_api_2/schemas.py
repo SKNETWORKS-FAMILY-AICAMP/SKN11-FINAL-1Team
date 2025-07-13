@@ -1,0 +1,330 @@
+from pydantic import BaseModel, EmailStr, validator
+from typing import Optional, List
+from datetime import date, datetime
+from fastapi import Form, UploadFile, File
+
+
+# Base schemas
+class CompanyBase(BaseModel):
+    company_name: str
+    
+    @validator('company_name')
+    def company_name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('회사명은 비어있을 수 없습니다')
+        return v.strip()
+
+class CompanyCreate(CompanyBase):
+    pass
+
+class Company(CompanyBase):
+    company_id: int
+    
+    class Config:
+        from_attributes = True
+
+
+class DepartmentBase(BaseModel):
+    department_name: str
+    description: Optional[str] = None
+    
+    @validator('department_name')
+    def department_name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('부서명은 비어있을 수 없습니다')
+        return v.strip()
+    
+    @validator('description')
+    def description_strip_whitespace(cls, v):
+        if v is not None:
+            return v.strip() if v.strip() else None
+        return v
+
+class DepartmentCreate(DepartmentBase):
+    company_id: int
+
+class Department(DepartmentBase):
+    department_id: int
+    department_name: str
+    company_id: int
+    company: Optional[Company] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class UserBase(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    job_part: str
+    position: int
+    join_date: date
+    skill: Optional[str] = None
+    role: str
+    exp: Optional[int] = 0
+    admin: Optional[bool] = False
+    
+    @validator('first_name', 'last_name', 'job_part', 'role')
+    def name_fields_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('필수 텍스트 필드는 비어있을 수 없습니다')
+        return v.strip()
+    
+    @validator('position')
+    def position_must_be_positive(cls, v):
+        if v <= 0:
+            raise ValueError('직급은 양수여야 합니다')
+        return v
+    
+    @validator('exp')
+    def exp_must_not_be_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('경험치는 음수일 수 없습니다')
+        return v
+    
+    @validator('skill')
+    def skill_strip_whitespace(cls, v):
+        if v is not None:
+            return v.strip() if v.strip() else None
+        return v
+
+class UserCreate(UserBase):
+    password: str
+    department_id: Optional[int] = None
+    company_id: Optional[int] = None
+
+class User(UserBase):
+    user_id: int
+    department_id: Optional[int] = None
+    company_id: Optional[int] = None
+    department: Optional[Department] = None
+    company: Optional[Company] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class TemplateBase(BaseModel):
+    template_title: str
+    template_description: Optional[str] = None
+
+class TemplateCreate(TemplateBase):
+    department_id: Optional[int] = None
+
+class Template(TemplateBase):
+    template_id: int
+    department_id: Optional[int] = None
+    department: Optional[Department] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class TaskManageBase(BaseModel):
+    title: str
+    start_date: date
+    end_date: date
+    difficulty: Optional[str] = None
+    description: Optional[str] = None
+    exp: int
+    order: Optional[int] = None
+
+class TaskManageCreate(TaskManageBase):
+    template_id: int
+
+class TaskManage(TaskManageBase):
+    task_manage_id: int
+    template_id: int
+    template: Optional[Template] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class TaskAssignBase(BaseModel):
+    title: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    status: int
+    difficulty: Optional[str] = None
+    description: Optional[str] = None
+    exp: Optional[int] = None
+    order: Optional[int] = None
+
+class TaskAssignCreate(TaskAssignBase):
+    user_id: int
+    task_manage_id: int
+    mentorship_id: Optional[int] = None
+
+class TaskAssign(TaskAssignBase):
+    task_assign_id: int
+    user_id: int
+    task_manage_id: int
+    mentorship_id: Optional[int] = None
+    user: Optional[User] = None
+    task_manage: Optional[TaskManage] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class SubtaskBase(BaseModel):
+    pass
+
+class SubtaskCreate(SubtaskBase):
+    task_assign_id: int
+
+class Subtask(SubtaskBase):
+    subtask_id: int
+    task_assign_id: int
+    task_assign: Optional[TaskAssign] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class MentorshipBase(BaseModel):
+    mentor_id: int
+    mentee_id: int
+
+class MentorshipCreate(MentorshipBase):
+    pass
+
+class Mentorship(MentorshipBase):
+    mentorship_id: int
+    mentor: Optional[User] = None
+    mentee: Optional[User] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class MemoBase(BaseModel):
+    create_date: Optional[date] = None
+    comment: Optional[str] = None
+
+class MemoCreate(MemoBase):
+    task_assign_id: int
+    user_id: int
+
+class Memo(MemoBase):
+    memo_id: int
+    task_assign_id: int
+    user_id: int
+    task_assign: Optional[TaskAssign] = None
+    user: Optional[User] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class ChatSessionBase(BaseModel):
+    summary: Optional[str] = None
+    started_time: datetime
+    ended_time: datetime
+
+class ChatSessionCreate(ChatSessionBase):
+    user_id: int
+
+class ChatSession(ChatSessionBase):
+    session_id: int
+    user_id: int
+    user: Optional[User] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class ChatMessageBase(BaseModel):
+    message_type: Optional[str] = None
+    message_text: Optional[str] = None
+
+class ChatMessageCreate(ChatMessageBase):
+    session_id: int
+
+class ChatMessage(ChatMessageBase):
+    message_id: int
+    create_time: datetime
+    session_id: int
+    session: Optional[ChatSession] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class DocsBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    file_path: str
+    common_doc: Optional[bool] = False
+
+class DocsCreate(DocsBase):
+    department_id: int
+
+class Docs(DocsBase):
+    docs_id: int
+    create_time: datetime
+    department_id: int
+    department: Optional[Department] = None
+    
+    class Config:
+        from_attributes = True
+
+
+# 폼 데이터 처리용 스키마
+class UserFormData(BaseModel):
+    """사용자 폼 데이터 스키마"""
+    first_name: str
+    last_name: str
+    email: EmailStr
+    password: str
+    job_part: str
+    position: int
+    join_date: date
+    skill: Optional[str] = None
+    role: str
+    exp: Optional[int] = 0
+    admin: Optional[bool] = False
+    department_id: Optional[int] = None
+    company_id: Optional[int] = None
+
+
+class TaskFormData(BaseModel):
+    """태스크 폼 데이터 스키마"""
+    title: str
+    start_date: date
+    end_date: date
+    difficulty: Optional[str] = None
+    description: Optional[str] = None
+    exp: int
+    order: Optional[int] = None
+    template_id: int
+
+
+class CompanyFormData(BaseModel):
+    """회사 폼 데이터 스키마"""
+    company_name: str
+
+
+class DepartmentFormData(BaseModel):
+    """부서 폼 데이터 스키마"""
+    department_name: str
+    description: Optional[str] = None
+    company_id: int
+
+
+class TemplateFormData(BaseModel):
+    """템플릿 폼 데이터 스키마"""
+    template_title: str
+    template_description: Optional[str] = None
+    department_id: Optional[int] = None
+
+
+class FileUploadResponse(BaseModel):
+    """파일 업로드 응답 스키마"""
+    filename: str
+    file_path: str
+    file_size: int
+    content_type: str
+    upload_time: datetime 

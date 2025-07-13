@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}파일 업로드 - 온보딩 퀘스트 시스템{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">파일 업로드</h1>
+        <p class="text-gray-600">문서와 파일을 업로드하여 관리합니다.</p>
+    </div>
+
+    <!-- 에러 메시지 -->
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <strong>오류:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- 파일 업로드 폼 -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">파일 업로드</h2>
+        
+        <form method="POST" action="/forms/upload" enctype="multipart/form-data" class="space-y-4">
+            <div>
+                <label for="file" class="block text-sm font-medium text-gray-700 mb-2">파일 선택</label>
+                <input type="file" 
+                       id="file" 
+                       name="file" 
+                       required
+                       accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                <p class="text-sm text-gray-500 mt-1">지원되는 파일: JPG, PNG, GIF, PDF, DOC, DOCX, TXT (최대 10MB)</p>
+            </div>
+            
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-2">설명 (선택사항)</label>
+                <textarea id="description" 
+                          name="description" 
+                          rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          placeholder="파일에 대한 설명을 입력하세요"></textarea>
+            </div>
+            
+            <div class="flex gap-4">
+                <button type="submit" 
+                        class="flex-1 bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 transition-colors">
+                    파일 업로드
+                </button>
+                <button type="reset" 
+                        class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                    초기화
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 업로드 안내 정보 -->
+    <div class="bg-indigo-50 rounded-lg p-6 mb-8">
+        <h3 class="text-lg font-semibold text-indigo-900 mb-2">📄 업로드 안내</h3>
+        <div class="text-indigo-700 space-y-2">
+            <p>• 한 번에 하나의 파일만 업로드할 수 있습니다.</p>
+            <p>• 파일 크기는 최대 10MB까지 업로드 가능합니다.</p>
+            <p>• 지원되는 파일 형식: JPG, JPEG, PNG, GIF, PDF, DOC, DOCX, TXT</p>
+            <p>• 업로드된 파일은 자동으로 타임스탬프가 추가됩니다.</p>
+            <p>• 업로드 완료 후 파일 목록 페이지에서 확인할 수 있습니다.</p>
+        </div>
+    </div>
+
+    <!-- 파일 형식별 안내 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-3xl">🖼️</span>
+                <h3 class="text-lg font-semibold text-gray-900">이미지 파일</h3>
+            </div>
+            <p class="text-gray-600 text-sm">JPG, JPEG, PNG, GIF</p>
+            <p class="text-gray-500 text-sm mt-2">스크린샷, 다이어그램, 참고 이미지 등</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-3xl">📄</span>
+                <h3 class="text-lg font-semibold text-gray-900">문서 파일</h3>
+            </div>
+            <p class="text-gray-600 text-sm">PDF, DOC, DOCX</p>
+            <p class="text-gray-500 text-sm mt-2">매뉴얼, 가이드, 교육 자료 등</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-3xl">📝</span>
+                <h3 class="text-lg font-semibold text-gray-900">텍스트 파일</h3>
+            </div>
+            <p class="text-gray-600 text-sm">TXT</p>
+            <p class="text-gray-500 text-sm mt-2">설정 파일, 메모, 코드 스니펫 등</p>
+        </div>
+    </div>
+
+    <!-- 관련 링크 -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="/forms/uploads" class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">📁</span>
+                <div>
+                    <h3 class="font-semibold text-gray-900">업로드된 파일</h3>
+                    <p class="text-sm text-gray-600">업로드된 파일 목록 확인</p>
+                </div>
+            </div>
+        </a>
+        
+        <a href="/forms/" class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🏠</span>
+                <div>
+                    <h3 class="font-semibold text-gray-900">폼 관리 홈</h3>
+                    <p class="text-sm text-gray-600">메인 관리 페이지로 이동</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %} 
