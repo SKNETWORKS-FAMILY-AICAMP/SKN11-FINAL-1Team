@@ -35,7 +35,7 @@ def manage_template(request):
                 'title': t.title,
                 'guideline': t.guideline,
                 'description': t.description,
-                'period': t.period.strftime('%Y-%m-%d') if t.period else '',
+                'period': str(t.period) if t.period is not None else '',
                 'priority': t.priority
             }
             for t in tasks
@@ -91,3 +91,33 @@ def delete_template(request, curriculum_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+def edit_template(request, curriculum_id):
+    from core.models import Curriculum, TaskManage
+    import json
+    curriculum = Curriculum.objects.get(pk=curriculum_id)
+    tasks = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
+    # Task 정보도 모두 넘김
+    task_list = [
+        {
+            'week': t.week,
+            'title': t.title,
+            'guideline': t.guideline,
+            'description': t.description,
+            'period': str(t.period) if t.period is not None else '',
+            'priority': t.priority
+        }
+        for t in tasks
+    ]
+    curriculum_dict = {
+        'curriculum_title': curriculum.curriculum_title,
+        'curriculum_description': curriculum.curriculum_description,
+        'week_schedule': curriculum.week_schedule,
+        # 필요시 추가 필드
+    }
+    return render(request, 'mentor/add_template.html', {
+        'edit_mode': True,
+        'curriculum': json.dumps(curriculum_dict, ensure_ascii=False),
+        'tasks_json': json.dumps(task_list, ensure_ascii=False),
+    })

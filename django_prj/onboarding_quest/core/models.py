@@ -167,7 +167,7 @@ class TaskManage(models.Model):
     guideline = models.CharField(max_length=255, null=True, blank=True, help_text='과제 가이드라인')
     week = models.IntegerField(help_text='몇 주차 과제인지')
     order = models.IntegerField(null=True, blank=True, help_text='과제 순서')
-    period = models.DateField(null=True, blank=True, help_text='과제 기간')
+    period = models.IntegerField(null=True, blank=True, help_text='과제 기간')
     PRIORITY_CHOICES = [
         ('상', '상'),
         ('중', '중'),

@@ -318,9 +318,8 @@ class Command(BaseCommand):
                     guideline = '마감일을 준수하세요.'
                 elif '이해' in t_title or '학습' in t_title:
                     guideline = '핵심 개념을 정리해보세요.'
-                # 과제 기간: 주차별 7일, 시작일은 오늘 기준 + (week-1)*7
-                start_date = date.today() + timedelta(days=(week-1)*7)
-                period = start_date + timedelta(days=6)
+                # 과제 기간: 일 단위(랜덤 3~7일)
+                period = randint(1, 7)
                 # 우선순위: 랜덤(상/중/하)
                 priority = random.choice(['상', '중', '하'])
                 # 세부 Task 설명에 주차별 온보딩 일정 내용 추가
@@ -335,7 +334,7 @@ class Command(BaseCommand):
                         'description': task_desc,
                         'guideline': guideline,
                         'order': idx,
-                        'period': period,
+                        'period': period,  # 일 단위 정수
                         'priority': priority
                     }
                 )

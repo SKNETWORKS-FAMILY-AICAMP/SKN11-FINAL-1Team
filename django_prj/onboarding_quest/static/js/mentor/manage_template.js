@@ -90,7 +90,9 @@ class CurriculumManager {
             .catch(() => alert('삭제 중 오류 발생'));
             return;
         }
-        if (action === '커리큘럼 편집') this.editCurriculum(curriculumId);
+        if (action === '커리큘럼 편집') {
+            window.location.href = `/mentor/edit_template/${curriculumId}/`;
+        }
     }
 
     selectCurriculum(item) {
