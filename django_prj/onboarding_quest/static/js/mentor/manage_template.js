@@ -44,22 +44,53 @@ class CurriculumManager {
     handleDetailButtonClick(button) {
         const action = button.textContent.trim();
         const selectedItem = document.querySelector('.template-item.selected');
-        
         if (!selectedItem) return;
-        
         const curriculumId = selectedItem.getAttribute('data-id');
-        
-        switch (action) {
-            case '복제':
-                this.cloneCurriculum(curriculumId);
-                break;
-            case '삭제':
-                this.deleteCurriculum(curriculumId);
-                break;
-            case '커리큘럼 편집':
-                this.editCurriculum(curriculumId);
-                break;
+        const isCommon = selectedItem.getAttribute('data-common') === 'True';
+        if (action === '복제') {
+            // AJAX POST로 복제 요청
+            fetch(`/mentor/clone_template/${curriculumId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': this.getCSRFToken(),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('복제 완료!');
+                    window.location.reload();
+                } else {
+                    alert(data.message || '복제 실패');
+                }
+            })
+            .catch(() => alert('복제 중 오류 발생'));
+            return;
         }
+        if (isCommon) return; // 공용은 삭제/편집 불가
+        if (action === '삭제') {
+            if (!confirm('정말로 이 커리큘럼을 삭제하시겠습니까?')) return;
+            fetch(`/mentor/delete_template/${curriculumId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': this.getCSRFToken(),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('삭제 완료!');
+                    window.location.reload();
+                } else {
+                    alert(data.message || '삭제 실패');
+                }
+            })
+            .catch(() => alert('삭제 중 오류 발생'));
+            return;
+        }
+        if (action === '커리큘럼 편집') this.editCurriculum(curriculumId);
     }
 
     selectCurriculum(item) {
@@ -74,9 +105,15 @@ class CurriculumManager {
     renderCurriculumDetail(item) {
         const data = this.extractCurriculumData(item);
         const tasks = this.curriculumTasks[data.id] || [];
-        
         const html = this.buildDetailHTML(data, tasks);
         this.detailDiv.innerHTML = html;
+
+        // 공용 커리큘럼이면 삭제/편집 버튼 숨김
+        const isCommon = data.common;
+        const delBtn = document.querySelector('.template-detail-header .template-btn:nth-child(2)');
+        const editBtn = document.querySelector('.template-detail-header .template-edit-btn');
+        if (delBtn) delBtn.style.display = isCommon ? 'none' : '';
+        if (editBtn) editBtn.style.display = isCommon ? 'none' : '';
     }
 
     extractCurriculumData(item) {
@@ -196,6 +233,18 @@ class CurriculumManager {
     editCurriculum(curriculumId) {
         // TODO: 실제 편집 URL로 변경 필요
         window.location.href = `/mentor/edit_template/${curriculumId}`;
+    }
+
+    getCSRFToken() {
+        const name = 'csrftoken';
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + '=')) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+        return '';
     }
 }
 
