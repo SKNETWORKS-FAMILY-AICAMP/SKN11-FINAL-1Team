@@ -7,9 +7,9 @@ class ChatBot {
 
     init() {
         this.bindEvents();
-        // 첫 번째 세션이 있으면 자동 선택
+        // 첫 번째 세션이 있으면 자동 선택하고 메시지 표시
         if (this.sessionItems.length > 0) {
-            this.sessionItems[0].click();
+            this.selectSession(this.sessionItems[0]);
         }
     }
 
@@ -20,6 +20,10 @@ class ChatBot {
     }
 
     handleSessionClick(e, item) {
+        this.selectSession(item);
+    }
+
+    selectSession(item) {
         // 모든 세션 아이템에서 selected 클래스 제거
         this.sessionItems.forEach(i => i.classList.remove('selected'));
         
@@ -53,7 +57,7 @@ class ChatBot {
         // 채팅 영역 초기화
         this.chatArea.innerHTML = '';
 
-        if (messages.length === 0) {
+        if (!messages || messages.length === 0) {
             this.chatArea.innerHTML = '<div class="empty-chat">메시지가 없습니다.</div>';
             return;
         }
@@ -69,16 +73,15 @@ class ChatBot {
 
     createMessageElement(message) {
         const msgRow = document.createElement('div');
-        msgRow.className = 'chatbot-msg-row';
-        
         const msgElement = document.createElement('div');
         msgElement.textContent = message.text;
 
         if (message.type === 'user') {
-            msgRow.classList.add('user');
+            msgRow.className = 'chatbot-msg-row user';
             msgElement.className = 'chatbot-msg-user';
         } else {
-            msgElement.className = 'chatbot-msg-bot';
+            msgRow.className = 'chatbot-msg-row bot';
+            msgElement.className = 'chatbot-msg-chabot';
         }
 
         msgRow.appendChild(msgElement);
