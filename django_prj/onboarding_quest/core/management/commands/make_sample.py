@@ -124,18 +124,6 @@ class Command(BaseCommand):
                 users_by_dept[dept_name]['mentors'].append(mentor)
                 emp_num += 1
 
-        # 5. 부서별 멘토쉽(멘토-멘티 1:1, 부서별 1개)
-        self.stdout.write('5. 부서별 멘토쉽 생성...')
-        mentorships = {}
-        for dept_name, dept in departments.items():
-            mentor = users_by_dept[dept_name]['mentors'][0]
-            mentee = users_by_dept[dept_name]['mentees'][0]
-            mentorship, _ = Mentorship.objects.get_or_create(
-                mentor_id=mentor.user_id,
-                mentee_id=mentee.user_id
-            )
-            mentorships[dept_name] = mentorship
-
         # 7. Docs (공통, 개발, 영업)
         self.stdout.write('7. 부서별 문서(Docs) 생성...')
         Docs.objects.get_or_create(
