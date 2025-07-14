@@ -1,44 +1,38 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}관리자 계정 추가/수정{% endblock %}
+{% block title %}계정 추가/수정{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/account/user_add_modify.css' %}">
+    <link rel="stylesheet" href="{% static 'css/account/user_add_modify.css' %}">
+    <script src="{% static 'js/account/user_add_modify.js' %}"></script>
 {% endblock %}
 
 {% block content %}
   <div class="form-box">
-    <h2>관리자 계정 추가/수정</h2>
-
-    <div class="form-row">
-      <label for="name">이름</label>
-      <input type="text" id="name" value="홍길동">
-    </div>
-
-    <div class="form-row">
-      <label for="join_date">입사일</label>
-      <input type="date" id="join_date" value="2025-06-20">
-    </div>
-
-    <div class="form-row">
-      <label for="position">직급</label>
-      <input type="text" id="position" value="사원">
-    </div>
-
-    <div class="form-row">
-      <label for="department">부서</label>
-      <input type="text" id="department" value="개발팀">
-    </div>
-
-    <div class="form-row">
-      <label for="employee_id">사번</label>
-      <input type="text" id="employee_id" value="230101">
-    </div>
-
-    <div class="button-row">
-      <button class="btn-create">생성</button>
-      <button class="btn-cancel" onclick="history.back();">취소</button>
-    </div>
+    <h2>{% if edit_mode %}사원 정보 수정{% else %}계정 추가/수정{% endif %}</h2>
+    <form method="post" autocomplete="off">
+      {% csrf_token %}
+      {% for field in form.visible_fields %}
+        <div class="form-row">
+          <label for="{{ field.id_for_label }}">
+            {{ field.label }}
+          </label>
+          <div class="form-input-col">
+            {{ field }}
+            {% if field.help_text %}
+              <div class="help-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+              <div class="error-text">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      <div class="button-row">
+        <button class="btn-create" type="submit">{% if edit_mode %}수정{% else %}생성{% endif %}</button>
+        <button class="btn-cancel" type="button" onclick="history.back();">취소</button>
+      </div>
+    </form>
   </div>
 {% endblock %}

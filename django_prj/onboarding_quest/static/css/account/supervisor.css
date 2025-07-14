@@ -1,24 +1,24 @@
-h2 {
-  color: #333;
-  margin-bottom: 24px;
+.dept-cell {
+  padding: 8px 0 8px 12px;
+  text-align: left;
 }
-
-.top-bar {
-  margin-bottom: 20px;
+.no-dept {
+  text-align: center;
+  color: #bbb;
 }
-
-.add-user-btn {
-  display: inline-block;
-  text-decoration: none;
-  background-color: #4CAF50;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 4px;
+.selected-dept-row {
+  background: #e6f0ff !important;
+}
+.dept-link.selected {
   font-weight: bold;
+  color: #2563eb;
 }
 
-.add-user-btn:hover {
-  background-color: #45a049;
+/* 좌측(부서), 우측(사원) 패널 배치 */
+.dashboard {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
 }
 
 table {
@@ -27,34 +27,28 @@ table {
   background-color: white;
   box-shadow: 0 0 8px rgba(0,0,0,0.05);
 }
-
 th, td {
   padding: 12px 16px;
   border: 1px solid #ddd;
   text-align: center;
 }
-
 th {
   background-color: #4CAF50;
   color: white;
 }
-
 tr:nth-child(even) {
   background-color: #f9f9f9;
 }
-
 .edit-link {
   color: #1E90FF;
   font-weight: bold;
   text-decoration: none;
 }
-
 .delete-link {
   color: #FF4500;
   font-weight: bold;
   text-decoration: none;
 }
-
 .edit-link:hover,
 .delete-link:hover {
   text-decoration: underline;

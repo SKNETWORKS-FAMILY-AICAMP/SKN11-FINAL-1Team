@@ -1,3 +1,33 @@
+import logging
+
+# .well-known 경로 404 로그 무시용 필터
+class IgnoreWellKnown(logging.Filter):
+    def filter(self, record):
+        return '/.well-known/' not in record.getMessage()
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'ignore_well_known': {
+            '()': IgnoreWellKnown,
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'filters': ['ignore_well_known'],
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 """
 Django settings for onboarding_quest project.
 
