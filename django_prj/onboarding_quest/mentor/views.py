@@ -160,7 +160,39 @@ def save_curriculum(request):
 
 @login_required
 def mentor(request):
-    return render(request, 'mentor/mentor.html')
+    from core.models import Mentorship, User
+    mentor_id = request.user.user_id
+    # 로그인한 유저가 멘토로 포함된 멘토쉽 목록
+    mentorships = Mentorship.objects.filter(mentor_id=mentor_id)
+    mentee_ids = mentorships.values_list('mentee_id', flat=True)
+    mentees = User.objects.filter(user_id__in=mentee_ids)
+    # 진척도, D-day 등은 예시값(실제 로직에 맞게 수정 가능)
+    mentee_cards = []
+    from datetime import date
+    for ms in mentorships:
+        try:
+            mentee = mentees.get(user_id=ms.mentee_id)
+        except User.DoesNotExist:
+            continue
+        # D-day 계산: 멘토쉽 종료일 기준
+        dday = ''
+        if ms.end_date:
+            dday_val = (ms.end_date - date.today()).days
+            dday = f"D-{dday_val}" if dday_val > 0 else ("D-DAY" if dday_val == 0 else "종료")
+        else:
+            dday = ""
+        # 진척도: 멘토쉽에 할당된 TaskAssign 중 완료된 개수/전체 개수
+        from core.models import TaskAssign
+        total_tasks = TaskAssign.objects.filter(mentorship_id=ms).count()
+        completed_tasks = TaskAssign.objects.filter(mentorship_id=ms, status='완료').count()
+        progress = int((completed_tasks / total_tasks) * 100) if total_tasks else 0
+        mentee_cards.append({
+            'name': f'{mentee.last_name}{mentee.first_name}',
+            'tags': [mentee.tag] if mentee.tag else [],
+            'dday': dday,
+            'progress': progress,
+        })
+    return render(request, 'mentor/mentor.html', {'mentee_cards': mentee_cards})
 
 @login_required
 def add_template(request):
