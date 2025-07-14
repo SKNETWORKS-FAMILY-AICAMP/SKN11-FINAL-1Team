@@ -252,6 +252,22 @@
       </div>      
     </div>
 
+    <h1>멘티 목록</h1>
+    <button onclick="getMenteeList()">멘티 목록 조회</button>
+    <div id="mentee-list"></div>
+
+    <script>
+      function getMenteeList() {
+        fetch('/mentee/mentee_list/')
+          .then(response => response.json())
+          .then(data => {
+            console.log(data);
+            document.getElementById('mentee-list').innerHTML = JSON.stringify(data);
+          })
+          .catch(error => console.error('Error:', error));
+      }
+    </script>
+
     <div class="kanban-section bg-white rounded-xl shadow-md border border-gray-200 p-3 mb-8" style="display: flex;">
       <div class="kanban-column todo-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">진행 전</div>
