@@ -185,6 +185,8 @@ class Mentorship(models.Model):
     start_date = models.DateField(null=True, blank=True, help_text='시작일')
     end_date = models.DateField(null=True, blank=True, help_text='종료일')
     is_active = models.BooleanField(default=True, help_text='멘토쉽 활성화 여부')
+    curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
+    total_weeks = models.IntegerField(default=0, help_text='총 주차 수')
 
 class TaskAssign(models.Model):
     task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')

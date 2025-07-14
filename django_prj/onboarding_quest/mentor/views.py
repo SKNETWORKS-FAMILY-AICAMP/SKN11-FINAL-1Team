@@ -25,6 +25,9 @@ def create_mentorship(request):
         start_date = data.get('start_date')  # yyyy-mm-dd
         end_date = data.get('end_date')      # yyyy-mm-dd
         curriculum_id = int(data.get('curriculum_id'))
+        # 선택한 커리큘럼 정보 가져오기
+        from core.models import Curriculum, TaskManage, TaskAssign
+        curriculum = Curriculum.objects.get(curriculum_id=curriculum_id)
         # 이미 존재하는 멘토-멘티 조합 방지(옵션)
         mentorship, created = Mentorship.objects.get_or_create(
             mentor_id=mentor_id,
@@ -32,18 +35,22 @@ def create_mentorship(request):
             defaults={
                 'start_date': start_date,
                 'end_date': end_date,
-                'is_active': True
+                'is_active': True,
+                'curriculum_title': curriculum.curriculum_title,
+                'total_weeks': curriculum.total_weeks
             }
         )
-        # 이미 있으면 날짜 업데이트
+        # 이미 있으면 날짜/커리큘럼 정보 업데이트
         if not created:
             mentorship.start_date = start_date
             mentorship.end_date = end_date
+            mentorship.curriculum_title = curriculum.curriculum_title
+            mentorship.total_weeks = curriculum.total_weeks
             mentorship.save()
 
         # TaskManage → TaskAssign 복사 (중복생성 방지: 이미 있으면 skip)
         existing_assigns = set(TaskAssign.objects.filter(mentorship_id=mentorship).values_list('title', flat=True))
-        tasks = TaskManage.objects.filter(curriculum_id=curriculum_id).order_by('week', 'order')
+        tasks = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
         from datetime import datetime, timedelta
         mentorship_start = datetime.strptime(start_date, '%Y-%m-%d')
         for t in tasks:
@@ -191,6 +198,8 @@ def mentor(request):
             'tags': [mentee.tag] if mentee.tag else [],
             'dday': dday,
             'progress': progress,
+            'curriculum_title': ms.curriculum_title,
+            'total_weeks': ms.total_weeks,
         })
     return render(request, 'mentor/mentor.html', {'mentee_cards': mentee_cards})
 
@@ -204,8 +213,8 @@ def add_template(request):
 def manage_mentee(request):
     from core.models import User, Curriculum
     user = request.user
-    # 같은 부서의 멘티 목록
-    mentees = User.objects.filter(department=user.department, role='mentee')
+    # 같은 회사의 모든 멘티 목록
+    mentees = User.objects.filter(company=user.company, role='mentee')
     # 부서 커리큘럼 목록 (공용+부서)
     curriculums = Curriculum.objects.filter(
         models.Q(common=True) | models.Q(department=user.department)

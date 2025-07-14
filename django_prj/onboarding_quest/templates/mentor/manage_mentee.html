@@ -248,10 +248,12 @@ function bindMenteeEvents() {
 }
 
 menteeSearch.addEventListener('input', function() {
-  const val = menteeSearch.value.trim();
+  const val = menteeSearch.value.trim().toLowerCase();
   const menteeLinks = menteeList.querySelectorAll('a');
   menteeLinks.forEach(link => {
-    if (link.textContent.includes(val) || link.getAttribute('data-name').includes(val)) {
+    // 성+이름 기준으로 검색
+    const name = (link.textContent || '').toLowerCase();
+    if (name.includes(val)) {
       link.parentElement.style.display = '';
     } else {
       link.parentElement.style.display = 'none';
