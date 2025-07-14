@@ -355,22 +355,57 @@
 </div>
   <!-- 우측: 상세 정보 -->
   <div class="tasklist-right">
-    <div class="task-detail-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+    <div class="task-detail-header" id="detail-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <div style="display:flex; align-items:center; gap:12px;">
         <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
         <span class="task-detail-xp" id="detail-xp" style="color:#888; font-size:17px; display:flex; align-items:center; gap:4px; font-weight:bold;"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
       </div>
-      <div style="display:flex; gap:10px; margin-left:auto;">
-        <button class="task-detail-edit-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">편집</button>
+      <div id="detail-header-btns" style="display:flex; gap:10px; margin-left:auto;">
+        <button class="task-detail-edit-btn" id="task-edit-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">편집</button>
         <button class="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">하위 테스크 생성</button>
       </div>
     </div>
     <div class="task-detail-desc" id="detail-desc">간단한 프로젝트에 참여하여 워크플로우 이해하기</div>
-    <div class="task-detail-meta-row">
+    <form id="task-edit-form" style="display:none; margin-bottom:12px;">
+      <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:8px;">
+        <div style="flex:1;">
+          <label style="font-weight:bold; color:#222;">상태</label>
+          <select id="edit-status" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;">
+            <option value="진행 전">진행 전</option>
+            <option value="진행 중">진행 중</option>
+            <option value="검토 요청">검토 요청</option>
+            <option value="완료">완료</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label style="font-weight:bold; color:#222;">우선순위</label>
+          <select id="edit-priority" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;">
+            <option value="상">상</option>
+            <option value="중">중</option>
+            <option value="하">하</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label style="font-weight:bold; color:#222;">마감날짜</label>
+          <input id="edit-end-date" type="date" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
+        </div>
+      </div>
+      <label style="font-weight:bold; color:#222;">제목</label>
+      <input id="edit-title" type="text" style="width:100%; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
+      <label style="font-weight:bold; color:#222;">가이드라인</label>
+      <textarea id="edit-guideline" style="width:100%; min-height:60px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
+      <label style="font-weight:bold; color:#222;">세부내용(여러 줄)</label>
+      <textarea id="edit-description" style="width:100%; min-height:80px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
+      <div style="display:flex; gap:8px;">
+        <button type="submit" id="edit-save-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:6px 18px; font-size:15px; cursor:pointer;">저장</button>
+        <button type="button" id="edit-cancel-btn" style="background:#eee; color:#222; font-weight:bold; border:none; border-radius:6px; padding:6px 18px; font-size:15px; cursor:pointer;">취소</button>
+      </div>
+    </form>
+    <div class="task-detail-meta-row" id="detail-meta-row">
       <span class="task-badge yellow" id="detail-badge">중급</span>
-    </div>    
-    <div class="task-detail-divider">
+      <span class="d-day-badge" id="detail-dday"></span>
     </div>
+    <div class="task-detail-divider"></div>
     <div class="task-detail-list" id="detail-list">
       <ul>
         <li>프로젝트 준비</li>
@@ -400,7 +435,9 @@
 // 좌측 Task 카드 클릭 시 우측 상세 정보 갱신
 document.addEventListener('DOMContentLoaded', function() {
   const cards = document.querySelectorAll('.task-card');
+  let currentTask = null; // 현재 선택된 task 정보 저장
   function updateDetailFromData(task) {
+    currentTask = task;
     // 상태 뱃지 색상
     let statusClass = '';
     if (task.status === '진행 전') statusClass = 'not-started';
@@ -447,6 +484,146 @@ document.addEventListener('DOMContentLoaded', function() {
       listDiv.appendChild(ul);
     }
   }
+  // 편집 폼 토글 및 저장/취소
+  const editBtn = document.getElementById('task-edit-btn');
+  const editForm = document.getElementById('task-edit-form');
+  const descDiv = document.getElementById('detail-desc');
+  const listDiv = document.getElementById('detail-list');
+  const editStatus = document.getElementById('edit-status');
+  const editTitle = document.getElementById('edit-title');
+  const editGuideline = document.getElementById('edit-guideline');
+  const editDescription = document.getElementById('edit-description');
+  const editPriority = document.getElementById('edit-priority');
+  const editEndDate = document.getElementById('edit-end-date');
+  const saveBtn = document.getElementById('edit-save-btn');
+  const cancelBtn = document.getElementById('edit-cancel-btn');
+  let isEditing = false;
+
+  function showEditForm() {
+    if (!currentTask) return;
+    // 기존 영역 숨김
+    document.getElementById('detail-header-row').style.display = 'none';
+    document.getElementById('detail-meta-row').style.display = 'none';
+    // 기존 값 세팅
+    editStatus.value = currentTask.status || '진행 전';
+    editTitle.value = currentTask.title || '';
+    editGuideline.value = currentTask.guideline || '';
+    editDescription.value = currentTask.description || '';
+    editPriority.value = currentTask.priority || '하';
+    if (currentTask.end_date) {
+      editEndDate.value = String(currentTask.end_date).slice(0, 10);
+    } else {
+      editEndDate.value = '';
+    }
+    // 기존 폼 로직
+    editForm.style.display = '';
+    descDiv.style.display = 'none';
+    listDiv.style.display = 'none';
+    isEditing = true;
+  }
+  function hideEditForm() {
+    editForm.style.display = 'none';
+    // 숨겼던 영역 다시 표시
+    document.getElementById('detail-header-row').style.display = '';
+    document.getElementById('detail-meta-row').style.display = '';
+    descDiv.style.display = '';
+    listDiv.style.display = '';
+    isEditing = false;
+  }
+  if (editBtn) {
+    editBtn.addEventListener('click', function() {
+      if (isEditing) return;
+      showEditForm();
+    });
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      hideEditForm();
+    });
+  }
+  if (editForm) {
+    editForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      // DB 저장 AJAX
+      const payload = {
+        status: editStatus.value,
+        title: editTitle.value,
+        guideline: editGuideline.value,
+        description: editDescription.value,
+        priority: editPriority.value,
+        end_date: editEndDate.value
+      };
+      try {
+        const resp = await fetch(`/mentee/task_update/${currentTask.id}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.success) {
+          // 프론트 상태도 반영
+          currentTask.status = payload.status;
+          currentTask.title = payload.title;
+          currentTask.guideline = payload.guideline;
+          currentTask.description = payload.description;
+          currentTask.priority = payload.priority;
+          currentTask.end_date = payload.end_date;
+          // 좌측 카드도 동기화
+          const card = document.querySelector(`.task-card[data-task-id="${currentTask.id}"]`);
+          if (card) {
+            // 상태 뱃지
+            const statusBadge = card.querySelector('.status-badge');
+            if (statusBadge) {
+              statusBadge.textContent = payload.status;
+              statusBadge.className = 'status-badge';
+              if (payload.status === '진행 전') statusBadge.classList.add('not-started');
+              else if (payload.status === '진행 중') statusBadge.classList.add('in-progress');
+              else if (payload.status === '검토 요청') statusBadge.classList.add('review-requested');
+              else if (payload.status === '완료' || payload.status === '완료됨') statusBadge.classList.add('done');
+            }
+            // 제목
+            const titleSpan = card.querySelector('.task-title');
+            if (titleSpan) {
+              titleSpan.textContent = payload.title;
+              if (payload.status === '완료' || payload.status === '완료됨') titleSpan.classList.add('done');
+              else titleSpan.classList.remove('done');
+            }
+            // 우선순위 뱃지
+            const badge = card.querySelector('.task-badge');
+            if (badge) {
+              badge.textContent = payload.priority || '하';
+              badge.className = 'task-badge';
+              if (payload.priority === '상') badge.classList.add('red');
+              else if (payload.priority === '중') badge.classList.add('green');
+              else badge.classList.add('yellow');
+            }
+            // 마감일
+            const dday = card.querySelector('.d-day-badge');
+            if (dday) dday.textContent = payload.end_date || '';
+            // 설명
+            const descDiv = card.querySelector('.task-desc');
+            if (descDiv) descDiv.textContent = payload.description || '';
+            // 카드 전체 클래스(상태별)
+            card.classList.remove('not-started','in-progress','review-requested','done');
+            if (payload.status === '진행 전') card.classList.add('not-started');
+            else if (payload.status === '진행 중') card.classList.add('in-progress');
+            else if (payload.status === '검토 요청') card.classList.add('review-requested');
+            else if (payload.status === '완료' || payload.status === '완료됨') card.classList.add('done');
+          }
+          updateDetailFromData(currentTask);
+          hideEditForm();
+        } else {
+          alert('저장 실패: ' + (data.error || '오류'));
+        }
+      } catch (err) {
+        alert('저장 중 오류 발생: ' + err);
+      }
+    });
+  }
   async function fetchAndUpdateDetail(taskId) {
     try {
       const resp = await fetch(`/mentee/task_detail/${taskId}/`);
@@ -461,6 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   cards.forEach(card => {
     card.addEventListener('click', function() {
+      if (isEditing) return; // 편집 중이면 카드 선택 비활성화
       cards.forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       const taskId = card.getAttribute('data-task-id');

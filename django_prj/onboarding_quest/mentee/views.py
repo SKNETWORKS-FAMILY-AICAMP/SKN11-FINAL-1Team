@@ -1,12 +1,36 @@
+# TaskAssign 수정 API (AJAX)
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+import json
 from django.http import JsonResponse
 from django.shortcuts import render
+from core.models import TaskAssign, Subtask
+from collections import defaultdict
+
+@csrf_exempt
+@require_POST
+def task_update(request, task_assign_id):
+    try:
+        t = TaskAssign.objects.get(task_assign_id=task_assign_id)
+        data = json.loads(request.body)
+        t.status = data.get('status', t.status)
+        t.title = data.get('title', t.title)
+        t.guideline = data.get('guideline', t.guideline)
+        t.description = data.get('description', t.description)
+        t.priority = data.get('priority', t.priority)
+        t.end_date = data.get('end_date', t.end_date)
+        t.save()
+        return JsonResponse({'success': True})
+    except TaskAssign.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
 
 def mentee(request):
     return render(request, 'mentee/mentee.html')
 
 def task_list(request):
-    from core.models import TaskAssign, Subtask
-    from collections import defaultdict
     mentorship_id = request.GET.get('mentorship_id')
     week_tasks = defaultdict(list)
     selected_task = None
@@ -41,8 +65,7 @@ def task_list(request):
     return render(request, 'mentee/task_list.html', context)
 
 # AJAX용 Task 상세정보 API
-def task_detail(request, task_assign_id):
-    from core.models import TaskAssign
+def task_detail(request, task_assign_id):    
     try:
         t = TaskAssign.objects.get(task_assign_id=task_assign_id)
         data = {
