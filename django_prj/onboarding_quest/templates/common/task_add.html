@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+<input type="hidden" name="status" id="status-input" value="진행 전" required>{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Task 생성 페이지{% endblock %}
@@ -8,346 +8,341 @@
   display: flex;
   gap: 32px;
   width: 100%;
-  min-height: 600px;
+  min-height: 700px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
+
 .taskadd-left {
-  flex: 1;
-  padding: 24px 0 24px 24px;
-  background: #fafbfc;
-  border-radius: 12px 0 0 12px;
-  min-width: 340px;
-  max-width: 500px;
-  overflow-y: auto;
+  flex: 0 0 450px;
+  padding: 32px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
 }
+
 .taskadd-title {
-  font-size: 1.3em;
-  font-weight: bold;
-  margin-bottom: 18px;
-  color: #222;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: #212529;
 }
+
 .taskadd-desc {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  padding: 18px 20px 14px 20px;
-  margin-bottom: 18px;
-  color: #555;
-  font-size: 15px;
-  white-space: pre-line;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  padding: 24px;
+  margin-bottom: 24px;
+  color: #495057;
+  font-size: 16px;
+  line-height: 1.6;
 }
+
 .taskadd-guide {
-  background: #fffbe6;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
   border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
-  color: #a68a4a;
-  margin-bottom: 10px;
-}
-.taskadd-example-list {
-  background: #fff;
-  border-radius: 8px;
-  border: 1.5px solid #ffe066;
-  padding: 12px 16px;
+  padding: 20px 24px;
   font-size: 15px;
-  color: #444;
-  max-height: 180px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(255,214,0,0.07);
+  color: #856404;
+  margin-bottom: 24px;
 }
+
 .taskadd-right {
-  flex: 2;
-  background: #fff;
-  border-radius: 0 16px 16px 0;
-  padding: 36px 48px 32px 48px;
-  min-width: 480px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 10;
+  flex: 1;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  padding: 32px 40px 40px 40px;
+  min-width: 600px;
 }
+
 .task-header {
-  font-size: 1.5em;
-  font-weight: bold;
-  color: #222;
-  margin-bottom: 28px;
-  letter-spacing: -1px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 40px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f8f9fa;
 }
+
 .form-group {
   margin-bottom: 32px;
-  display: flex;
-  flex-direction: column;
 }
+
 .form-group.row-flex {
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 22px;
-}
-.form-label,
-.form-label.inline-label,
-.form-label.xp-label {
-  font-size: 1.18em;
-  /* 기존 1.08em에서 증가 */
-  font-weight: bold;
-  color: #a68a4a;
-  letter-spacing: -0.5px;
-}
-.status-btn-group, .level-btn-group {
-  flex-shrink: 0;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 20px;
 }
-.status-btn {
-  border: 1.2px solid #bdbdbd;
-  border-radius: 12px;
-  background: #f5f5f5;
-  color: #757575;
-  font-weight: bold;
-  font-size: 0.98em;
-  padding: 4px 16px;
-  min-width: 60px;
-  min-height: 28px;
-  line-height: 1.1;
+
+.form-label {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 12px;
+}
+
+.form-label.inline-label {
+  margin-bottom: 0;
+  min-width: 100px;
+}
+
+.status-btn-group, .level-btn-group {
+  display: flex;
+  gap: 12px;
+}
+
+.status-btn, .level-btn {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #495057;
+  font-weight: 500;
+  font-size: 16px;
+  padding: 12px 24px;
+  min-width: 80px;
+  text-align: center;
   cursor: pointer;
-  transition: background 0.15s, border 0.15s, color 0.15s;
+  transition: all 0.2s ease;
   outline: none;
 }
-.status-btn.selected, .status-btn:active {
-  border: 2px solid #388e3c;
-  background: #43a047;
-  color: #fff;
+
+.status-btn:hover, .level-btn:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
 }
-.status-btn.status-inactive.selected, .status-btn.status-inactive:active {
-  border: 2px solid #757575;
-  background: #bdbdbd;
-  color: #fff;
+
+.status-btn.selected {
+  background: #007bff;
+  border-color: #007bff;
+  color: #ffffff;
 }
-.status-btn.status-active {
-  border: 1.5px solid #43a047;
-  background: #e8f5e9;
-  color: #388e3c;
-}
-.status-btn.status-active.selected, .status-btn.status-active:active {
-  border: 2px solid #388e3c;
-  background: #43a047;
-  color: #fff;
-}
-.level-btn {
-  border: 1.2px solid #ffe066;
-  border-radius: 12px;
-  padding: 4px 16px;
-  font-size: 0.98em;
-  font-weight: bold;
-  min-width: 60px;
-  min-height: 28px;
-  line-height: 1.1;
-  cursor: pointer;
-  transition: background 0.15s, border 0.15s, color 0.15s;
-  outline: none;
-  background: #fffbe6;
-  color: #a68a4a;
-}
+
 .level-btn.level-high {
-  border: 1.5px solid #e53935;
-  background: #ffebee;
-  color: #e53935;
+  border-color: #dc3545;
+  color: #dc3545;
 }
-.level-btn.level-high.selected, .level-btn.level-high:active {
-  border: 2px solid #b71c1c;
-  background: #e53935;
-  color: #fff;
+
+.level-btn.level-high.selected, .level-btn.level-high:hover {
+  background: #dc3545;
+  color: #ffffff;
 }
+
 .level-btn.level-mid {
-  border: 1.5px solid #43a047;
-  background: #e8f5e9;
-  color: #388e3c;
+  border-color: #ffc107;
+  color: #ffc107;
 }
-.level-btn.level-mid.selected, .level-btn.level-mid:active {
-  border: 2px solid #388e3c;
-  background: #43a047;
-  color: #fff;
+
+.level-btn.level-mid.selected, .level-btn.level-mid:hover {
+  background: #ffc107;
+  color: #212529;
 }
+
 .level-btn.level-low {
-  border: 1.5px solid #ffd600;
-  background: #fffde7;
-  color: #ffd600;
+  border-color: #28a745;
+  color: #28a745;
 }
-.level-btn.level-low.selected, .level-btn.level-low:active {
-  border: 2px solid #ffd600;
-  background: #ffd600;
-  color: #222;
+
+.level-btn.level-low.selected, .level-btn.level-low:hover {
+  background: #28a745;
+  color: #ffffff;
 }
+
+.form-textarea {
+  width: 100%;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 16px;
+  font-family: inherit;
+  background: #ffffff;
+  color: #495057;
+  outline: none;
+  transition: border-color 0.2s ease;
+  resize: vertical;
+}
+
+.form-textarea:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+#title.form-textarea {
+  min-height: 60px;
+  max-height: 80px;
+  font-weight: 500;
+  resize: none;
+}
+
+#detail.form-textarea {
+  min-height: 150px;
+  max-height: 250px;
+  line-height: 1.5;
+}
+
+.form-input {
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  background: #ffffff;
+  color: #495057;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-input[type="date"] {
+  width: 180px;
+}
+
+.form-row-2col {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 32px;
+}
+
+.form-group.col-2line {
+  flex: 1;
+  margin-bottom: 0;
+}
+
 .form-actions {
-  margin-top: 32px;
+  margin-top: 48px;
   display: flex;
   gap: 16px;
   justify-content: flex-end;
+  padding-top: 32px;
+  border-top: 1px solid #e9ecef;
 }
+
 .submit-btn {
-  background: #ffd600;
-  color: #222;
-  font-weight: bold;
+  background: #007bff;
+  color: #ffffff;
+  font-weight: 500;
   border: none;
   border-radius: 8px;
-  padding: 12px 38px;
-  font-size: 1.1em;
+  padding: 16px 32px;
+  font-size: 16px;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(255,214,0,0.08);
-  transition: background 0.15s, box-shadow 0.15s;
+  transition: background-color 0.2s ease;
 }
+
 .submit-btn:hover {
-  background: #ffe066;
-  box-shadow: 0 4px 16px rgba(255,214,0,0.13);
+  background: #0056b3;
 }
+
 .cancel-btn {
-  background: #e0e0e0;
-  color: #222;
-  font-weight: bold;
+  background: #6c757d;
+  color: #ffffff;
+  font-weight: 500;
   border: none;
   border-radius: 8px;
-  padding: 12px 38px;
-  font-size: 1.1em;
+  padding: 16px 32px;
+  font-size: 16px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background-color 0.2s ease;
 }
+
 .cancel-btn:hover {
-  background: #f5f5f5;
+  background: #545b62;
 }
-.form-group.xp-row {
-  flex-direction: row;
-  align-items: center;
-  margin-bottom: 22px;
+
+.required-mark {
+  color: #dc3545;
+  margin-left: 4px;
 }
-.form-label.xp-label {
-  margin-bottom: 0;
-  min-width: 90px;
-}
-.form-input[type="number"],
-.form-input[type="date"] {
-  border: 1.5px solid #ffe066;
-  border-radius: 7px;
-  padding: 8px 12px;
-  font-size: 1em;
-  background: #fffbe6;
-  color: #222;
-  outline: none;
-  width: 120px;
-  transition: border 0.2s;
-}
-.form-input[type="number"]:focus,
-.form-input[type="date"]:focus {
-  border: 2px solid #ffd600;
-  background: #fffde7;
-}
-.form-textarea {
-  border: 1.5px solid #ffe066;
-  border-radius: 7px;
-  background: #fff;
-  color: #222;
-  outline: none;
-  transition: border 0.2s;
-  resize: none;
-}
-#title.form-textarea {
-  min-height: 32px;
-  max-height: 38px;
-  font-size: 17px;
-  font-weight: bold;
-  padding: 8px 12px;
-}
-#detail.form-textarea {
-  min-height: 120px;
-  max-height: 220px;
-  font-size: 15px;
-  padding: 12px 14px;
-}
-.form-row-2col {
-  display: flex;
-  flex-direction: row;
-  gap: 32px;
-  margin-bottom: 10px;
-}
-.form-group.col-2line {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  flex: 1 1 0;
-  margin-bottom: 0;
-}
-.form-input[type="date"] {
-  width: 150px;
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .taskadd-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .taskadd-left {
+    flex: none;
+    padding: 24px;
+  }
+  
+  .taskadd-right {
+    min-width: auto;
+    padding: 24px;
+  }
+  
+  .form-row-2col {
+    flex-direction: column;
+    gap: 20px;
+  }
 }
 </style>
 {% endblock %}
+
 {% block content %}
 <div class="taskadd-container">
   <div class="taskadd-left">
     <div class="taskadd-title">Task 작성 가이드</div>
     <div class="taskadd-desc">
-      - Task 제목과 상세 내용을 구체적으로 작성해 주세요.
-      - 난이도(초급/중급/고급)를 선택하면 태스크 분류에 활용됩니다.
-      - 예시: "신입사원 온보딩 체크리스트 작성", "팀 프로젝트 환경 세팅" 등
+      • Task 제목과 상세 내용을 구체적으로 작성해 주세요<br>
+      • 난이도에 따라 업무 분류가 자동으로 설정됩니다<br>
+      • 마감일자를 정확히 입력하여 일정 관리에 활용하세요
     </div>
     <div class="taskadd-guide">
-      ※ Task는 실제 업무/퀘스트/학습 등 다양한 목적에 맞게 자유롭게 등록할 수 있습니다.
+      ※ Task는 프로젝트, 업무, 학습 등 다양한 목적으로 활용 가능합니다
     </div>
   </div>
+  
   <div class="taskadd-right">
-    <div class="task-header">Task 생성</div>
     <form method="post" class="task-form">
       {% csrf_token %}
+      
+      <div class="form-group">
+        <label class="form-label" for="title">제목 <span class="required-mark">*</span></label>
+        <textarea name="title" id="title" placeholder="Task 제목을 입력하세요" required class="form-textarea"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" for="detail">상세 내용 <span class="required-mark">*</span></label>
+        <textarea name="detail" id="detail" placeholder="Task의 상세 내용을 입력하세요" required class="form-textarea"></textarea>
+      </div>
+      
       <div class="form-row-2col">
         <div class="form-group col-2line">
-          <label class="form-label inline-label">상태</label>
-          <div class="status-btn-group">
-            <button type="button" class="status-btn status-inactive selected" data-status="진행 전">진행 전</button>
-            <button type="button" class="status-btn status-active" data-status="진행 중">진행 중</button>
-            <input type="hidden" name="status" id="status-input" value="진행 전" required>
-          </div>
-        </div>
-        
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="title">제목</label>
-        <textarea name="title" id="title" placeholder="제목을 입력하세요" required class="form-textarea" style="min-height:32px; max-height:38px;"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="detail">상세 내용</label>
-        <textarea name="detail" id="detail" placeholder="상세 내용을 입력하세요" required class="form-textarea"></textarea>
-      </div>
-      <div class="form-row-2col">
-        <div class="form-group col-2line">
-          <label class="form-label inline-label">난이도</label>
+          <label class="form-label inline-label">난이도 <span class="required-mark">*</span></label>
           <div class="level-btn-group">
             <button type="button" class="level-btn level-high" data-level="상">상</button>
             <button type="button" class="level-btn level-mid" data-level="중">중</button>
             <button type="button" class="level-btn level-low" data-level="하">하</button>
             <input type="hidden" name="level" id="level-input" required>
           </div>
-        </div>        
+        </div>
       </div>
-      <div class="form-group col-2line xp-row">
-        <label class="form-label xp-label inline-label" for="xp">경험치 (XP)</label>
-        <input type="number" name="xp" id="xp" placeholder="예: 20" class="form-input" min="0" max="100" required>
-      </div>
-      <div class="form-group col-2line">
-        <label class="form-label inline-label" for="deadline">마감일자</label>
+
+      <div class="form-group">
+        <label class="form-label" for="deadline">마감일자 <span class="required-mark">*</span></label>
         <input type="date" name="deadline" id="deadline" class="form-input" required>
       </div>
+      
       <div class="form-actions">
-        <button type="submit" class="submit-btn" onclick="history.back()">생성</button>
         <button type="button" class="cancel-btn" onclick="history.back()">취소</button>
+        <button type="submit" class="submit-btn" onclick="history.back()">생성</button>
       </div>
     </form>
   </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script src="{% static 'js/task_add.js' %}"></script>
 <script>
-// 상태 버튼 선택 효과 (난이도와 동일하게)
+// 상태 버튼 선택 효과
 const statusBtns = document.querySelectorAll('.status-btn');
 const statusInput = document.getElementById('status-input');
 statusBtns.forEach(btn => {
@@ -357,6 +352,7 @@ statusBtns.forEach(btn => {
     statusInput.value = this.dataset.status;
   });
 });
+
 // 난이도 버튼 선택 효과
 const levelBtns = document.querySelectorAll('.level-btn');
 const levelInput = document.getElementById('level-input');
@@ -367,13 +363,25 @@ levelBtns.forEach(btn => {
     levelInput.value = this.dataset.level;
   });
 });
-// XP 입력 유효성 검사 (0~100)
-const xpInput = document.getElementById('xp');
-xpInput.addEventListener('input', function() {
-  let val = parseInt(this.value, 10);
-  if (isNaN(val)) return;
-  if (val < 0) this.value = 0;
-  if (val > 100) this.value = 100;
+
+// 오늘 날짜 이후만 선택 가능하도록 설정
+const deadlineInput = document.getElementById('deadline');
+const today = new Date().toISOString().split('T')[0];
+deadlineInput.min = today;
+
+// 폼 제출 시 유효성 검사
+document.querySelector('.task-form').addEventListener('submit', function(e) {
+  if (!levelInput.value) {
+    e.preventDefault();
+    alert('난이도를 선택해주세요.');
+    return;
+  }
+  
+  if (!deadlineInput.value) {
+    e.preventDefault();
+    alert('마감일자를 입력해주세요.');
+    return;
+  }
 });
 </script>
 {% endblock %}

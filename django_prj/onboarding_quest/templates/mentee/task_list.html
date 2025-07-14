@@ -130,8 +130,6 @@
   margin-bottom: 6px;
   gap: 10px;
 }
-.task-xp { color: #888; font-size: 15px; display: flex; align-items: center; gap: 4px; }
-.icon-trophy { width: 18px; height: 18px; vertical-align: middle; }
 .task-desc { color: #555; font-size: 14px; margin-bottom: 8px; }
 .task-desc-row { margin-bottom: 8px; }
 .task-meta-row {
@@ -239,7 +237,6 @@
   margin-bottom: 8px;
 }
 .task-detail-title { color: #222; font-size: 26px; font-weight: bold; }
-.task-detail-xp { color: #888; font-size: 18px; display: flex; align-items: center; gap: 4px; font-weight: bold; }
 .task-detail-desc { color: #222; font-size: 17px; margin-bottom: 12px; margin-top: 8px; }
 .task-detail-meta-row {
   display: flex;
@@ -353,7 +350,6 @@
       <div class="task-card-header">
         <span class="status-badge not-started">진행 전</span>
         <span class="task-title d-day">온보딩 가이드 읽기</span>
-        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 20 XP</span>
       </div>
       <div class="task-desc-row">
         <div class="task-desc">회사 온보딩 가이드 문서를 읽고, 궁금한 점을 정리해보세요.</div>
@@ -380,7 +376,6 @@
       <div class="task-card-header">
         <span class="status-badge in-progress">진행 중</span>
         <span class="task-title d-day">회사 소개 및 조직도 이해하기</span>
-        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 50 XP</span>
       </div>
       <div class="task-desc-row">
         <div class="task-desc">회사 조직 구조와 각 부서 역할을 파악하고, 팀원들과 첫 인사를 나눠보세요.</div>
@@ -407,7 +402,6 @@
       <div class="task-card-header">
         <span class="status-badge review-requested">검토요청</span>
         <span class="task-title d-day">업무 프로세스 실습</span>
-        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 80 XP</span>
       </div>
       <div class="task-desc-row">
         <div class="task-desc">실제 결재/보고 프로세스를 경험하고, 피드백을 받아보세요.</div>
@@ -439,7 +433,6 @@
       <div class="task-card-header">
         <span class="status-badge done">완료</span>
         <span class="task-title d-day done">첫 번째 프로젝트 참여하기</span>
-        <span class="task-xp"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
       </div>
       <div class="task-desc-row">
         <div class="task-desc">팀 프로젝트에 직접 참여하여 실무 경험을 쌓고, 결과를 공유하세요.</div>
@@ -468,7 +461,6 @@
     <div class="task-detail-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <div style="display:flex; align-items:center; gap:12px;">
         <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
-        <span class="task-detail-xp" id="detail-xp" style="color:#888; font-size:17px; display:flex; align-items:center; gap:4px; font-weight:bold;"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
       </div>
       <div style="display:flex; gap:10px; margin-left:auto;">
         <button class="task-detail-edit-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">편집</button>
@@ -511,7 +503,6 @@
 const details = [
   {
     title: '온보딩 가이드 읽기',
-    xp: '20 XP',
     desc: '회사 온보딩 가이드 문서를 읽고, 궁금한 점을 정리해보세요.',
     badge: { text: '하', color: 'yellow' },
     status: '진행 전',
@@ -546,7 +537,6 @@ const details = [
   },
   {
     title: '회사 소개 및 조직도 이해하기',
-    xp: '50 XP',
     desc: '회사 조직 구조와 각 부서 역할을 파악하고, 팀원들과 첫 인사를 나눠보세요.',
     badge: { text: '중', color: 'green' },
     status: '진행 중',
@@ -574,7 +564,6 @@ const details = [
   },
   {
     title: '업무 프로세스 실습',
-    xp: '80 XP',
     desc: '실제 결재/보고 프로세스를 경험하고, 피드백을 받아보세요.',
     badge: { text: '상', color: 'red' },
     status: '검토 요청',
@@ -609,7 +598,6 @@ const details = [
   },
   {
     title: '첫 번째 프로젝트 참여하기',
-    xp: '100 XP',
     desc: '팀 프로젝트에 직접 참여하여 실무 경험을 쌓고, 결과를 공유하세요.',
     badge: { text: '상', color: 'red' },
     status: '완료됨',
@@ -631,8 +619,8 @@ const details = [
       },
     ],
     comments: [
-      { user: '멘토C', text: '프로젝트 결과 발표 자료도 꼭 준비해 주세요!', time: '2025.07.04 17:00' },
-      { user: '나', text: '네, 발표자료 준비해서 공유드리겠습니다.', time: '2025.07.04 17:10' },
+      { user: '멘토C', text: '프로젝트 결과 공유해주셔서 감사합니다! 잘하셨어요.', time: '2025.07.04 16:30' },
+      { user: '나', text: '감사합니다! 다음 프로젝트도 기대하겠습니다.', time: '2025.07.04 16:35' },
     ],
   },
 ];

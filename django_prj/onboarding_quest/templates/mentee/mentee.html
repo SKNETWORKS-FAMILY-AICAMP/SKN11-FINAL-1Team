@@ -237,7 +237,7 @@
 
 {% block content %}
 <div id="levelup-toast" class="levelup-toast"></div>
-  <div class="main-content bg-gray-50 p-8 rounded-lg">
+  <div class="main-content bg-gray-50 p-8 rounded-lg w-full max-w-screen-xl mx-auto">
     <div class="welcome-section bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8 flex items-center gap-6">
       <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-200 bg-white shadow-sm" />
       <div class="flex flex-col flex-1">
@@ -248,7 +248,10 @@
         <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
           <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
         </div>
-        <div class="text-sm text-gray-600 font-medium">EXP: <span id="userExpTop">0</span> / <span id="userExpMaxTop">300</span></div>
+        <div class="text-sm text-gray-600 font-medium">
+        완료: <span id="userExpTop">0</span> / <span id="userExpMaxTop">0</span>
+        </div>
+
       </div>      
     </div>
 
@@ -260,9 +263,6 @@
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               <span class="d-day-badge">D-5</span>
               <span class="kanban-diff diff-low">하</span>
-            </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 20 XP</span>
             </div>
           </div>
           <div class="kanban-card-row">
@@ -276,9 +276,6 @@
               <span class="d-day-badge">D-4</span>
               <span class="kanban-diff diff-mid">중</span>
             </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 30 XP</span>
-            </div>
           </div>
           <div class="kanban-card-row">
             <span class="kanban-title">팀 회의 준비</span>
@@ -290,9 +287,6 @@
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               <span class="d-day-badge">D-3</span>
               <span class="kanban-diff diff-low">하</span>
-            </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 10 XP</span>
             </div>
           </div>
           <div class="kanban-card-row">
@@ -309,9 +303,6 @@
               <span class="d-day-badge">D-2</span>
               <span class="kanban-diff diff-mid">중</span>
             </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 50 XP</span>
-            </div>
           </div>
           <div class="kanban-card-row">
             <span class="kanban-title">회사 소개 및 조직도 이해하기</span>
@@ -323,9 +314,6 @@
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               <span class="d-day-badge">D-1</span>
               <span class="kanban-diff diff-high">상</span>
-            </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 80 XP</span>
             </div>
           </div>
           <div class="kanban-card-row">
@@ -342,9 +330,6 @@
               <span class="d-day-badge">D-1</span>
               <span class="kanban-diff diff-high">상</span>
             </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 80 XP</span>
-            </div>
           </div>
           <div class="kanban-card-row">
             <span class="kanban-title">업무 프로세스 실습</span>
@@ -357,9 +342,6 @@
               <span class="d-day-badge">D-0</span>
               <span class="kanban-diff diff-mid">중</span>
             </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 30 XP</span>
-            </div>
           </div>
           <div class="kanban-card-row">
             <span class="kanban-title">멘토와 1:1 미팅</span>
@@ -371,9 +353,6 @@
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               <span class="d-day-badge">D-0</span>
               <span class="kanban-diff diff-low">하</span>
-            </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 10 XP</span>
             </div>
           </div>
           <div class="kanban-card-row">
@@ -390,9 +369,6 @@
               <span class="d-day-badge">D-DAY</span>
               <span class="kanban-diff diff-high">상</span>
             </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 100 XP</span>
-            </div>
           </div>
           <div class="kanban-card-row">
             <span class="kanban-title">첫 번째 프로젝트 참여하기</span>
@@ -405,9 +381,6 @@
               <span class="d-day-badge">D-0</span>
               <span class="kanban-diff diff-mid">중</span>
             </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 30 XP</span>
-            </div>
           </div>
           <div class="kanban-card-row">
             <span class="kanban-title">멘토와 1:1 미팅</span>
@@ -419,9 +392,6 @@
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               <span class="d-day-badge">D-0</span>
               <span class="kanban-diff diff-low">하</span>
-            </div>
-            <div class="kanban-meta-right" style="display:flex;align-items:center;gap:4px;">
-              <span class="kanban-xp"><span style="font-size:15px;">🏆</span> 10 XP</span>
             </div>
           </div>
           <div class="kanban-card-row">
@@ -513,59 +483,62 @@ function updateSuccessLine() {
 }
 // 완료 컬럼 EXP 합산 및 bar/레벨업 동적 표시 + welcome-section EXP 동기화
 let prevLevel = 1;
+
 function updateSuccessExp() {
-  const maxExp = 300;
-  let totalExp = 0;
-  document.querySelectorAll('.success-column .kanban-card').forEach(card => {
-    const xpEl = card.querySelector('.kanban-xp');
-    if (xpEl) {
-      const match = xpEl.textContent.match(/(\d+)\s*XP/);
-      if (match) totalExp += parseInt(match[1], 10);
-    }
-  });
-  // 레벨업 계산
+  const maxExpPerLevel = 300;
+  const totalTasks = document.querySelectorAll('.kanban-card').length;
+  const completedTasks = document.querySelectorAll('.success-column .kanban-card').length;
+
+  if (totalTasks === 0) return; // 태스크가 없는 경우 예외처리
+
+  const completionRatio = completedTasks / totalTasks;
+  const totalExp = Math.floor(completionRatio * maxExpPerLevel); // 현재 레벨 EXP 계산
+
+  // 레벨 계산 (누적 EXP로 계산할 경우 레벨업도 가능)
   let level = 1;
   let expForLevel = totalExp;
-  let maxExpForLevel = maxExp;
+  let maxExpForLevel = maxExpPerLevel;
   while (expForLevel >= maxExpForLevel) {
     expForLevel -= maxExpForLevel;
     level++;
   }
-  // 레벨업 알림 (이전 레벨보다 증가 시)
+
   if (level > prevLevel) {
     showLevelupToast(level);
   }
   prevLevel = level;
-  // 상단 레벨/EXP/Bar 동기화
+
+  // 상단 동기화
   const userLevelTop = document.getElementById('userLevelTop');
   const userExpTop = document.getElementById('userExpTop');
   const userExpMaxTop = document.getElementById('userExpMaxTop');
   const expBarTop = document.getElementById('expBarTop');
+
   if (userLevelTop) userLevelTop.textContent = level;
-  if (userExpTop) userExpTop.textContent = expForLevel;
-  if (userExpMaxTop) userExpMaxTop.textContent = maxExpForLevel;
-  if (expBarTop) expBarTop.style.width = Math.min(100, (expForLevel / maxExpForLevel) * 100) + '%';
-  // 기존 summary bar/exp도 동기화
+  if (userExpTop) userExpTop.textContent = completedTasks;
+  if (userExpMaxTop) userExpMaxTop.textContent = totalTasks;
+  if (expBarTop) expBarTop.style.width = Math.min(100, (completedTasks / totalTasks) * 100) + '%';
+
+
+  // summary 영역도 동기화
   const summary = document.getElementById('success-exp-summary');
   const barFill = summary ? summary.querySelector('.success-exp-bar-fill') : null;
   const expText = summary ? summary.querySelector('.success-exp-text') : null;
   const levelUp = summary ? summary.querySelector('.success-exp-levelup') : null;
   if (summary) {
-    if (totalExp > 0) {
+    if (completedTasks > 0) {
       summary.style.display = '';
-      if (expText) expText.textContent = `${totalExp} / ${maxExp} EXP`;
-      let percent = Math.min(100, (expForLevel / maxExpForLevel) * 100);
-      if (barFill) barFill.style.width = percent + '%';
-      if (level > 1 && levelUp) {
-        levelUp.style.display = '';
-      } else if (levelUp) {
-        levelUp.style.display = 'none';
-      }
+      if (expText) expText.textContent = `${expForLevel} / ${maxExpForLevel} EXP`;
+      if (barFill) barFill.style.width = Math.min(100, (expForLevel / maxExpForLevel) * 100) + '%';
+      if (level > 1 && levelUp) levelUp.style.display = '';
+      else if (levelUp) levelUp.style.display = 'none';
     } else {
       summary.style.display = 'none';
     }
   }
 }
+
+
 // 레벨업 토스트 알림 함수
 function showLevelupToast(level) {
   const toast = document.getElementById('levelup-toast');
@@ -580,19 +553,23 @@ function showLevelupToast(level) {
 }
 // welcome-section EXP/Bar 동기화 (base.html 스타일과 싱크)
 function updateWelcomeExp(totalExp, maxExp) {
-  // sidebar
+  // ✅ 사이드바 영역 텍스트/프로그레스바 업데이트
   const progressText = document.querySelector('.welcome-section .progress-text');
   const progressFill = document.querySelector('.welcome-section .progress-fill');
-  if (progressText) progressText.textContent = `${totalExp} / ${maxExp} EXP`;
+
+  if (progressText) progressText.textContent = `완료: ${totalExp} / ${maxExp}`;
   if (progressFill) progressFill.style.width = Math.min(100, (totalExp / maxExp) * 100) + '%';
-  // 상단(싱크)
+
+  // ✅ 상단 바(멘티 프로필 카드 영역)도 동기화
   const userExpTop = document.getElementById('userExpTop');
   const userExpMaxTop = document.getElementById('userExpMaxTop');
   const expBarTop = document.getElementById('expBarTop');
+
   if (userExpTop) userExpTop.textContent = totalExp;
   if (userExpMaxTop) userExpMaxTop.textContent = maxExp;
   if (expBarTop) expBarTop.style.width = Math.min(100, (totalExp / maxExp) * 100) + '%';
 }
+
 // 드래그/드롭, DOM 변경 시 EXP/취소선 동기화
 let observer = null;
 window.addEventListener('DOMContentLoaded', () => {

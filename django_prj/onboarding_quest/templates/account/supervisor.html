@@ -5,81 +5,408 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/account/supervisor.css' %}">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .card-shadow {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    .table-hover:hover {
+        background-color: rgba(59, 130, 246, 0.05);
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    .search-input:focus {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-color: #3b82f6;
+    }
+    
+    .modal-backdrop {
+        backdrop-filter: blur(4px);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-  <h2>관리자 계정관리</h2>
+<!-- Page Header -->
+<div class="mb-8 fade-in">
+    <div class="bg-white rounded-xl card-shadow p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-4">
+                <div class="p-3 gradient-bg rounded-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">계정 관리</h1>
+                    <p class="text-sm text-gray-500">직원 계정을 관리하고 권한을 설정하세요</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-600">총 <span id="userCount" class="font-semibold text-blue-600">5</span>명</span>
+            </div>
+        </div>
+        
+        <!-- Controls Section -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex-1">
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="이름, 부서, 직급으로 검색..." 
+                           class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg search-input focus:outline-none transition-all duration-200">
+                    <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <select id="departmentFilter" class="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">모든 부서</option>
+                    <option value="개발팀">개발팀</option>
+                    <option value="마케팅팀">마케팅팀</option>
+                    <option value="인사팀">인사팀</option>
+                    <option value="디자인팀">디자인팀</option>
+                    <option value="영업팀">영업팀</option>
+                </select>
+                <a href="/account/user_add_modify/" class="btn-primary text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 text-decoration-none">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    신규 유저 등록
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 
-  <div class="top-bar">
-    <a href="/account/user_add_modify/" class="add-user-btn">+ 신규 유저 등록</a>
-  </div>
+<!-- User Table -->
+<div class="bg-white rounded-xl card-shadow overflow-hidden fade-in">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-green-600 text-white">
+                <tr>
+                    <th class="px-6 py-4 text-left text-base font-semibold tracking-wide">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            이름
+                        </div>
+                    </th>
+                    <th class="px-6 py-4 text-left text-base font-semibold tracking-wide">입사일</th>
+                    <th class="px-6 py-4 text-left text-base font-semibold tracking-wide">직급</th>
+                    <th class="px-6 py-4 text-left text-base font-semibold tracking-wide">부서</th>
+                    <th class="px-6 py-4 text-left text-base font-semibold tracking-wide">관리</th>
+                </tr>
+            </thead>
 
-  <table>
-    <thead>
-      <tr>
-        <th>이름</th>
-        <th>입사일</th>
-        <th>직급</th>
-        <th>부서</th>
-        <th>액션</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>김하늘</td>
-        <td>2022-03-15</td>
-        <td>대리</td>
-        <td>개발팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>이준석</td>
-        <td>2023-07-01</td>
-        <td>사원</td>
-        <td>마케팅팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>박소영</td>
-        <td>2021-11-25</td>
-        <td>과장</td>
-        <td>인사팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>정지훈</td>
-        <td>2024-01-10</td>
-        <td>사원</td>
-        <td>디자인팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-      <tr>
-        <td>최유진</td>
-        <td>2020-05-30</td>
-        <td>차장</td>
-        <td>영업팀</td>
-        <td>
-          <a href="/account/user_add_modify/" class="edit-link">수정</a> |
-          <a href="/account/change_pwd/" class="edit-link">비밀번호 변경</a> |
-          <a href="#" class="delete-link">삭제</a>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+            <tbody id="userTableBody" class="bg-white divide-y divide-gray-200">
+                <tr class="table-hover">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" class="user-checkbox mr-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-base">
+                                    김
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-base font-medium text-gray-900">김하늘</div>
+                                    <div class="text-base text-gray-500">개발팀</div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">2022-03-15</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-base font-medium rounded-full bg-blue-100 text-blue-800">대리</span>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">개발팀</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <a href="/account/user_add_modify/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                수정
+                            </a>
+                            <a href="/account/change_pwd/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                비밀번호
+                            </a>
+                            <a href="#" class="px-3 py-1.5 text-base text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition text-decoration-none" onclick="openDeleteModal(1, '김하늘')">
+                                삭제
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                
+                <tr class="table-hover">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" class="user-checkbox mr-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium text-base">
+                                    이
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-base font-medium text-gray-900">이준석</div>
+                                    <div class="text-base text-gray-500">마케팅팀</div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">2023-07-01</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-base font-medium rounded-full bg-green-100 text-green-800">사원</span>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">마케팅팀</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <a href="/account/user_add_modify/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                수정
+                            </a>
+                            <a href="/account/change_pwd/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                비밀번호
+                            </a>
+                            <a href="#" class="px-3 py-1.5 text-base text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition text-decoration-none" onclick="openDeleteModal(2, '이준석')">
+                                삭제
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                
+                <tr class="table-hover">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" class="user-checkbox mr-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-medium text-base">
+                                    박
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-base font-medium text-gray-900">박소영</div>
+                                    <div class="text-base text-gray-500">인사팀</div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">2021-11-25</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-base font-medium rounded-full bg-purple-100 text-purple-800">과장</span>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">인사팀</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <a href="/account/user_add_modify/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                수정
+                            </a>
+                            <a href="/account/change_pwd/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                비밀번호
+                            </a>
+                            <a href="#" class="px-3 py-1.5 text-base text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition text-decoration-none" onclick="openDeleteModal(3, '박소영')">
+                                삭제
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                
+                <tr class="table-hover">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" class="user-checkbox mr-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white font-medium text-base">
+                                    정
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-base font-medium text-gray-900">정지훈</div>
+                                    <div class="text-base text-gray-500">디자인팀</div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">2024-01-10</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-base font-medium rounded-full bg-green-100 text-green-800">사원</span>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">디자인팀</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <a href="/account/user_add_modify/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                수정
+                            </a>
+                            <a href="/account/change_pwd/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                비밀번호
+                            </a>
+                            <a href="#" class="px-3 py-1.5 text-base text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition text-decoration-none" onclick="openDeleteModal(4,'정지훈')">
+                                삭제
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                
+                <tr class="table-hover">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" class="user-checkbox mr-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-medium text-base">
+                                    최
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-base font-medium text-gray-900">최유진</div>
+                                    <div class="text-base text-gray-500">영업팀</div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">2020-05-30</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-base font-medium rounded-full bg-indigo-100 text-indigo-800">차장</span>
+                    </td>
+                    <td class="px-6 py-4 text-base text-gray-900">영업팀</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <a href="/account/user_add_modify/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                수정
+                            </a>
+                            <a href="/account/change_pwd/" class="px-3 py-1.5 text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-decoration-none">
+                                비밀번호
+                            </a>
+                            <a href="#" class="px-3 py-1.5 text-base text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition text-decoration-none" onclick="openDeleteModal(5, '최유진')">
+                                삭제
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="mt-8 flex justify-center">
+    <div class="flex items-center space-x-2">
+        <button class="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition">이전</button>
+        <button class="px-3 py-2 rounded-lg bg-blue-600 text-white">1</button>
+        <button class="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition">2</button>
+        <button class="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition">3</button>
+        <button class="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition">다음</button>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 transform transition-all">
+            <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 text-center mb-2">계정 삭제</h3>
+            <p class="text-sm text-gray-500 text-center mb-6">정말로 <span id="deleteUserName" class="font-medium text-gray-900"></span> 계정을 삭제하시겠습니까?</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">취소</button>
+                <button onclick="confirmDelete()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">삭제</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 검색 기능
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#userTableBody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        updateUserCount();
+    });
+
+    // 부서 필터
+    document.getElementById('departmentFilter').addEventListener('change', function() {
+        const selectedDepartment = this.value;
+        const rows = document.querySelectorAll('#userTableBody tr');
+        
+        rows.forEach(row => {
+            const departmentCell = row.cells[3]; // 부서 컬럼 (인덱스 변경: 상태 컬럼이 삭제됨)
+            if (!selectedDepartment || departmentCell.textContent.trim() === selectedDepartment) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        updateUserCount();
+    });
+
+    // 전체 선택
+    document.getElementById('selectAll').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // 사용자 수 업데이트
+    function updateUserCount() {
+        const visibleRows = document.querySelectorAll('#userTableBody tr:not([style*="display: none"])');
+        document.getElementById('userCount').textContent = visibleRows.length;
+    }
+
+    // 모달 관련 함수들
+    function openDeleteModal(id, name) {
+        document.getElementById('deleteUserName').textContent = name;
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    function confirmDelete() {
+        // 실제로는 서버에 삭제 요청을 보내야 합니다
+        alert('삭제 기능은 백엔드에서 구현해야 합니다.');
+        closeDeleteModal();
+    }
+
+    // ESC 키로 모달 닫기
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeDeleteModal();
+        }
+    });
+</script>
 {% endblock %}

@@ -142,25 +142,148 @@
     color: #555;
     background: #fafbfc;
     resize: none;
+    transition: border-color 0.2s;
+  }
+  .template-form-textarea:focus {
+    outline: none;
+    border-color: #ffd600;
   }
   .template-form-actions {
     display: flex;
-    gap: 18px;
+    gap: 12px;
     justify-content: flex-end;
     margin-top: 30px;
   }
+
   .template-btn {
     background: #ffd600;
     color: #222;
     border: none;
-    border-radius: 8px;
-    padding: 10px 32px;
-    font-size: 1.1em;
-    font-weight: bold;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+    min-width: 80px;
+    text-align: center;
+    line-height: 1.2;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
   }
-  .template-btn:hover { background: #ffe066; }
+
+  .template-btn:hover { 
+    background: #ffe066; 
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.12);
+  }
+
+  .template-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+
+  /* 제목 입력 필드 스타일 개선 */
+  .tasklist-search {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    font-size: 16px;
+    color: #555;
+    background: #fafbfc;
+    transition: border-color 0.2s;
+  }
+
+  .tasklist-search:focus {
+    outline: none;
+    border-color: #ffd600;
+  }
+
+  /* 반응형 개선 */
+  @media (max-width: 1200px) {
+    .template-right {
+      flex-direction: column;
+      gap: 30px;
+    }
+    
+    .template-right > div {
+      max-width: none !important;
+    }
+  }
+
+  /* 태스크 리스트 스크롤 개선 */
+  .template-task-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .template-task-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .template-task-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  .template-task-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+
+  .template-task-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+
+  /* 버튼 그룹 스타일 개선 */
+  .button-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .ai-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .ai-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+  }
+
+  /* 폼 섹션 구분선 */
+  .form-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+    margin: 24px 0;
+  }
+
+  /* 애니메이션 효과 */
+  .slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 </style>
 {% endblock %}
 
@@ -173,13 +296,21 @@
       <form class="template-form" id="create-form">
         <div class="template-form-row">
           <label class="template-form-label">커리큘럼 제목</label>
-          <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력">
+          <input type="text" class="tasklist-search" placeholder="커리큘럼 제목을 입력하세요">
         </div>
+        
+        <div class="form-divider"></div>
+        
         <div class="template-form-row">
           <label class="template-form-label">커리큘럼 설명</label>
-          <textarea class="template-form-textarea" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
-          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;" onclick="generateDraftContent()">커리큘럼 초안 생성</button>
+          <textarea class="template-form-textarea" placeholder="커리큘럼의 목적과 주요 내용을 설명해주세요..." style="min-height: 120px;"></textarea>
+          <div class="button-group">
+            <button type="button" class="ai-btn" id="generate-draft-btn" onclick="generateDraftContent()">✨ AI 커리큘럼 생성</button>
+          </div>
         </div>
+        
+        <div class="form-divider"></div>
+        
         <div class="template-form-row" id="draft-section">
           <label class="template-form-label">주차별 커리큘럼 과정</label>
           <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;" placeholder="예시:
@@ -190,20 +321,22 @@
 ...
 
 위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
-          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;" onclick="toggleTaskSection()">세부 Task 생성</button>
+          <div class="button-group">
+            <button type="button" class="ai-btn" id="generate-task-btn" onclick="toggleTaskSection()">🎯 AI 세부 task 생성</button>
+          </div>
         </div>
       </form>
     </div>
+    
     <!-- 우측: 세부 task/추가 버튼 -->
     <div style="flex:1; min-width:220px; display:flex; flex-direction:column; align-items:flex-start; position: relative;" id="task-section">
-      <button class="add-task-btn" style="width:100%; margin-bottom:18px; margin-top:0;" onclick="window.location.href='/common/task_add'">세부 task 추가</button>
-      <div class="template-task-list" style="width:100%; display: none;" id="task-list">
+      <div class="template-title">📋 세부 Task 목록</div>
+      <div class="template-task-list slide-in" style="width:100%; display: none;" id="task-list">
         <div class="template-task-item" draggable="true">
           <div class="task-content">
             <div class="task-badges">
               <span class="task-badge status-badge">진행 전</span>
               <span class="task-badge difficulty-low">하</span>
-              <span class="task-badge exp-badge">+10 EXP</span>
             </div>
             <span>오리엔테이션 영상 시청</span>
           </div>
@@ -213,7 +346,6 @@
             <div class="task-badges">
               <span class="task-badge status-badge">진행 전</span>
               <span class="task-badge difficulty-medium">중</span>
-              <span class="task-badge exp-badge">+20 EXP</span>
             </div>
             <span>조직문화 pdf 가이드 읽기</span>
           </div>
@@ -223,7 +355,6 @@
             <div class="task-badges">
               <span class="task-badge status-badge">진행 전</span>
               <span class="task-badge difficulty-low">하</span>
-              <span class="task-badge exp-badge">+10 EXP</span>
             </div>
             <span>사내 조직도 열람</span>
           </div>
@@ -233,7 +364,6 @@
             <div class="task-badges">
               <span class="task-badge status-badge">진행 전</span>
               <span class="task-badge difficulty-high">상</span>
-              <span class="task-badge exp-badge">+30 EXP</span>
             </div>
             <span>팀원과 소통하기</span>
           </div>
@@ -243,7 +373,6 @@
             <div class="task-badges">
               <span class="task-badge status-badge">진행 전</span>
               <span class="task-badge difficulty-medium">중</span>
-              <span class="task-badge exp-badge">+20 EXP</span>
             </div>
             <span>관련 일지 작성하기</span>
           </div>
@@ -253,30 +382,22 @@
             <div class="task-badges">
               <span class="task-badge status-badge">진행 전</span>
               <span class="task-badge difficulty-high">상</span>
-              <span class="task-badge exp-badge">+30 EXP</span>
             </div>
             <span>팀원들과 커피챗</span>
           </div>
         </div>
-        <div class="template-task-item" draggable="true">
-          <div class="task-content">
-            <div class="task-badges">
-              <span class="task-badge status-badge">진행 전</span>
-              <span class="task-badge difficulty-medium">중</span>
-              <span class="task-badge exp-badge">+20 EXP</span>
-            </div>
-            <span>Weekly 미팅</span>
-          </div>
-        </div>
       </div>
+      
       <!-- 우측 하단에 버튼 배치 -->
       <div class="template-form-actions" style="position: absolute; bottom: 0; right: 0; margin-top: 0;">
+        <button type="button" class="template-btn" onclick="window.location.href='/common/task_add'">세부 task 추가</button>
         <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">생성</button>
         <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
       </div>
     </div>
   </div>
 </div>
+
 <script>
 // 커리큘럼 초안 생성 함수 (텍스트 추가)
 function generateDraftContent() {
@@ -295,6 +416,13 @@ function generateDraftContent() {
 # week12 평생 신입사원 되기 프로젝트`;
   
   curriculumTextarea.value = draftContent;
+  
+  // 애니메이션 효과
+  curriculumTextarea.style.transition = 'all 0.3s ease';
+  curriculumTextarea.style.backgroundColor = '#f0f8ff';
+  setTimeout(() => {
+    curriculumTextarea.style.backgroundColor = '#fafbfc';
+  }, 1000);
 }
 
 // 세부 Task 생성 토글 함수
@@ -303,8 +431,10 @@ function toggleTaskSection() {
   
   if (taskList.style.display === 'none') {
     taskList.style.display = 'flex';
+    taskList.classList.add('slide-in');
   } else {
     taskList.style.display = 'none';
+    taskList.classList.remove('slide-in');
   }
 }
 
@@ -312,45 +442,58 @@ function toggleTaskSection() {
 const taskList = document.getElementById('task-list');
 let draggingEl = null;
 let dragOverEl = null;
-Array.from(taskList.children).forEach(item => {
-  item.addEventListener('dragstart', e => {
-    draggingEl = item;
-    item.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-  });
-  item.addEventListener('dragend', e => {
-    draggingEl = null;
-    item.classList.remove('dragging');
-    Array.from(taskList.children).forEach(i => i.classList.remove('drag-over'));
-  });
-  item.addEventListener('dragover', e => {
-    e.preventDefault();
-  });
-  item.addEventListener('dragenter', e => {
-    if (item !== draggingEl) {
-      item.classList.add('drag-over');
-      dragOverEl = item;
-    }
-  });
-  item.addEventListener('dragleave', e => {
-    item.classList.remove('drag-over');
-    dragOverEl = null;
-  });
-  item.addEventListener('drop', e => {
-    e.preventDefault();
-    if (item !== draggingEl) {
-      item.classList.remove('drag-over');
-      // 순서 변경
-      const children = Array.from(taskList.children);
-      const dropIdx = children.indexOf(item);
-      taskList.removeChild(draggingEl);
-      if (dropIdx < children.length - 1) {
-        taskList.insertBefore(draggingEl, item);
-      } else {
-        taskList.appendChild(draggingEl);
+
+function initializeDragDrop() {
+  Array.from(taskList.children).forEach(item => {
+    item.addEventListener('dragstart', e => {
+      draggingEl = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    
+    item.addEventListener('dragend', e => {
+      draggingEl = null;
+      item.classList.remove('dragging');
+      Array.from(taskList.children).forEach(i => i.classList.remove('drag-over'));
+    });
+    
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+    });
+    
+    item.addEventListener('dragenter', e => {
+      if (item !== draggingEl) {
+        item.classList.add('drag-over');
+        dragOverEl = item;
       }
-    }
+    });
+    
+    item.addEventListener('dragleave', e => {
+      item.classList.remove('drag-over');
+      dragOverEl = null;
+    });
+    
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (item !== draggingEl) {
+        item.classList.remove('drag-over');
+        // 순서 변경
+        const children = Array.from(taskList.children);
+        const dropIdx = children.indexOf(item);
+        taskList.removeChild(draggingEl);
+        if (dropIdx < children.length - 1) {
+          taskList.insertBefore(draggingEl, item);
+        } else {
+          taskList.appendChild(draggingEl);
+        }
+      }
+    });
   });
+}
+
+// 페이지 로드 시 드래그 앤 드롭 초기화
+document.addEventListener('DOMContentLoaded', function() {
+  initializeDragDrop();
 });
 </script>
 {% endblock %}

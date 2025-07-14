@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}관리자 계정관리{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/account/supervisor.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="top-bar">
+    <a href="/account/user_add_modify/" class="add-user-btn">+ 신규 유저 등록</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>이름</th>
+        <th>입사일</th>
+        <th>직급</th>
+        <th>부서</th>
+        <th>관리</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>김하늘</td>
+        <td>2022-03-15</td>
+        <td>대리</td>
+        <td>개발팀</td>
+        <td class="flex gap-2">
+          <a href="/account/user_add_modify/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            수정
+          </a>
+          <a href="/account/change_pwd/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            비밀번호 변경
+          </a>
+          <a href="#" class="px-3 py-1.5 rounded border text-sm text-red-600 bg-white hover:bg-red-50 transition border-red-300">
+            삭제
+          </a>
+        </td>
+
+      </tr>
+      <tr>
+        <td>이준석</td>
+        <td>2023-07-01</td>
+        <td>사원</td>
+        <td>마케팅팀</td>
+        <td class="flex gap-2">
+          <a href="/account/user_add_modify/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            수정
+          </a>
+          <a href="/account/change_pwd/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            비밀번호 변경
+          </a>
+          <a href="#" class="px-3 py-1.5 rounded border text-sm text-red-600 bg-white hover:bg-red-50 transition border-red-300">
+            삭제
+          </a>
+        </td>
+
+      </tr>
+      <tr>
+        <td>박소영</td>
+        <td>2021-11-25</td>
+        <td>과장</td>
+        <td>인사팀</td>
+        <td class="flex gap-2">
+          <a href="/account/user_add_modify/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            수정
+          </a>
+          <a href="/account/change_pwd/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            비밀번호 변경
+          </a>
+          <a href="#" class="px-3 py-1.5 rounded border text-sm text-red-600 bg-white hover:bg-red-50 transition border-red-300">
+            삭제
+          </a>
+        </td>
+
+      </tr>
+      <tr>
+        <td>정지훈</td>
+        <td>2024-01-10</td>
+        <td>사원</td>
+        <td>디자인팀</td>
+        <td class="flex gap-2">
+          <a href="/account/user_add_modify/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            수정
+          </a>
+          <a href="/account/change_pwd/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            비밀번호 변경
+          </a>
+          <a href="#" class="px-3 py-1.5 rounded border text-sm text-red-600 bg-white hover:bg-red-50 transition border-red-300">
+            삭제
+          </a>
+        </td>
+
+      </tr>
+      <tr>
+        <td>최유진</td>
+        <td>2020-05-30</td>
+        <td>차장</td>
+        <td>영업팀</td>
+        <td class="flex gap-2">
+          <a href="/account/user_add_modify/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            수정
+          </a>
+          <a href="/account/change_pwd/" class="px-3 py-1.5 rounded border text-sm text-gray-800 bg-white hover:bg-gray-100 transition border-gray-300">
+            비밀번호 변경
+          </a>
+          <a href="#" class="px-3 py-1.5 rounded border text-sm text-red-600 bg-white hover:bg-red-50 transition border-red-300">
+            삭제
+          </a>
+        </td>
+
+      </tr>
+    </tbody>
+  </table>
+{% endblock %}
