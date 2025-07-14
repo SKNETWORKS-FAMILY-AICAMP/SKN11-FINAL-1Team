@@ -198,6 +198,7 @@ def mentor(request):
             'tags': [mentee.tag] if mentee.tag else [],
             'dday': dday,
             'progress': progress,
+            'mentorship_id': ms.mentorship_id,
             'curriculum_title': ms.curriculum_title,
             'total_weeks': ms.total_weeks,
         })
