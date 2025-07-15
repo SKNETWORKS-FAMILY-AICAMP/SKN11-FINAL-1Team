@@ -1,6 +1,6 @@
 # TaskAssign 수정 API (AJAX)
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 import json
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -10,6 +10,57 @@ from collections import defaultdict
 from django.contrib.auth.decorators import login_required
 from core.models import Memo, User
 
+# 하위 테스크(TaskAssign) 생성 API
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def create_subtask(request, parent_id):
+    try:
+        # parent_id는 상위 TaskAssign의 id, 0이면 최상위로 간주
+        parent = None
+        if int(parent_id) != 0:
+            parent = TaskAssign.objects.get(task_assign_id=parent_id)
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        guideline = data.get('guideline', '').strip()
+        description = data.get('description', '').strip()
+        status = data.get('status', '진행 전').strip() or '진행 전'
+        priority = data.get('priority', '').strip() or (parent.priority if parent else None)
+        end_date = data.get('end_date', None)
+        week = data.get('week', None)
+        order = data.get('order', None)
+        mentorship_id = data.get('mentorship_id', None)
+        # 필수값 체크
+        if not title:
+            return JsonResponse({'success': False, 'error': '제목을 입력하세요.'}, status=400)
+        if not mentorship_id and parent:
+            mentorship_id = parent.mentorship_id_id if hasattr(parent, 'mentorship_id_id') else parent.mentorship_id.id
+        if not mentorship_id:
+            return JsonResponse({'success': False, 'error': '멘토쉽 정보가 필요합니다.'}, status=400)
+        # week, order 기본값 상속
+        if not week and parent:
+            week = parent.week
+        if not order and parent:
+            order = None
+        subtask = TaskAssign.objects.create(
+            parent=parent,
+            mentorship_id_id=mentorship_id,
+            title=title,
+            guideline=guideline,
+            description=description,
+            week=week if week is not None else 1,
+            order=order,
+            start_date=None,
+            end_date=end_date if end_date else None,
+            status=status,
+            priority=priority,
+        )
+        return JsonResponse({'success': True, 'subtask_id': subtask.task_assign_id})
+    except TaskAssign.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '상위 Task가 존재하지 않습니다.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    
 @csrf_exempt
 @require_POST
 @login_required

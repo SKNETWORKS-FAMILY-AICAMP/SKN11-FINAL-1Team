@@ -356,13 +356,73 @@
   <!-- 우측: 상세 정보 -->
   <div class="tasklist-right">
     <div class="task-detail-header" id="detail-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <!-- 하위 테스크 생성 모달 -->
+      <div id="subtask-modal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; min-width:420px; max-width:600px; padding:40px 36px 32px 36px; box-shadow:0 6px 32px rgba(0,0,0,0.20); position:relative;">
+          <button id="subtask-close-btn" style="position:absolute; right:12px; top:10px; background:none; border:none; font-size:18px; color:#888; cursor:pointer; padding:0 4px; width:28px; height:28px; line-height:24px;">&times;</button>
+          <form id="subtask-form">
+            <div style="font-weight:bold; margin-bottom:18px;">하위 테스크 생성</div>
+            <div style="display:flex; gap:12px; margin-bottom:14px; align-items:flex-end;">
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">상태</label>
+                <select id="subtask-status" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;">
+                  <option value="진행 전">진행 전</option>
+                  <option value="진행 중">진행 중</option>
+                  <option value="검토 요청">검토 요청</option>
+                  <option value="완료">완료</option>
+                </select>
+              </div>
+              <div style="flex:2;">
+                <label style="font-size:17px; color:#222;">상위 Task</label>
+                <input id="subtask-parent-title" type="text" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px; background:#f7f7f7;" readonly />
+                <input id="subtask-parent-id" type="hidden" />
+              </div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:17px; color:#222;">제목</label>
+              <input id="subtask-title" type="text" style="width:100%; margin-bottom:0; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" required />
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:17px; color:#222;">가이드라인</label>
+              <input id="subtask-guideline" type="text" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:17px; color:#222;">세부내용</label>
+              <textarea id="subtask-desc" style="width:100%; min-height:120px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:14px; align-items:flex-end;">
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">우선순위</label>
+                <select id="subtask-priority" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;">
+                  <option value="">(상위와 동일)</option>
+                  <option value="상">상</option>
+                  <option value="중">중</option>
+                  <option value="하">하</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">시작일</label>
+                <input id="subtask-start-date" type="date" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;" />
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">마감일</label>
+                <input id="subtask-end-date" type="date" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;" />
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+              <button type="submit" class="template-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:8px; padding:6px 18px; font-size:17px; cursor:pointer;">생성</button>
+              <button type="button" id="subtask-cancel-btn" class="template-btn" style="background:#eee; color:#222; font-weight:bold; border:none; border-radius:8px; padding:6px 18px; font-size:17px; cursor:pointer;">취소</button>
+            </div>
+          </form>
+        </div>
+      </div>
       <div style="display:flex; align-items:center; gap:12px;">
         <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
         <span class="task-detail-xp" id="detail-xp" style="color:#888; font-size:17px; display:flex; align-items:center; gap:4px; font-weight:bold;"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
       </div>
       <div id="detail-header-btns" style="display:flex; gap:10px; margin-left:auto;">
         <button class="task-detail-edit-btn" id="task-edit-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">편집</button>
-        <button class="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">하위 테스크 생성</button>
+        <button class="task-detail-subtask-btn" id="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">하위 테스크 생성</button>
       </div>
     </div>
     <div class="task-detail-desc" id="detail-desc">간단한 프로젝트에 참여하여 워크플로우 이해하기</div>
@@ -423,8 +483,75 @@
   </div>
 </div>
 <script>
-// 좌측 Task 카드 클릭 시 우측 상세 정보 갱신
+// 좌측 Task 카드 클릭 시 우측 상세 정보 갱신 및 하위 테스크 생성 모달
 document.addEventListener('DOMContentLoaded', function() {
+  // 하위 테스크 생성 모달 관련
+  const subtaskModal = document.getElementById('subtask-modal');
+  const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+  const subtaskForm = document.getElementById('subtask-form');
+  const subtaskCancelBtn = document.getElementById('subtask-cancel-btn');
+  subtaskBtn.addEventListener('click', function() {
+    if (!currentTask) return alert('상위 Task를 먼저 선택하세요.');
+    subtaskModal.style.display = 'flex';
+    subtaskForm.reset();
+    document.getElementById('subtask-parent-title').value = currentTask.title || '';
+    document.getElementById('subtask-parent-id').value = currentTask.id;
+    document.getElementById('subtask-priority').value = '';
+    document.getElementById('subtask-status').value = '진행 전';
+    document.getElementById('subtask-end-date').value = '';
+  });
+  // 닫기 버튼(×)과 취소 버튼 모두 모달 닫기
+  const subtaskCloseBtn = document.getElementById('subtask-close-btn');
+  function closeSubtaskModal() {
+    subtaskModal.style.display = 'none';
+  }
+  subtaskCancelBtn.addEventListener('click', closeSubtaskModal);
+  if (subtaskCloseBtn) {
+    subtaskCloseBtn.addEventListener('click', closeSubtaskModal);
+  }
+  // ESC 키로 모달 닫기
+  document.addEventListener('keydown', function(e) {
+    if (subtaskModal.style.display === 'flex' && (e.key === 'Escape' || e.key === 'Esc')) {
+      closeSubtaskModal();
+    }
+  });
+  subtaskForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (!currentTask) return alert('상위 Task를 먼저 선택하세요.');
+    const title = document.getElementById('subtask-title').value.trim();
+    const guideline = document.getElementById('subtask-guideline').value.trim();
+    const description = document.getElementById('subtask-desc').value.trim();
+    const status = document.getElementById('subtask-status').value;
+    const priority = document.getElementById('subtask-priority').value;
+    const end_date = document.getElementById('subtask-end-date').value;
+    const parent_id = document.getElementById('subtask-parent-id').value;
+    // 상위 Task의 mentorship_id, week, order도 전달
+    const mentorship_id = currentTask.mentorship_id || (currentTask.mentorship_id_id || null);
+    const week = currentTask.week;
+    const order = null;
+    if (!title) return alert('제목을 입력하세요.');
+    try {
+      const resp = await fetch(`/mentee/create_subtask/${parent_id}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
+        },
+        body: JSON.stringify({title, guideline, description, status, priority, end_date, mentorship_id, week, order})
+      });
+      const data = await resp.json();
+      if (data.success) {
+        alert('하위 테스크가 생성되었습니다.');
+        subtaskModal.style.display = 'none';
+        // 필요시 상세정보 갱신
+        if (currentTask && currentTask.id) fetchAndUpdateDetail(currentTask.id);
+      } else {
+        alert('생성 실패: ' + (data.error || '오류'));
+      }
+    } catch (err) {
+      alert('생성 중 오류: ' + err);
+    }
+  });
   const cards = document.querySelectorAll('.task-card');
   let currentTask = null; // 현재 선택된 task 정보 저장
   function updateDetailFromData(task) {
@@ -445,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (task.guideline && String(task.guideline).trim() !== '') {
       descEl.textContent = task.guideline;
       descEl.style.display = '';
-    } else {
+    } else {  
       descEl.textContent = '';
       descEl.style.display = 'none';
     }
