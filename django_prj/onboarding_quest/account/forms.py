@@ -95,6 +95,16 @@ class CustomPasswordChangeForm(forms.Form):
             raise forms.ValidationError("현재 비밀번호가 올바르지 않습니다.")
         return current_password
 
+    def clean_new_password(self):
+        """새 비밀번호가 현재 비밀번호와 같은지 확인"""
+        new_password = self.cleaned_data.get('new_password')
+        current_password = self.cleaned_data.get('current_password')
+        
+        if new_password and current_password and self.user.check_password(new_password):
+            raise forms.ValidationError("현재 비밀번호와 동일합니다.")
+        
+        return new_password
+
     def clean(self):
         cleaned_data = super().clean()
         new_password = cleaned_data.get("new_password")
