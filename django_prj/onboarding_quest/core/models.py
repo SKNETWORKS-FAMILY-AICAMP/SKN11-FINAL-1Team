@@ -190,6 +190,7 @@ class Mentorship(models.Model):
 
 class TaskAssign(models.Model):
     task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subtasks', help_text='상위 과제(TaskAssign)')
     mentorship_id = models.ForeignKey(Mentorship, on_delete=models.CASCADE, help_text='멘토쉽')
     title = models.CharField(max_length=255, null=True, blank=True, help_text='과제 할당 제목')
     description = models.CharField(max_length=255, null=True, blank=True, help_text='설명')
@@ -224,10 +225,6 @@ class TaskAssign(models.Model):
         help_text='과제 우선순위(상/중/하)'
     )
     order = models.IntegerField(null=True, blank=True, help_text='순서')
-
-class Subtask(models.Model):
-    subtask_id = models.AutoField(primary_key=True, help_text='서브태스크 고유 ID')
-    task_assign = models.ForeignKey(TaskAssign, on_delete=models.CASCADE, help_text='상위 과제 할당')
 
 class Memo(models.Model):
     memo_id = models.AutoField(primary_key=True, help_text='메모 고유 ID')

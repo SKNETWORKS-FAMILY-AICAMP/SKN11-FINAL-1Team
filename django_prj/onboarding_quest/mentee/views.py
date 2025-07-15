@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST
 import json
 from django.http import JsonResponse
 from django.shortcuts import render
-from core.models import TaskAssign, Subtask
+from core.models import TaskAssign
 from collections import defaultdict
  # 댓글 저장 API
 from django.contrib.auth.decorators import login_required
@@ -62,7 +62,8 @@ def task_list(request):
     if mentorship_id:
         task_qs = TaskAssign.objects.filter(mentorship_id=mentorship_id).order_by('week', 'order')
         for t in task_qs:
-            subtasks = list(Subtask.objects.filter(task_assign=t).values('subtask_id'))
+            # 하위 subtasks: t.subtasks.all()
+            subtasks = list(t.subtasks.all().values('task_assign_id', 'title', 'status'))
             task = {
                 'id': t.task_assign_id,
                 'title': t.title,

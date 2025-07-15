@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from core.models import (
     Company, Department, User, Mentorship, Curriculum, TaskManage,
-    TaskAssign, Subtask, Memo, ChatSession, ChatMessage, Docs
+    TaskAssign, Memo, ChatSession, ChatMessage, Docs
 )
 from django.contrib.auth.hashers import make_password
 from datetime import date, timedelta
