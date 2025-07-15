@@ -14,11 +14,6 @@ urlpatterns = [
     path('department/<int:department_id>/update/', views.department_update, name='department_update'),
     path('department/<int:department_id>/detail/', views.department_detail, name='department_detail'),
 
-
-
-
-
-
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 
@@ -32,6 +27,13 @@ urlpatterns = [
     path('user/add/', views.user_create, name='user_create'),
     path('user/<int:user_id>/edit/', views.user_edit, name='user_edit'),
     path('user/<int:user_id>/delete/', views.user_delete, name='user_delete'),
+    path('user/<int:user_id>/password_reset/', views.password_reset, name='password_reset'),
     path('user/<int:pk>/update/', views.user_update_view, name='user_update'),
     path('user/<int:pk>/delete/', views.user_delete_view, name='user_delete_view'),
+
+    # 멘토쉽 관리
+    path('manage_mentorship/', views.manage_mentorship, name='manage_mentorship'),
+    path('mentorship/<int:mentorship_id>/edit/', views.mentorship_edit, name='mentorship_edit'),
+    path('mentorship/<int:mentorship_id>/delete/', views.mentorship_delete, name='mentorship_delete'),
+    path('mentorship/<int:mentorship_id>/detail/', views.mentorship_detail, name='mentorship_detail'),
 ]
