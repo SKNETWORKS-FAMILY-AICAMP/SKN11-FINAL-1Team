@@ -18,11 +18,18 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.subtask-item').forEach(function(item) {
       item.addEventListener('click', function(e) {
         e.stopPropagation(); // 상위 카드 클릭 방지
+        
+        // 편집 중일 때는 클릭 차단
+        if (isEditing) {
+          alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
+          return;
+        }
+        
         const taskId = this.getAttribute('data-task-id');
         if (!taskId) return;
         fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
           if (data.success && data.task) {
-            updateDetailFromData(data.task);
+            updateDetailFromData(data.task, true); // 두 번째 인자로 하위 태스크임을 표시
             // 좌측 카드 선택 해제, 해당 subtask 강조(선택 효과)
             document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
             document.querySelectorAll('.subtask-item').forEach(s => s.classList.remove('selected'));
@@ -108,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
           'Content-Type': 'application/json',
           'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
         },
-        body: JSON.stringify({title, guideline, description, status, priority, end_date, mentorship_id, week, order})
+        body: JSON.stringify({title, guideline, description, status, priority, scheduled_end_date: end_date, mentorship_id, week, order})
       });
       const data = await resp.json();
       if (data.success) {
@@ -179,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   const cards = document.querySelectorAll('.task-card');
   let currentTask = null; // 현재 선택된 task 정보 저장
-  function updateDetailFromData(task) {
+  function updateDetailFromData(task, isSubtask = false) {
     currentTask = task;
     // 상태 뱃지 색상
     let statusClass = '';
@@ -187,6 +194,17 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (task.status === '진행 중') statusClass = 'in-progress';
     else if (task.status === '검토 요청') statusClass = 'review-requested';
     else if (task.status === '완료' || task.status === '완료됨') statusClass = 'done';
+    
+    // 하위 태스크 생성 버튼 표시/숨김 제어
+    const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+    if (subtaskBtn) {
+      if (isSubtask) {
+        subtaskBtn.style.display = 'none'; // 하위 태스크인 경우 버튼 숨김
+      } else {
+        subtaskBtn.style.display = 'inline-block'; // 상위 태스크인 경우 버튼 표시
+      }
+    }
+    
     // 우측 영역 갱신 (기존 코드 ...)
     const titleEl = document.getElementById('detail-title');
     titleEl.innerHTML = `<span class="status-badge ${statusClass}">${task.status}</span> <span class="${statusClass === 'done' ? 'done' : ''}">${task.title}</span>`;
@@ -206,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let badgeClass = 'yellow';
     if (task.priority === '상') badgeClass = 'red';
     else if (task.priority === '중') badgeClass = 'green';
-    metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${task.end_date || ''}</span>`;
+    metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${task.scheduled_end_date || ''}</span>`;
     // description을 리스트로 표시
     const listDiv = document.getElementById('detail-list');
     listDiv.innerHTML = '';
@@ -288,13 +306,19 @@ document.addEventListener('DOMContentLoaded', function() {
   // 좌측 Task 카드 클릭 시 상세/댓글 동적 갱신
   cards.forEach(card => {
     card.addEventListener('click', async function() {
+      // 편집 중일 때는 클릭 차단
+      if (isEditing) {
+        alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
+        return;
+      }
+      
       const taskId = this.dataset.taskId || this.getAttribute('data-task-id');
       if (!taskId) return;
       try {
         const resp = await fetch(`/mentee/task_detail/${taskId}/`);
         const data = await resp.json();
         if (data.success && data.task) {
-          updateDetailFromData(data.task);
+          updateDetailFromData(data.task, false); // 상위 태스크이므로 false
         }
       } catch (e) {
         alert('상세정보 불러오기 실패');
@@ -308,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const taskId = firstCard.dataset.taskId || firstCard.getAttribute('data-task-id');
     if (taskId) {
       fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
-        if (data.success && data.task) updateDetailFromData(data.task);
+        if (data.success && data.task) updateDetailFromData(data.task, false); // 상위 태스크이므로 false
       });
     }
   }
@@ -338,8 +362,8 @@ document.addEventListener('DOMContentLoaded', function() {
     editGuideline.value = currentTask.guideline || '';
     editDescription.value = currentTask.description || '';
     editPriority.value = currentTask.priority || '하';
-    if (currentTask.end_date) {
-      editEndDate.value = String(currentTask.end_date).slice(0, 10);
+    if (currentTask.scheduled_end_date) {
+      editEndDate.value = String(currentTask.scheduled_end_date).slice(0, 10);
     } else {
       editEndDate.value = '';
     }
@@ -348,6 +372,12 @@ document.addEventListener('DOMContentLoaded', function() {
     descDiv.style.display = 'none';
     listDiv.style.display = 'none';
     isEditing = true;
+    
+    // 편집 중일 때 좌측 카드들 비활성화
+    const taskListLeft = document.getElementById('tasklist-left');
+    if (taskListLeft) {
+      taskListLeft.classList.add('editing-mode');
+    }
   }
   function hideEditForm() {
     editForm.style.display = 'none';
@@ -357,6 +387,12 @@ document.addEventListener('DOMContentLoaded', function() {
     descDiv.style.display = '';
     listDiv.style.display = '';
     isEditing = false;
+    
+    // 편집 완료 시 좌측 카드들 다시 활성화
+    const taskListLeft = document.getElementById('tasklist-left');
+    if (taskListLeft) {
+      taskListLeft.classList.remove('editing-mode');
+    }
   }
   if (editBtn) {
     editBtn.addEventListener('click', function() {
@@ -380,7 +416,7 @@ document.addEventListener('DOMContentLoaded', function() {
         guideline: editGuideline.value,
         description: editDescription.value,
         priority: editPriority.value,
-        end_date: editEndDate.value
+        scheduled_end_date: editEndDate.value
       };
       try {
         const resp = await fetch(`/mentee/task_update/${currentTask.id}/`, {
@@ -399,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
           currentTask.guideline = payload.guideline;
           currentTask.description = payload.description;
           currentTask.priority = payload.priority;
-          currentTask.end_date = payload.end_date;
+          currentTask.scheduled_end_date = payload.scheduled_end_date;
           // 좌측 카드도 동기화
           const card = document.querySelector(`.task-card[data-task-id="${currentTask.id}"]`);
           if (card) {
@@ -431,7 +467,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // 마감일
             const dday = card.querySelector('.d-day-badge');
-            if (dday) dday.textContent = payload.end_date || '';
+            if (dday) dday.textContent = payload.scheduled_end_date || '';
             // 설명
             const descDiv = card.querySelector('.task-desc');
             if (descDiv) descDiv.textContent = payload.description || '';

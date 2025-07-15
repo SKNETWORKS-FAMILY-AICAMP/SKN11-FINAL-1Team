@@ -314,3 +314,31 @@
   align-items: center;
   justify-content: center;
 }
+
+/* 편집 모드일 때 좌측 카드 비활성화 */
+.tasklist-left.editing-mode {
+  pointer-events: none;
+  opacity: 0.6;
+  position: relative;
+}
+
+.tasklist-left.editing-mode::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.3);
+  z-index: 10;
+  border-radius: 12px 0 0 12px;
+}
+
+.tasklist-left.editing-mode .task-card {
+  cursor: not-allowed;
+  filter: grayscale(20%);
+}
+
+.tasklist-left.editing-mode .subtask-item {
+  cursor: not-allowed;
+}

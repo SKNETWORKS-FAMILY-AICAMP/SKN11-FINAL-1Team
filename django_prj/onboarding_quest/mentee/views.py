@@ -26,7 +26,7 @@ def create_subtask(request, parent_id):
         description = data.get('description', '').strip()
         status = data.get('status', '진행 전').strip() or '진행 전'
         priority = data.get('priority', '').strip() or (parent.priority if parent else None)
-        scheduled_end_date = data.get('end_date', None)
+        scheduled_end_date = data.get('scheduled_end_date', None)
         week = data.get('week', None)
         order = data.get('order', None)
         mentorship_id = data.get('mentorship_id', None)
@@ -96,7 +96,7 @@ def task_update(request, task_assign_id):
         t.guideline = data.get('guideline', t.guideline)
         t.description = data.get('description', t.description)
         t.priority = data.get('priority', t.priority)
-        t.end_date = data.get('end_date', t.end_date)
+        t.scheduled_end_date = data.get('scheduled_end_date', t.scheduled_end_date)
         t.save()
         return JsonResponse({'success': True})
     except TaskAssign.DoesNotExist:
