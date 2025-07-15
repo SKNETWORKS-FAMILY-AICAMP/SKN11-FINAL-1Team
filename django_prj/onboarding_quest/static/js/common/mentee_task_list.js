@@ -672,12 +672,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = await resp.json();
         if (data.success) {
           // 프론트 상태도 반영
+          const oldStatus = currentTask.status;
           currentTask.status = payload.status;
           currentTask.title = payload.title;
           currentTask.guideline = payload.guideline;
           currentTask.description = payload.description;
           currentTask.priority = payload.priority;
           currentTask.scheduled_end_date = payload.scheduled_end_date;
+          
           // 좌측 카드도 동기화
           const card = document.querySelector(`.task-card[data-task-id="${currentTask.id}"]`);
           if (card) {
@@ -741,6 +743,18 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (payload.status === '완료' || payload.status === '완료됨') card.classList.add('done');
           }
           
+          // 상위 태스크가 '완료'로 변경된 경우, 모든 하위 태스크 상태도 '완료'로 변경
+          if (oldStatus !== '완료' && (payload.status === '완료' || payload.status === '완료됨')) {
+            const subtaskItems = card.querySelectorAll('.subtask-item');
+            subtaskItems.forEach(subtaskItem => {
+              const subtaskStatusBadge = subtaskItem.querySelector('.status-badge');
+              if (subtaskStatusBadge) {
+                subtaskStatusBadge.textContent = '완료';
+                subtaskStatusBadge.className = 'status-badge done';
+              }
+            });
+          }
+          
           // 하위 태스크인 경우 좌측 하위 태스크 요소도 업데이트
           const subtaskItem = document.querySelector(`.subtask-item[data-task-id="${currentTask.id}"]`);
           if (subtaskItem) {
@@ -759,6 +773,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           }
           updateDetailFromData(currentTask);
+          
+          // 상위 태스크가 완료된 경우 원본 데이터도 업데이트
+          if (oldStatus !== '완료' && (payload.status === '완료' || payload.status === '완료됨')) {
+            // 원본 데이터 다시 수집하여 하위 태스크 상태 변경 반영
+            collectOriginalTaskData();
+          }
+          
           hideEditForm();
         } else {
           alert('저장 실패: ' + (data.error || '오류'));

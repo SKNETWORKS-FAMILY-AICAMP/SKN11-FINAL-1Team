@@ -90,13 +90,25 @@ def task_update(request, task_assign_id):
     try:
         t = TaskAssign.objects.get(task_assign_id=task_assign_id)
         data = json.loads(request.body)
-        t.status = data.get('status', t.status)
+        
+        # 기존 상태와 새 상태 비교
+        old_status = t.status
+        new_status = data.get('status', t.status)
+        
+        t.status = new_status
         t.title = data.get('title', t.title)
         t.guideline = data.get('guideline', t.guideline)
         t.description = data.get('description', t.description)
         t.priority = data.get('priority', t.priority)
         t.scheduled_end_date = data.get('scheduled_end_date', t.scheduled_end_date)
         t.save()
+        
+        # 상위 태스크가 '완료'로 변경된 경우, 모든 하위 태스크도 '완료'로 변경
+        if old_status != '완료' and new_status == '완료' and not t.parent:
+            # 하위 태스크들 찾아서 완료 처리
+            subtasks = TaskAssign.objects.filter(parent=t)
+            subtasks.update(status='완료')
+        
         return JsonResponse({'success': True})
     except TaskAssign.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
