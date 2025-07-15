@@ -1,6 +1,6 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-import json
+import json 
 @csrf_exempt
 def doc_upload(request):
     if request.method == 'POST' and request.user.is_authenticated:
