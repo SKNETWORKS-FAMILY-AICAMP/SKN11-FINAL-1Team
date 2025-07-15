@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from core.models import TaskAssign, Subtask
 from collections import defaultdict
-
+ 
 @csrf_exempt
 @require_POST
 def task_update(request, task_assign_id):
