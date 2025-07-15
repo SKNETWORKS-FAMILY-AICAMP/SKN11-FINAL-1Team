@@ -296,7 +296,7 @@ def delete_template(request, curriculum_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
-
+ 
 @login_required
 def edit_template(request, curriculum_id):
     from core.models import Curriculum, TaskManage
