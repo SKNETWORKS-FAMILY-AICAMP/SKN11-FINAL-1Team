@@ -12,4 +12,10 @@ urlpatterns = [
     path('delete_template/<int:curriculum_id>/', views.delete_template, name='delete_template'),
     path('edit_template/<int:curriculum_id>/', views.edit_template, name='edit_template'),
     path('api/save_curriculum/', views.save_curriculum, name='save_curriculum'),
+    # AJAX 멘티 목록
+    path('mentees/', views.mentees_api, name='mentees_api'),
+    # 멘티 상세정보 (view 함수 기반)
+    path('mentee/<int:user_id>/', views.mentee_detail, name='mentee_detail'),
+    # 멘토링 생성
+    path('create_mentorship/', views.create_mentorship, name='create_mentorship'),
 ]

@@ -61,11 +61,6 @@ class Department(models.Model):
 
     def __str__(self):
         return self.department_name
-
-class Mentorship(models.Model):
-    mentorship_id = models.AutoField(primary_key=True, help_text='멘토쉽 고유 ID')
-    mentor_id = models.IntegerField(help_text='멘토 User ID')
-    mentee_id = models.IntegerField(help_text='멘티 User ID')
     
 class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, help_text='유저 고유 ID')
@@ -87,7 +82,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text='소속 부서'
     )
     tag = models.CharField(max_length=255, null=True, blank=True, help_text='유저 태그')
-    exp = models.IntegerField(default=0, help_text='경험치')
     ROLE_CHOICES = (
         ('mentee', 'Mentee'),
         ('mentor', 'Mentor')
@@ -184,18 +178,52 @@ class TaskManage(models.Model):
     def __str__(self):
         return f"{self.curriculum.curriculum_title} - {self.title} (Week {self.week})"
 
-class TaskAssign(models.Model):
-    task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')
-    title = models.CharField(max_length=255, null=True, blank=True, help_text='과제 할당 제목')
+class Mentorship(models.Model):
+    mentorship_id = models.AutoField(primary_key=True, help_text='멘토쉽 고유 ID')
+    mentor_id = models.IntegerField(help_text='멘토 User ID')
+    mentee_id = models.IntegerField(help_text='멘티 User ID')
     start_date = models.DateField(null=True, blank=True, help_text='시작일')
     end_date = models.DateField(null=True, blank=True, help_text='종료일')
-    status = models.IntegerField(help_text='상태')
-    difficulty = models.CharField(max_length=50, null=True, blank=True, help_text='난이도')
+    is_active = models.BooleanField(default=True, help_text='멘토쉽 활성화 여부')
+    curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
+    total_weeks = models.IntegerField(default=0, help_text='총 주차 수')
+
+class TaskAssign(models.Model):
+    task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')
+    mentorship_id = models.ForeignKey(Mentorship, on_delete=models.CASCADE, help_text='멘토쉽')
+    title = models.CharField(max_length=255, null=True, blank=True, help_text='과제 할당 제목')
     description = models.CharField(max_length=255, null=True, blank=True, help_text='설명')
-    exp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='경험치')
+    guideline = models.CharField(max_length=255, null=True, blank=True, help_text='과제 가이드라인')
+    week = models.IntegerField(help_text='몇 주차 과제인지')
+    order = models.IntegerField(null=True, blank=True, help_text='과제 순서')
+    start_date = models.DateField(null=True, blank=True, help_text='시작일')
+    end_date = models.DateField(null=True, blank=True, help_text='종료일')
+    STATUS_CHOICES = [
+        ('진행 전', '진행 전'),
+        ('진행 중', '진행 중'),
+        ('검토 요청', '검토 요청'),
+        ('완료', '완료'),
+    ]
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        null=True,
+        blank=True,
+        help_text='과제 상태(진행 전/진행 중/검토요청/완료)'
+    )
+    PRIORITY_CHOICES = [
+        ('상', '상'),
+        ('중', '중'),
+        ('하', '하'),
+    ]
+    priority = models.CharField(
+        max_length=2,
+        choices=PRIORITY_CHOICES,
+        null=True,
+        blank=True,
+        help_text='과제 우선순위(상/중/하)'
+    )
     order = models.IntegerField(null=True, blank=True, help_text='순서')
-    mentorship = models.ForeignKey(Mentorship, on_delete=models.CASCADE, help_text='멘토쉽')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, help_text='유저')
 
 class Subtask(models.Model):
     subtask_id = models.AutoField(primary_key=True, help_text='서브태스크 고유 ID')
