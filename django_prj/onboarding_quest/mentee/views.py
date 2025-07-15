@@ -114,7 +114,7 @@ def task_list(request):
         task_qs = TaskAssign.objects.filter(mentorship_id=mentorship_id).order_by('week', 'order')
         for t in task_qs:
             # 하위 subtasks: t.subtasks.all()
-            subtasks = list(t.subtasks.all().values('task_assign_id', 'title', 'status'))
+            subtasks = list(t.subtasks.all().values('task_assign_id', 'title', 'status', 'parent'))
             task = {
                 'id': t.task_assign_id,
                 'title': t.title,
@@ -128,6 +128,7 @@ def task_list(request):
                 'priority': t.priority,
                 'subtasks': subtasks,
                 'description': t.description,  # description 필드도 추가
+                'parent': t.parent_id,  # 상위 테스크 id (없으면 None)
             }
             week_tasks[t.week].append(task)
         # 첫 번째 주의 첫 번째 Task를 기본 선택
