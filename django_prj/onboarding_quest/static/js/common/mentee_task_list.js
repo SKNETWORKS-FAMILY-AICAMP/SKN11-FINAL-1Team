@@ -13,10 +13,256 @@ function toggleSubtaskList(toggleBtn) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // 정렬/필터 관련 변수
+  const taskSort = document.getElementById('task-sort');
+  const taskFilterStatus = document.getElementById('task-filter-status');
+  const taskFilterPriority = document.getElementById('task-filter-priority');
+  
+  // 원본 태스크 데이터 저장 (초기화 시 한 번 수집)
+  let originalTaskData = [];
+  
+  // 초기 태스크 데이터 수집
+  function collectOriginalTaskData() {
+    originalTaskData = [];
+    const tasklist = document.getElementById('tasklist-left');
+    const weekHeaders = tasklist.querySelectorAll('div[style*="font-weight:bold"]');
+    
+    weekHeaders.forEach(header => {
+      const weekMatch = header.textContent.match(/(\d+)주차/);
+      const week = weekMatch ? parseInt(weekMatch[1]) : 0;
+      
+      let nextElement = header.nextElementSibling;
+      while (nextElement && !nextElement.textContent.includes('주차')) {
+        if (nextElement.classList && nextElement.classList.contains('task-card')) {
+          const taskData = {
+            element: nextElement.cloneNode(true), // 원본 보존
+            week: week,
+            title: nextElement.getAttribute('data-title') || nextElement.querySelector('.task-title')?.textContent || '',
+            status: nextElement.getAttribute('data-status') || '',
+            priority: nextElement.getAttribute('data-priority') || '하',
+            endDate: nextElement.getAttribute('data-scheduled_end_date') || nextElement.getAttribute('data-scheduled-end-date') || '',
+            id: nextElement.getAttribute('data-task-id') || ''
+          };
+          originalTaskData.push(taskData);
+        }
+        nextElement = nextElement.nextElementSibling;
+      }
+    });
+    
+    console.log('Collected task data:', originalTaskData);
+  }
+  
+  // 마감일까지 남은 일수 계산
+  function getDaysUntilDeadline(endDate) {
+    if (!endDate) return 999999; // 마감일이 없으면 가장 뒤로
+    const today = new Date();
+    const deadline = new Date(endDate);
+    const diffTime = deadline - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+  
+  // 태스크 정렬 함수
+  function sortTasks(tasks, sortBy) {
+    return tasks.sort((a, b) => {
+      switch(sortBy) {
+        case 'deadline':
+          const daysA = getDaysUntilDeadline(a.endDate);
+          const daysB = getDaysUntilDeadline(b.endDate);
+          if (daysA !== daysB) return daysA - daysB; // 마감일이 가까운 것이 먼저
+          return a.title.localeCompare(b.title);
+          
+        case 'week':
+        default:
+          if (a.week !== b.week) return a.week - b.week;
+          return a.title.localeCompare(b.title);
+      }
+    });
+  }
+  
+  // 태스크 필터 함수
+  function filterTasks(tasks, statusFilter, priorityFilter) {
+    return tasks.filter(task => {
+      const statusMatch = statusFilter === 'all' || task.status === statusFilter;
+      const priorityMatch = priorityFilter === 'all' || task.priority === priorityFilter;
+      return statusMatch && priorityMatch;
+    });
+  }
+  
+  // 태스크 목록 렌더링
+  function renderTasks() {
+    const sortBy = taskSort.value;
+    const statusFilter = taskFilterStatus.value;
+    const priorityFilter = taskFilterPriority.value;
+    
+    console.log('Rendering with:', { sortBy, statusFilter, priorityFilter });
+    
+    const tasklist = document.getElementById('tasklist-left');
+    
+    // 기존 태스크들 제거 (컨트롤과 제목은 유지)
+    const controls = tasklist.querySelector('.task-controls');
+    const title = tasklist.querySelector('.tasklist-title');
+    
+    // 모든 자식 요소 제거
+    while (tasklist.firstChild) {
+      tasklist.removeChild(tasklist.firstChild);
+    }
+    
+    // 제목과 컨트롤 다시 추가
+    tasklist.appendChild(title);
+    tasklist.appendChild(controls);
+    
+    // 원본 데이터로부터 작업
+    let workingTasks = originalTaskData.map(task => ({
+      ...task,
+      element: task.element.cloneNode(true) // 깊은 복사
+    }));
+    
+    // 필터링
+    const filteredTasks = filterTasks(workingTasks, statusFilter, priorityFilter);
+    console.log('Filtered tasks:', filteredTasks.length);
+    
+    if (filteredTasks.length === 0) {
+      const noResult = document.createElement('div');
+      noResult.style.cssText = 'padding: 20px; text-align: center; color: #888; font-size: 14px;';
+      noResult.textContent = '조건에 맞는 태스크가 없습니다.';
+      tasklist.appendChild(noResult);
+      return;
+    }
+    
+    if (sortBy === 'week') {
+      // 주차별 정렬은 기존 구조 유지
+      const weekGroups = {};
+      
+      filteredTasks.forEach(task => {
+        if (!weekGroups[task.week]) {
+          weekGroups[task.week] = [];
+        }
+        weekGroups[task.week].push(task);
+      });
+      
+      // 주차 순서대로 표시
+      Object.keys(weekGroups).sort((a, b) => parseInt(a) - parseInt(b)).forEach(week => {
+        // 주차 헤더 추가
+        const weekHeader = document.createElement('div');
+        weekHeader.style.cssText = 'font-weight:bold; margin:18px 0 8px 0; color:#1976d2;';
+        weekHeader.textContent = `${week}주차`;
+        tasklist.appendChild(weekHeader);
+        
+        // 해당 주차의 태스크들 추가
+        const sortedTasks = sortTasks(weekGroups[week], 'week');
+        sortedTasks.forEach(task => {
+          tasklist.appendChild(task.element);
+        });
+      });
+    } else {
+      // 마감일별 정렬은 모든 태스크를 하나로 합쳐서 정렬
+      const sortedTasks = sortTasks(filteredTasks, sortBy);
+      
+      // 정렬된 태스크들을 순서대로 추가
+      sortedTasks.forEach(task => {
+        tasklist.appendChild(task.element);
+      });
+    }
+    
+    // 이벤트 재연결
+    attachTaskCardEvents();
+    attachSubtaskClickEvents();
+    
+    // 첫 번째 태스크 자동 선택
+    const firstCard = tasklist.querySelector('.task-card');
+    if (firstCard) {
+      firstCard.classList.add('selected');
+      const taskId = firstCard.getAttribute('data-task-id');
+      if (taskId) {
+        fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
+          if (data.success && data.task) updateDetailFromData(data.task, false);
+        });
+      }
+    }
+  }
+  
+  // 태스크 카드 이벤트 재연결
+  function attachTaskCardEvents() {
+    const cards = document.querySelectorAll('.task-card');
+    cards.forEach(card => {
+      // 기존 이벤트 리스너 제거를 위해 클론 후 교체
+      const newCard = card.cloneNode(true);
+      card.parentNode.replaceChild(newCard, card);
+      
+      newCard.addEventListener('click', async function() {
+        // 편집 중일 때는 클릭 차단
+        if (isEditing) {
+          alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
+          return;
+        }
+        
+        const taskId = this.dataset.taskId || this.getAttribute('data-task-id');
+        if (!taskId) return;
+        
+        // 선택 상태 업데이트
+        document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.subtask-item').forEach(s => s.classList.remove('selected'));
+        this.classList.add('selected');
+        
+        try {
+          const resp = await fetch(`/mentee/task_detail/${taskId}/`);
+          const data = await resp.json();
+          if (data.success && data.task) {
+            updateDetailFromData(data.task, false); // 상위 태스크이므로 false
+          }
+        } catch (e) {
+          alert('상세정보 불러오기 실패');
+        }
+      });
+    });
+    
+    // 하위 태스크 토글 버튼 이벤트 재연결
+    document.querySelectorAll('.subtask-toggle').forEach(function(btn) {
+      // 기존 이벤트 리스너 제거를 위해 클론 후 교체
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      
+      newBtn.addEventListener('click', function(e) {
+        e.stopPropagation(); // 카드 클릭 방지
+        const subtaskList = this.nextElementSibling;
+        if (!subtaskList) return;
+        if (subtaskList.style.display === 'none' || subtaskList.style.display === '') {
+          subtaskList.style.display = 'block';
+          this.textContent = '▲ 하위 접기';
+        } else {
+          subtaskList.style.display = 'none';
+          // 하위 개수 표시
+          const count = subtaskList.querySelectorAll('.subtask-item').length;
+          this.textContent = '▼ 하위 ' + count + '개';
+        }
+        // 하위 태스크 이벤트 재연결
+        setTimeout(attachSubtaskClickEvents, 0);
+      });
+    });
+  }
+  
+  // 정렬/필터 이벤트 리스너
+  if (taskSort) {
+    taskSort.addEventListener('change', renderTasks);
+  }
+  if (taskFilterStatus) {
+    taskFilterStatus.addEventListener('change', renderTasks);
+  }
+  if (taskFilterPriority) {
+    taskFilterPriority.addEventListener('change', renderTasks);
+  }
+  
+  // 페이지 로드 시 원본 데이터 수집
+  collectOriginalTaskData();
+
   // 하위 테스크(서브태스크) 클릭 시 상세 정보 표시
   function attachSubtaskClickEvents() {
     document.querySelectorAll('.subtask-item').forEach(function(item) {
-      item.addEventListener('click', function(e) {
+      // 기존 이벤트 리스너 제거를 위해 클론 후 교체
+      const newItem = item.cloneNode(true);
+      item.parentNode.replaceChild(newItem, item);
+      
+      newItem.addEventListener('click', function(e) {
         e.stopPropagation(); // 상위 카드 클릭 방지
         
         // 편집 중일 때는 클릭 차단
@@ -175,6 +421,8 @@ document.addEventListener('DOMContentLoaded', function() {
           const count = subtaskList.querySelectorAll('.subtask-item').length;
           toggleBtn.textContent = '▼ 하위 ' + count + '개';
         }
+        // 원본 데이터 다시 수집 (하위 태스크 추가 반영)
+        collectOriginalTaskData();
         // 필요시 상세정보 갱신
         if (currentTask && currentTask.id) fetchAndUpdateDetail(currentTask.id);
       } else {
@@ -303,34 +551,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // 좌측 Task 카드 클릭 시 상세/댓글 동적 갱신
-  cards.forEach(card => {
-    card.addEventListener('click', async function() {
-      // 편집 중일 때는 클릭 차단
-      if (isEditing) {
-        alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
-        return;
-      }
-      
-      const taskId = this.dataset.taskId || this.getAttribute('data-task-id');
-      if (!taskId) return;
-      try {
-        const resp = await fetch(`/mentee/task_detail/${taskId}/`);
-        const data = await resp.json();
-        if (data.success && data.task) {
-          updateDetailFromData(data.task, false); // 상위 태스크이므로 false
-        }
-      } catch (e) {
-        alert('상세정보 불러오기 실패');
-      }
-    });
-  });
-
+  // 좌측 Task 카드 클릭 시 상세/댓글 동적 갱신 (초기 연결)
+  attachTaskCardEvents();
+  
   // 최초 로딩 시 첫 번째 Task 선택
-  if (cards.length > 0) {
-    const firstCard = cards[0];
+  if (document.querySelectorAll('.task-card').length > 0) {
+    const firstCard = document.querySelectorAll('.task-card')[0];
     const taskId = firstCard.dataset.taskId || firstCard.getAttribute('data-task-id');
     if (taskId) {
+      firstCard.classList.add('selected');
       fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
         if (data.success && data.task) updateDetailFromData(data.task, false); // 상위 태스크이므로 false
       });
@@ -487,31 +716,5 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('저장 중 오류 발생: ' + err);
       }
     });
-  }
-  async function fetchAndUpdateDetail(taskId) {
-    try {
-      const resp = await fetch(`/mentee/task_detail/${taskId}/`);
-      if (!resp.ok) throw new Error('상세 정보를 불러올 수 없습니다');
-      const data = await resp.json();
-      if (data.success && data.task) {
-        updateDetailFromData(data.task);
-      }
-    } catch (e) {
-      alert('상세 정보를 불러오지 못했습니다.');
-    }
-  }
-  cards.forEach(card => {
-    card.addEventListener('click', function() {
-      if (isEditing) return; // 편집 중이면 카드 선택 비활성화
-      cards.forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      const taskId = card.getAttribute('data-task-id');
-      if (taskId) fetchAndUpdateDetail(taskId);
-    });
-  });
-  // 최초 로딩 시 첫 번째 Task 선택
-  if (cards.length > 0) {
-    const firstTaskId = cards[0].getAttribute('data-task-id');
-    if (firstTaskId) fetchAndUpdateDetail(firstTaskId);
   }
 });

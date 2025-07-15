@@ -7,7 +7,7 @@
 }
 .tasklist-left {
   flex: 1;
-  padding: 24px 0 24px 24px;
+  padding: 15px 0 15px 15px;
   background: #fafbfc;
   border-radius: 12px 0 0 12px;
   min-width: 340px;
@@ -313,6 +313,35 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 정렬/필터 컨트롤 스타일 */
+.task-controls {
+  margin: 12px 0;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.task-controls select {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.task-controls select:focus {
+  outline: none;
+  border-color: #1976d2;
+}
+
+.task-controls label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
 }
 
 /* 편집 모드일 때 좌측 카드 비활성화 */
