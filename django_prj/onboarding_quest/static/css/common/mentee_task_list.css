@@ -125,6 +125,23 @@
   margin-bottom: 6px;
   gap: 10px;
 }
+.task-dday {
+  margin-left: auto;
+  background: #1976d2;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 10px;
+  min-width: 40px;
+  text-align: center;
+}
+.task-dday.urgent {
+  background: #f44336;
+}
+.task-dday.warning {
+  background: #ff9800;
+}
 .task-xp { color: #888; font-size: 15px; display: flex; align-items: center; gap: 4px; }
 .icon-trophy { width: 18px; height: 18px; vertical-align: middle; }
 .task-desc { color: #555; font-size: 14px; margin-bottom: 8px; }
@@ -370,4 +387,36 @@
 
 .tasklist-left.editing-mode .subtask-item {
   cursor: not-allowed;
+}
+
+/* 하위 태스크 상태 배지 스타일 */
+.subtask-item .status-badge {
+  font-size: 11px !important;
+  padding: 1px 8px !important;
+  margin-right: 6px;
+  min-width: auto;
+  display: inline-block;
+  border-radius: 8px;
+  font-weight: bold;
+  vertical-align: middle;
+}
+
+.subtask-item .status-badge.not-started { 
+  background: #888; 
+  color: #fff; 
+}
+
+.subtask-item .status-badge.in-progress { 
+  background: #1976d2; 
+  color: #fff; 
+}
+
+.subtask-item .status-badge.review-requested { 
+  background: #f44336; 
+  color: #fff; 
+}
+
+.subtask-item .status-badge.done { 
+  background: #43a047; 
+  color: #fff; 
 }

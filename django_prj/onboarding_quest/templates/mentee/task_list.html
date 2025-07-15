@@ -49,16 +49,21 @@
         data-status="{{ task.status|escapejs }}"
         data-scheduled_end_date="{{ task.scheduled_end_date|date:'Y-m-d' }}"
         data-week="{{ week }}"
+        data-dday="{{ task.dday|default_if_none:'' }}"
         >
         <div class="task-card-header">
           <span class="status-badge {% if task.status == '진행 전' %}not-started{% elif task.status == '진행 중' %}in-progress{% elif task.status == '검토 요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.status }}</span>
           <span class="task-title {% if task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.title }}</span>
+          {% if task.dday is not None %}
+            <span class="task-dday {% if task.dday <= 1 %}urgent{% elif task.dday <= 3 %}warning{% endif %}">
+              {% if task.dday >= 0 %}D-{{ task.dday }}{% else %}D+{% widthratio task.dday -1 1 %}{% endif %}
+            </span>
+          {% endif %}
         </div>
         <div class="task-desc-row">
           <div class="task-desc">{{ task.description }}</div>
           <div class="task-meta-row">
             <span class="task-badge {% if task.priority == '상' %}red{% elif task.priority == '중' %}green{% else %}yellow{% endif %}">{{ task.priority|default:'하' }}</span>
-            <span class="d-day-badge">{{ task.scheduled_end_date|date:'Y-m-d' }}</span>
           </div>
         </div>
         {# 직접적인 하위 테스크만 필터링 #}
@@ -67,9 +72,9 @@
             <button type="button" class="subtask-toggle" style="margin:6px 0 0 0; font-size:13px; background:none; border:none; color:#1976d2; cursor:pointer;">▼ 하위 {{ direct_subtasks|length }}개</button>
             <div class="subtask-list" style="display:none; margin:6px 0 0 10px;">
               {% for sub in direct_subtasks %}
-                <div class="subtask-item" data-task-id="{{ sub.task_assign_id }}" style="padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer;">
-                  <span class="subtask-title">{{ sub.title }}</span>
-                  <span class="subtask-status" style="margin-left:8px; font-size:12px; color:#888;">[{{ sub.status }}]</span>
+                <div class="subtask-item" data-task-id="{{ sub.task_assign_id }}" style="padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer; display: flex; align-items: center; gap: 6px;">
+                  <span class="status-badge {% if sub.status == '진행 전' %}not-started{% elif sub.status == '진행 중' %}in-progress{% elif sub.status == '검토 요청' %}review-requested{% elif sub.status == '완료' or sub.status == '완료됨' %}done{% endif %}" style="font-size: 11px; padding: 1px 8px;">{{ sub.status }}</span>
+                  <span class="subtask-title" style="flex: 1;">{{ sub.title }}</span>
                 </div>
               {% endfor %}
             </div>

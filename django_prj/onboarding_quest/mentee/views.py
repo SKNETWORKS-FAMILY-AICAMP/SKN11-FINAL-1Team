@@ -1,4 +1,3 @@
-# TaskAssign 수정 API (AJAX)
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 import json
@@ -6,9 +5,9 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from core.models import TaskAssign
 from collections import defaultdict
-# 댓글 저장 API
 from django.contrib.auth.decorators import login_required
 from core.models import Memo, User
+from datetime import date
 
 # 하위 테스크(TaskAssign) 생성 API
 @csrf_exempt
@@ -116,6 +115,14 @@ def task_list(request):
         task_qs = TaskAssign.objects.filter(mentorship_id=mentorship_id).order_by('week', 'order')
         for t in task_qs:
             subtasks = list(t.subtasks.all().values('task_assign_id', 'title', 'status', 'parent'))
+            
+            # D-day 계산
+            dday = None
+            if t.scheduled_end_date:
+                today = date.today()
+                diff = (t.scheduled_end_date - today).days
+                dday = diff
+            
             task = {
                 'id': t.task_assign_id,
                 'title': t.title,
@@ -132,6 +139,7 @@ def task_list(request):
                 'subtasks': subtasks,
                 'description': t.description,
                 'parent': t.parent_id,
+                'dday': dday,
             }
             week_tasks[t.week].append(task)
         # 첫 번째 주의 첫 번째 Task를 기본 선택
@@ -156,8 +164,8 @@ def task_detail(request, task_assign_id):
             'guideline': t.guideline,
             'week': t.week,
             'order': t.order,
-            'scheduled_start_date': t.scheduled_start_date,
-            'scheduled_end_date': t.scheduled_end_date,
+            'scheduled_start_date': t.scheduled_start_date.strftime('%Y-%m-%d') if t.scheduled_start_date else None,
+            'scheduled_end_date': t.scheduled_end_date.strftime('%Y-%m-%d') if t.scheduled_end_date else None,
             'real_start_date': t.real_start_date,
             'real_end_date': t.real_end_date,
             'status': t.status,

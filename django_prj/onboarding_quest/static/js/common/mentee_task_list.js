@@ -41,7 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
             status: nextElement.getAttribute('data-status') || '',
             priority: nextElement.getAttribute('data-priority') || '하',
             endDate: nextElement.getAttribute('data-scheduled_end_date') || nextElement.getAttribute('data-scheduled-end-date') || '',
-            id: nextElement.getAttribute('data-task-id') || ''
+            id: nextElement.getAttribute('data-task-id') || '',
+            dday: nextElement.getAttribute('data-dday') || ''
           };
           originalTaskData.push(taskData);
         }
@@ -403,8 +404,16 @@ document.addEventListener('DOMContentLoaded', function() {
           const subDiv = document.createElement('div');
           subDiv.className = 'subtask-item';
           subDiv.setAttribute('data-task-id', data.subtask_id);
-          subDiv.style = 'padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer;';
-          subDiv.innerHTML = `<span class="subtask-title">${title}</span> <span class="subtask-status" style="margin-left:8px; font-size:12px; color:#888;">[${status}]</span>`;
+          subDiv.style = 'padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer; display: flex; align-items: center; gap: 6px;';
+          
+          // 상태 배지 클래스 설정
+          let statusBadgeClass = '';
+          if (status === '진행 전') statusBadgeClass = 'not-started';
+          else if (status === '진행 중') statusBadgeClass = 'in-progress';
+          else if (status === '검토 요청') statusBadgeClass = 'review-requested';
+          else if (status === '완료' || status === '완료됨') statusBadgeClass = 'done';
+          
+          subDiv.innerHTML = `<span class="status-badge ${statusBadgeClass}" style="font-size: 11px; padding: 1px 8px;">${status}</span><span class="subtask-title" style="flex: 1;">${title}</span>`;
           subDiv.addEventListener('click', function(e) {
             e.stopPropagation();
             fetch(`/mentee/task_detail/${data.subtask_id}/`).then(resp => resp.json()).then(dt => {
@@ -467,12 +476,16 @@ document.addEventListener('DOMContentLoaded', function() {
       descEl.textContent = '';
       descEl.style.display = 'none';
     }
-    // 난이도/디데이 메타
+    // 난이도/마감일 메타
     const metaRow = document.querySelector('.task-detail-meta-row');
     let badgeClass = 'yellow';
     if (task.priority === '상') badgeClass = 'red';
     else if (task.priority === '중') badgeClass = 'green';
-    metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${task.scheduled_end_date || ''}</span>`;
+    
+    // 마감일 표시 (날짜 형식)
+    let deadlineText = task.scheduled_end_date || '';
+    
+    metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${deadlineText}</span>`;
     // description을 리스트로 표시
     const listDiv = document.getElementById('detail-list');
     listDiv.innerHTML = '';
@@ -694,9 +707,29 @@ document.addEventListener('DOMContentLoaded', function() {
               else if (payload.priority === '중') badge.classList.add('green');
               else badge.classList.add('yellow');
             }
-            // 마감일
-            const dday = card.querySelector('.d-day-badge');
-            if (dday) dday.textContent = payload.scheduled_end_date || '';
+            // D-day 배지 (task-card-header 내의 task-dday)
+            const taskDday = card.querySelector('.task-dday');
+            if (taskDday && payload.scheduled_end_date) {
+              const endDate = new Date(payload.scheduled_end_date);
+              const today = new Date();
+              const diffTime = endDate - today;
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              
+              // D-day 또는 D+ 표시
+              if (diffDays >= 0) {
+                taskDday.textContent = `D-${diffDays}`;
+              } else {
+                taskDday.textContent = `D+${Math.abs(diffDays)}`;
+              }
+              
+              // 긴급도에 따른 클래스 적용
+              taskDday.classList.remove('urgent', 'warning');
+              if (diffDays <= 1) {
+                taskDday.classList.add('urgent');
+              } else if (diffDays <= 3) {
+                taskDday.classList.add('warning');
+              }
+            }
             // 설명
             const descDiv = card.querySelector('.task-desc');
             if (descDiv) descDiv.textContent = payload.description || '';
@@ -706,6 +739,24 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (payload.status === '진행 중') card.classList.add('in-progress');
             else if (payload.status === '검토 요청') card.classList.add('review-requested');
             else if (payload.status === '완료' || payload.status === '완료됨') card.classList.add('done');
+          }
+          
+          // 하위 태스크인 경우 좌측 하위 태스크 요소도 업데이트
+          const subtaskItem = document.querySelector(`.subtask-item[data-task-id="${currentTask.id}"]`);
+          if (subtaskItem) {
+            const subtaskStatusBadge = subtaskItem.querySelector('.status-badge');
+            if (subtaskStatusBadge) {
+              subtaskStatusBadge.textContent = payload.status;
+              subtaskStatusBadge.className = 'status-badge';
+              if (payload.status === '진행 전') subtaskStatusBadge.classList.add('not-started');
+              else if (payload.status === '진행 중') subtaskStatusBadge.classList.add('in-progress');
+              else if (payload.status === '검토 요청') subtaskStatusBadge.classList.add('review-requested');
+              else if (payload.status === '완료' || payload.status === '완료됨') subtaskStatusBadge.classList.add('done');
+            }
+            const subtaskTitle = subtaskItem.querySelector('.subtask-title');
+            if (subtaskTitle) {
+              subtaskTitle.textContent = payload.title;
+            }
           }
           updateDetailFromData(currentTask);
           hideEditForm();
