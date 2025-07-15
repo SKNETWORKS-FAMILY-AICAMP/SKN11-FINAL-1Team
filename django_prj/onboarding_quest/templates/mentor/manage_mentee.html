@@ -391,14 +391,14 @@ mentoringForm.addEventListener('submit', async function(e) {
     return;
   }
   const menteeId = selected.dataset.id;
-  const startDate = document.getElementById('start-date').value;
+  const scheduledStartDate = document.getElementById('start-date').value;
   const templateSelect = document.getElementById('template-select');
   const curriculumId = templateSelect.value;
   // 종료일 계산: 화면에 표시된 종료일 텍스트에서 추출
   const endDateLabel = document.getElementById('end-date-label');
-  let endDate = '';
+  let scheduledEndDate = '';
   if (endDateLabel && endDateLabel.textContent.includes('종료일:')) {
-    endDate = endDateLabel.textContent.replace('종료일:', '').trim();
+    scheduledEndDate = endDateLabel.textContent.replace('종료일:', '').trim();
   }
   try {
     const res = await fetch('/mentor/create_mentorship/', {
@@ -409,8 +409,8 @@ mentoringForm.addEventListener('submit', async function(e) {
       },
       body: JSON.stringify({ 
         mentee_id: menteeId, 
-        start_date: startDate, 
-        end_date: endDate, 
+        start_date: scheduledStartDate, 
+        end_date: scheduledEndDate, 
         curriculum_id: curriculumId 
       })
     });

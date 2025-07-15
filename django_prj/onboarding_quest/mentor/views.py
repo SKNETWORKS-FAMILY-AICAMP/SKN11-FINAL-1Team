@@ -22,8 +22,8 @@ def create_mentorship(request):
         data = json.loads(request.body)
         mentor_id = request.user.user_id
         mentee_id = int(data.get('mentee_id'))
-        start_date = data.get('start_date')  # yyyy-mm-dd
-        end_date = data.get('end_date')      # yyyy-mm-dd
+        scheduled_start_date = data.get('start_date')  # yyyy-mm-dd
+        scheduled_end_date = data.get('end_date')      # yyyy-mm-dd
         curriculum_id = int(data.get('curriculum_id'))
         # 선택한 커리큘럼 정보 가져오기
         from core.models import Curriculum, TaskManage, TaskAssign
@@ -33,17 +33,16 @@ def create_mentorship(request):
             mentor_id=mentor_id,
             mentee_id=mentee_id,
             defaults={
-                'start_date': start_date,
-                'end_date': end_date,
+                'start_date': scheduled_start_date,
+                'end_date': scheduled_end_date,
                 'is_active': True,
                 'curriculum_title': curriculum.curriculum_title,
                 'total_weeks': curriculum.total_weeks
             }
         )
-        # 이미 있으면 날짜/커리큘럼 정보 업데이트
         if not created:
-            mentorship.start_date = start_date
-            mentorship.end_date = end_date
+            mentorship.start_date = scheduled_start_date
+            mentorship.end_date = scheduled_end_date
             mentorship.curriculum_title = curriculum.curriculum_title
             mentorship.total_weeks = curriculum.total_weeks
             mentorship.save()
@@ -52,14 +51,15 @@ def create_mentorship(request):
         existing_assigns = set(TaskAssign.objects.filter(mentorship_id=mentorship).values_list('title', flat=True))
         tasks = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
         from datetime import datetime, timedelta
-        mentorship_start = datetime.strptime(start_date, '%Y-%m-%d')
+        mentorship_start = datetime.strptime(scheduled_start_date, '%Y-%m-%d')
         for t in tasks:
             if t.title in existing_assigns:
                 continue
             # 주차별 시작일 계산: mentorship 시작일 + (week-1)*7
             task_start = mentorship_start + timedelta(days=(t.week-1)*7)
             period = t.period if t.period else 1
-            task_end = task_start + timedelta(days=period-1)
+            scheduled_start = task_start.date()
+            scheduled_end = (task_start + timedelta(days=period-1)).date()
             TaskAssign.objects.create(
                 mentorship_id=mentorship,
                 title=t.title,
@@ -67,8 +67,10 @@ def create_mentorship(request):
                 guideline=t.guideline,
                 week=t.week,
                 order=t.order,
-                start_date=task_start.date(),
-                end_date=task_end.date(),
+                scheduled_start_date=scheduled_start,
+                scheduled_end_date=scheduled_end,
+                real_start_date=None,
+                real_end_date=None,
                 priority=t.priority,
                 status='진행 전'
             )

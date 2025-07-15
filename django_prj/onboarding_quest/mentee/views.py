@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from core.models import TaskAssign
 from collections import defaultdict
- # 댓글 저장 API
+# 댓글 저장 API
 from django.contrib.auth.decorators import login_required
 from core.models import Memo, User
 
@@ -26,7 +26,7 @@ def create_subtask(request, parent_id):
         description = data.get('description', '').strip()
         status = data.get('status', '진행 전').strip() or '진행 전'
         priority = data.get('priority', '').strip() or (parent.priority if parent else None)
-        end_date = data.get('end_date', None)
+        scheduled_end_date = data.get('end_date', None)
         week = data.get('week', None)
         order = data.get('order', None)
         mentorship_id = data.get('mentorship_id', None)
@@ -50,8 +50,10 @@ def create_subtask(request, parent_id):
             description=description,
             week=week if week is not None else 1,
             order=order,
-            start_date=None,
-            end_date=end_date if end_date else None,
+            scheduled_start_date=None,
+            scheduled_end_date=scheduled_end_date if scheduled_end_date else None,
+            real_start_date=None,
+            real_end_date=None,
             status=status,
             priority=priority,
         )
@@ -113,7 +115,6 @@ def task_list(request):
     if mentorship_id:
         task_qs = TaskAssign.objects.filter(mentorship_id=mentorship_id).order_by('week', 'order')
         for t in task_qs:
-            # 하위 subtasks: t.subtasks.all()
             subtasks = list(t.subtasks.all().values('task_assign_id', 'title', 'status', 'parent'))
             task = {
                 'id': t.task_assign_id,
@@ -122,13 +123,15 @@ def task_list(request):
                 'guideline': t.guideline,
                 'week': t.week,
                 'order': t.order,
-                'start_date': t.start_date,
-                'end_date': t.end_date,
+                'scheduled_start_date': t.scheduled_start_date,
+                'scheduled_end_date': t.scheduled_end_date,
+                'real_start_date': t.real_start_date,
+                'real_end_date': t.real_end_date,
                 'status': t.status,
                 'priority': t.priority,
                 'subtasks': subtasks,
-                'description': t.description,  # description 필드도 추가
-                'parent': t.parent_id,  # 상위 테스크 id (없으면 None)
+                'description': t.description,
+                'parent': t.parent_id,
             }
             week_tasks[t.week].append(task)
         # 첫 번째 주의 첫 번째 Task를 기본 선택
@@ -153,8 +156,10 @@ def task_detail(request, task_assign_id):
             'guideline': t.guideline,
             'week': t.week,
             'order': t.order,
-            'start_date': t.start_date,
-            'end_date': t.end_date,
+            'scheduled_start_date': t.scheduled_start_date,
+            'scheduled_end_date': t.scheduled_end_date,
+            'real_start_date': t.real_start_date,
+            'real_end_date': t.real_end_date,
             'status': t.status,
             'priority': t.priority,
             'description': t.description,

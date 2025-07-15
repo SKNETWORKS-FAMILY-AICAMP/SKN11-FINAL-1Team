@@ -197,8 +197,10 @@ class TaskAssign(models.Model):
     guideline = models.CharField(max_length=255, null=True, blank=True, help_text='과제 가이드라인')
     week = models.IntegerField(help_text='몇 주차 과제인지')
     order = models.IntegerField(null=True, blank=True, help_text='과제 순서')
-    start_date = models.DateField(null=True, blank=True, help_text='시작일')
-    end_date = models.DateField(null=True, blank=True, help_text='종료일')
+    scheduled_start_date = models.DateField(null=True, blank=True, help_text='예정 시작일')
+    scheduled_end_date = models.DateField(null=True, blank=True, help_text='예정 종료일')
+    real_start_date = models.DateField(null=True, blank=True, help_text='실제 시작일')
+    real_end_date = models.DateField(null=True, blank=True, help_text='실제 종료일')
     STATUS_CHOICES = [
         ('진행 전', '진행 전'),
         ('진행 중', '진행 중'),
