@@ -6,7 +6,32 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from core.models import TaskAssign, Subtask
 from collections import defaultdict
- 
+ # 댓글 저장 API
+from django.contrib.auth.decorators import login_required
+from core.models import Memo, User
+
+@csrf_exempt
+@require_POST
+@login_required
+def task_comment(request, task_assign_id):
+    try:
+        t = TaskAssign.objects.get(task_assign_id=task_assign_id)
+        data = json.loads(request.body)
+        comment = data.get('comment', '').strip()
+        if not comment:
+            return JsonResponse({'success': False, 'error': '댓글 내용을 입력하세요.'}, status=400)
+        user = request.user
+        memo = Memo.objects.create(task_assign=t, user=user, comment=comment)
+        return JsonResponse({'success': True, 'memo': {
+            'user': f"{user.last_name}{user.first_name}",
+            'comment': memo.comment,
+            'create_date': memo.create_date.strftime('%Y-%m-%d'),
+        }})
+    except TaskAssign.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    
 @csrf_exempt
 @require_POST
 def task_update(request, task_assign_id):
@@ -65,7 +90,7 @@ def task_list(request):
     return render(request, 'mentee/task_list.html', context)
 
 # AJAX용 Task 상세정보 API
-def task_detail(request, task_assign_id):    
+def task_detail(request, task_assign_id):
     try:
         t = TaskAssign.objects.get(task_assign_id=task_assign_id)
         data = {
@@ -81,6 +106,17 @@ def task_detail(request, task_assign_id):
             'priority': t.priority,
             'description': t.description,
         }
+        # 댓글 목록 추가
+        memos = Memo.objects.filter(task_assign=t).select_related('user').order_by('create_date')
+        memo_list = [
+            {
+                'user': f"{m.user.last_name}{m.user.first_name}",
+                'comment': m.comment,
+                'create_date': m.create_date.strftime('%Y-%m-%d'),
+            }
+            for m in memos
+        ]
+        data['memos'] = memo_list
         return JsonResponse({'success': True, 'task': data})
     except TaskAssign.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Task not found'}, status=404)

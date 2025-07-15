@@ -414,19 +414,10 @@
       </ul>
     </div>
     <div class="task-detail-chat">
-      <div class="chat-message other">
-        <span class="chat-user">채팅봇</span>
-        <span class="chat-text">게시글은 4주차까지 작성되었습니다. 계속 확인 부탁드립니다.</span>
-        <span class="chat-time">2025.06.25. 01:41</span>
-      </div>
-      <div class="chat-message mine">
-        <span class="chat-user">멘토유형</span>
-        <span class="chat-text">완료하였으며, 다음과제도 기대하겠습니다.</span>
-        <span class="chat-time">2025.06.25. 01:45</span>
-      </div>
+      <div id="chat-messages"></div>
       <div class="chat-input-row">
-        <input type="text" class="chat-input" placeholder="메시지 입력...">
-        <button class="chat-send-btn"><span style="font-size:20px;">💬</span></button>
+        <input type="text" class="chat-input" id="chat-input" placeholder="메시지 입력...">
+        <button class="chat-send-btn" id="chat-send-btn"><span style="font-size:20px;">💬</span></button>
       </div>
     </div>
   </div>
@@ -444,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (task.status === '진행 중') statusClass = 'in-progress';
     else if (task.status === '검토 요청') statusClass = 'review-requested';
     else if (task.status === '완료' || task.status === '완료됨') statusClass = 'done';
-    // 우측 영역 갱신
+    // 우측 영역 갱신 (기존 코드 ...)
     const titleEl = document.getElementById('detail-title');
     titleEl.innerHTML = `<span class="status-badge ${statusClass}">${task.status}</span> <span class="${statusClass === 'done' ? 'done' : ''}">${task.title}</span>`;
     const xpEl = document.getElementById('detail-xp');
@@ -482,6 +473,91 @@ document.addEventListener('DOMContentLoaded', function() {
       li.textContent = task.desc;
       ul.appendChild(li);
       listDiv.appendChild(ul);
+    }
+    // 댓글 목록 표시
+    const chatMsgDiv = document.getElementById('chat-messages');
+    if (chatMsgDiv) {
+      chatMsgDiv.innerHTML = '';
+      if (task.memos && Array.isArray(task.memos) && task.memos.length > 0) {
+        task.memos.forEach(memo => {
+          const msgDiv = document.createElement('div');
+          msgDiv.className = 'chat-message';
+          msgDiv.innerHTML = `
+            <span class="chat-user">${memo.user}</span>
+            <span class="chat-text">${memo.comment}</span>
+            <span class="chat-time">${memo.create_date}</span>
+          `;
+          chatMsgDiv.appendChild(msgDiv);
+        });
+      } else {
+        chatMsgDiv.innerHTML = '<div style="color:#888; font-size:15px;">댓글이 없습니다.</div>';
+      }
+    }
+    // 입력창 초기화
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) chatInput.value = '';
+  }
+  // 댓글 작성
+  const chatSendBtn = document.getElementById('chat-send-btn');
+  const chatInput = document.getElementById('chat-input');
+  if (chatSendBtn && chatInput) {
+    chatSendBtn.addEventListener('click', async function() {
+      if (!currentTask || !chatInput.value.trim()) return;
+      const comment = chatInput.value.trim();
+      try {
+        const resp = await fetch(`/mentee/task_comment/${currentTask.id}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
+          },
+          body: JSON.stringify({comment})
+        });
+        const data = await resp.json();
+        if (data.success && data.memo) {
+          if (!currentTask.memos) currentTask.memos = [];
+          currentTask.memos.push(data.memo);
+          updateDetailFromData(currentTask);
+        } else {
+          alert('댓글 등록 실패: ' + (data.error || '오류'));
+        }
+      } catch (err) {
+        alert('댓글 등록 중 오류: ' + err);
+      }
+    });
+    chatInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        chatSendBtn.click();
+      }
+    });
+  }
+
+  // 좌측 Task 카드 클릭 시 상세/댓글 동적 갱신
+  cards.forEach(card => {
+    card.addEventListener('click', async function() {
+      const taskId = this.dataset.taskId || this.getAttribute('data-task-id');
+      if (!taskId) return;
+      try {
+        const resp = await fetch(`/mentee/task_detail/${taskId}/`);
+        const data = await resp.json();
+        if (data.success && data.task) {
+          updateDetailFromData(data.task);
+        }
+      } catch (e) {
+        alert('상세정보 불러오기 실패');
+      }
+    });
+  });
+
+  // 최초 로딩 시 첫 번째 Task 선택
+  if (cards.length > 0) {
+    const firstCard = cards[0];
+    const taskId = firstCard.dataset.taskId || firstCard.getAttribute('data-task-id');
+    if (taskId) {
+      fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
+        if (data.success && data.task) updateDetailFromData(data.task);
+      });
     }
   }
   // 편집 폼 토글 및 저장/취소

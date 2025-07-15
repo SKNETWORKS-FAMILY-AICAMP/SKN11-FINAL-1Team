@@ -4,9 +4,9 @@
   "settings": {
     "width": 2500,
     "height": 2500,
-    "scrollTop": -1123.7104,
-    "scrollLeft": -168.1649,
-    "zoomLevel": 0.73,
+    "scrollTop": -1486.7213,
+    "scrollLeft": -339.0109,
+    "zoomLevel": 1,
     "show": 511,
     "database": 4,
     "databaseName": "onboarding_erd_v1",
@@ -51,11 +51,9 @@
       "54Otu7poCz6lKZUKGPtH2",
       "XRoTJ4NIihNibn2vk4Otp",
       "Rekhu1Wx4aQ-6hiGy9gRX",
-      "u81u3-qr9kPMTiOVzWIk7",
       "Sd_ujjq5oxH9pO18DK96K",
       "q9C4o1i4NDDv3Xb-0yLi_",
       "ecOCVUiJqISsNp28sk0_L",
-      "5tmWFbFPbC0eXBg6YDvTy",
       "jGIcdrI7qV4kyAOcgMJx9",
       "dT4SQjLTEzlbQOe2nwsPM"
     ],
@@ -138,15 +136,15 @@
           "F8LVPCSrdDAORSJDxTCsN"
         ],
         "ui": {
-          "x": 761.8078,
-          "y": 1611.4158,
+          "x": 752.9471,
+          "y": 1588.631,
           "zIndex": 16,
           "widthName": 60,
           "widthComment": 193,
           "color": ""
         },
         "meta": {
-          "updateAt": 1752143525544,
+          "updateAt": 1751086058731,
           "createAt": 1750752856720
         }
       },
@@ -164,7 +162,7 @@
           "31TshFuCybsqyxYxUbTL7"
         ],
         "ui": {
-          "x": 190.5276,
+          "x": 162.2923,
           "y": 1614.4969,
           "zIndex": 41,
           "widthName": 60,
@@ -172,7 +170,7 @@
           "color": "#E91E63"
         },
         "meta": {
-          "updateAt": 1751086058731,
+          "updateAt": 1752563970596,
           "createAt": 1750756105791
         }
       },
@@ -288,8 +286,7 @@
           "wM97hjXRu9n5koIE5m0nn",
           "90mBYWffdjhSg21RZIDMB",
           "FyMbdUgjt84tMZQU40mbf",
-          "LnqCpoXu2DRQqCdQHfPkG",
-          "PvpbzhTy6RNmeNWd2XbR2"
+          "LnqCpoXu2DRQqCdQHfPkG"
         ],
         "seqColumnIds": [
           "cAdZJA_1ateXHms70dMDW",
@@ -329,7 +326,7 @@
           "color": "#E91E63"
         },
         "meta": {
-          "updateAt": 1751086058731,
+          "updateAt": 1752563942883,
           "createAt": 1750763704754
         }
       },
@@ -357,15 +354,15 @@
           "LJSX6Nz39XmYpVzOgenUQ"
         ],
         "ui": {
-          "x": 753.0101,
-          "y": 1106.3128,
+          "x": 739.5955,
+          "y": 1095.3372,
           "zIndex": 593,
           "widthName": 63,
           "widthComment": 60,
           "color": "#03A9F4"
         },
         "meta": {
-          "updateAt": 1751086058731,
+          "updateAt": 1752563865605,
           "createAt": 1750814200793
         }
       },
@@ -2024,7 +2021,7 @@
         "comment": "유저 아이디",
         "dataType": "INTEGER",
         "default": "",
-        "options": 8,
+        "options": 0,
         "ui": {
           "keys": 2,
           "widthName": 60,
@@ -2033,7 +2030,7 @@
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1750827782889,
+          "updateAt": 1752561857715,
           "createAt": 1750813805675
         }
       },
@@ -2566,7 +2563,7 @@
         "default": "",
         "options": 8,
         "ui": {
-          "keys": 2,
+          "keys": 0,
           "widthName": 77,
           "widthComment": 60,
           "widthDataType": 60,
@@ -3086,7 +3083,7 @@
         "default": "",
         "options": 8,
         "ui": {
-          "keys": 2,
+          "keys": 0,
           "widthName": 60,
           "widthComment": 97,
           "widthDataType": 60,
@@ -3469,8 +3466,8 @@
           "columnIds": [
             "U3rmTO0JTgSVzUFOz9NoF"
           ],
-          "x": 405.9024,
-          "y": 1522.6832,
+          "x": 403.9024,
+          "y": 1498.6832,
           "direction": 8
         },
         "end": {
@@ -3478,7 +3475,7 @@
           "columnIds": [
             "31TshFuCybsqyxYxUbTL7"
           ],
-          "x": 417.0276,
+          "x": 388.7923,
           "y": 1614.4969,
           "direction": 4
         },
@@ -3525,8 +3522,8 @@
           "columnIds": [
             "U3rmTO0JTgSVzUFOz9NoF"
           ],
-          "x": 641.9024,
-          "y": 1469.349866666667,
+          "x": 637.9024,
+          "y": 1424.6832,
           "direction": 2
         },
         "end": {
@@ -3534,8 +3531,8 @@
           "columnIds": [
             "B634_mOS8QaqSJcucG4TD"
           ],
-          "x": 761.8078,
-          "y": 1699.4158,
+          "x": 752.9471,
+          "y": 1676.631,
           "direction": 1
         },
         "meta": {
@@ -3547,14 +3544,14 @@
         "id": "54Otu7poCz6lKZUKGPtH2",
         "identification": false,
         "relationshipType": 2,
-        "startRelationshipType": 2,
+        "startRelationshipType": 1,
         "start": {
           "tableId": "5TzbJ92tWR-OrLkp3-Bjg",
           "columnIds": [
             "ET7WdLhb9ew7Ur3jiqRs-"
           ],
           "x": 1418.0072,
-          "y": 1454.270966666667,
+          "y": 1323.6043,
           "direction": 1
         },
         "end": {
@@ -3562,8 +3559,8 @@
           "columnIds": [
             "F8LVPCSrdDAORSJDxTCsN"
           ],
-          "x": 1214.8078,
-          "y": 1699.4158,
+          "x": 1205.9470999999999,
+          "y": 1676.631,
           "direction": 2
         },
         "meta": {
@@ -3637,8 +3634,8 @@
           "columnIds": [
             "ywKybpVq5bVUBfedg5op9"
           ],
-          "x": 753.0101,
-          "y": 1170.3128,
+          "x": 739.5955,
+          "y": 1159.3372,
           "direction": 1
         },
         "end": {
@@ -3646,8 +3643,8 @@
           "columnIds": [
             "LnqCpoXu2DRQqCdQHfPkG"
           ],
-          "x": 641.9024,
-          "y": 1256.0165333333334,
+          "x": 637.9024,
+          "y": 1276.6832,
           "direction": 2
         },
         "meta": {
@@ -3665,8 +3662,8 @@
           "columnIds": [
             "ywKybpVq5bVUBfedg5op9"
           ],
-          "x": 1188.0101,
-          "y": 1170.3128,
+          "x": 1174.5955,
+          "y": 1159.3372,
           "direction": 2
         },
         "end": {
@@ -3844,15 +3841,15 @@
         "id": "oP9DvOmZL5vJQapyUVseT",
         "value": "mentor_id는 user.id 참고\n\nmentee_id는 user.id 참고",
         "ui": {
-          "x": 1231.2901,
-          "y": 1153.803,
+          "x": 1019.095,
+          "y": 1222.0957,
           "zIndex": 903,
           "width": 134,
           "height": 100,
           "color": "#000000"
         },
         "meta": {
-          "updateAt": 1751086058731,
+          "updateAt": 1752563933613,
           "createAt": 1750829367688
         }
       }
