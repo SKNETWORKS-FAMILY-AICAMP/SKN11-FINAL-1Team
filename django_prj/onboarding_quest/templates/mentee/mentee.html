@@ -6,15 +6,38 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/mentee/mentee.css' %}">
 <style>
-.kanban-board { display: flex; gap: 25px; min-height: 600px; }
+/* 메인 컨테이너를 화면 전체로 확장 */
+.main-content {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 16px !important;
+}
 
-/* 기본 칸반 컬럼 스타일 */
+/* 칸반 보드 컨테이너 */
+.kanban-section {
+  width: 100% !important;
+  margin: 0 0 24px 0 !important;
+  padding: 16px !important;
+}
+
+.kanban-board { 
+  display: flex; 
+  gap: 16px; 
+  min-height: 70vh;
+  width: 100%;
+}
+
+/* 기본 칸반 컬럼 스타일 - 동일한 너비로 설정 */
 .kanban-column { 
+  flex: 1;
+  min-width: 0; /* flexbox 오버플로우 방지 */
   border-radius: 16px; 
-  padding: 20px 15px 20px 15px; 
-  min-height: 500px; 
+  padding: 20px 15px; 
+  min-height: 60vh; 
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   border: 1px solid #e5e7eb;
+  overflow-y: auto;
 }
 
 /* 각 컬럼별 배경색 */
@@ -38,6 +61,7 @@
   color: #374151;
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 8px;
+  text-align: center;
 }
 
 /* 기본 카드 스타일 - 모든 카드는 화이트 */
@@ -52,6 +76,8 @@
   position: relative; 
   cursor: pointer; 
   border: 1px solid #f3f4f6;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 카드 호버 및 선택 효과 */
@@ -232,31 +258,82 @@
   90% { opacity: 1; transform: translateX(-50%) translateY(0); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
 }
+
+/* Welcome section도 전체 너비로 확장 */
+.welcome-section {
+  width: 100% !important;
+  margin-bottom: 24px !important;
+}
+
+/* Activity section도 전체 너비로 확장 */
+.activity-section {
+  width: 100% !important;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1400px) {
+  .kanban-board {
+    gap: 12px;
+  }
+  
+  .kanban-column {
+    padding: 16px 12px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .kanban-board {
+    gap: 8px;
+  }
+  
+  .kanban-column {
+    padding: 12px 8px;
+  }
+  
+  .kanban-card {
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .kanban-board {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .kanban-column {
+    min-height: 300px;
+  }
+  
+  .main-content {
+    padding: 12px !important;
+  }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div id="levelup-toast" class="levelup-toast"></div>
-  <div class="main-content bg-gray-50 p-8 rounded-lg w-full max-w-screen-xl mx-auto">
-    <div class="welcome-section bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8 flex items-center gap-6">
-      <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-200 bg-white shadow-sm" />
-      <div class="flex flex-col flex-1">
-        <div class="flex items-center gap-3 mb-2">
-          <span class="text-xl font-bold text-gray-900">Lv. <span id="userLevelTop">1</span></span>
-          <span class="text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200 font-medium">신입 멘티</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
-          <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
-        </div>
-        <div class="text-sm text-gray-600 font-medium">
+<div class="main-content bg-gray-50 rounded-lg">
+  <div class="welcome-section bg-white rounded-xl shadow-md border border-gray-200 p-6 flex items-center gap-6">
+    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-200 bg-white shadow-sm" />
+    <div class="flex flex-col flex-1">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-xl font-bold text-gray-900">Lv. <span id="userLevelTop">1</span></span>
+        <span class="text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200 font-medium">신입 멘티</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+        <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+      <div class="text-sm text-gray-600 font-medium">
         완료: <span id="userExpTop">0</span> / <span id="userExpMaxTop">0</span>
-        </div>
+      </div>
+    </div>      
+  </div>
 
-      </div>      
-    </div>
-
-    <div class="kanban-section bg-white rounded-xl shadow-md border border-gray-200 p-3 mb-8" style="display: flex;">
-      <div class="kanban-column todo-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+  <div class="kanban-section bg-white rounded-xl shadow-md border border-gray-200">
+    <div class="kanban-board">
+      <div class="kanban-column todo-column" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">진행 전</div>
         <div class="kanban-card" data-date="2025-07-04" draggable="true" id="task1">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
@@ -295,7 +372,8 @@
           <div class="kanban-desc">신규 기능 아이디어를 정리해보세요.</div>
         </div>
       </div>
-      <div class="kanban-column processing-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+      
+      <div class="kanban-column processing-column" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">진행 중</div>
         <div class="kanban-card" data-date="2025-07-03" draggable="true" id="task2">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
@@ -322,7 +400,8 @@
           <div class="kanban-desc">코드 리뷰에 참여해보세요.</div>
         </div>
       </div>
-      <div class="kanban-column review-request-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+      
+      <div class="kanban-column review-request-column" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">검토요청</div>
         <div class="kanban-card" data-date="2025-07-02" draggable="true" id="task3">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
@@ -361,7 +440,8 @@
           <div class="kanban-desc">오리엔테이션에 참석하세요.</div>
         </div>
       </div>
-      <div class="kanban-column success-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+      
+      <div class="kanban-column success-column" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">완료</div>
         <div class="kanban-card" data-date="2025-07-01" draggable="true" id="task4">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
@@ -401,31 +481,32 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="activity-section bg-white rounded-xl shadow-md border border-gray-200 p-6">
-      <div class="activity-header">최근활동</div>
-      <div class="activity-item">
-        <div>코드 리뷰 참여 진행 중입니다</div>
-        <div>1 minute ago</div>
-      </div>
-      <div class="activity-item">
-        <div>제품 프로토타입 제작 진행 중입니다</div>
-        <div>10 minute ago</div>
-      </div>
-      <div class="activity-item">
-        <div>솔루션 자기소개 입력 완료했습니다</div>
-        <div>1 day ago</div>
-      </div>
-      <div class="activity-item">
-        <div>멘토와 1:1 미팅 완료했습니다</div>
-        <div>2 day ago</div>
-      </div>
-      <div class="activity-item">
-        <div>오리엔테이션 참석 완료했습니다</div>
-        <div>3 day ago</div>
-      </div>
+  <div class="activity-section bg-white rounded-xl shadow-md border border-gray-200 p-6">
+    <div class="activity-header">최근활동</div>
+    <div class="activity-item">
+      <div>코드 리뷰 참여 진행 중입니다</div>
+      <div>1 minute ago</div>
+    </div>
+    <div class="activity-item">
+      <div>제품 프로토타입 제작 진행 중입니다</div>
+      <div>10 minute ago</div>
+    </div>
+    <div class="activity-item">
+      <div>솔루션 자기소개 입력 완료했습니다</div>
+      <div>1 day ago</div>
+    </div>
+    <div class="activity-item">
+      <div>멘토와 1:1 미팅 완료했습니다</div>
+      <div>2 day ago</div>
+    </div>
+    <div class="activity-item">
+      <div>오리엔테이션 참석 완료했습니다</div>
+      <div>3 day ago</div>
     </div>
   </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

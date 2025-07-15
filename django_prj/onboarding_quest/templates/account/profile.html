@@ -4,37 +4,143 @@
 {% block title %}사용자 프로필{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/account/profile.css' %}">
+<style>
+  .profile-container {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 40px;
+    background: #fff;
+    min-height: 100vh;
+    box-sizing: border-box;
+    font-family: 'Pretendard', sans-serif;
+  }
+
+  .section-title {
+    font-size: 1.6rem;
+    font-weight: bold;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 8px;
+    text-align: center;
+  }
+
+  .profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 30px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .profile-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+  }
+
+  .label {
+    font-weight: 600;
+    color: #555;
+  }
+
+  .value {
+    color: #222;
+    font-weight: 500;
+  }
+
+  .button-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 40px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    text-align: center;
+    transition: 0.2s;
+    min-width: 140px;
+  }
+
+  .btn-password {
+    background-color: #e3dfdf;
+    color: rgb(0, 34, 255);
+  }
+
+  .btn-edit {
+    background-color: #e3dfdf;
+    color: rgb(0, 34, 255);
+  }
+
+  .btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    .profile-container {
+      padding: 20px;
+    }
+    
+    .profile-item {
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .button-row {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .btn {
+      width: 100%;
+      max-width: 300px;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
   <div class="profile-container">
-    <h2>사용자 프로필</h2>
+    <h2 class="section-title">사용자 프로필</h2>
 
-    <div class="profile-row">
-      <div class="label">이름</div>
-      <div class="value">김신입</div>
-    </div>
-    <div class="profile-row">
-      <div class="label">Email</div>
-      <div class="value">sinpip@gmail.com</div>
-    </div>
-    <div class="profile-row">
-      <div class="label">입사일</div>
-      <div class="value">2020.02.01</div>
-    </div>
-    <div class="profile-row">
-      <div class="label">부서</div>
-      <div class="value">인사</div>
-    </div>
-    <div class="profile-row">
-      <div class="label">직급</div>
-      <div class="value">사원</div>
+    <div class="profile-info">
+      <div class="profile-item">
+        <span class="label">이름</span>
+        <span class="value">김신입</span>
+      </div>
+      <div class="profile-item">
+        <span class="label">Email</span>
+        <span class="value">sinpip@gmail.com</span>
+      </div>
+      <div class="profile-item">
+        <span class="label">입사일</span>
+        <span class="value">2020.02.01</span>
+      </div>
+      <div class="profile-item">
+        <span class="label">부서</span>
+        <span class="value">인사</span>
+      </div>
+      <div class="profile-item">
+        <span class="label">직급</span>
+        <span class="value">사원</span>
+      </div>
     </div>
 
     <div class="button-row">
-      <a href="/account/change_pwd/" class="btn-password">비밀번호 변경</a>
-      <a href="/account/user_add_modify/" class="btn-edit">수정</a>
+      <a href="/account/change_pwd/" class="btn btn-password">비밀번호 변경</a>
+      <a href="/account/user_add_modify/" class="btn btn-edit">수정</a>
     </div>
   </div>
 {% endblock %}
