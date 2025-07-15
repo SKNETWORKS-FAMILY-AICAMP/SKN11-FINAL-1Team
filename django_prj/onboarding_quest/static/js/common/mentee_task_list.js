@@ -13,6 +13,33 @@ function toggleSubtaskList(toggleBtn) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // 하위 테스크(서브태스크) 클릭 시 상세 정보 표시
+  function attachSubtaskClickEvents() {
+    document.querySelectorAll('.subtask-item').forEach(function(item) {
+      item.addEventListener('click', function(e) {
+        e.stopPropagation(); // 상위 카드 클릭 방지
+        const taskId = this.getAttribute('data-task-id');
+        if (!taskId) return;
+        fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
+          if (data.success && data.task) {
+            updateDetailFromData(data.task);
+            // 좌측 카드 선택 해제, 해당 subtask 강조(선택 효과)
+            document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('.subtask-item').forEach(s => s.classList.remove('selected'));
+            this.classList.add('selected');
+          }
+        });
+      });
+    });
+  }
+  attachSubtaskClickEvents();
+
+  // 동적으로 생성되는 경우를 위해 토글 후에도 이벤트 재부착
+  document.querySelectorAll('.subtask-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      setTimeout(attachSubtaskClickEvents, 0);
+    });
+  });
   // 하위 테스크 토글 버튼 이벤트
   document.querySelectorAll('.subtask-toggle').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -87,6 +114,60 @@ document.addEventListener('DOMContentLoaded', function() {
       if (data.success) {
         alert('하위 테스크가 생성되었습니다.');
         subtaskModal.style.display = 'none';
+        // 좌측 카드의 서브태스크 리스트에 바로 추가
+        const card = document.querySelector(`.task-card[data-task-id="${parent_id}"]`);
+        if (card) {
+          let subtaskList = card.querySelector('.subtask-list');
+          if (!subtaskList) {
+            // 없으면 생성
+            subtaskList = document.createElement('div');
+            subtaskList.className = 'subtask-list';
+            subtaskList.style.display = 'block';
+            card.appendChild(subtaskList);
+          } else {
+            subtaskList.style.display = 'block';
+          }
+          // 버튼이 없으면 생성
+          let toggleBtn = card.querySelector('.subtask-toggle');
+          if (!toggleBtn) {
+            toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'subtask-toggle';
+            toggleBtn.style = 'margin:6px 0 0 0; font-size:13px; background:none; border:none; color:#1976d2; cursor:pointer;';
+            card.insertBefore(toggleBtn, subtaskList);
+            toggleBtn.addEventListener('click', function() {
+              if (subtaskList.style.display === 'none' || subtaskList.style.display === '') {
+                subtaskList.style.display = 'block';
+                toggleBtn.textContent = '▲ 하위 접기';
+              } else {
+                subtaskList.style.display = 'none';
+                const count = subtaskList.querySelectorAll('.subtask-item').length;
+                toggleBtn.textContent = '▼ 하위 ' + count + '개';
+              }
+            });
+          }
+          // 새 subtask DOM 추가
+          const subDiv = document.createElement('div');
+          subDiv.className = 'subtask-item';
+          subDiv.setAttribute('data-task-id', data.subtask_id);
+          subDiv.style = 'padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer;';
+          subDiv.innerHTML = `<span class="subtask-title">${title}</span> <span class="subtask-status" style="margin-left:8px; font-size:12px; color:#888;">[${status}]</span>`;
+          subDiv.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fetch(`/mentee/task_detail/${data.subtask_id}/`).then(resp => resp.json()).then(dt => {
+              if (dt.success && dt.task) {
+                updateDetailFromData(dt.task);
+                document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+                document.querySelectorAll('.subtask-item').forEach(s => s.classList.remove('selected'));
+                subDiv.classList.add('selected');
+              }
+            });
+          });
+          subtaskList.appendChild(subDiv);
+          // 토글 버튼 텍스트 갱신
+          const count = subtaskList.querySelectorAll('.subtask-item').length;
+          toggleBtn.textContent = '▼ 하위 ' + count + '개';
+        }
         // 필요시 상세정보 갱신
         if (currentTask && currentTask.id) fetchAndUpdateDetail(currentTask.id);
       } else {

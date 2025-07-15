@@ -40,7 +40,7 @@
             <button type="button" class="subtask-toggle" style="margin:6px 0 0 0; font-size:13px; background:none; border:none; color:#1976d2; cursor:pointer;">▼ 하위 {{ direct_subtasks|length }}개</button>
             <div class="subtask-list" style="display:none; margin:6px 0 0 10px;">
               {% for sub in direct_subtasks %}
-                <div class="subtask-item" style="padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444;">
+                <div class="subtask-item" data-task-id="{{ sub.task_assign_id }}" style="padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer;">
                   <span class="subtask-title">{{ sub.title }}</span>
                   <span class="subtask-status" style="margin-left:8px; font-size:12px; color:#888;">[{{ sub.status }}]</span>
                 </div>
