@@ -31,7 +31,7 @@ def create_mentorship(request):
         combined_title = ', '.join(c.curriculum_title for c in curriculum_objs)
         max_weeks = max((c.total_weeks for c in curriculum_objs), default=0)
 
-        # ✅ 기존 멘토-멘티 관계가 있으면 재사용
+
         mentorship = Mentorship.objects.filter(mentor_id=mentor_id, mentee_id=mentee_id).first()
         if not mentorship:
             mentorship = Mentorship.objects.create(
@@ -82,7 +82,7 @@ def create_mentorship(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
         
-        
+
 @login_required
 def mentee_detail(request, user_id):
     try:
