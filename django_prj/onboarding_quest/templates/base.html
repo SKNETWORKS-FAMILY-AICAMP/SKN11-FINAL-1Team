@@ -95,9 +95,12 @@
                     <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🏠</span>메인</a>
                     <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🤖</span>채팅</a>
                     <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">📄</span>문서 업로드</a>
-                    <a href="{% url 'mentee:task_list' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/task_list/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🗂️</span>태스크 목록</a>
-                
+                    {% if user_mentorship %}
+                        <a href="{% url 'mentee:task_list' %}?mentorship_id={{ user_mentorship.mentorship_id }}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if 'task_list' in request.path %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🗂️</span>태스크 목록</a>
+                    {% else %}
+                        <span class="sidebar-link block py-3 px-4 rounded-lg flex items-center gap-3 font-bold text-gray-400 cursor-not-allowed"><span class="text-lg">🗂️</span>태스크 목록 <span class="text-xs">(멘토쉽 필요)</span></span>
                     {% endif %}
+                {% endif %}
             {% else %}
                 <a href="{% url 'account:login' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/login/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🔑</span>로그인</a>
             {% endif %}

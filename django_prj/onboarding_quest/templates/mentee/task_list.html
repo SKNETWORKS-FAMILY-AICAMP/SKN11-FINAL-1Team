@@ -3,366 +3,158 @@
 
 {% block title %}태스크 목록 페이지{% endblock %}
 {% block extra_head %}
-<style>
-.tasklist-container {
-  display: flex;
-  gap: 32px;
-  width: 100%;
-  min-height: 600px;
-}
-.tasklist-left {
-  flex: 1;
-  padding: 24px 0 24px 24px;
-  background: #fafbfc;
-  border-radius: 12px 0 0 12px;
-  min-width: 340px;
-  max-width: 500px;
-  overflow-y: auto;
-  max-height: 85vh;
-}
-.tasklist-title {
-  font-size: 1.3em;
-  font-weight: bold;
-  margin-bottom: 18px;
-  color: #222;
-}
-.tasklist-search-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-.tasklist-search {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 15px;
-}
-.tasklist-create-btn {
-  padding: 8px 18px;
-  background: #ffd600;
-  color: #222;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.tasklist-filter-btn {
-  padding: 8px 18px;
-  background: #e0e0e0;
-  color: #222;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.tasklist-filter-panel {
-  background: #f7f7f7;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 14px 18px 10px 18px;
-  margin-top: 4px;
-  font-size: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-}
-.filter-group {
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.filter-label {
-  font-weight: bold;
-  margin-right: 8px;
-}
-.filter-group label {
-  margin-right: 8px;
-  font-weight: normal;
-}
-.filter-dday-sort {
-  background: #fff;
-  border: 1px solid #bbb;
-  border-radius: 4px;
-  padding: 2px 8px;
-  margin-left: 2px;
-  cursor: pointer;
-  font-size: 15px;
-}
-.filter-dday-sort.active {
-  background: #ffd600;
-  color: #222;
-  border-color: #ffd600;
-}
-.task-card {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  margin-bottom: 18px;
-  padding: 18px 20px 14px 20px;
-  border-left: 6px solid #ffd600;
-  transition: box-shadow 0.2s, border-color 0.2s;
-  cursor: pointer;
-  position: relative;
-}
-.task-card.in-progress { border-left-color: #4caf50; }
-.task-card.done { border-left-color: #ffd600; background: #f6fff6; }
-.task-card.selected { box-shadow: 0 0 0 3px #1976d233; border-left-color: #1976d2; }
-.task-card.not-started { border-left-color: #f44336; }
-.task-card.review-requested { border-left-color: #ffd600; }
-.task-title {
-  color: #222;
-}
-.task-title.done {
-  text-decoration: line-through;
-  color: #aaa;
-}
-.task-title.d-day {
-  margin-right: 8px;
-  text-align: left;
-  display: inline-block;
-}
-.task-card-header {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  font-size: 17px;
-  font-weight: bold;
-  margin-bottom: 6px;
-  gap: 10px;
-}
-.task-xp { color: #888; font-size: 15px; display: flex; align-items: center; gap: 4px; }
-.icon-trophy { width: 18px; height: 18px; vertical-align: middle; }
-.task-desc { color: #555; font-size: 14px; margin-bottom: 8px; }
-.task-desc-row { margin-bottom: 8px; }
-.task-meta-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-.task-week { color: #666; }
-.task-badge {
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: bold;
-  color: #fff;
-  display: inline-block;
-}
-.task-badge.red { background: #f44336; color: #fff; }
-.task-badge.green { background: #4caf50; color: #fff; }
-.task-badge.yellow { background: #ffd600 !important; color: #222 !important; }
-
-.status-badge {
-  display: inline-block;
-  min-width: 60px;
-  padding: 2px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: bold;
-  color: #fff;
-  margin-right: 10px;
-  vertical-align: middle;
-}
-.status-badge.not-started { background: #888; }
-.status-badge.in-progress { background: #1976d2; }
-.status-badge.review-requested { background: #f44336; }
-.status-badge.done { background: #43a047; }
-
-.subtask-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  margin: 0 0 0 6px;
-  font-size: 18px;
-  color: #222;
-  user-select: none;
-}
-.subtask-list {
-  margin: 0 0 0 32px;
-  padding: 0;
-  border: 1px solid #bbb;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  margin-bottom: 10px;
-  display: none;
-}
-.subtask-list.open { display: block; }
-.subtask-card {
-  padding: 12px 16px 10px 16px;
-  border-bottom: 1px solid #eee;
-  font-size: 15px;
-  cursor: pointer;
-}
-.subtask-card:last-child { border-bottom: none; }
-.subtask-title { font-weight: bold; font-size: 15px; margin-bottom: 2px; display: block; }
-.subtask-desc { color: #555; font-size: 13px; margin-bottom: 4px; }
-.subtask-meta-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 12px;
-}
-.subtask-week { color: #666; }
-.subtask-badge {
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: bold;
-  color: #fff;
-  display: inline-block;
-}
-.subtask-badge.green { background: #4caf50; }
-.subtask-badge.yellow { background: #ffd600 !important; color: #222 !important; }
-
-.tasklist-right {
-  flex: 2;
-  background: #fff;
-  border-radius: 0 16px 16px 0;
-  padding: 36px 48px 32px 48px;
-  min-width: 600px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 10;
-}
-.task-detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  font-size: 26px;
-  font-weight: bold;
-  margin-bottom: 8px;
-}
-.task-detail-title { color: #222; font-size: 26px; font-weight: bold; }
-.task-detail-xp { color: #888; font-size: 18px; display: flex; align-items: center; gap: 4px; font-weight: bold; }
-.task-detail-desc { color: #222; font-size: 17px; margin-bottom: 12px; margin-top: 8px; }
-.task-detail-meta-row {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  font-size: 15px;
-  margin-bottom: 12px;
-}
-.task-detail-divider {
-  border: none;
-  border-top: 1.5px solid #e0e0e0;
-  margin: 18px 0 24px 0;
-}
-.task-detail-list {
-  margin: 0 0 24px 0;
-  padding-left: 0;
-  color: #222;
-  font-size: 17px;
-  list-style: none;
-}
-.task-detail-list ul {
-  margin: 0 0 24px 0;
-  padding-left: 0;
-  color: #222;
-  font-size: 17px;
-  list-style: none;
-}
-.task-detail-list ul li {
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-.task-detail-chat {
-  margin-top: auto;
-  background: #fafafa;
-  border-radius: 12px;
-  padding: 24px 24px 18px 24px;
-  margin-top: 32px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
-}
-.chat-message {
-  margin-bottom: 14px;
-  font-size: 15px;
-  display: flex;
-  flex-direction: column;
-}
-.chat-message .chat-user {
-  font-weight: bold;
-  color: #43a047;
-  margin-bottom: 2px;
-}
-.chat-message.mine .chat-user { color: #1976d2; }
-.chat-message .chat-text { color: #222; margin-bottom: 2px; }
-.chat-message .chat-time { color: #aaa; font-size: 12px; }
-.chat-input-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 18px;
-}
-.chat-input {
-  flex: 1;
-  padding: 12px 16px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 16px;
-  background: #fff;
-}
-.chat-send-btn {
-  padding: 0 24px;
-  background: #ffd600;
-  color: #222;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-</style>
+<link rel="stylesheet" href="{% static 'css/common/mentee_task_list.css' %}">
 {% endblock %}
 {% block content %}
 <div class="tasklist-container">
   <!-- 좌측: Task 목록 -->
 <div class="tasklist-left" id="tasklist-left">
   <div class="tasklist-title">Task 목록</div>
+  
+  <!-- 정렬/필터 컨트롤 -->
+  <div class="task-controls" style="margin: 12px 0; padding: 8px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0;">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <label style="font-size: 13px; font-weight: 500; color: #333;">정렬:</label>
+      <select id="task-sort" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+        <option value="week">주차별</option>
+        <option value="deadline">마감일별</option>
+      </select>
+      
+      <label style="font-size: 13px; font-weight: 500; color: #333; margin-left: 8px;">필터:</label>
+      <select id="task-filter-status" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+        <option value="all">전체 상태</option>
+        <option value="진행전">진행 전</option>
+        <option value="진행중">진행 중</option>
+        <option value="검토요청">검토 요청</option>
+        <option value="완료">완료</option>
+      </select>
+      
+      <select id="task-filter-priority" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+        <option value="all">전체 우선순위</option>
+        <option value="상">상</option>
+        <option value="중">중</option>
+        <option value="하">하</option>
+      </select>
+    </div>
+  </div>
   {% for week, tasks in week_tasks.items %}
     <div style="font-weight:bold; margin:18px 0 8px 0; color:#1976d2;">{{ week }}주차</div>
     {% for task in tasks %}
-      <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행 전' %}not-started{% elif task.status == '진행 중' %}in-progress{% elif task.status == '검토 요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
+      {% if not task.parent %}
+      <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
         data-task-id="{{ task.id }}"
         data-title="{{ task.title|escapejs }}"
-        data-desc="{{ task.desc|default_if_none:''|escapejs }}"
+        data-desc="{{ task.description|default_if_none:''|escapejs }}"
         data-priority="{{ task.priority|default:'하'|escapejs }}"
         data-status="{{ task.status|escapejs }}"
-        data-end_date="{{ task.end_date|date:'Y-m-d' }}"
+        data-scheduled_end_date="{{ task.scheduled_end_date|date:'Y-m-d' }}"
         data-week="{{ week }}"
+        data-dday="{{ task.dday|default_if_none:'' }}"
         >
         <div class="task-card-header">
-          <span class="status-badge {% if task.status == '진행 전' %}not-started{% elif task.status == '진행 중' %}in-progress{% elif task.status == '검토 요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.status }}</span>
+          <span class="status-badge {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.status }}</span>
           <span class="task-title {% if task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.title }}</span>
+          {% if task.dday is not None %}
+            <span class="task-dday {% if task.dday <= 1 %}urgent{% elif task.dday <= 3 %}warning{% endif %}">
+              {% if task.dday >= 0 %}D-{{ task.dday }}{% else %}D+{% widthratio task.dday -1 1 %}{% endif %}
+            </span>
+          {% endif %}
         </div>
         <div class="task-desc-row">
-          <div class="task-desc">{{ task.desc }}</div>
+          <div class="task-desc">{{ task.description }}</div>
           <div class="task-meta-row">
-            <span class="task-badge {{ task.priority|default:'하'|lower }}">{{ task.priority|default:'하' }}</span>
-            <span class="d-day-badge">{{ task.end_date|date:'Y-m-d' }}</span>
+            <span class="task-badge {% if task.priority == '상' %}red{% elif task.priority == '중' %}green{% else %}yellow{% endif %}">{{ task.priority|default:'하' }}</span>
           </div>
         </div>
+        {# 직접적인 하위 테스크만 필터링 #}
+        {% with direct_subtasks=task.subtasks|dictsort:'task_assign_id' %}
+          {% if direct_subtasks and direct_subtasks|length > 0 %}
+            <button type="button" class="subtask-toggle" style="margin:6px 0 0 0; font-size:13px; background:none; border:none; color:#1976d2; cursor:pointer;">▼ 하위 {{ direct_subtasks|length }}개</button>
+            <div class="subtask-list" style="display:none; margin:6px 0 0 10px;">
+              {% for sub in direct_subtasks %}
+                <div class="subtask-item" data-task-id="{{ sub.task_assign_id }}" style="padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer; display: flex; align-items: center; gap: 6px;">
+                  <span class="status-badge {% if sub.status == '진행전' %}not-started{% elif sub.status == '진행중' %}in-progress{% elif sub.status == '검토요청' %}review-requested{% elif sub.status == '완료' or sub.status == '완료됨' %}done{% endif %}" style="font-size: 11px; padding: 1px 8px;">{{ sub.status }}</span>
+                  <span class="subtask-title" style="flex: 1;">{{ sub.title }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
       </div>
+      {% endif %}
     {% endfor %}
   {% endfor %}
 </div>
   <!-- 우측: 상세 정보 -->
   <div class="tasklist-right">
     <div class="task-detail-header" id="detail-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <!-- 하위 테스크 생성 모달 -->
+      <div id="subtask-modal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; min-width:420px; max-width:600px; padding:40px 36px 32px 36px; box-shadow:0 6px 32px rgba(0,0,0,0.20); position:relative;">
+          <button id="subtask-close-btn" style="position:absolute; right:12px; top:10px; background:none; border:none; font-size:18px; color:#888; cursor:pointer; padding:0 4px; width:28px; height:28px; line-height:24px;">&times;</button>
+          <form id="subtask-form">
+            <div style="font-weight:bold; margin-bottom:18px;">하위 테스크 생성</div>
+            <div style="display:flex; gap:12px; margin-bottom:14px; align-items:flex-end;">
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">상태</label>
+                <select id="subtask-status" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;">
+                  <option value="진행전">진행 전</option>
+                  <option value="진행중">진행 중</option>
+                  <option value="검토요청">검토 요청</option>
+                  <option value="완료">완료</option>
+                </select>
+              </div>
+              <div style="flex:2;">
+                <label style="font-size:17px; color:#222;">상위 Task</label>
+                <input id="subtask-parent-title" type="text" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px; background:#f7f7f7;" readonly />
+                <input id="subtask-parent-id" type="hidden" />
+              </div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:17px; color:#222;">제목</label>
+              <input id="subtask-title" type="text" style="width:100%; margin-bottom:0; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" required />
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:17px; color:#222;">가이드라인</label>
+              <input id="subtask-guideline" type="text" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:17px; color:#222;">세부내용</label>
+              <textarea id="subtask-desc" style="width:100%; min-height:120px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:14px; align-items:flex-end;">
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">우선순위</label>
+                <select id="subtask-priority" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;">
+                  <option value="">(상위와 동일)</option>
+                  <option value="상">상</option>
+                  <option value="중">중</option>
+                  <option value="하">하</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">시작일</label>
+                <input id="subtask-start-date" type="date" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;" />
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:17px; color:#222;">마감일</label>
+                <input id="subtask-end-date" type="date" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;" />
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+              <button type="submit" class="template-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:8px; padding:6px 18px; font-size:17px; cursor:pointer;">생성</button>
+              <button type="button" id="subtask-cancel-btn" class="template-btn" style="background:#eee; color:#222; font-weight:bold; border:none; border-radius:8px; padding:6px 18px; font-size:17px; cursor:pointer;">취소</button>
+            </div>
+          </form>
+        </div>
+      </div>
       <div style="display:flex; align-items:center; gap:12px;">
         <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
         <span class="task-detail-xp" id="detail-xp" style="color:#888; font-size:17px; display:flex; align-items:center; gap:4px; font-weight:bold;"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
       </div>
       <div id="detail-header-btns" style="display:flex; gap:10px; margin-left:auto;">
         <button class="task-detail-edit-btn" id="task-edit-btn" style="background:#ffd600; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">편집</button>
-        <button class="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;" onclick="location.href='/common/task_add/'">하위 테스크 생성</button>
+        <button class="task-detail-subtask-btn" id="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">하위 테스크 생성</button>
       </div>
     </div>
     <div class="task-detail-desc" id="detail-desc">간단한 프로젝트에 참여하여 워크플로우 이해하기</div>
@@ -371,9 +163,9 @@
         <div style="flex:1;">
           <label style="font-weight:bold; color:#222;">상태</label>
           <select id="edit-status" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;">
-            <option value="진행 전">진행 전</option>
-            <option value="진행 중">진행 중</option>
-            <option value="검토 요청">검토 요청</option>
+            <option value="진행전">진행 전</option>
+            <option value="진행중">진행 중</option>
+            <option value="검토요청">검토 요청</option>
             <option value="완료">완료</option>
           </select>
         </div>
@@ -414,242 +206,17 @@
       </ul>
     </div>
     <div class="task-detail-chat">
-      <div class="chat-message other">
-        <span class="chat-user">채팅봇</span>
-        <span class="chat-text">게시글은 4주차까지 작성되었습니다. 계속 확인 부탁드립니다.</span>
-        <span class="chat-time">2025.06.25. 01:41</span>
-      </div>
-      <div class="chat-message mine">
-        <span class="chat-user">멘토유형</span>
-        <span class="chat-text">완료하였으며, 다음과제도 기대하겠습니다.</span>
-        <span class="chat-time">2025.06.25. 01:45</span>
-      </div>
+      <div id="chat-messages"></div>
       <div class="chat-input-row">
-        <input type="text" class="chat-input" placeholder="메시지 입력...">
-        <button class="chat-send-btn"><span style="font-size:20px;">💬</span></button>
+        <input type="text" class="chat-input" id="chat-input" placeholder="메시지 입력...">
+        <button class="chat-send-btn" id="chat-send-btn"><span style="font-size:20px;">💬</span></button>
       </div>
     </div>
   </div>
 </div>
 <script>
-// 좌측 Task 카드 클릭 시 우측 상세 정보 갱신
-document.addEventListener('DOMContentLoaded', function() {
-  const cards = document.querySelectorAll('.task-card');
-  let currentTask = null; // 현재 선택된 task 정보 저장
-  function updateDetailFromData(task) {
-    currentTask = task;
-    // 상태 뱃지 색상
-    let statusClass = '';
-    if (task.status === '진행 전') statusClass = 'not-started';
-    else if (task.status === '진행 중') statusClass = 'in-progress';
-    else if (task.status === '검토 요청') statusClass = 'review-requested';
-    else if (task.status === '완료' || task.status === '완료됨') statusClass = 'done';
-    // 우측 영역 갱신
-    const titleEl = document.getElementById('detail-title');
-    titleEl.innerHTML = `<span class="status-badge ${statusClass}">${task.status}</span> <span class="${statusClass === 'done' ? 'done' : ''}">${task.title}</span>`;
-    const xpEl = document.getElementById('detail-xp');
-    if (xpEl) xpEl.innerHTML = '';
-    // guideline이 null/빈값이면 표시하지 않음
-    const descEl = document.getElementById('detail-desc');
-    if (task.guideline && String(task.guideline).trim() !== '') {
-      descEl.textContent = task.guideline;
-      descEl.style.display = '';
-    } else {
-      descEl.textContent = '';
-      descEl.style.display = 'none';
-    }
-    // 난이도/디데이 메타
-    const metaRow = document.querySelector('.task-detail-meta-row');
-    let badgeClass = 'yellow';
-    if (task.priority === '상') badgeClass = 'red';
-    else if (task.priority === '중') badgeClass = 'green';
-    metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${task.end_date || ''}</span>`;
-    // description을 리스트로 표시
-    const listDiv = document.getElementById('detail-list');
-    listDiv.innerHTML = '';
-    if (task.description) {
-      const items = String(task.description).split('\n').filter(x => x.trim() !== '');
-      const ul = document.createElement('ul');
-      items.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = item;
-        ul.appendChild(li);
-      });
-      listDiv.appendChild(ul);
-    } else if (task.desc) {
-      const ul = document.createElement('ul');
-      const li = document.createElement('li');
-      li.textContent = task.desc;
-      ul.appendChild(li);
-      listDiv.appendChild(ul);
-    }
-  }
-  // 편집 폼 토글 및 저장/취소
-  const editBtn = document.getElementById('task-edit-btn');
-  const editForm = document.getElementById('task-edit-form');
-  const descDiv = document.getElementById('detail-desc');
-  const listDiv = document.getElementById('detail-list');
-  const editStatus = document.getElementById('edit-status');
-  const editTitle = document.getElementById('edit-title');
-  const editGuideline = document.getElementById('edit-guideline');
-  const editDescription = document.getElementById('edit-description');
-  const editPriority = document.getElementById('edit-priority');
-  const editEndDate = document.getElementById('edit-end-date');
-  const saveBtn = document.getElementById('edit-save-btn');
-  const cancelBtn = document.getElementById('edit-cancel-btn');
-  let isEditing = false;
-
-  function showEditForm() {
-    if (!currentTask) return;
-    // 기존 영역 숨김
-    document.getElementById('detail-header-row').style.display = 'none';
-    document.getElementById('detail-meta-row').style.display = 'none';
-    // 기존 값 세팅
-    editStatus.value = currentTask.status || '진행 전';
-    editTitle.value = currentTask.title || '';
-    editGuideline.value = currentTask.guideline || '';
-    editDescription.value = currentTask.description || '';
-    editPriority.value = currentTask.priority || '하';
-    if (currentTask.end_date) {
-      editEndDate.value = String(currentTask.end_date).slice(0, 10);
-    } else {
-      editEndDate.value = '';
-    }
-    // 기존 폼 로직
-    editForm.style.display = '';
-    descDiv.style.display = 'none';
-    listDiv.style.display = 'none';
-    isEditing = true;
-  }
-  function hideEditForm() {
-    editForm.style.display = 'none';
-    // 숨겼던 영역 다시 표시
-    document.getElementById('detail-header-row').style.display = '';
-    document.getElementById('detail-meta-row').style.display = '';
-    descDiv.style.display = '';
-    listDiv.style.display = '';
-    isEditing = false;
-  }
-  if (editBtn) {
-    editBtn.addEventListener('click', function() {
-      if (isEditing) return;
-      showEditForm();
-    });
-  }
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      hideEditForm();
-    });
-  }
-  if (editForm) {
-    editForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      // DB 저장 AJAX
-      const payload = {
-        status: editStatus.value,
-        title: editTitle.value,
-        guideline: editGuideline.value,
-        description: editDescription.value,
-        priority: editPriority.value,
-        end_date: editEndDate.value
-      };
-      try {
-        const resp = await fetch(`/mentee/task_update/${currentTask.id}/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await resp.json();
-        if (data.success) {
-          // 프론트 상태도 반영
-          currentTask.status = payload.status;
-          currentTask.title = payload.title;
-          currentTask.guideline = payload.guideline;
-          currentTask.description = payload.description;
-          currentTask.priority = payload.priority;
-          currentTask.end_date = payload.end_date;
-          // 좌측 카드도 동기화
-          const card = document.querySelector(`.task-card[data-task-id="${currentTask.id}"]`);
-          if (card) {
-            // 상태 뱃지
-            const statusBadge = card.querySelector('.status-badge');
-            if (statusBadge) {
-              statusBadge.textContent = payload.status;
-              statusBadge.className = 'status-badge';
-              if (payload.status === '진행 전') statusBadge.classList.add('not-started');
-              else if (payload.status === '진행 중') statusBadge.classList.add('in-progress');
-              else if (payload.status === '검토 요청') statusBadge.classList.add('review-requested');
-              else if (payload.status === '완료' || payload.status === '완료됨') statusBadge.classList.add('done');
-            }
-            // 제목
-            const titleSpan = card.querySelector('.task-title');
-            if (titleSpan) {
-              titleSpan.textContent = payload.title;
-              if (payload.status === '완료' || payload.status === '완료됨') titleSpan.classList.add('done');
-              else titleSpan.classList.remove('done');
-            }
-            // 우선순위 뱃지
-            const badge = card.querySelector('.task-badge');
-            if (badge) {
-              badge.textContent = payload.priority || '하';
-              badge.className = 'task-badge';
-              if (payload.priority === '상') badge.classList.add('red');
-              else if (payload.priority === '중') badge.classList.add('green');
-              else badge.classList.add('yellow');
-            }
-            // 마감일
-            const dday = card.querySelector('.d-day-badge');
-            if (dday) dday.textContent = payload.end_date || '';
-            // 설명
-            const descDiv = card.querySelector('.task-desc');
-            if (descDiv) descDiv.textContent = payload.description || '';
-            // 카드 전체 클래스(상태별)
-            card.classList.remove('not-started','in-progress','review-requested','done');
-            if (payload.status === '진행 전') card.classList.add('not-started');
-            else if (payload.status === '진행 중') card.classList.add('in-progress');
-            else if (payload.status === '검토 요청') card.classList.add('review-requested');
-            else if (payload.status === '완료' || payload.status === '완료됨') card.classList.add('done');
-          }
-          updateDetailFromData(currentTask);
-          hideEditForm();
-        } else {
-          alert('저장 실패: ' + (data.error || '오류'));
-        }
-      } catch (err) {
-        alert('저장 중 오류 발생: ' + err);
-      }
-    });
-  }
-  async function fetchAndUpdateDetail(taskId) {
-    try {
-      const resp = await fetch(`/mentee/task_detail/${taskId}/`);
-      if (!resp.ok) throw new Error('상세 정보를 불러올 수 없습니다');
-      const data = await resp.json();
-      if (data.success && data.task) {
-        updateDetailFromData(data.task);
-      }
-    } catch (e) {
-      alert('상세 정보를 불러오지 못했습니다.');
-    }
-  }
-  cards.forEach(card => {
-    card.addEventListener('click', function() {
-      if (isEditing) return; // 편집 중이면 카드 선택 비활성화
-      cards.forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      const taskId = card.getAttribute('data-task-id');
-      if (taskId) fetchAndUpdateDetail(taskId);
-    });
-  });
-  // 최초 로딩 시 첫 번째 Task 선택
-  if (cards.length > 0) {
-    const firstTaskId = cards[0].getAttribute('data-task-id');
-    if (firstTaskId) fetchAndUpdateDetail(firstTaskId);
-  }
-});
+// Django 템플릿 변수를 JavaScript로 전달
+window.mentorshipId = {% if mentorship_id %}'{{ mentorship_id }}'{% else %}null{% endif %};
 </script>
+<script src="{% static 'js/common/mentee_task_list.js' %}"></script>
 {% endblock %}
