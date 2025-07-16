@@ -10,85 +10,97 @@
 {% block content %}
 <div class="doc-container">
   <div class="doc-left">
-    {# ======================== 1. 문서 업로드 ======================== #}
-    <!-- 문서 업로드 영역 -->
     <div class="doc-title">문서 업로드</div>
+
+    <!-- 문서 업로드 박스 -->
     <div class="doc-upload-box">
-      <div id="doc-drop-area" class="doc-drop-area">
-        <div style="font-size:1.1em;">여기로 파일을 드래그하거나 클릭하여 선택하세요</div>
-        <div style="font-size:13px; color:#aaa; margin-top:4px;">PDF, DOC, DOCX, TXT 등 다양한 문서 포맷 지원</div>
-        <input type="file" id="doc-file-input" multiple style="display:none;">
-      </div>
-    </div>
+      <!-- 노란색 카테고리 탭 버튼 제거됨 -->
 
-    {# ======================== 2. 추가된 파일 ======================== #}
-    <!-- 추가된 파일 목록 -->
-    <div class="doc-title" style="font-size:1.1em; margin:18px 0 8px 0;">추가된 파일</div>
-    <div class="doc-file-list">
-      <div style="width:100%; display:flex; flex-direction:column; gap:0;">
-        <table class="doc-upload-list-table" id="doc-upload-list-table">
+      <!-- 드래그 앤 드롭 영역 -->
+      <div class="doc-drop-area" id="doc-drop-area">
+        클릭하거나 파일을 여기로 끌어오세요
+      </div>
+      <input type="file" id="doc-file-input" multiple accept=".pdf,.doc,.docx,.txt,.hwp,.jpg,.png,.ppt,.pptx,.xls,.xlsx"
+        style="display: none;">
+
+      <!-- 추가된 파일 목록 -->
+      <div class="doc-upload-list" id="doc-upload-list">
+        <table class="doc-upload-list-table">
           <thead>
-            <tr><th>파일명</th><th>설명</th><th>분류(태그)</th><th>공통문서</th></tr>
+            <tr>
+              <th>파일명</th>
+              <th>설명</th>
+              <th>분류(태그)</th>
+              <th>공통문서</th>
+              <th>제거</th>
+            </tr>
           </thead>
-          <tbody id="doc-upload-list-tbody"></tbody>
+          <tbody id="doc-upload-list-tbody">
+            <!-- 동적으로 추가됨 -->
+          </tbody>
         </table>
-        <div style="width:100%; display:flex; justify-content:flex-end;">
-          <button id="doc-upload-btn" class="doc-upload-btn" style="margin-top:10px; float:none;">업로드</button>
-        </div>
       </div>
+
+      <button class="doc-upload-btn" id="doc-upload-btn">업로드</button>
     </div>
 
-    {# ======================== 3. 등록된 파일 목록 ======================== #}
     <!-- 등록된 파일 목록 -->
-    <div class="doc-title" style="font-size:1.1em; margin:18px 0 8px 0;">등록된 파일 목록</div>
     <div class="doc-file-list">
+      <div class="doc-title">등록된 파일 목록</div>
       <table class="doc-file-list-table">
         <thead>
-          <tr><th>파일명</th><th>설명</th><th>분류(태그)</th><th>관리부서</th><th></th></tr>
+          <tr>
+            <th>파일명</th>
+            <th>설명</th>
+            <th>분류(태그)</th>
+            <th>관리부서</th>
+            <th>관리</th>
+          </tr>
         </thead>
         <tbody>
           {% for doc in core_docs %}
           <tr data-doc-id="{{ doc.docs_id }}">
             <td>
-              {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-                <textarea class="doc-edit-title" rows="1">{{ doc.title }}</textarea>
-              {% else %}
-                {{ doc.title }}
-              {% endif %}
+              <!-- 파일명을 다운로드 링크로 변경 -->
+              <a href="/common/doc/{{ doc.docs_id }}/download/" class="doc-download-link" title="클릭하여 다운로드"
+                target="_blank">
+                📄 {{ doc.title }}
+              </a>
+            </td>
+            <td>{{ doc.description|default:"-" }}</td>
+            <td>-</td>
+            <td>
+              {% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}
             </td>
             <td>
               {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-                <textarea class="doc-edit-desc" rows="1">{{ doc.description|default:"-" }}</textarea>
-              {% else %}
-                {{ doc.description|default:"-" }}
-              {% endif %}
-            </td>
-            <td>
-              {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-                <input type="text" class="doc-edit-tags" value="{% if doc.tags %}{% for tag in doc.tags.all %}{{ tag.name }}{% if not forloop.last %},{% endif %}{% endfor %}{% endif %}" placeholder="쉼표로 구분">
-              {% else %}
-                {% if doc.tags %}
-                  {% for tag in doc.tags.all %}
-                    <span class="doc-tag">{{ tag.name }}</span>
-                  {% endfor %}
-                {% endif %}
-              {% endif %}
-            </td>
-            <td>{% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}</td>
-            <td>
-              {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-                <button class="doc-edit-btn doc-save-btn">수정</button>
-                <button class="doc-edit-btn doc-delete-btn">삭제</button>
+              <button class="doc-edit-btn" onclick="editDoc({{ doc.docs_id }})">수정</button>
+              <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
               {% endif %}
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="5" style="color:#aaa; text-align:center;">등록된 문서가 없습니다.</td></tr>
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px;">등록된 문서가 없습니다.</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
 </div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal-overlay" id="deleteModal" style="display: none;">
+  <div class="modal-content">
+    <h3>문서 삭제</h3>
+    <p>이 문서를 삭제하시겠습니까?<br>삭제된 문서는 복구할 수 없습니다.</p>
+    <div class="modal-buttons">
+      <button class="modal-btn cancel" onclick="closeDeleteModal()">취소</button>
+      <button class="modal-btn confirm" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
 <script src="{% static 'js/common/doc.js' %}"></script>
 {% endblock %}
