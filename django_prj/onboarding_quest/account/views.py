@@ -85,12 +85,6 @@ def supervisor(request):
         except Department.DoesNotExist:
             pass
     
-    # 직급 필터 적용
-    if position_filter:
-        users = users.filter(position__icontains=position_filter)
-    
-    # 직급 목록 가져오기 (필터 옵션용)
-    positions = User.objects.filter(company=company).values_list('position', flat=True).distinct()
     
     return render(request, 'account/supervisor.html', {
         'departments': departments,
@@ -99,8 +93,7 @@ def supervisor(request):
         'selected_department_id': int(selected_department_id) if selected_department_id else None,
         'dept_detail': dept_detail,
         'search_query': search_query,
-        'position_filter': position_filter,
-        'positions': positions,
+
     })
 
 @login_required
