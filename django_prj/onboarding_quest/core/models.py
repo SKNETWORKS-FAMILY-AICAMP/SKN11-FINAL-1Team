@@ -33,25 +33,64 @@ class Mentorship(models.Model):
     mentor_id = models.IntegerField()
     mentee_id = models.IntegerField()
 
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
-class User(AbstractUser):
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_admin', True)
+        return self.create_user(email, password, **extra_fields)
+
+class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ('mentee', 'Mentee'),
         ('mentor', 'Mentor'),
         ('admin', 'Admin'),
     )
-    job_part = models.CharField(max_length=100)
-    position = models.IntegerField(null=True, blank=True)
-    join_date = models.DateField(auto_now_add=True, null=True, blank=True)
+    user_id = models.AutoField(primary_key=True)
+    employee_number = models.IntegerField(null=True, blank=True, unique=True)
+    is_admin = models.BooleanField(default=False)
+    mentorship_id = models.IntegerField(null=True, blank=True)
+    tag = models.CharField(max_length=255, null=True, blank=True)
     exp = models.IntegerField(default=0)
-    skill = models.CharField(max_length=255, null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
-    mentorship = models.ForeignKey(Mentorship, on_delete=models.CASCADE, null=True, blank=True)
+    join_date = models.DateField(null=True, blank=True)
+    position = models.CharField(max_length=50, null=True, blank=True)
+    job_part = models.CharField(max_length=50, null=True, blank=True)
+    company_id = models.CharField(max_length=12, null=True, blank=True)
+    department_id = models.IntegerField(null=True, blank=True)
+    
+    # 필수 필드들
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=128)
+    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50)
+    last_login = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+    
+    # 기본 사용자명 필드를 email로 설정
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name']
+    
+    objects = UserManager()
+    
+    class Meta:
+        db_table = 'core_user'
 
     def __str__(self):
-        return self.username
+        return self.email
 
 class ChatSession(models.Model):
     session_id = models.AutoField(primary_key=True)

@@ -93,7 +93,7 @@ WSGI_APPLICATION = 'onboarding_quest.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR.parent.parent / 'report_test.db',
     }
 }
 
@@ -138,8 +138,6 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # 커스텀 사용자 모델
 AUTH_USER_MODEL = 'core.User'
 
-<<<<<<< Updated upstream
-=======
 # CSRF 설정
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
@@ -147,7 +145,6 @@ CSRF_COOKIE_HTTPONLY = False
 
 # 로그인 설정
 LOGIN_URL = '/account/login/'
->>>>>>> Stashed changes
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/account/login/'
 
@@ -155,8 +152,6 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-<<<<<<< Updated upstream
-=======
 
 # Media files (File uploads)
 MEDIA_URL = '/media/'
@@ -180,4 +175,3 @@ LOGGING = {
         },
     },
 }
->>>>>>> Stashed changes

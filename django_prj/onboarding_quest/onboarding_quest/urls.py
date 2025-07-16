@@ -19,7 +19,7 @@ from django.urls import path, include
 from django.http import JsonResponse
 from django.conf import settings
 from django.conf.urls.static import static
-from account import views as account_views
+from common import views as common_views
 
 def health_check(request):
     """Django 헬스 체크"""
@@ -33,7 +33,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', health_check, name='health_check'),
     
-    path('', account_views.login_view, name='root_login'),
+    path('', common_views.home, name='home'),
 
     path('mentor/', include('mentor.urls')),
     path('mentee/', include('mentee.urls')),
