@@ -107,6 +107,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
+    
+    def get_full_name(self):
+        """전체 이름 반환"""
+        return f'{self.last_name} {self.first_name}'
 
 
 class ChatSession(models.Model):

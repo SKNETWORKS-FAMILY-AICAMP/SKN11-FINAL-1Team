@@ -73,7 +73,6 @@ INSTALLED_APPS = [
     'common',
     'mentor',
     'mentee',
-    'chatbot_backend',
 ]
 
 MIDDLEWARE = [
@@ -156,6 +155,12 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 AUTH_USER_MODEL = 'core.User'
 
+# CSRF 설정
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_HTTPONLY = False
+
+LOGIN_URL = '/account/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/account/login/'
 

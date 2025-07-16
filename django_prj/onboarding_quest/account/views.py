@@ -6,9 +6,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.http import HttpResponseForbidden
-from core.models import User, Department
+from core.models import User, Department, Mentorship, Curriculum
 from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm, DepartmentForm
 from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import Q
+import json
 
 
 
@@ -24,7 +27,7 @@ def login_view(request):
             if check_password(password, user.password):
                 login(request, user)  # Django 세션 기반 인증 적용
                 # 역할에 따라 리다이렉트
-                if user.role == 'admin':
+                if user.is_admin:
                     return redirect('account:supervisor')
                 elif user.role == 'mentor':
                     return redirect('mentor:mentor')
@@ -41,7 +44,8 @@ def login_view(request):
 
 def logout_view(request):
     logout(request)
-    return redirect('login')
+    # return redirect('login')
+    return redirect('account:login')
 #endregion 로그인/로그아웃 
 
 
@@ -55,24 +59,42 @@ def supervisor(request):
     company = request.user.company
     departments = Department.objects.filter(company=company)
     dept_form = DepartmentForm()
-    # 부서 선택 쿼리 파라미터
+    
+    # 검색 및 필터링
+    search_query = request.GET.get('search', '')
     selected_department_id = request.GET.get('dept')
+    position_filter = request.GET.get('position', '')
+    
+    # 기본 사용자 쿼리
+    users = User.objects.filter(company=company)
+    
+    # 검색 조건 적용
+    if search_query:
+        users = users.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(employee_number__icontains=search_query)
+        )
+    
+    # 부서 필터 적용
     dept_detail = None
     if selected_department_id:
         try:
             dept_detail = Department.objects.get(department_id=selected_department_id, company=company)
-            users = User.objects.filter(company=company, department=dept_detail)
+            users = users.filter(department=dept_detail)
         except Department.DoesNotExist:
-            users = User.objects.filter(company=company)
-            dept_detail = None
-    else:
-        users = User.objects.filter(company=company)
+            pass
+    
+    
     return render(request, 'account/supervisor.html', {
         'departments': departments,
         'users': users,
         'dept_form': dept_form,
         'selected_department_id': int(selected_department_id) if selected_department_id else None,
         'dept_detail': dept_detail,
+        'search_query': search_query,
+
     })
 
 @login_required
@@ -274,6 +296,29 @@ def user_delete_view(request, pk):
         user.delete()
         return redirect('account:supervisor')
     return render(request, 'account/user_confirm_delete.html', {'user': user})
+
+# 사용자 비밀번호 초기화
+@login_required
+def password_reset(request, user_id):
+    """관리자가 사용자 비밀번호를 초기화하는 기능"""
+    if not request.user.is_admin:
+        return HttpResponseForbidden("접근 권한이 없습니다.")
+    
+    user = get_object_or_404(User, user_id=user_id)
+    
+    if request.method == 'POST':
+        # 비밀번호를 '123'으로 초기화
+        user.set_password('123')
+        user.save()
+        
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': f'{user.get_full_name()}의 비밀번호가 초기화되었습니다.'})
+        else:
+            messages.success(request, f'{user.get_full_name()}의 비밀번호가 초기화되었습니다.')
+            return redirect('account:supervisor')
+    
+    return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
+
 #endregion > 직원 추가/수정/삭제
 
 #endregion 관리자
@@ -318,3 +363,144 @@ def password_change(request):
 # 비밀번호 변경
 
 #endregion 사용자
+
+#region 멘토쉽 관리
+
+@login_required
+def manage_mentorship(request):
+    """멘토쉽 관리 페이지"""
+    if not request.user.is_admin:
+        return HttpResponseForbidden("접근 권한이 없습니다.")
+    
+    # 검색 및 필터링
+    search_query = request.GET.get('search', '')
+    status_filter = request.GET.get('status', '')
+    department_filter = request.GET.get('department', '')
+    
+    # 기본 멘토쉽 쿼리
+    mentorships = Mentorship.objects.all()
+    
+    # 모든 사용자 정보를 미리 가져오기 (성능 최적화)
+    all_users = {user.user_id: user for user in User.objects.select_related('department').all()}
+    
+    # 검색 조건 적용
+    if search_query:
+        # 먼저 검색 조건에 맞는 사용자들의 ID를 찾기
+        matching_users = User.objects.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        ).values_list('user_id', flat=True)
+        
+        mentorships = mentorships.filter(
+            Q(mentor_id__in=matching_users) |
+            Q(mentee_id__in=matching_users)
+        )
+    
+    # 상태 필터 적용
+    if status_filter == 'active':
+        mentorships = mentorships.filter(is_active=True)
+    elif status_filter == 'inactive':
+        mentorships = mentorships.filter(is_active=False)
+    
+    # 부서 필터 적용
+    if department_filter:
+        # 해당 부서의 사용자들을 찾기
+        dept_users = User.objects.filter(department__department_id=department_filter).values_list('user_id', flat=True)
+        mentorships = mentorships.filter(
+            Q(mentor_id__in=dept_users) |
+            Q(mentee_id__in=dept_users)
+        )
+    
+    # 페이지네이션
+    paginator = Paginator(mentorships, 10)
+    page_number = request.GET.get('page')
+    mentorships = paginator.get_page(page_number)
+    
+    # 멘토쉽에 사용자 정보 추가
+    for mentorship in mentorships:
+        mentorship.mentor = all_users.get(mentorship.mentor_id)
+        mentorship.mentee = all_users.get(mentorship.mentee_id)
+    
+    # 멘토와 멘티 목록 (모달용)
+    mentors = User.objects.filter(role='mentor', is_active=True).select_related('department')
+    mentees = User.objects.filter(role='mentee', is_active=True).select_related('department')
+    departments = Department.objects.filter(company=request.user.company, is_active=True)
+    
+    # 커리큘럼 목록 가져오기
+    curriculums = Curriculum.objects.all()
+    
+    return render(request, 'account/manage_mentorship.html', {
+        'mentorships': mentorships,
+        'mentors': mentors,
+        'mentees': mentees,
+        'departments': departments,
+        'curriculums': curriculums,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'department_filter': department_filter,
+    })
+
+@login_required
+def mentorship_detail(request, mentorship_id):
+    """멘토쉽 상세 정보 (AJAX)"""
+    if not request.user.is_admin:
+        return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
+    
+    mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
+    
+    data = {
+        'mentor_id': mentorship.mentor_id,
+        'mentee_id': mentorship.mentee_id,
+        'start_date': mentorship.start_date.strftime('%Y-%m-%d') if mentorship.start_date else '',
+        'end_date': mentorship.end_date.strftime('%Y-%m-%d') if mentorship.end_date else '',
+        'curriculum_title': mentorship.curriculum_title,
+        'is_active': mentorship.is_active,
+    }
+    
+    return JsonResponse(data)
+
+@login_required
+def mentorship_edit(request, mentorship_id):
+    """멘토쉽 수정 (AJAX)"""
+    if not request.user.is_admin:
+        return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
+    
+    if request.method == 'POST':
+        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
+        
+        try:
+            data = json.loads(request.body)
+            
+            mentorship.mentor_id = data.get('mentor_id')
+            mentorship.mentee_id = data.get('mentee_id')
+            mentorship.start_date = data.get('start_date')
+            mentorship.end_date = data.get('end_date')
+            mentorship.curriculum_title = data.get('curriculum_title')
+            mentorship.is_active = data.get('is_active') == 'true'
+            
+            mentorship.save()
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
+
+@login_required
+def mentorship_delete(request, mentorship_id):
+    """멘토쉽 삭제 (AJAX)"""
+    if not request.user.is_admin:
+        return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
+    
+    if request.method == 'POST':
+        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
+        
+        try:
+            mentorship.delete()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
+
+#endregion 멘토쉽 관리

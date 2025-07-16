@@ -44,7 +44,7 @@
                         <span class="text-lg font-bold text-gray-900 sidebar-text">Lv. <span id="userLevel">5</span></span>
                         <span class="text-xs text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">만렙 멘토</span>
                     </div>
-                {% elif request.user.role == 'admin' %}
+                {% elif request.user.is_admin %}
                     <!-- 유저 프로필 이미지 -->
                     <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-14 h-14 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
                     <div class="flex flex-col">
@@ -58,7 +58,7 @@
                     <div id="expBar" class="bg-green-500 h-1.5 rounded-full transition-all duration-500" style="width: 30%"></div>
                 {% elif request.user.role == 'mentor' %}
                     <div id="expBar" class="bg-green-500 h-1.5 rounded-full transition-all duration-500" style="width: 100%"></div>
-                {% elif request.user.role == 'admin' %}
+                {% elif request.user.is_admin %}
                     <div id="expBar" class="bg-green-500 h-1.5 rounded-full transition-all duration-500" style="width: 100%"></div>
                 {% endif %}
             </div>
@@ -66,7 +66,7 @@
                 <div class="text-xs text-gray-600 font-medium sidebar-text">EXP: <span id="userExp">30</span> / <span id="userExpMax">100</span></div>
             {% elif request.user.role == 'mentor' %}
                 <div class="text-xs text-gray-600 font-medium sidebar-text">EXP: <span id="userExp">200</span> / <span id="userExpMax">200</span></div>
-            {% elif request.user.role == 'admin' %}
+            {% elif request.user.is_admin %}
                 <div class="text-xs text-gray-600 font-medium sidebar-text">EXP: <span id="userExp">300</span> / <span id="userExpMax">300</span></div>            
             {% endif %}
 
@@ -84,6 +84,7 @@
                 {% if request.user.role == 'mentor' %}
                     {% if request.user.is_admin %}
                         <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🔑</span>관리자</a>
+                        <a href="{% url 'account:manage_mentorship' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/manage_mentorship/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🤝</span>멘토쉽 관리</a>
                     {% endif %}
                     <a href="{% url 'mentor:mentor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🏠</span>메인</a>
                     <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🤖</span>채팅</a>
@@ -95,7 +96,8 @@
                     <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🤖</span>채팅</a>
                     <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">📄</span>문서 업로드</a>
                     <a href="{% url 'mentee:task_list' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/task_list/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🗂️</span>태스크 목록</a>
-                {% endif %}
+                
+                    {% endif %}
             {% else %}
                 <a href="{% url 'account:login' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/login/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🔑</span>로그인</a>
             {% endif %}

@@ -30,7 +30,6 @@ urlpatterns = [
     path('mentee/', include('mentee.urls')),
     path('account/', include('account.urls')),
     path('common/', include('common.urls')),
-    path("chatbot/", include("chatbot_backend.urls")),
 
 ]
 
