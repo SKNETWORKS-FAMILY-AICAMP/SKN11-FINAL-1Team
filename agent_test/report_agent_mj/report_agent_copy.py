@@ -102,14 +102,18 @@ class ReportAgent:
             
             subtasks = []
             for row in cursor.fetchall():
+                # memo_contents와 review_contents가 None일 수 있으므로 안전하게 처리
+                memo_contents = row['memo_contents'] if row['memo_contents'] else ""
+                review_contents = row['review_contents'] if row['review_contents'] else ""
+                
                 subtask = {
                     'subtask_id': row['subtask_id'],
                     'title': row['title'],
                     'guide': row['guide'],
                     'date': row['date'],
-                    'content': row['content'],
-                    'memos': row['memo_contents'].split(',') if row['memo_contents'] else [],
-                    'reviews': row['review_contents'].split(',') if row['review_contents'] else [],
+                    'content': row['content'] if row['content'] else "",
+                    'memos': memo_contents.split(',') if memo_contents else [],
+                    'reviews': review_contents.split(',') if review_contents else [],
                     'score': row['avg_score'] if row['avg_score'] else 0
                 }
                 subtasks.append(subtask)
@@ -140,9 +144,9 @@ class ReportAgent:
             return TaskInfo(
                 task_id=task_row['task_id'],
                 title=task_row['title'],
-                guide=task_row['guide'],
+                guide=task_row['guide'] if task_row['guide'] else "",
                 date=task_row['date'],
-                content=task_row['content'],
+                content=task_row['content'] if task_row['content'] else "",
                 mentor_name=task_row['mentor_name'],
                 subtasks=subtasks,
                 task_memos=task_memos,
@@ -177,16 +181,16 @@ class ReportAgent:
                     
                     # 통계 계산
                     total_subtasks += len(task_info.subtasks)
-                    completed_subtasks += len([s for s in task_info.subtasks if s['content']])
+                    completed_subtasks += len([s for s in task_info.subtasks if s['content'].strip()])
                     
                     # 상위 과제 점수 수집
                     for review in task_info.task_reviews:
-                        if review['score']:
+                        if review['score'] is not None:
                             total_scores.append(review['score'])
                     
                     # 하위 과제 점수 수집
                     for subtask in task_info.subtasks:
-                        if subtask['score'] > 0:
+                        if subtask['score'] and subtask['score'] > 0:
                             subtask_scores.append(subtask['score'])
             
             # 전체 통계 계산
@@ -210,108 +214,68 @@ class ReportAgent:
             )
     
     def generate_comprehensive_report_prompt(self, report_data: ComprehensiveReportData) -> str:
-        """전체 종합 리포트 생성을 위한 프롬프트 생성"""
+        """전체 종합 리포트 생성을 위한 프롬프트 생성 (과제 개수 많을 경우)"""
         prompt = f"""
-다음 정보를 바탕으로 "{report_data.user_name}" 사용자의 전체 학습 과정에 대한 종합 리포트를 생성해주세요.
+다음은 "{report_data.user_name}" 학습자의 전체 학습 기록에 대한 데이터입니다.
+이 정보를 바탕으로 전반적인 패턴과 대표 사례를 중심으로 종합 리포트를 작성해주세요.
 
 === 학습자 기본 정보 ===
-- 학습자: {report_data.user_name} ({report_data.user_role})
-- 총 과제 수: {report_data.overall_stats['total_tasks']}개
+- 이름: {report_data.user_name} ({report_data.user_role})
+- 총 상위 과제 수: {report_data.overall_stats['total_tasks']}개
 - 총 하위 과제 수: {report_data.overall_stats['total_subtasks']}개
-- 완료된 하위 과제: {report_data.overall_stats['completed_subtasks']}개
-- 완료율: {report_data.overall_stats['completion_rate']:.1f}%
-- 전체 평균 점수: {report_data.overall_stats['average_score']:.1f}점 (총 {report_data.overall_stats['total_evaluations']}개 평가)
+- 완료된 하위 과제 수: {report_data.overall_stats['completed_subtasks']}개
+- 하위 과제 완료율: {report_data.overall_stats['completion_rate']:.1f}%
+- 전체 평균 점수: {report_data.overall_stats['average_score']:.1f}점 ({report_data.overall_stats['total_evaluations']}개 평가 기준)
 
-=== 상위 과제별 상세 정보 ===
+=== 점수 분포 ===
+- 상위 과제 점수 목록: {report_data.overall_stats['task_scores']}
+- 하위 과제 점수 목록: {report_data.overall_stats['subtask_scores']}
+
+=== 참고 데이터: 일부 대표 과제 ===
 """
-        
-        for i, task in enumerate(report_data.all_tasks, 1):
-            # 해당 과제의 점수 추출
-            task_score = 0
-            for review in task.task_reviews:
-                if review['score']:
-                    task_score = review['score']
-                    break
+        # 대표 과제 3개만 요약
+        for i, task in enumerate(report_data.all_tasks[:3], 1):
+            task_score = next((review['score'] for review in task.task_reviews if review['score'] is not None), "N/A")
+            guide_summary = task.guide[:100] + '...' if len(task.guide) > 100 else task.guide
             
             prompt += f"""
-[상위 과제 {i}] {task.title}
-- 과제 날짜: {task.date}
-- 담당 멘토: {task.mentor_name}
-- 과제 점수: {task_score}점
-- 과제 가이드: {task.guide}
-- 과제 상세 내용: {task.content}
-
-하위 과제 상세 정보:
+[과제 {i}] {task.title} - 점수: {task_score}
+- 멘토: {task.mentor_name}
+- 날짜: {task.date}
+- 가이드 요약: {guide_summary}
+- 주요 메모 개수: {len(task.task_memos)}, 리뷰 개수: {len(task.task_reviews)}
 """
-            
-            for j, subtask in enumerate(task.subtasks, 1):
-                status = "완료" if subtask['content'] else "미완료"
-                prompt += f"""  [{j}] {subtask['title']} ({status})
-     - 가이드: {subtask['guide']}
-     - 제출일: {subtask['date']}
-     - 점수: {subtask['score']:.1f}점
-     - 제출 내용: {subtask['content'][:200]}{'...' if len(subtask['content']) > 200 else ''}
-"""
-                
-                # 하위 과제별 피드백 정보
-                if subtask['memos']:
-                    prompt += f"     - 메모: {'; '.join(subtask['memos'])}\n"
-                if subtask['reviews']:
-                    prompt += f"     - 리뷰: {'; '.join(subtask['reviews'])}\n"
-            
-            # 상위 과제 전체 피드백
-            if task.task_memos:
-                prompt += f"\n상위 과제 멘토 피드백:\n"
-                for memo in task.task_memos:
-                    prompt += f"- {memo['content']} ({memo['date']})\n"
-            
-            if task.task_reviews:
-                prompt += f"\n상위 과제 리뷰봇 평가:\n"
-                for review in task.task_reviews:
-                    prompt += f"- {review['content']} (점수: {review['score']}, {review['date']})\n"
-            
-            prompt += "\n" + "="*50 + "\n"
-        
-        prompt += f"""
-=== 점수 분석 ===
-- 상위 과제 점수: {report_data.overall_stats['task_scores']}
-- 하위 과제 점수: {report_data.overall_stats['subtask_scores']}
-- 전체 평균: {report_data.overall_stats['average_score']:.1f}점
 
-=== 종합 요청사항 ===
-위의 모든 상위 과제와 하위 과제 정보를 바탕으로 다음 구조의 종합 리포트를 작성해주세요:
+        prompt += """
+
+=== 리포트 작성 요청 ===
+다음과 같은 구조의 종합 리포트를 작성해주세요:
 
 1. **전체 학습 여정 종합 분석**
-   - 모든 과제를 통해 학습한 핵심 기술과 개념
-   - 과제 간 연계성과 점진적 발전 과정
-   - 학습 목표 달성도 평가
+   - 다양한 과제를 통해 습득한 주요 기술/지식
+   - 학습 흐름 속에서 나타나는 성숙도 및 역량 향상 패턴
+   - 초기 대비 변화된 학습 태도와 실력
 
-2. **핵심 성취 및 우수 성과**
-   - 각 상위/하위 과제에서 보여준 뛰어난 성과
-   - 지속적으로 나타나는 강점과 역량
-   - 특별히 성장이 뚜렷한 영역
+2. **우수 성취 및 강점 요약**
+   - 일관되게 강점으로 나타난 부분
+   - 대표 과제나 제출물에서 확인 가능한 탁월한 역량
+   - 긍정적인 변화나 성과를 보여준 사례
 
-3. **개선 필요 영역 및 보완점**
-   - 여러 과제에서 반복적으로 나타나는 어려움
-   - 기술적/학습적 보완이 필요한 부분
-   - 학습 방법론상의 개선 방향
+3. **개선이 필요한 영역**
+   - 반복적으로 관찰되는 약점이나 어려움
+   - 낮은 점수나 미완료율에서 유추되는 학습 이슈
+   - 보완이 필요한 학습 접근 방식이나 습관
 
-4. **과제별 핵심 학습 성과 요약**
-   - 각 상위 과제의 주요 학습 성과
-   - 하위 과제를 통한 세부 역량 발전
-   - 과제 수행 과정에서의 성장 포인트
+4. **종합 평가 및 제안**
+   - 학습자의 전반적인 학습 성향 및 발전 가능성
+   - 현재 수준에서의 평가 요약
+   - 향후 추천 학습 전략 및 커리어 방향 제안
 
-5. **종합 평가 및 미래 학습 로드맵**
-   - 전체 학습 과정에 대한 종합 평가
-   - 현재 수준에서의 강점과 약점 분석
-   - 다음 단계 학습 방향 제시
-   - 장기적 커리어 발전을 위한 추천 사항
-
-리포트는 학습자의 노력을 인정하고 격려하는 톤으로, 구체적인 근거와 함께 건설적인 피드백을 제공해주세요.
-모든 상위 과제와 하위 과제의 내용을 균형 있게 반영하여 종합적인 분석을 진행해주세요.
+※ 주의사항:
+- 모든 과제를 하나하나 평가하기보다, **공통된 패턴**과 **대표적인 사례**를 중심으로 분석해주세요.
+- 피드백은 학습자의 노력을 인정하고 **격려하는 어조**로 작성하며, **구체적인 근거와 함께 건설적인 제안**을 포함해주세요.
 """
         return prompt
-
     
     def generate_comprehensive_report(self, user_id: int) -> Optional[str]:
         """전체 종합 리포트 생성 메인 함수"""
@@ -363,43 +327,50 @@ class ReportAgent:
 # 사용 예시
 def main():
     """메인 실행 함수"""
-    agent = ReportAgent()
-    
-    # 사용자 ID 입력
-    user_id = 1
-    
-    print(f"=== 사용자 {user_id} 학습 현황 종합 리포트 생성 ===\n")
-    
-    # 사용자 통계 먼저 확인
-    stats = agent.get_user_stats(user_id)
-    if stats:
-        print(f"학습자: {stats['user_name']} ({stats['user_role']})")
-        print(f"총 과제 수: {stats['task_count']}개")
-        print(f"완료율: {stats['stats']['completion_rate']:.1f}%")
-        print(f"평균 점수: {stats['stats']['average_score']:.1f}점")
-        print(f"총 평가 수: {stats['stats']['total_evaluations']}개\n")
-    
-    # 종합 리포트 생성
-    comprehensive_report = agent.generate_comprehensive_report(user_id)
-    
-    if comprehensive_report:
-        print("=== 종합 학습 리포트 ===\n")
-        print(comprehensive_report)
+    try:
+        agent = ReportAgent()
         
-        # 리포트를 파일로 저장 (선택사항)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"report_{user_id}_{timestamp}.txt"
+        # 사용자 ID 입력
+        user_id = 1
         
-        try:
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(f"=== {stats['user_name']} 학습자 종합 리포트 ===\n")
-                f.write(f"생성일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                f.write(comprehensive_report)
-            print(f"\n리포트가 '{filename}' 파일로 저장되었습니다.")
-        except Exception as e:
-            print(f"파일 저장 중 오류 발생: {e}")
-    else:
-        print("종합 리포트 생성에 실패했습니다.")
+        print(f"=== 사용자 {user_id} 학습 현황 종합 리포트 생성 ===\n")
+        
+        # 사용자 통계 먼저 확인
+        stats = agent.get_user_stats(user_id)
+        if stats:
+            print(f"학습자: {stats['user_name']} ({stats['user_role']})")
+            print(f"총 과제 수: {stats['task_count']}개")
+            print(f"완료율: {stats['stats']['completion_rate']:.1f}%")
+            print(f"평균 점수: {stats['stats']['average_score']:.1f}점")
+            print(f"총 평가 수: {stats['stats']['total_evaluations']}개\n")
+        else:
+            print("사용자 통계를 조회할 수 없습니다.")
+            return
+        
+        # 종합 리포트 생성
+        comprehensive_report = agent.generate_comprehensive_report(user_id)
+        
+        if comprehensive_report:
+            print("=== 종합 학습 리포트 ===\n")
+            print(comprehensive_report)
+            
+            # 리포트를 파일로 저장 (선택사항)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"report_{user_id}_{timestamp}.txt"
+            
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(f"=== {stats['user_name']} 학습자 종합 리포트 ===\n")
+                    f.write(f"생성일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                    f.write(comprehensive_report)
+                print(f"\n리포트가 '{filename}' 파일로 저장되었습니다.")
+            except Exception as e:
+                print(f"파일 저장 중 오류 발생: {e}")
+        else:
+            print("종합 리포트 생성에 실패했습니다.")
+            
+    except Exception as e:
+        print(f"프로그램 실행 중 오류 발생: {e}")
 
 if __name__ == "__main__":
     main()
