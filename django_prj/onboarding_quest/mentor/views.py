@@ -1,14 +1,14 @@
 from django.shortcuts import render
 from django.db import models
 from django.contrib.auth.decorators import login_required
-from core.models import Curriculum, TaskManage
+from core.models import Curriculum, TaskManage, TaskAssign, Mentorship, Curriculum, User
 import json
 from django.views.decorators.http import require_POST,require_GET
+from datetime import datetime, timedelta
 from django.http import JsonResponse
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Mentorship, User
-
 
 
 # 멘토링 생성 API
@@ -17,66 +17,109 @@ from core.models import Mentorship, User
 @require_POST
 @csrf_exempt
 def create_mentorship(request):
-    from core.models import TaskManage, TaskAssign, Curriculum, Mentorship, User
     try:
         data = json.loads(request.body)
         mentor_id = request.user.user_id
         mentee_id = int(data.get('mentee_id'))
         scheduled_start_date = data.get('start_date')  # yyyy-mm-dd
         scheduled_end_date = data.get('end_date')      # yyyy-mm-dd
-        curriculum_id = int(data.get('curriculum_id'))
-        # 선택한 커리큘럼 정보 가져오기
+        curriculum_ids = data.get('curriculum_ids', [])  # 다중 커리큘럼 ID 배열
+        
+        # 단일 커리큘럼도 지원 (기존 호환성)
+        if 'curriculum_id' in data and not curriculum_ids:
+            curriculum_ids = [int(data.get('curriculum_id'))]
+        elif isinstance(curriculum_ids, str):
+            curriculum_ids = [int(curriculum_ids)]
+        elif isinstance(curriculum_ids, list):
+            curriculum_ids = [int(cid) for cid in curriculum_ids]
+        
+        if not curriculum_ids:
+            return JsonResponse({'success': False, 'message': '커리큘럼을 선택해주세요.'})
+        
         from core.models import Curriculum, TaskManage, TaskAssign
-        curriculum = Curriculum.objects.get(curriculum_id=curriculum_id)
-        # 이미 존재하는 멘토-멘티 조합 방지(옵션)
-        mentorship, created = Mentorship.objects.get_or_create(
-            mentor_id=mentor_id,
-            mentee_id=mentee_id,
-            defaults={
-                'start_date': scheduled_start_date,
-                'end_date': scheduled_end_date,
-                'is_active': True,
-                'curriculum_title': curriculum.curriculum_title,
-                'total_weeks': curriculum.total_weeks
-            }
-        )
-        if not created:
-            mentorship.start_date = scheduled_start_date
-            mentorship.end_date = scheduled_end_date
-            mentorship.curriculum_title = curriculum.curriculum_title
-            mentorship.total_weeks = curriculum.total_weeks
-            mentorship.save()
-
-        # TaskManage → TaskAssign 복사 (중복생성 방지: 이미 있으면 skip)
-        existing_assigns = set(TaskAssign.objects.filter(mentorship_id=mentorship).values_list('title', flat=True))
-        tasks = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
-        from datetime import datetime, timedelta
-        mentorship_start = datetime.strptime(scheduled_start_date, '%Y-%m-%d')
-        for t in tasks:
-            if t.title in existing_assigns:
-                continue
-            # 주차별 시작일 계산: mentorship 시작일 + (week-1)*7
-            task_start = mentorship_start + timedelta(days=(t.week-1)*7)
-            period = t.period if t.period else 1
-            scheduled_start = task_start.date()
-            scheduled_end = (task_start + timedelta(days=period-1)).date()
-            TaskAssign.objects.create(
-                mentorship_id=mentorship,
-                title=t.title,
-                description=t.description,
-                guideline=t.guideline,
-                week=t.week,
-                order=t.order,
-                scheduled_start_date=scheduled_start,
-                scheduled_end_date=scheduled_end,
-                real_start_date=None,
-                real_end_date=None,
-                priority=t.priority,
-                status='진행전'
+        
+        # 선택된 커리큘럼들 가져오기
+        curriculums = Curriculum.objects.filter(curriculum_id__in=curriculum_ids)
+        curriculum_titles = [c.curriculum_title for c in curriculums]
+        combined_title = ' + '.join(curriculum_titles)
+        
+        # 전체 주차 수 계산 (가장 긴 커리큘럼 기준)
+        max_weeks = max([c.total_weeks for c in curriculums]) if curriculums else 0
+        
+        with transaction.atomic():
+            # 이미 존재하는 멘토-멘티 조합 처리
+            mentorship, created = Mentorship.objects.get_or_create(
+                mentor_id=mentor_id,
+                mentee_id=mentee_id,
+                defaults={
+                    'start_date': scheduled_start_date,
+                    'end_date': scheduled_end_date,
+                    'is_active': True,
+                    'curriculum_title': combined_title,
+                    'total_weeks': max_weeks
+                }
             )
+            if not created:
+                mentorship.start_date = scheduled_start_date
+                mentorship.end_date = scheduled_end_date
+                mentorship.curriculum_title = combined_title
+                mentorship.total_weeks = max_weeks
+                mentorship.save()
+
+            # 기존 TaskAssign 삭제 (새로 생성하기 위해)
+            TaskAssign.objects.filter(mentorship_id=mentorship).delete()
+
+            # 모든 커리큘럼의 Task들을 주차별로 병합
+            weekly_tasks = {}  # {week: [tasks]}
+            
+            for curriculum in curriculums:
+                tasks = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
+                for task in tasks:
+                    week = task.week
+                    if week not in weekly_tasks:
+                        weekly_tasks[week] = []
+                    
+                    # 같은 주차에 동일한 제목의 과제가 있는지 확인
+                    existing_titles = [t.title for t in weekly_tasks[week]]
+                    if task.title not in existing_titles:
+                        weekly_tasks[week].append(task)
+
+            # TaskManage → TaskAssign 생성
+            from datetime import datetime, timedelta
+            mentorship_start = datetime.strptime(scheduled_start_date, '%Y-%m-%d')
+            
+            for week in sorted(weekly_tasks.keys()):
+                tasks_in_week = weekly_tasks[week]
+                # 같은 주차 내에서 order로 정렬
+                tasks_in_week.sort(key=lambda x: x.order if x.order else 0)
+                
+                for order_index, task in enumerate(tasks_in_week, 1):
+                    # 주차별 시작일 계산: mentorship 시작일 + (week-1)*7
+                    task_start = mentorship_start + timedelta(days=(week-1)*7)
+                    period = task.period if task.period else 1
+                    scheduled_start = task_start.date()
+                    scheduled_end = (task_start + timedelta(days=period-1)).date()
+                    
+                    TaskAssign.objects.create(
+                        mentorship_id=mentorship,
+                        title=task.title,
+                        description=task.description,
+                        guideline=task.guideline,
+                        week=week,
+                        order=order_index,  # 주차 내 순서 재정렬
+                        scheduled_start_date=scheduled_start,
+                        scheduled_end_date=scheduled_end,
+                        real_start_date=None,
+                        real_end_date=None,
+                        priority=task.priority,
+                        status='진행전'
+                    )
+                    
         return JsonResponse({'success': True, 'mentorship_id': mentorship.mentorship_id})
+
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+        
 
 @login_required
 def mentee_detail(request, user_id):
@@ -179,10 +222,10 @@ def mentor(request):
     mentee_cards = []
     from datetime import date
     for ms in mentorships:
-        try:
-            mentee = mentees.get(user_id=ms.mentee_id)
-        except User.DoesNotExist:
+        mentee = mentees.filter(user_id=ms.mentee_id).first()
+        if not mentee:
             continue
+
         # D-day 계산: 멘토쉽 종료일 기준
         dday = ''
         if ms.end_date:

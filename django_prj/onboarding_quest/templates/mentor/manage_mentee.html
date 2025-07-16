@@ -147,7 +147,59 @@
   font-size: 0.97em;
   color: #888;
 }
+.curriculum-toggle {
+  background-color: #f4f4f4;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 0.95em;
+}
+
+.curriculum-option-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-height: 140px;
+  overflow-y: auto;
+  background: white;
+}
+
+.curriculum-option-list li {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.curriculum-option-list li:hover {
+  background-color: #f2f2f2;
+}
+
+.selected-curriculum-list {
+  list-style: none;
+  margin: 0 0 8px 0;
+  padding-left: 0;
+}
+
+.selected-curriculum-list li {
+  background: #f9f9f9;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  font-size: 0.92em;
+}
+
+.hidden {
+  display: none;
+}
+
+
 </style>
+
 {% endblock %}
 
 {% block content %}
@@ -210,16 +262,22 @@
   <div class="mentoring-settings-area">
     <h4>멘토링 설정</h4>
     <form id="mentoring-form">
+      {% csrf_token %}
       <label>선택된 멘티</label>
       <input type="text" id="selected-mentee" value="" readonly>
       <label>멘토쉽 시작일자</label>
-      <input type="date" id="start-date" value="2025-07-08">
+      <input type="date" id="start-date" value="2025-07-16">
       <label>커리큘럼 선택</label>
-      <select id="template-select">
+      <div id="curriculum-checkbox-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-bottom: 14px;">
         {% for curriculum in curriculums %}
-        <option value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}">{{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)</option>
+        <div style="margin-bottom: 8px;">
+          <label style="display: flex; align-items: center; font-weight: normal; margin-bottom: 0;">
+            <input type="checkbox" name="curriculum" value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}" style="margin-right: 8px;">
+            <span>{{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)</span>
+          </label>
+        </div>
         {% endfor %}
-      </select>
+      </div>
       <div class="end-date-label" id="end-date-label">종료일: 2025-08-05</div>
       <button type="submit">생성</button>
     </form>
@@ -263,26 +321,30 @@ menteeSearch.addEventListener('input', function() {
 bindMenteeEvents();
 // 커리큘럼/시작일 변경 시 종료일 자동 계산
 const startDateInput = document.getElementById('start-date');
-const templateSelect = document.getElementById('template-select');
+const curriculumCheckboxes = document.querySelectorAll('input[name="curriculum"]');
 const endDateLabel = document.getElementById('end-date-label');
 function updateEndDate() {
   const start = new Date(startDateInput.value);
-  // 선택된 option의 data-weeks 속성에서 주차 정보 추출
-  const selectedOption = templateSelect.options[templateSelect.selectedIndex];
-  const weeks = parseInt(selectedOption ? selectedOption.getAttribute('data-weeks') : '');
-  if (!isNaN(start.getTime()) && weeks) {
+  const checkedBoxes = Array.from(curriculumCheckboxes).filter(cb => cb.checked);
+  const weekValues = checkedBoxes.map(cb => parseInt(cb.getAttribute('data-weeks'))).filter(w => !isNaN(w));
+  const maxWeeks = Math.max(...weekValues, 0);
+
+  if (!isNaN(start.getTime()) && maxWeeks > 0) {
     const end = new Date(start);
-    end.setDate(end.getDate() + weeks * 7 - 1);
+    end.setDate(end.getDate() + maxWeeks * 7 - 1);
     const yyyy = end.getFullYear();
     const mm = String(end.getMonth() + 1).padStart(2, '0');
     const dd = String(end.getDate()).padStart(2, '0');
     endDateLabel.textContent = `종료일: ${yyyy}-${mm}-${dd}`;
   } else {
-    endDateLabel.textContent = '';
+    endDateLabel.textContent = '종료일: 커리큘럼을 선택하세요';
   }
 }
+
 startDateInput.addEventListener('change', updateEndDate);
-templateSelect.addEventListener('change', updateEndDate);
+curriculumCheckboxes.forEach(cb => {
+  cb.addEventListener('change', updateEndDate);
+});
 window.addEventListener('DOMContentLoaded', updateEndDate);
 // 서버에서 내려준 멘티 정보를 JS 객체로 구성
 const menteeData = {};
@@ -392,26 +454,34 @@ mentoringForm.addEventListener('submit', async function(e) {
   }
   const menteeId = selected.dataset.id;
   const scheduledStartDate = document.getElementById('start-date').value;
-  const templateSelect = document.getElementById('template-select');
-  const curriculumId = templateSelect.value;
+  const checkedCurriculums = Array.from(document.querySelectorAll('input[name="curriculum"]:checked'));
+  const curriculumIds = checkedCurriculums.map(cb => cb.value);
+  
+  if (curriculumIds.length === 0) {
+    alert('최소 하나의 커리큘럼을 선택하세요.');
+    return;
+  }
+  
   // 종료일 계산: 화면에 표시된 종료일 텍스트에서 추출
   const endDateLabel = document.getElementById('end-date-label');
   let scheduledEndDate = '';
   if (endDateLabel && endDateLabel.textContent.includes('종료일:')) {
     scheduledEndDate = endDateLabel.textContent.replace('종료일:', '').trim();
   }
+  
+  // 각 커리큘럼별로 멘토쉽 생성 (다중 커리큘럼 지원)
   try {
     const res = await fetch('/mentor/create_mentorship/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
       },
       body: JSON.stringify({ 
         mentee_id: menteeId, 
         start_date: scheduledStartDate, 
         end_date: scheduledEndDate, 
-        curriculum_id: curriculumId 
+        curriculum_ids: curriculumIds // 다중 커리큘럼 ID 배열 전송
       })
     });
     const data = await res.json();
