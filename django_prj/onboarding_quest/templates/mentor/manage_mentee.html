@@ -215,11 +215,13 @@
       <label>멘토쉽 시작일자</label>
       <input type="date" id="start-date" value="2025-07-08">
       <label>커리큘럼 선택</label>
-      <select id="template-select">
+      <select id="template-select" multiple>
         {% for curriculum in curriculums %}
-        <option value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}">{{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)</option>
-        {% endfor %}
-      </select>
+          <option value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}">
+            {{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)
+            </option>
+          {% endfor %}
+        </select>
       <div class="end-date-label" id="end-date-label">종료일: 2025-08-05</div>
       <button type="submit">생성</button>
     </form>
@@ -267,12 +269,13 @@ const templateSelect = document.getElementById('template-select');
 const endDateLabel = document.getElementById('end-date-label');
 function updateEndDate() {
   const start = new Date(startDateInput.value);
-  // 선택된 option의 data-weeks 속성에서 주차 정보 추출
-  const selectedOption = templateSelect.options[templateSelect.selectedIndex];
-  const weeks = parseInt(selectedOption ? selectedOption.getAttribute('data-weeks') : '');
-  if (!isNaN(start.getTime()) && weeks) {
+  const selectedOptions = Array.from(templateSelect.selectedOptions);
+  const weekValues = selectedOptions.map(opt => parseInt(opt.getAttribute('data-weeks'))).filter(w => !isNaN(w));
+  const maxWeeks = Math.max(...weekValues, 0);
+
+  if (!isNaN(start.getTime()) && maxWeeks > 0) {
     const end = new Date(start);
-    end.setDate(end.getDate() + weeks * 7 - 1);
+    end.setDate(end.getDate() + maxWeeks * 7 - 1);
     const yyyy = end.getFullYear();
     const mm = String(end.getMonth() + 1).padStart(2, '0');
     const dd = String(end.getDate()).padStart(2, '0');
@@ -281,6 +284,7 @@ function updateEndDate() {
     endDateLabel.textContent = '';
   }
 }
+
 startDateInput.addEventListener('change', updateEndDate);
 templateSelect.addEventListener('change', updateEndDate);
 window.addEventListener('DOMContentLoaded', updateEndDate);
@@ -393,7 +397,7 @@ mentoringForm.addEventListener('submit', async function(e) {
   const menteeId = selected.dataset.id;
   const startDate = document.getElementById('start-date').value;
   const templateSelect = document.getElementById('template-select');
-  const curriculumId = templateSelect.value;
+  const curriculumIds = Array.from(templateSelect.selectedOptions).map(opt => opt.value);
   // 종료일 계산: 화면에 표시된 종료일 텍스트에서 추출
   const endDateLabel = document.getElementById('end-date-label');
   let endDate = '';
@@ -411,7 +415,7 @@ mentoringForm.addEventListener('submit', async function(e) {
         mentee_id: menteeId, 
         start_date: startDate, 
         end_date: endDate, 
-        curriculum_id: curriculumId 
+        curriculum_ids: curriculumIds
       })
     });
     const data = await res.json();
