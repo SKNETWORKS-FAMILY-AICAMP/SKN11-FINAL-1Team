@@ -278,6 +278,48 @@
   </div>
 </div>
 <script>
+<<<<<<< Updated upstream
+=======
+// 공용 커리큘럼 체크박스 체크 상태 JS로 처리
+document.addEventListener('DOMContentLoaded', function() {
+  // '주차 추가' 버튼 동작 구현
+  document.getElementById('add-week-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    // 현재 tasks_json에서 가장 큰 week 값 찾기
+    let maxWeek = 0;
+    if (Array.isArray(window.tasks_json) && window.tasks_json.length > 0) {
+      maxWeek = Math.max(...window.tasks_json.map(t => Number(t.week) || 0));
+    }
+    const newWeek = maxWeek + 1;
+    // 이미 해당 주차가 있으면 추가하지 않음
+    const weekExists = window.tasks_json.some(t => Number(t.week) === newWeek);
+    if (!weekExists) {
+      // 빈 Task를 추가해서 주차 섹션을 생성 (title 등은 빈 값)
+      window.tasks_json.push({ week: newWeek, title: '', description: '', guideline: '', order: 1, period: '', priority: '하' });
+      renderTasksByWeek(window.tasks_json);
+    }
+  });
+  if (window.edit_mode && window.curriculum && window.curriculum.is_common) {
+    document.getElementById('is-public-curriculum').checked = true;
+  } else {
+    document.getElementById('is-public-curriculum').checked = false;
+  }
+});
+// edit_mode, curriculum, tasks_json이 context로 전달될 경우 window에 할당
+// edit_mode가 'True', 'true', '1' 등 다양한 값으로 올 수 있으니 모두 True로 인식
+window.edit_mode = ["true", "True", "1"].includes("{{ edit_mode|default:'false' }}");
+window.curriculum = {{ curriculum_json|safe }};
+// curriculum_id가 없으면 pk, id 중 하나로 보정
+if (window.curriculum && !window.curriculum.curriculum_id) {
+  if (window.curriculum.pk) {
+    window.curriculum.curriculum_id = window.curriculum.pk;
+  } else if (window.curriculum.id) {
+    window.curriculum.curriculum_id = window.curriculum.id;
+  }
+}
+window.tasks_json = {{ tasks_json|safe }};
+
+>>>>>>> Stashed changes
 // 커리큘럼 초안 생성 함수 (텍스트 추가)
 function generateDraftContent() {
   const curriculumTextarea = document.getElementById('curriculum-textarea');

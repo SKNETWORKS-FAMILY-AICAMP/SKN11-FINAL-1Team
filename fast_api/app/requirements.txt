@@ -1,0 +1,46 @@
+# FastAPI 기본 라이브러리
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+
+# 데이터베이스 관련
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.0
+
+# 인증 관련
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+# 데이터 처리 및 검증
+pydantic==2.5.0
+pydantic-settings==2.1.0
+pandas>=2.0.0
+
+# AI/ML 라이브러리
+langchain>=0.1.0
+langgraph>=0.0.30
+openai>=1.0.0
+qdrant-client>=1.7.0
+tiktoken>=0.5.0
+sentence-transformers>=2.2.0
+
+# 문서 처리
+python-docx>=1.0.0
+PyPDF2>=3.0.0
+pdfplumber>=0.10.0
+unstructured>=0.12.0
+
+# 기타 유틸리티
+python-dotenv>=1.0.0
+requests==2.31.0
+httpx>=0.27.0
+Pillow==10.0.0
+pyyaml>=6.0.0
+boto3>=1.34.0
+werkzeug>=3.0.0
+
+# 워커 관련
+celery>=5.3.0
+redis>=5.0.0

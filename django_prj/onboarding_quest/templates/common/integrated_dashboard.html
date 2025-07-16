@@ -1,0 +1,476 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Django + FastAPI 통합 대시보드{% endblock %}
+
+{% block extra_css %}
+<style>
+    .integrated-dashboard {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .dashboard-header h1 {
+        margin-bottom: 10px;
+        font-size: 2.5rem;
+    }
+    
+    .dashboard-header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+    }
+    
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e3e6f0;
+    }
+    
+    .dashboard-card h3 {
+        color: #495057;
+        margin-bottom: 15px;
+        font-size: 1.3rem;
+        border-bottom: 2px solid #f8f9fa;
+        padding-bottom: 10px;
+    }
+    
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .server-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+    }
+    
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #28a745;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-indicator.offline {
+        background: #dc3545;
+        animation: none;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .quick-actions {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+    
+    .quick-action-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    
+    .quick-action-btn.primary {
+        background: #007bff;
+        color: white;
+    }
+    
+    .quick-action-btn.success {
+        background: #28a745;
+        color: white;
+    }
+    
+    .quick-action-btn.info {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .quick-action-btn.warning {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 20px;
+        color: #6c757d;
+    }
+    
+    .error {
+        color: #dc3545;
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 15px;
+    }
+    
+    .success {
+        color: #155724;
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 15px;
+    }
+    
+    .api-logs {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin-top: 15px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+    }
+    
+    .log-entry {
+        margin-bottom: 5px;
+        padding: 2px 5px;
+        border-radius: 3px;
+    }
+    
+    .log-entry.info {
+        background: #cce5ff;
+    }
+    
+    .log-entry.success {
+        background: #ccf2d4;
+    }
+    
+    .log-entry.error {
+        background: #f2c2c2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="integrated-dashboard">
+    <div class="dashboard-header">
+        <h1>🚀 Django + FastAPI 통합 대시보드</h1>
+        <p>온보딩 퀘스트 시스템 - 두 프레임워크가 하나로!</p>
+    </div>
+    
+    <div class="dashboard-grid">
+        <!-- 서버 상태 -->
+        <div class="dashboard-card">
+            <h3>🖥️ 서버 상태</h3>
+            <div class="server-status">
+                <div class="status-indicator" id="django-status"></div>
+                <span>Django 서버 (http://localhost:8000)</span>
+            </div>
+            <div class="server-status">
+                <div class="status-indicator" id="fastapi-status"></div>
+                <span>FastAPI 서버 ({{ fastapi_url }})</span>
+            </div>
+            <div class="quick-actions">
+                <a href="http://localhost:8000/admin/" class="quick-action-btn primary" target="_blank">Django Admin</a>
+                <a href="{{ fastapi_url }}/docs" class="quick-action-btn info" target="_blank">FastAPI Docs</a>
+            </div>
+        </div>
+        
+        <!-- 사용자 통계 -->
+        <div class="dashboard-card">
+            <h3>👥 사용자 통계</h3>
+            <div id="user-stats" class="loading">데이터 로딩 중...</div>
+        </div>
+        
+        <!-- 멘토쉽 통계 -->
+        <div class="dashboard-card">
+            <h3>🤝 멘토쉽 통계</h3>
+            <div id="mentorship-stats" class="loading">데이터 로딩 중...</div>
+        </div>
+        
+        <!-- 과제 통계 -->
+        <div class="dashboard-card">
+            <h3>📋 과제 통계</h3>
+            <div id="task-stats" class="loading">데이터 로딩 중...</div>
+        </div>
+        
+        <!-- 인증 정보 -->
+        <div class="dashboard-card">
+            <h3>🔐 현재 사용자 정보</h3>
+            <div class="stat-item">
+                <span>이메일</span>
+                <span class="stat-value">{{ user.email }}</span>
+            </div>
+            <div class="stat-item">
+                <span>역할</span>
+                <span class="stat-value">{{ user.role|default:"관리자" }}</span>
+            </div>
+            <div class="stat-item">
+                <span>부서</span>
+                <span class="stat-value">{{ user.department|default:"미설정" }}</span>
+            </div>
+            <div class="stat-item">
+                <span>마지막 로그인</span>
+                <span class="stat-value">{{ user.last_login|date:"Y-m-d H:i" }}</span>
+            </div>
+        </div>
+        
+        <!-- 빠른 실행 -->
+        <div class="dashboard-card">
+            <h3>⚡ 빠른 실행</h3>
+            <div class="quick-actions">
+                <a href="/common/api/dashboard/" class="quick-action-btn primary">API 테스트</a>
+                <a href="/common/chatbot/" class="quick-action-btn success">챗봇</a>
+                <a href="/common/doc/" class="quick-action-btn info">문서</a>
+                <a href="/common/task_add/" class="quick-action-btn warning">과제 추가</a>
+            </div>
+            <button onclick="refreshStats()" class="quick-action-btn info" style="margin-top: 10px;">
+                📊 통계 새로고침
+            </button>
+        </div>
+    </div>
+    
+    <!-- API 로그 -->
+    <div class="dashboard-card">
+        <h3>📜 API 호출 로그</h3>
+        <div id="api-logs" class="api-logs">
+            <div class="log-entry info">시스템 시작됨</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 전역 변수
+let jwtToken = null;
+let logContainer = null;
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    logContainer = document.getElementById('api-logs');
+    
+    // 서버 상태 확인
+    checkServerStatus();
+    
+    // FastAPI 인증 후 데이터 로드
+    authenticateAndLoadData();
+    
+    // 주기적 상태 확인 (30초마다)
+    setInterval(checkServerStatus, 30000);
+});
+
+// 로그 추가 함수
+function addLog(message, type = 'info') {
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry ${type}`;
+    logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    logContainer.appendChild(logEntry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+// 서버 상태 확인
+async function checkServerStatus() {
+    // Django 서버 확인
+    try {
+        const response = await fetch('/health/', { method: 'GET' });
+        const djangoStatus = document.getElementById('django-status');
+        if (response.ok) {
+            djangoStatus.className = 'status-indicator';
+        } else {
+            djangoStatus.className = 'status-indicator offline';
+        }
+    } catch (error) {
+        document.getElementById('django-status').className = 'status-indicator offline';
+    }
+    
+    // FastAPI 서버 확인
+    try {
+        const response = await fetch('{{ fastapi_url }}/health');
+        const fastapiStatus = document.getElementById('fastapi-status');
+        if (response.ok) {
+            fastapiStatus.className = 'status-indicator';
+        } else {
+            fastapiStatus.className = 'status-indicator offline';
+        }
+    } catch (error) {
+        document.getElementById('fastapi-status').className = 'status-indicator offline';
+    }
+}
+
+// FastAPI 인증 및 데이터 로드
+async function authenticateAndLoadData() {
+    try {
+        addLog('FastAPI 인증 시도 중...', 'info');
+        
+        const response = await fetch('/common/api/test/auth/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: 'email=admin@example.com&password=admin123'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            jwtToken = data.data.access_token;
+            addLog('FastAPI 인증 성공', 'success');
+            
+            // 통계 데이터 로드
+            loadStats();
+        } else {
+            addLog('FastAPI 인증 실패', 'error');
+        }
+    } catch (error) {
+        addLog(`인증 에러: ${error.message}`, 'error');
+    }
+}
+
+// 통계 데이터 로드
+async function loadStats() {
+    if (!jwtToken) {
+        addLog('JWT 토큰이 없습니다', 'error');
+        return;
+    }
+    
+    try {
+        addLog('통계 데이터 로딩 중...', 'info');
+        
+        const response = await fetch(`/common/api/test/stats/?token=${encodeURIComponent(jwtToken)}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateStatsDisplay(data.data);
+            addLog('통계 데이터 로드 완료', 'success');
+        } else {
+            addLog('통계 데이터 로드 실패', 'error');
+        }
+    } catch (error) {
+        addLog(`통계 로드 에러: ${error.message}`, 'error');
+    }
+}
+
+// 통계 표시 업데이트
+function updateStatsDisplay(statsData) {
+    // 사용자 통계
+    if (statsData.user_stats) {
+        const userStatsHtml = `
+            <div class="stat-item">
+                <span>전체 사용자</span>
+                <span class="stat-value">${statsData.user_stats.total_users}</span>
+            </div>
+            <div class="stat-item">
+                <span>활성 사용자</span>
+                <span class="stat-value">${statsData.user_stats.active_users}</span>
+            </div>
+            <div class="stat-item">
+                <span>멘토</span>
+                <span class="stat-value">${statsData.user_stats.mentors}</span>
+            </div>
+            <div class="stat-item">
+                <span>멘티</span>
+                <span class="stat-value">${statsData.user_stats.mentees}</span>
+            </div>
+        `;
+        document.getElementById('user-stats').innerHTML = userStatsHtml;
+    }
+    
+    // 멘토쉽 통계
+    if (statsData.mentorship_stats) {
+        const mentorshipStatsHtml = `
+            <div class="stat-item">
+                <span>총 멘토쉽</span>
+                <span class="stat-value">${statsData.mentorship_stats.total_mentorships}</span>
+            </div>
+            <div class="stat-item">
+                <span>활성 멘토쉽</span>
+                <span class="stat-value">${statsData.mentorship_stats.active_mentorships}</span>
+            </div>
+            <div class="stat-item">
+                <span>완료된 멘토쉽</span>
+                <span class="stat-value">${statsData.mentorship_stats.completed_mentorships}</span>
+            </div>
+        `;
+        document.getElementById('mentorship-stats').innerHTML = mentorshipStatsHtml;
+    }
+    
+    // 과제 통계
+    if (statsData.task_stats) {
+        const taskStatsHtml = `
+            <div class="stat-item">
+                <span>총 과제</span>
+                <span class="stat-value">${statsData.task_stats.total_tasks}</span>
+            </div>
+            <div class="stat-item">
+                <span>완료된 과제</span>
+                <span class="stat-value">${statsData.task_stats.completed_tasks}</span>
+            </div>
+            <div class="stat-item">
+                <span>진행 중인 과제</span>
+                <span class="stat-value">${statsData.task_stats.pending_tasks}</span>
+            </div>
+        `;
+        document.getElementById('task-stats').innerHTML = taskStatsHtml;
+    }
+}
+
+// 통계 새로고침
+function refreshStats() {
+    addLog('통계 새로고침 시작', 'info');
+    
+    // 로딩 표시
+    document.getElementById('user-stats').innerHTML = '<div class="loading">데이터 로딩 중...</div>';
+    document.getElementById('mentorship-stats').innerHTML = '<div class="loading">데이터 로딩 중...</div>';
+    document.getElementById('task-stats').innerHTML = '<div class="loading">데이터 로딩 중...</div>';
+    
+    // 데이터 다시 로드
+    loadStats();
+}
+</script>
+
+{% csrf_token %}
+{% endblock %} 

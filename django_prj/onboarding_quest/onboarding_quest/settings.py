@@ -25,11 +25,10 @@ SECRET_KEY = 'django-insecure-do7ud-c7h49ny)48^c-&j408=@r599!d-j_j4)lzxl1(fz(k#+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
-# Application definition
-
+# Application definition - 프론트엔드 용도로 최소화
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -37,14 +36,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',
-    'account',
-    'common',
-    'mentor',
-    'mentee',
+    'corsheaders',  # CORS 헤더 지원
+    'core',         # 기본 모델
+    'account',      # 로그인 및 관리
+    'common',       # 공통 기능 및 FastAPI 연동
+    'mentor',       # 멘토 프론트엔드
+    'mentee',       # 멘티 프론트엔드
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -53,6 +54,18 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# CORS 설정 (FastAPI와 연동을 위해)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8001",  # FastAPI 서버
+    "http://127.0.0.1:8001",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+# FastAPI 연동 설정
+FASTAPI_BASE_URL = "http://localhost:8003"
+FASTAPI_API_V1_STR = "/api/v1"
 
 ROOT_URLCONF = 'onboarding_quest.urls'
 
@@ -74,7 +87,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'onboarding_quest.wsgi.application'
 
 
-# Database
+# Database - FastAPI와 공유
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
@@ -109,7 +122,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'ko-kr'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
@@ -122,8 +135,19 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+# 커스텀 사용자 모델
 AUTH_USER_MODEL = 'core.User'
 
+<<<<<<< Updated upstream
+=======
+# CSRF 설정
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_HTTPONLY = False
+
+# 로그인 설정
+LOGIN_URL = '/account/login/'
+>>>>>>> Stashed changes
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/account/login/'
 
@@ -131,3 +155,29 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+<<<<<<< Updated upstream
+=======
+
+# Media files (File uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# 로깅 설정 - 프론트엔드용으로 최소화
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+>>>>>>> Stashed changes

@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}FastAPI 연동 대시보드{% endblock %}
+
+{% block extra_css %}
+<style>
+    .api-dashboard {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .api-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .api-section h3 {
+        color: #495057;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+    }
+    
+    .api-form {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        margin-bottom: 15px;
+    }
+    
+    .api-result {
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 15px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .api-result.success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    
+    .api-result.error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #495057;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-right: 10px;
+    }
+    
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+    
+    .btn-success {
+        background: #28a745;
+        color: white;
+    }
+    
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .btn:hover {
+        opacity: 0.9;
+    }
+    
+    .server-info {
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .server-info h4 {
+        color: #1565c0;
+        margin-bottom: 10px;
+    }
+    
+    .server-link {
+        color: #1976d2;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    
+    .server-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="api-dashboard">
+    <h1>🚀 FastAPI 연동 대시보드</h1>
+    
+    <div class="server-info">
+        <h4>서버 정보</h4>
+        <p><strong>Django 서버:</strong> <a href="http://localhost:8000" class="server-link" target="_blank">http://localhost:8000</a></p>
+        <p><strong>FastAPI 서버:</strong> <a href="{{ fastapi_url }}" class="server-link" target="_blank">{{ fastapi_url }}</a></p>
+        <p><strong>API 문서:</strong> <a href="{{ fastapi_url }}/docs" class="server-link" target="_blank">{{ fastapi_url }}/docs</a></p>
+        <p><strong>현재 사용자:</strong> {{ user.email }} ({{ user.role }})</p>
+    </div>
+    
+    <!-- 1. FastAPI 인증 테스트 -->
+    <div class="api-section">
+        <h3>1. FastAPI 인증 테스트</h3>
+        <div class="api-form">
+            <form id="auth-form">
+                <div class="form-group">
+                    <label for="auth-email">이메일:</label>
+                    <input type="email" id="auth-email" class="form-control" value="admin@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="auth-password">비밀번호:</label>
+                    <input type="password" id="auth-password" class="form-control" value="admin123" required>
+                </div>
+                <button type="submit" class="btn btn-primary">FastAPI 로그인 테스트</button>
+            </form>
+        </div>
+        <div id="auth-result" class="api-result" style="display: none;"></div>
+    </div>
+    
+    <!-- 2. 사용자 목록 조회 -->
+    <div class="api-section">
+        <h3>2. 사용자 목록 조회 (JWT 토큰 필요)</h3>
+        <div class="api-form">
+            <form id="users-form">
+                <div class="form-group">
+                    <label for="users-token">JWT 토큰:</label>
+                    <input type="text" id="users-token" class="form-control" placeholder="위에서 받은 JWT 토큰을 입력하세요" required>
+                </div>
+                <div class="form-group">
+                    <label for="users-page">페이지:</label>
+                    <input type="number" id="users-page" class="form-control" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="users-size">페이지 크기:</label>
+                    <input type="number" id="users-size" class="form-control" value="10" min="1" max="100">
+                </div>
+                <button type="submit" class="btn btn-success">사용자 목록 조회</button>
+            </form>
+        </div>
+        <div id="users-result" class="api-result" style="display: none;"></div>
+    </div>
+    
+    <!-- 3. 통계 데이터 조회 -->
+    <div class="api-section">
+        <h3>3. 통계 데이터 조회</h3>
+        <div class="api-form">
+            <form id="stats-form">
+                <div class="form-group">
+                    <label for="stats-token">JWT 토큰:</label>
+                    <input type="text" id="stats-token" class="form-control" placeholder="JWT 토큰을 입력하세요" required>
+                </div>
+                <button type="submit" class="btn btn-info">통계 데이터 조회</button>
+            </form>
+        </div>
+        <div id="stats-result" class="api-result" style="display: none;"></div>
+    </div>
+    
+    <!-- 4. 직접 API 호출 -->
+    <div class="api-section">
+        <h3>4. 직접 API 호출</h3>
+        <div class="api-form">
+            <form id="direct-form">
+                <div class="form-group">
+                    <label for="direct-endpoint">API 엔드포인트:</label>
+                    <input type="text" id="direct-endpoint" class="form-control" placeholder="예: users/stats" required>
+                </div>
+                <div class="form-group">
+                    <label for="direct-method">HTTP 메서드:</label>
+                    <select id="direct-method" class="form-control">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="direct-token">JWT 토큰 (옵션):</label>
+                    <input type="text" id="direct-token" class="form-control" placeholder="필요시 JWT 토큰 입력">
+                </div>
+                <button type="submit" class="btn btn-info">API 호출</button>
+            </form>
+        </div>
+        <div id="direct-result" class="api-result" style="display: none;"></div>
+    </div>
+</div>
+
+<script>
+// 공통 함수
+function showResult(elementId, data, isSuccess = true) {
+    const element = document.getElementById(elementId);
+    element.style.display = 'block';
+    element.className = `api-result ${isSuccess ? 'success' : 'error'}`;
+    element.textContent = JSON.stringify(data, null, 2);
+}
+
+// CSRF 토큰 가져오기
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+// 1. FastAPI 인증 테스트
+document.getElementById('auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    
+    try {
+        const response = await fetch('/common/api/test/auth/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+        });
+        
+        const data = await response.json();
+        showResult('auth-result', data, response.ok);
+        
+        // 성공시 토큰을 다른 폼에 자동 입력
+        if (response.ok && data.data && data.data.access_token) {
+            document.getElementById('users-token').value = data.data.access_token;
+            document.getElementById('stats-token').value = data.data.access_token;
+            document.getElementById('direct-token').value = data.data.access_token;
+        }
+    } catch (error) {
+        showResult('auth-result', { error: error.message }, false);
+    }
+});
+
+// 2. 사용자 목록 조회
+document.getElementById('users-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const token = document.getElementById('users-token').value;
+    const page = document.getElementById('users-page').value;
+    const size = document.getElementById('users-size').value;
+    
+    try {
+        const response = await fetch(`/common/api/test/users/?token=${encodeURIComponent(token)}&page=${page}&size=${size}`);
+        const data = await response.json();
+        showResult('users-result', data, response.ok);
+    } catch (error) {
+        showResult('users-result', { error: error.message }, false);
+    }
+});
+
+// 3. 통계 데이터 조회
+document.getElementById('stats-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const token = document.getElementById('stats-token').value;
+    
+    try {
+        const response = await fetch(`/common/api/test/stats/?token=${encodeURIComponent(token)}`);
+        const data = await response.json();
+        showResult('stats-result', data, response.ok);
+    } catch (error) {
+        showResult('stats-result', { error: error.message }, false);
+    }
+});
+
+// 4. 직접 API 호출
+document.getElementById('direct-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const endpoint = document.getElementById('direct-endpoint').value;
+    const method = document.getElementById('direct-method').value;
+    const token = document.getElementById('direct-token').value;
+    
+    try {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(`/common/api/proxy/${endpoint}/`, {
+            method: method,
+            headers: headers
+        });
+        
+        const data = await response.json();
+        showResult('direct-result', data, response.ok);
+    } catch (error) {
+        showResult('direct-result', { error: error.message }, false);
+    }
+});
+</script>
+{% endblock %} 

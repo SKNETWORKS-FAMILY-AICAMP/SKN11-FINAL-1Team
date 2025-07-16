@@ -323,6 +323,7 @@
 {% endblock %}
 {% block content %}
 <div class="tasklist-container">
+<<<<<<< Updated upstream
   <!-- 좌측: 퀘스트 목록 -->
   <div class="tasklist-left" id="tasklist-left">
     <div class="tasklist-title">Task 목록</div>
@@ -360,6 +361,33 @@
         <div class="task-meta-row">
           <span class="task-badge yellow">하</span>
           <span class="d-day-badge">D-5</span>
+=======
+  <!-- 좌측: Task 목록 -->
+<div class="tasklist-left" id="tasklist-left">
+  <div class="tasklist-title">Task 목록</div>
+  {% for week, tasks in week_tasks.items %}
+    <div style="font-weight:bold; margin:18px 0 8px 0; color:#1976d2;">{{ week }}주차</div>
+    {% for task in tasks %}
+      <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행 전' %}not-started{% elif task.status == '진행 중' %}in-progress{% elif task.status == '검토 요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
+        data-task-id="{{ task.id }}"
+        data-title="{{ task.title|escapejs }}"
+        data-desc="{{ task.desc|default_if_none:''|escapejs }}"
+        data-priority="{{ task.priority|default:'하'|escapejs }}"
+        data-status="{{ task.status|escapejs }}"
+        data-end_date="{{ task.end_date|date:'Y-m-d' }}"
+        data-week="{{ week }}"
+        >
+        <div class="task-card-header">
+          <span class="status-badge {% if task.status == '진행 전' %}not-started{% elif task.status == '진행 중' %}in-progress{% elif task.status == '검토 요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.status }}</span>
+          <span class="task-title {% if task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.title }}</span>
+        </div>
+        <div class="task-desc-row">
+          <div class="task-desc">{{ task.desc }}</div>
+          <div class="task-meta-row">
+            <span class="task-badge {% if task.priority == '상' %}red{% elif task.priority == '중' %}green{% else %}yellow{% endif %}">{{ task.priority|default:'하' }}</span>
+            <span class="d-day-badge">{{ task.end_date|date:'Y-m-d' }}</span>
+          </div>
+>>>>>>> Stashed changes
         </div>
       </div>
       <div class="subtask-toggle" data-toggle="0">▼</div>
@@ -507,6 +535,7 @@
   </div>
 </div>
 <script>
+<<<<<<< Updated upstream
 // 카드별 상세 데이터 샘플
 const details = [
   {
@@ -636,6 +665,108 @@ const details = [
     ],
   },
 ];
+=======
+// CSRF 토큰 가져오기 함수
+function getCSRFToken() {
+  // 여러 소스에서 CSRF 토큰을 찾아서 반환
+  let token = null;
+  
+  // 1. 쿠키에서 찾기
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    cookie = cookie.trim();
+    if (cookie.startsWith('csrftoken=')) {
+      token = decodeURIComponent(cookie.substring('csrftoken='.length));
+      break;
+    }
+  }
+  
+  // 2. 메타 태그에서 찾기
+  if (!token) {
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    if (metaTag) {
+      token = metaTag.getAttribute('content');
+    }
+  }
+  
+  // 3. 폼의 hidden input에서 찾기
+  if (!token) {
+    const hiddenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (hiddenInput) {
+      token = hiddenInput.value;
+    }
+  }
+  
+  return token || '';
+}
+
+// 좌측 Task 카드 클릭 시 우측 상세 정보 갱신
+document.addEventListener('DOMContentLoaded', function() {
+  const cards = document.querySelectorAll('.task-card');
+  let currentTask = null; // 현재 선택된 task 정보 저장
+  function updateDetailFromData(task) {
+    currentTask = task;
+    // 상태 뱃지 색상
+    let statusClass = '';
+    if (task.status === '진행 전') statusClass = 'not-started';
+    else if (task.status === '진행 중') statusClass = 'in-progress';
+    else if (task.status === '검토 요청') statusClass = 'review-requested';
+    else if (task.status === '완료' || task.status === '완료됨') statusClass = 'done';
+    // 우측 영역 갱신
+    const titleEl = document.getElementById('detail-title');
+    titleEl.innerHTML = `<span class="status-badge ${statusClass}">${task.status}</span> <span class="${statusClass === 'done' ? 'done' : ''}">${task.title}</span>`;
+    const xpEl = document.getElementById('detail-xp');
+    if (xpEl) xpEl.innerHTML = '';
+    // guideline이 null/빈값이면 표시하지 않음
+    const descEl = document.getElementById('detail-desc');
+    if (task.guideline && String(task.guideline).trim() !== '') {
+      descEl.textContent = task.guideline;
+      descEl.style.display = '';
+    } else {
+      descEl.textContent = '';
+      descEl.style.display = 'none';
+    }
+    // 난이도/디데이 메타
+    const metaRow = document.querySelector('.task-detail-meta-row');
+    let badgeClass = 'yellow';
+    if (task.priority === '상') badgeClass = 'red';
+    else if (task.priority === '중') badgeClass = 'green';
+    metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${task.end_date || ''}</span>`;
+    // description을 리스트로 표시
+    const listDiv = document.getElementById('detail-list');
+    listDiv.innerHTML = '';
+    if (task.description) {
+      const items = String(task.description).split('\n').filter(x => x.trim() !== '');
+      const ul = document.createElement('ul');
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        ul.appendChild(li);
+      });
+      listDiv.appendChild(ul);
+    } else if (task.desc) {
+      const ul = document.createElement('ul');
+      const li = document.createElement('li');
+      li.textContent = task.desc;
+      ul.appendChild(li);
+      listDiv.appendChild(ul);
+    }
+  }
+  // 편집 폼 토글 및 저장/취소
+  const editBtn = document.getElementById('task-edit-btn');
+  const editForm = document.getElementById('task-edit-form');
+  const descDiv = document.getElementById('detail-desc');
+  const listDiv = document.getElementById('detail-list');
+  const editStatus = document.getElementById('edit-status');
+  const editTitle = document.getElementById('edit-title');
+  const editGuideline = document.getElementById('edit-guideline');
+  const editDescription = document.getElementById('edit-description');
+  const editPriority = document.getElementById('edit-priority');
+  const editEndDate = document.getElementById('edit-end-date');
+  const saveBtn = document.getElementById('edit-save-btn');
+  const cancelBtn = document.getElementById('edit-cancel-btn');
+  let isEditing = false;
+>>>>>>> Stashed changes
 
 // --- 필터/정렬 관련 변수 선언 및 유틸 함수 추가 ---
 const filterDiffs = document.querySelectorAll('.filter-diff');
@@ -670,6 +801,147 @@ searchInput.addEventListener('input', function() {
     } else {
       card.style.display = 'none';
     }
+<<<<<<< Updated upstream
+=======
+    // 기존 폼 로직
+    editForm.style.display = '';
+    descDiv.style.display = 'none';
+    listDiv.style.display = 'none';
+    isEditing = true;
+  }
+  function hideEditForm() {
+    editForm.style.display = 'none';
+    // 숨겼던 영역 다시 표시
+    document.getElementById('detail-header-row').style.display = '';
+    document.getElementById('detail-meta-row').style.display = '';
+    descDiv.style.display = '';
+    listDiv.style.display = '';
+    isEditing = false;
+  }
+  if (editBtn) {
+    editBtn.addEventListener('click', function() {
+      if (isEditing) return;
+      showEditForm();
+    });
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      hideEditForm();
+    });
+  }
+  if (editForm) {
+    editForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      // DB 저장 AJAX
+      const payload = {
+        status: editStatus.value,
+        title: editTitle.value,
+        guideline: editGuideline.value,
+        description: editDescription.value,
+        priority: editPriority.value,
+        end_date: editEndDate.value
+      };
+      try {
+        const resp = await fetch(`/mentee/task_update/${currentTask.id}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken()
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.success) {
+          // 프론트 상태도 반영
+          currentTask.status = payload.status;
+          currentTask.title = payload.title;
+          currentTask.guideline = payload.guideline;
+          currentTask.description = payload.description;
+          currentTask.priority = payload.priority;
+          currentTask.end_date = payload.end_date;
+          // 좌측 카드도 동기화
+          const card = document.querySelector(`.task-card[data-task-id="${currentTask.id}"]`);
+          if (card) {
+            // 상태 뱃지
+            const statusBadge = card.querySelector('.status-badge');
+            if (statusBadge) {
+              statusBadge.textContent = payload.status;
+              statusBadge.className = 'status-badge';
+              if (payload.status === '진행 전') statusBadge.classList.add('not-started');
+              else if (payload.status === '진행 중') statusBadge.classList.add('in-progress');
+              else if (payload.status === '검토 요청') statusBadge.classList.add('review-requested');
+              else if (payload.status === '완료' || payload.status === '완료됨') statusBadge.classList.add('done');
+            }
+            // 제목
+            const titleSpan = card.querySelector('.task-title');
+            if (titleSpan) {
+              titleSpan.textContent = payload.title;
+              if (payload.status === '완료' || payload.status === '완료됨') titleSpan.classList.add('done');
+              else titleSpan.classList.remove('done');
+            }
+            // 우선순위 뱃지
+            const badge = card.querySelector('.task-badge');
+            if (badge) {
+              badge.textContent = payload.priority || '하';
+              badge.className = 'task-badge';
+              if (payload.priority === '상') badge.classList.add('red');
+              else if (payload.priority === '중') badge.classList.add('green');
+              else badge.classList.add('yellow');
+            }
+            // 마감일
+            const dday = card.querySelector('.d-day-badge');
+            if (dday) dday.textContent = payload.end_date || '';
+            // 설명
+            const descDiv = card.querySelector('.task-desc');
+            if (descDiv) descDiv.textContent = payload.description || '';
+            // 카드 전체 클래스(상태별)
+            card.classList.remove('not-started','in-progress','review-requested','done');
+            if (payload.status === '진행 전') card.classList.add('not-started');
+            else if (payload.status === '진행 중') card.classList.add('in-progress');
+            else if (payload.status === '검토 요청') card.classList.add('review-requested');
+            else if (payload.status === '완료' || payload.status === '완료됨') card.classList.add('done');
+          }
+          updateDetailFromData(currentTask);
+          hideEditForm();
+        } else {
+          alert('저장 실패: ' + (data.error || '오류'));
+        }
+      } catch (err) {
+        alert('저장 중 오류 발생: ' + err);
+      }
+    });
+  }
+  async function fetchAndUpdateDetail(taskId) {
+    try {
+      const resp = await fetch(`/mentee/task_detail/${taskId}/`, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      if (!resp.ok) throw new Error('상세 정보를 불러올 수 없습니다');
+      const data = await resp.json();
+      if (data.success && data.task) {
+        updateDetailFromData(data.task);
+      } else {
+        console.error('Task detail fetch failed:', data.error);
+        alert('과제 상세 정보를 불러오는데 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+      }
+    } catch (e) {
+      console.error('Fetch error:', e);
+      alert('상세 정보를 불러오지 못했습니다: ' + e.message);
+    }
+  }
+  cards.forEach(card => {
+    card.addEventListener('click', function() {
+      if (isEditing) return; // 편집 중이면 카드 선택 비활성화
+      cards.forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      const taskId = card.getAttribute('data-task-id');
+      if (taskId) fetchAndUpdateDetail(taskId);
+    });
+>>>>>>> Stashed changes
   });
 });
 

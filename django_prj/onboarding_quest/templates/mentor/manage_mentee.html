@@ -204,6 +204,7 @@
   <div class="mentoring-settings-area">
     <h4>멘토링 설정</h4>
     <form id="mentoring-form">
+      {% csrf_token %}
       <label>선택된 멘티</label>
       <input type="text" id="selected-mentee" value="김신입" readonly>
       <label>멘토쉽 시작일자</label>
@@ -221,6 +222,44 @@
   </div>
 </div>
 <script>
+// CSRF 토큰 가져오기 함수
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+function getCSRFToken() {
+  // 1. Hidden input에서 가져오기
+  const hiddenInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+  if (hiddenInput && hiddenInput.value) {
+    return hiddenInput.value;
+  }
+  
+  // 2. Meta 태그에서 가져오기
+  const metaTag = document.querySelector('meta[name=csrf-token]');
+  if (metaTag && metaTag.content) {
+    return metaTag.content;
+  }
+  
+  // 3. 쿠키에서 가져오기
+  const csrfCookie = getCookie('csrftoken');
+  if (csrfCookie) {
+    return csrfCookie;
+  }
+  
+  return null;
+}
+
 // 실시간 검색 필터링
 const menteeSearch = document.getElementById('mentee-search');
 const menteeList = document.getElementById('mentee-list');
@@ -338,7 +377,65 @@ window.addEventListener('DOMContentLoaded', function() {
 const mentoringForm = document.getElementById('mentoring-form');
 mentoringForm.addEventListener('submit', function(e) {
   e.preventDefault();
+<<<<<<< Updated upstream
   window.location.href = '/mentor/';
+=======
+  // 선택된 멘티의 user_id 추출
+  const selected = document.querySelector('#mentee-list a.selected');
+  if (!selected) {
+    alert('멘티를 선택하세요.');
+    return;
+  }
+  const menteeId = selected.dataset.id;
+  const startDate = document.getElementById('start-date').value;
+  const templateSelect = document.getElementById('template-select');
+  const curriculumId = templateSelect.value;
+  // 종료일 계산: 화면에 표시된 종료일 텍스트에서 추출
+  const endDateLabel = document.getElementById('end-date-label');
+  let endDate = '';
+  if (endDateLabel && endDateLabel.textContent.includes('종료일:')) {
+    endDate = endDateLabel.textContent.replace('종료일:', '').trim();
+  }
+  try {
+    // CSRF 토큰 가져오기
+    const csrfToken = getCSRFToken();
+    
+    if (!csrfToken) {
+      alert('CSRF 토큰을 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+      return;
+    }
+    
+    const res = await fetch('/mentor/create_mentorship/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({ 
+        mentee_id: menteeId, 
+        start_date: startDate, 
+        end_date: endDate, 
+        curriculum_id: curriculumId 
+      })
+    });
+    
+    if (res.status === 403) {
+      alert('CSRF 토큰 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+      return;
+    }
+    
+    const data = await res.json();
+    if (data.success) {
+      alert('멘토쉽이 성공적으로 생성되었습니다.');
+      window.location.href = '/mentor/';
+    } else {
+      alert('생성 실패: ' + (data.message || ''));
+    }
+  } catch (err) {
+    console.error('서버 오류:', err);
+    alert('서버 오류가 발생했습니다.');
+  }
+>>>>>>> Stashed changes
 });
 </script>
 {% endblock %}
