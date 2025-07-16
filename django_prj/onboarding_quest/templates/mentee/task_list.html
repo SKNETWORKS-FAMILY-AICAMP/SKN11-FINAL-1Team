@@ -23,9 +23,9 @@
       <label style="font-size: 13px; font-weight: 500; color: #333; margin-left: 8px;">필터:</label>
       <select id="task-filter-status" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
         <option value="all">전체 상태</option>
-        <option value="진행 전">진행 전</option>
-        <option value="진행 중">진행 중</option>
-        <option value="검토 요청">검토 요청</option>
+        <option value="진행전">진행 전</option>
+        <option value="진행중">진행 중</option>
+        <option value="검토요청">검토 요청</option>
         <option value="완료">완료</option>
       </select>
       
@@ -41,7 +41,7 @@
     <div style="font-weight:bold; margin:18px 0 8px 0; color:#1976d2;">{{ week }}주차</div>
     {% for task in tasks %}
       {% if not task.parent %}
-      <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행 전' %}not-started{% elif task.status == '진행 중' %}in-progress{% elif task.status == '검토 요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
+      <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
         data-task-id="{{ task.id }}"
         data-title="{{ task.title|escapejs }}"
         data-desc="{{ task.description|default_if_none:''|escapejs }}"
@@ -52,7 +52,7 @@
         data-dday="{{ task.dday|default_if_none:'' }}"
         >
         <div class="task-card-header">
-          <span class="status-badge {% if task.status == '진행 전' %}not-started{% elif task.status == '진행 중' %}in-progress{% elif task.status == '검토 요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.status }}</span>
+          <span class="status-badge {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.status }}</span>
           <span class="task-title {% if task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.title }}</span>
           {% if task.dday is not None %}
             <span class="task-dday {% if task.dday <= 1 %}urgent{% elif task.dday <= 3 %}warning{% endif %}">
@@ -73,7 +73,7 @@
             <div class="subtask-list" style="display:none; margin:6px 0 0 10px;">
               {% for sub in direct_subtasks %}
                 <div class="subtask-item" data-task-id="{{ sub.task_assign_id }}" style="padding:4px 0 4px 12px; border-left:2px solid #e0e0e0; margin-bottom:2px; font-size:14px; color:#444; cursor:pointer; display: flex; align-items: center; gap: 6px;">
-                  <span class="status-badge {% if sub.status == '진행 전' %}not-started{% elif sub.status == '진행 중' %}in-progress{% elif sub.status == '검토 요청' %}review-requested{% elif sub.status == '완료' or sub.status == '완료됨' %}done{% endif %}" style="font-size: 11px; padding: 1px 8px;">{{ sub.status }}</span>
+                  <span class="status-badge {% if sub.status == '진행전' %}not-started{% elif sub.status == '진행중' %}in-progress{% elif sub.status == '검토요청' %}review-requested{% elif sub.status == '완료' or sub.status == '완료됨' %}done{% endif %}" style="font-size: 11px; padding: 1px 8px;">{{ sub.status }}</span>
                   <span class="subtask-title" style="flex: 1;">{{ sub.title }}</span>
                 </div>
               {% endfor %}
@@ -98,9 +98,9 @@
               <div style="flex:1;">
                 <label style="font-size:17px; color:#222;">상태</label>
                 <select id="subtask-status" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:7px; font-size:15px;">
-                  <option value="진행 전">진행 전</option>
-                  <option value="진행 중">진행 중</option>
-                  <option value="검토 요청">검토 요청</option>
+                  <option value="진행전">진행 전</option>
+                  <option value="진행중">진행 중</option>
+                  <option value="검토요청">검토 요청</option>
                   <option value="완료">완료</option>
                 </select>
               </div>
@@ -163,9 +163,9 @@
         <div style="flex:1;">
           <label style="font-weight:bold; color:#222;">상태</label>
           <select id="edit-status" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;">
-            <option value="진행 전">진행 전</option>
-            <option value="진행 중">진행 중</option>
-            <option value="검토 요청">검토 요청</option>
+            <option value="진행전">진행 전</option>
+            <option value="진행중">진행 중</option>
+            <option value="검토요청">검토 요청</option>
             <option value="완료">완료</option>
           </select>
         </div>

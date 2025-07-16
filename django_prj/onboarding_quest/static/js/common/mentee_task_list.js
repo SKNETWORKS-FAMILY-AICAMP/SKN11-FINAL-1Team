@@ -408,9 +408,9 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // 상태 배지 클래스 설정
           let statusBadgeClass = '';
-          if (status === '진행 전') statusBadgeClass = 'not-started';
-          else if (status === '진행 중') statusBadgeClass = 'in-progress';
-          else if (status === '검토 요청') statusBadgeClass = 'review-requested';
+          if (status === '진행전') statusBadgeClass = 'not-started';
+          else if (status === '진행중') statusBadgeClass = 'in-progress';
+          else if (status === '검토요청') statusBadgeClass = 'review-requested';
           else if (status === '완료' || status === '완료됨') statusBadgeClass = 'done';
           
           subDiv.innerHTML = `<span class="status-badge ${statusBadgeClass}" style="font-size: 11px; padding: 1px 8px;">${status}</span><span class="subtask-title" style="flex: 1;">${title}</span>`;
@@ -447,9 +447,9 @@ document.addEventListener('DOMContentLoaded', function() {
     currentTask = task;
     // 상태 뱃지 색상
     let statusClass = '';
-    if (task.status === '진행 전') statusClass = 'not-started';
-    else if (task.status === '진행 중') statusClass = 'in-progress';
-    else if (task.status === '검토 요청') statusClass = 'review-requested';
+    if (task.status === '진행전') statusClass = 'not-started';
+    else if (task.status === '진행중') statusClass = 'in-progress';
+    else if (task.status === '검토요청') statusClass = 'review-requested';
     else if (task.status === '완료' || task.status === '완료됨') statusClass = 'done';
     
     // 하위 태스크 생성 버튼 표시/숨김 제어
@@ -688,9 +688,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (statusBadge) {
               statusBadge.textContent = payload.status;
               statusBadge.className = 'status-badge';
-              if (payload.status === '진행 전') statusBadge.classList.add('not-started');
-              else if (payload.status === '진행 중') statusBadge.classList.add('in-progress');
-              else if (payload.status === '검토 요청') statusBadge.classList.add('review-requested');
+              if (payload.status === '진행전') statusBadge.classList.add('not-started');
+              else if (payload.status === '진행중') statusBadge.classList.add('in-progress');
+              else if (payload.status === '검토요청') statusBadge.classList.add('review-requested');
               else if (payload.status === '완료' || payload.status === '완료됨') statusBadge.classList.add('done');
             }
             // 제목
@@ -737,9 +737,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (descDiv) descDiv.textContent = payload.description || '';
             // 카드 전체 클래스(상태별)
             card.classList.remove('not-started','in-progress','review-requested','done');
-            if (payload.status === '진행 전') card.classList.add('not-started');
-            else if (payload.status === '진행 중') card.classList.add('in-progress');
-            else if (payload.status === '검토 요청') card.classList.add('review-requested');
+            if (payload.status === '진행전') card.classList.add('not-started');
+            else if (payload.status === '진행중') card.classList.add('in-progress');
+            else if (payload.status === '검토요청') card.classList.add('review-requested');
             else if (payload.status === '완료' || payload.status === '완료됨') card.classList.add('done');
           }
           
@@ -762,9 +762,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (subtaskStatusBadge) {
               subtaskStatusBadge.textContent = payload.status;
               subtaskStatusBadge.className = 'status-badge';
-              if (payload.status === '진행 전') subtaskStatusBadge.classList.add('not-started');
-              else if (payload.status === '진행 중') subtaskStatusBadge.classList.add('in-progress');
-              else if (payload.status === '검토 요청') subtaskStatusBadge.classList.add('review-requested');
+              if (payload.status === '진행전') subtaskStatusBadge.classList.add('not-started');
+              else if (payload.status === '진행중') subtaskStatusBadge.classList.add('in-progress');
+              else if (payload.status === '검토요청') subtaskStatusBadge.classList.add('review-requested');
               else if (payload.status === '완료' || payload.status === '완료됨') subtaskStatusBadge.classList.add('done');
             }
             const subtaskTitle = subtaskItem.querySelector('.subtask-title');

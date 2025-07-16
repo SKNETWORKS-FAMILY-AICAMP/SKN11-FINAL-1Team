@@ -72,7 +72,7 @@ def create_mentorship(request):
                 real_start_date=None,
                 real_end_date=None,
                 priority=t.priority,
-                status='진행 전'
+                status='진행전'
             )
         return JsonResponse({'success': True, 'mentorship_id': mentorship.mentorship_id})
     except Exception as e:

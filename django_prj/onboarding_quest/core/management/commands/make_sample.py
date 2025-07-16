@@ -516,7 +516,7 @@ class Command(BaseCommand):
                             order=task_manage.order,
                             scheduled_start_date=scheduled_start,
                             scheduled_end_date=scheduled_end,
-                            status='진행 전',
+                            status='진행전',
                             priority=task_manage.priority
                         )
                         
@@ -555,7 +555,7 @@ class Command(BaseCommand):
                                 order=idx + 1,
                                 scheduled_start_date=subtask_start,
                                 scheduled_end_date=subtask_end,
-                                status='진행 전',
+                                status='진행전',
                                 priority=task_manage.priority
                             )
                         

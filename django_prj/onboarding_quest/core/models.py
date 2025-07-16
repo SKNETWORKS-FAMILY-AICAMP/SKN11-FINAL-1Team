@@ -202,9 +202,9 @@ class TaskAssign(models.Model):
     real_start_date = models.DateField(null=True, blank=True, help_text='실제 시작일')
     real_end_date = models.DateField(null=True, blank=True, help_text='실제 종료일')
     STATUS_CHOICES = [
-        ('진행 전', '진행 전'),
-        ('진행 중', '진행 중'),
-        ('검토 요청', '검토 요청'),
+        ('진행전', '진행전'),
+        ('진행중', '진행중'),
+        ('검토요청', '검토요청'),
         ('완료', '완료'),
     ]
     status = models.CharField(
@@ -212,7 +212,7 @@ class TaskAssign(models.Model):
         choices=STATUS_CHOICES,
         null=True,
         blank=True,
-        help_text='과제 상태(진행 전/진행 중/검토요청/완료)'
+        help_text='과제 상태(진행전/진행중/검토요청/완료)'
     )
     PRIORITY_CHOICES = [
         ('상', '상'),
