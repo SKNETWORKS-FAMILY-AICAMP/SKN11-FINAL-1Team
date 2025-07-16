@@ -214,5 +214,9 @@
     </div>
   </div>
 </div>
+<script>
+// Django 템플릿 변수를 JavaScript로 전달
+window.mentorshipId = {% if mentorship_id %}'{{ mentorship_id }}'{% else %}null{% endif %};
+</script>
 <script src="{% static 'js/common/mentee_task_list.js' %}"></script>
 {% endblock %}

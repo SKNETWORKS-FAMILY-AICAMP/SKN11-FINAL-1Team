@@ -162,6 +162,7 @@ def task_list(request):
     context = {
         'week_tasks': dict(week_tasks),
         'selected_task': selected_task,
+        'mentorship_id': mentorship_id,
     }
     return render(request, 'mentee/task_list.html', context)
 
