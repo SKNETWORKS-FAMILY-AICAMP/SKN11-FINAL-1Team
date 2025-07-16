@@ -1,60 +1,38 @@
-/* ======================== 1. 문서 업로드 ======================== */
-/* 문서 업로드/목록 화면 전용 CSS (중복 제거) */
 .doc-container {
   display: flex;
   width: 100%;
   min-height: 600px;
 }
+
 .doc-left {
   flex: 1;
-  padding: 20px 20 20px 20px;
+  padding: 20px 20px 20px 20px;
   background: #fafbfc;
   border-radius: 18px 0 0 18px;
   min-width: 680px;
   max-width: 1200px;
   overflow-y: auto;
 }
+
 .doc-title {
   font-size: 1.3em;
   font-weight: bold;
   margin-bottom: 18px;
   color: #222;
 }
-/* ======================== 2. 추가된 파일 ======================== */
+
 .doc-upload-box {
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-  padding: 36px 32px 28px 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+  padding: 36px 32px 32px 32px;
+  /* 아래쪽 패딩 늘림 */
   margin-bottom: 28px;
   color: #555;
   font-size: 18px;
   text-align: center;
 }
-.doc-category-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.doc-category-btn {
-  background: #ffd600;
-  color: #222;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 18px;
-  font-weight: bold;
-  cursor: pointer;
-}
-/* ======================== 3. 등록된 파일 목록 ======================== */
-.doc-file-list {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  padding: 18px 20px;
-  font-size: 16px;
-  color: #222;
-  margin-bottom: 8px;
-}
+
 .doc-drop-area {
   border: 2.5px dashed #ffd600;
   border-radius: 14px;
@@ -67,28 +45,37 @@
   transition: background 0.2s, border-color 0.2s;
   cursor: pointer;
 }
+
 .doc-drop-area.dragover {
   background: #fffde7;
   border-color: #43a047;
   color: #43a047;
 }
-.doc-upload-list-table, .doc-file-list-table {
+
+.doc-upload-list-table,
+.doc-file-list-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 1.08em;
   margin-bottom: 10px;
 }
-.doc-upload-list-table th, .doc-upload-list-table td,
-.doc-file-list-table th, .doc-file-list-table td {
+
+.doc-upload-list-table th,
+.doc-upload-list-table td,
+.doc-file-list-table th,
+.doc-file-list-table td {
   border-bottom: 1px solid #eee;
   padding: 12px 8px;
   text-align: left;
 }
-.doc-upload-list-table th, .doc-file-list-table th {
+
+.doc-upload-list-table th,
+.doc-file-list-table th {
   background: #fafafa;
   font-weight: bold;
   font-size: 1.08em;
 }
+
 .doc-upload-btn {
   background: #ffd600;
   color: #222;
@@ -98,15 +85,53 @@
   font-weight: bold;
   font-size: 18px;
   cursor: pointer;
-  margin: 10px 0 18px 0;
-  float: right;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin: 20px 0 0 0;
+  /* 위쪽 마진만 유지 */
+  display: block;
+  /* float 제거 */
+  width: fit-content;
+  /* 적절한 너비 */
+  margin-left: auto;
+  /* 우측 정렬 */
+  margin-right: auto;
+  /* 중앙 정렬 원한다면 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: background 0.18s, box-shadow 0.18s;
 }
+
 .doc-upload-btn:hover {
   background: #ffe066;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
 }
+
+.doc-file-list {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 18px 20px;
+  font-size: 16px;
+  color: #222;
+  margin-bottom: 8px;
+}
+
+.doc-download-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.doc-download-link:hover {
+  color: #0056b3;
+  background-color: #e7f3ff;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
 .doc-file-list-table .doc-edit-btn {
   background: linear-gradient(90deg, #ffd600 60%, #ffe066 100%);
   color: #222;
@@ -117,12 +142,113 @@
   font-size: 1em;
   cursor: pointer;
   margin-right: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
 }
+
 .doc-file-list-table .doc-edit-btn:hover {
   background: linear-gradient(90deg, #ffe066 60%, #ffd600 100%);
   color: #111;
   transform: translateY(-2px) scale(1.06);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+}
+
+.doc-file-list-table .doc-delete-btn {
+  background: linear-gradient(90deg, #dc3545 60%, #e74c3c 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 18px;
+  font-weight: bold;
+  font-size: 1em;
+  cursor: pointer;
+  margin-left: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
+}
+
+.doc-file-list-table .doc-delete-btn:hover {
+  background: linear-gradient(90deg, #e74c3c 60%, #dc3545 100%);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 4px 16px rgba(220, 53, 69, 0.25);
+}
+
+.remove-file-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.remove-file-btn:hover {
+  background: #c82333;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  min-width: 300px;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.modal-content p {
+  margin: 0 0 20px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.modal-btn.cancel {
+  background: #6c757d;
+  color: white;
+}
+
+.modal-btn.cancel:hover {
+  background: #5a6268;
+}
+
+.modal-btn.confirm {
+  background: #dc3545;
+  color: white;
+}
+
+.modal-btn.confirm:hover {
+  background: #c82333;
 }

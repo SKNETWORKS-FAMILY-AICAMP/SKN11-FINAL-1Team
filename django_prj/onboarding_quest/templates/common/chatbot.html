@@ -5,75 +5,158 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/common/chatbot.css' %}">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    /* 페이지 로딩 시 깜박임 방지 */
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+    
+    /* 초기 로딩 시 부드러운 전환 */
+    .chatbot-container {
+        opacity: 0;
+        animation: pageLoad 0.3s ease forwards;
+    }
+    
+    @keyframes pageLoad {
+        to {
+            opacity: 1;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="chatbot-container">
-  <!-- 좌측: 채팅 세션 목록 (카드형) -->
-  <div class="chatbot-left">
-    <div class="chatbot-title">채팅 세션</div>
-    <div class="chatbot-session-list">
-      {% if chat_sessions %}
-        {% for session_data in chat_sessions %}
-          {% with session=session_data.session messages=session_data.messages %}
-            <div class="chatbot-session-item {% if forloop.first %}selected{% endif %}"
-                 data-session-id="{{ session.session_id }}"
-                 data-messages='[{% for msg in messages %}{"text":"{{ msg.message_text|escapejs }}","type":"{{ msg.message_type }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
-              <div class="chatbot-session-title">
-                {% if session.summary %}
-                  {{ session.summary }}
-                {% else %}
-                  채팅 세션 #{{ session.session_id }}
-                {% endif %}
-              </div>
-              <div class="chatbot-session-preview">
-                {% if messages %}
-                  {% with preview=None %}
-                    {% for msg in messages %}
-                      {% if msg.message_type == 'user' and not preview %}
-                        {% with preview=msg.message_text %}{% endwith %}
-                      {% endif %}
-                    {% endfor %}
-                    {% if preview %}
-                      {{ preview|truncatechars:50 }}
-                    {% else %}
-                      {{ session.create_time|date:'Y-m-d H:i' }}
+    <div class="chatbot-left">
+        <div class="chatbot-title">채팅 세션</div>
+        
+        <!-- 새 채팅 버튼 -->
+        <button class="new-chat-btn" onclick="createNewSession()">
+            <span class="plus-icon">+</span>
+            새 채팅
+        </button>
+        
+        <div class="chatbot-session-list">
+            {% if chat_sessions %}
+                {% for chat_session in chat_sessions %}
+                    <!-- 현재 세션 ID와 비교하여 선택 -->
+                    <div class="chatbot-session-item {% if current_session_id and current_session_id == chat_session.session.session_id|stringformat:'s' %}selected{% elif not current_session_id and forloop.first %}selected{% endif %}" 
+                         data-session-id="{{ chat_session.session.session_id }}">
+                        <div class="session-header">
+                            <div class="chatbot-session-title">{{ chat_session.session.summary|default:"새 채팅" }}</div>
+                            <button class="delete-session-btn" 
+                                    data-session-id="{{ chat_session.session.session_id }}"
+                                    onclick="deleteSession(this, event)">
+                                <span class="delete-icon">×</span>
+                            </button>
+                        </div>
+                        <div class="chatbot-session-preview">
+                            {% if chat_session.messages %}
+                                {{ chat_session.messages.last.message_text|truncatechars:40 }}
+                            {% else %}
+                                메시지가 없습니다.
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 메시지 데이터를 JSON으로 저장 -->
+                        <script type="application/json" class="session-messages">
+                            [
+                                {% for message in chat_session.messages %}
+                                {
+                                    "type": "{{ message.message_type }}",
+                                    "text": "{{ message.message_text|escapejs }}",
+                                    "time": "{{ message.create_time|date:'Y-m-d' }}"
+                                }{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            ]
+                        </script>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-sessions">채팅 세션이 없습니다.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chatbot-right">
+        <div class="chatbot-chat-area" id="chatbot-chat-area">
+            {% if chat_sessions %}
+                <!-- 현재 세션의 메시지 표시 -->
+                {% for chat_session in chat_sessions %}
+                    {% if current_session_id and current_session_id == chat_session.session.session_id|stringformat:'s' %}
+                        <!-- 현재 세션의 메시지 표시 -->
+                        {% for message in chat_session.messages %}
+                            <div class="chatbot-msg-row {% if message.message_type == 'user' %}user{% else %}bot{% endif %}">
+                                <div class="chatbot-msg-{% if message.message_type == 'user' %}user{% else %}chabot{% endif %}">
+                                    {{ message.message_text }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% elif not current_session_id and forloop.first %}
+                        <!-- 현재 세션 ID가 없으면 첫 번째 세션 표시 -->
+                        {% for message in chat_session.messages %}
+                            <div class="chatbot-msg-row {% if message.message_type == 'user' %}user{% else %}bot{% endif %}">
+                                <div class="chatbot-msg-{% if message.message_type == 'user' %}user{% else %}chabot{% endif %}">
+                                    {{ message.message_text }}
+                                </div>
+                            </div>
+                        {% endfor %}
                     {% endif %}
-                  {% endwith %}
-                {% else %}
-                  {{ session.create_time|date:'Y-m-d H:i' }}
-                {% endif %}
-              </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-chat">새 채팅을 시작해보세요!</div>
+            {% endif %}
+        </div>
+
+        <!-- 로딩 메시지 영역 (파도타기 애니메이션) -->
+        <div class="loading-message" id="loading-message" style="display: none;">
+            <div class="chatbot-msg-row bot">
+                <div class="chatbot-msg-chabot">
+                    <div class="loading-wave">
+                        <span style="--i:0">답</span>
+                        <span style="--i:1">변</span>
+                        <span style="--i:2">을</span>
+                        <span style="--i:3">&nbsp;</span>
+                        <span style="--i:4">생</span>
+                        <span style="--i:5">성</span>
+                        <span style="--i:6">하</span>
+                        <span style="--i:7">고</span>
+                        <span style="--i:8">&nbsp;</span>
+                        <span style="--i:9">있</span>
+                        <span style="--i:10">습</span>
+                        <span style="--i:11">니</span>
+                        <span style="--i:12">다</span>
+                        <span style="--i:13">.</span>
+                        <span style="--i:14">.</span>
+                        <span style="--i:15">.</span>
+                    </div>
+                </div>
             </div>
-          {% endwith %}
-        {% endfor %}
-      {% else %}
-        <div class="no-sessions">채팅 세션이 없습니다.</div>
-      {% endif %}
+        </div>
+
+        <!-- 선택된 세션 ID 전송 -->
+        <form method="post" class="chatbot-form-row" id="chatbot-form">
+            {% csrf_token %}
+            <input type="hidden" name="session_id" id="selected-session-id" value="{% if current_session_id %}{{ current_session_id }}{% elif chat_sessions %}{{ chat_sessions.0.session.session_id }}{% endif %}">
+            <input type="text" name="message" placeholder="메시지를 입력하세요..." class="chatbot-input" id="chatbot-input" required>
+            <button type="submit" class="chatbot-send-btn">전송</button>
+        </form>
     </div>
-  </div>
-  
-  <!-- 우측: 채팅 대화 영역 (카드형) -->
-  <div class="chatbot-right">
-    <div class="chatbot-chat-area" id="chatbot-chat-area">
-      {% if chat_sessions %}
-        {% with messages=chat_sessions.0.messages %}
-          {% for msg in messages %}
-            <div class="chatbot-msg-row {% if msg.message_type == 'user' %}user{% else %}bot{% endif %}">
-              <div class="chatbot-msg-{{ msg.message_type }}">{{ msg.message_text }}</div>
-            </div>
-          {% endfor %}
-        {% endwith %}
-      {% else %}
-        <div class="empty-chat">채팅 세션을 선택해주세요.</div>
-      {% endif %}
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal-overlay" id="deleteModal" style="display: none;">
+    <div class="modal-content">
+        <h3>채팅 세션 삭제</h3>
+        <p>이 채팅 세션을 삭제하시겠습니까?<br>삭제된 세션은 복구할 수 없습니다.</p>
+        <div class="modal-buttons">
+            <button class="modal-btn cancel" onclick="closeDeleteModal()">취소</button>
+            <button class="modal-btn confirm" onclick="confirmDelete()">삭제</button>
+        </div>
     </div>
-    <form method="post" class="chatbot-form-row">
-      {% csrf_token %}
-      <input type="text" name="message" class="chatbot-input" placeholder="메시지를 입력하세요..." required>
-      <button type="submit" class="chatbot-send-btn">전송</button>
-    </form>
-  </div>
 </div>
 
 <script src="{% static 'js/common/chatbot.js' %}"></script>

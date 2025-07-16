@@ -1,4 +1,5 @@
 import logging
+import os
 
 # .well-known 경로 404 로그 무시용 필터
 class IgnoreWellKnown(logging.Filter):
@@ -72,6 +73,7 @@ INSTALLED_APPS = [
     'common',
     'mentor',
     'mentee',
+    'chatbot_backend',
 ]
 
 MIDDLEWARE = [
@@ -161,3 +163,13 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+# 미디어 파일 설정
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# 파일 업로드 크기 제한
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB

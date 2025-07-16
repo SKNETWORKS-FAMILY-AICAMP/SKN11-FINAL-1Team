@@ -17,6 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from account import views as account_views
+from django.conf.urls.static import static
+from django.conf import settings
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,4 +30,10 @@ urlpatterns = [
     path('mentee/', include('mentee.urls')),
     path('account/', include('account.urls')),
     path('common/', include('common.urls')),
+    path("chatbot/", include("chatbot_backend.urls")),
+
 ]
+
+# 미디어 파일 서빙 설정 추가
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
