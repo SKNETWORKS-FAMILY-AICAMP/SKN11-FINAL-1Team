@@ -42,7 +42,7 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
-#endregion 로그인/로그아웃
+#endregion 로그인/로그아웃 
 
 
 
