@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}부서 수정 - 온보딩 퀘스트 시스템{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">부서 수정</h1>
+        <p class="text-gray-600">부서 정보를 수정합니다.</p>
+    </div>
+
+    <!-- 에러 메시지 -->
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <strong>오류:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">부서 정보 수정</h2>
+        <form method="POST" action="/forms/departments/{{ department.department_id }}/edit" class="space-y-4">
+            <div>
+                <label for="department_name" class="block text-sm font-medium text-gray-700 mb-2">부서명</label>
+                <input type="text" 
+                       id="department_name" 
+                       name="department_name" 
+                       value="{{ department.department_name }}"
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                       placeholder="부서명을 입력하세요">
+            </div>
+            
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-2">설명 (선택사항)</label>
+                <textarea id="description" 
+                          name="description" 
+                          rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="부서에 대한 설명을 입력하세요">{{ department.description or '' }}</textarea>
+            </div>
+            
+            <div>
+                <label for="company_id" class="block text-sm font-medium text-gray-700 mb-2">소속 회사</label>
+                <select id="company_id" 
+                        name="company_id" 
+                        required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <option value="">회사를 선택하세요</option>
+                    {% for company in companies %}
+                    <option value="{{ company.company_id }}" 
+                            {% if company.company_id == department.company_id %}selected{% endif %}>
+                        {{ company.company_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="flex gap-4">
+                <button type="submit" 
+                        class="flex-1 bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors">
+                    부서 수정
+                </button>
+                <a href="/forms/departments" 
+                   class="flex-1 text-center py-2 px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
+                    취소
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 현재 부서 정보 -->
+    <div class="mt-8 bg-gray-50 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">현재 부서 정보</h3>
+        <div class="space-y-2">
+            <div class="flex justify-between">
+                <span class="text-gray-600">부서 ID:</span>
+                <span class="text-gray-900">{{ department.department_id }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">부서명:</span>
+                <span class="text-gray-900">{{ department.department_name }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">설명:</span>
+                <span class="text-gray-900">{{ department.description or '없음' }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">소속 회사:</span>
+                <span class="text-gray-900">{{ department.company.company_name if department.company else '없음' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 관련 링크 -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="/forms/departments" class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🏛️</span>
+                <div>
+                    <h3 class="font-semibold text-gray-900">부서 관리</h3>
+                    <p class="text-sm text-gray-600">부서 목록으로 돌아가기</p>
+                </div>
+            </div>
+        </a>
+        
+        <a href="/forms/users" class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">👤</span>
+                <div>
+                    <h3 class="font-semibold text-gray-900">사용자 관리</h3>
+                    <p class="text-sm text-gray-600">부서 사용자 관리</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
