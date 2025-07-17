@@ -13,18 +13,79 @@
     <div class="login-box">
         <h2>로그인</h2>
         {% if messages %}
-            <div class="message">
+            <div class="message" id="message-container">
                 {% for message in messages %}{{ message }}{% endfor %}
             </div>
         {% endif %}
-        <form method="POST">
+        <div id="ajax-message-container" class="message" style="display: none;"></div>
+        <form id="login-form" method="POST">
             {% csrf_token %}
             <label for="email">이메일</label>
-            <input type="email" name="email" required>
+            <input type="email" name="email" id="email" required>
             <label for="password">비밀번호</label>
-            <input type="password" name="password" required>
-            <button type="submit" class="btn-login">로그인</button>
+            <input type="password" name="password" id="password" required>
+            <button type="submit" class="btn-login" id="login-btn">
+                <span class="btn-text">로그인</span>
+                <span class="loading-spinner" style="display: none;">⏳</span>
+            </button>
         </form>
     </div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const loginBtn = document.getElementById('login-btn');
+    const btnText = loginBtn.querySelector('.btn-text');
+    const spinner = loginBtn.querySelector('.loading-spinner');
+    const messageContainer = document.getElementById('ajax-message-container');
+    
+    // 로딩 상태 시작
+    btnText.style.display = 'none';
+    spinner.style.display = 'inline';
+    loginBtn.disabled = true;
+    messageContainer.style.display = 'none';
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // 성공 시 리다이렉트
+            messageContainer.textContent = '로그인 성공! 페이지를 이동합니다...';
+            messageContainer.className = 'message success';
+            messageContainer.style.display = 'block';
+            
+            setTimeout(() => {
+                window.location.href = data.redirect_url || '/';
+            }, 1000);
+        } else {
+            // 실패 시 에러 메시지 표시
+            messageContainer.textContent = data.error || '로그인에 실패했습니다.';
+            messageContainer.className = 'message error';
+            messageContainer.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        messageContainer.textContent = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+        messageContainer.className = 'message error';
+        messageContainer.style.display = 'block';
+    } finally {
+        // 로딩 상태 종료
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+        loginBtn.disabled = false;
+    }
+});
+</script>
 </body>
 </html>

@@ -142,7 +142,13 @@
             {% csrf_token %}
             <input type="hidden" name="session_id" id="selected-session-id" value="{% if current_session_id %}{{ current_session_id }}{% elif chat_sessions %}{{ chat_sessions.0.session.session_id }}{% endif %}">
             <input type="text" name="message" placeholder="메시지를 입력하세요..." class="chatbot-input" id="chatbot-input" required>
-            <button type="submit" class="chatbot-send-btn">전송</button>
+            <button type="submit" class="chatbot-send-btn" id="send-btn">
+                <span class="btn-text">전송</span>
+                <span class="btn-loading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    전송중...
+                </span>
+            </button>
         </form>
     </div>
 </div>
@@ -160,4 +166,131 @@
 </div>
 
 <script src="{% static 'js/common/chatbot.js' %}"></script>
+
+<script>
+// CSRF 토큰 가져오기
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 메시지 표시 함수
+function displayMessage(type, text, time) {
+    const chatArea = document.querySelector('.chatbot-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chatbot-message ${type}`;
+    
+    const timeStr = time || new Date().toLocaleDateString();
+    messageDiv.innerHTML = `
+        <div class="message-text">${text}</div>
+        <div class="message-time">${timeStr}</div>
+    `;
+    
+    chatArea.appendChild(messageDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// 챗봇 폼 AJAX 처리
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chatbot-form');
+    const chatInput = document.getElementById('chatbot-input');
+    const sendBtn = document.getElementById('send-btn');
+    const btnText = sendBtn.querySelector('.btn-text');
+    const btnLoading = sendBtn.querySelector('.btn-loading');
+    
+    if (chatForm) {
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(chatForm);
+            const message = formData.get('message');
+            
+            if (!message.trim()) return;
+            
+            // 로딩 상태 시작
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            sendBtn.disabled = true;
+            chatInput.disabled = true;
+            
+            // 사용자 메시지 즉시 표시
+            displayMessage('user', message);
+            chatInput.value = '';
+            
+            try {
+                const response = await fetch(window.location.pathname, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        // 봇 응답 표시
+                        displayMessage('bot', result.response);
+                        
+                        // 세션 정보 업데이트 (필요시)
+                        if (result.session_id) {
+                            document.getElementById('selected-session-id').value = result.session_id;
+                        }
+                    } else {
+                        throw new Error(result.error || '메시지 전송에 실패했습니다.');
+                    }
+                } else {
+                    throw new Error('서버 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('챗봇 오류:', error);
+                displayMessage('bot', '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.');
+            } finally {
+                // 로딩 상태 종료
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                sendBtn.disabled = false;
+                chatInput.disabled = false;
+                chatInput.focus();
+            }
+        });
+    }
+});
+
+// 로딩 스피너 스타일 추가
+const style = document.createElement('style');
+style.textContent = `
+.loading-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff33;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+}
+`;
+document.head.appendChild(style);
+</script>
 {% endblock %}

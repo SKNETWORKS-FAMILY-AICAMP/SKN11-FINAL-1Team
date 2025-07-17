@@ -41,7 +41,8 @@
         </div>
         <div class="flex justify-end">
             <button onclick="searchMentorships()" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-                검색
+                <span class="search-text">검색</span>
+                <span class="loading-spinner" style="display: none;">⏳</span>
             </button>
         </div>
     </div>
@@ -98,9 +99,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button onclick="editMentorship({{ mentorship.mentorship_id }})" 
-                                    class="text-indigo-600 hover:text-indigo-900 mr-3">수정</button>
+                                    class="text-indigo-600 hover:text-indigo-900 mr-3 action-btn">수정</button>
                             <button onclick="deleteMentorship({{ mentorship.mentorship_id }})" 
-                                    class="text-red-600 hover:text-red-900">삭제</button>
+                                    class="text-red-600 hover:text-red-900 action-btn">삭제</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -185,7 +186,10 @@
             </div>
             <div class="flex justify-end space-x-2">
                 <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">취소</button>
-                <button onclick="saveMentorship()" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">저장</button>
+                <button onclick="saveMentorship()" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600" id="save-btn">
+                    <span class="save-text">저장</span>
+                    <span class="loading-spinner" style="display: none;">⏳</span>
+                </button>
             </div>
         </div>
     </div>
@@ -193,5 +197,238 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/account/manage_mentorship.js' %}"></script>
+<script>
+// AJAX 기반 멘토쉽 검색
+async function searchMentorships() {
+    const searchBtn = document.querySelector('.search-text').parentElement;
+    const searchText = searchBtn.querySelector('.search-text');
+    const spinner = searchBtn.querySelector('.loading-spinner');
+    
+    // 로딩 상태
+    searchText.style.display = 'none';
+    spinner.style.display = 'inline';
+    searchBtn.disabled = true;
+    
+    const departmentFilter = document.getElementById('department-filter').value;
+    const isActiveFilter = document.getElementById('is-active-filter').value;
+    
+    const params = new URLSearchParams();
+    if (departmentFilter) params.append('department_id', departmentFilter);
+    if (isActiveFilter) params.append('is_active', isActiveFilter);
+    
+    try {
+        const response = await fetch(`${window.location.pathname}?${params.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        if (response.ok) {
+            const html = await response.text();
+            // 테이블 부분만 업데이트
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTableBody = doc.querySelector('#mentorship-table tbody');
+            const currentTableBody = document.querySelector('#mentorship-table tbody');
+            
+            if (newTableBody && currentTableBody) {
+                currentTableBody.innerHTML = newTableBody.innerHTML;
+                showMessage('검색이 완료되었습니다.', 'success');
+            }
+        } else {
+            throw new Error('검색 요청 실패');
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        showMessage('검색 중 오류가 발생했습니다.', 'error');
+    } finally {
+        // 로딩 상태 해제
+        searchText.style.display = 'inline';
+        spinner.style.display = 'none';
+        searchBtn.disabled = false;
+    }
+}
+
+// AJAX 기반 멘토쉽 삭제
+async function deleteMentorship(mentorshipId) {
+    if (!confirm('정말로 이 멘토쉽을 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    const row = document.querySelector(`tr[data-mentorship-id="${mentorshipId}"]`);
+    const deleteBtn = row.querySelector('.action-btn:last-child');
+    
+    // 버튼 비활성화
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = '삭제 중...';
+    
+    try {
+        const response = await fetch(`/account/mentorship/${mentorshipId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // 행 제거 애니메이션
+            row.style.opacity = '0.5';
+            row.style.transition = 'opacity 0.3s';
+            setTimeout(() => {
+                row.remove();
+                showMessage('멘토쉽이 삭제되었습니다.', 'success');
+            }, 300);
+        } else {
+            throw new Error(data.error || '삭제 실패');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        showMessage('삭제 중 오류가 발생했습니다.', 'error');
+        // 버튼 복구
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = '삭제';
+    }
+}
+
+// AJAX 기반 멘토쉽 저장
+async function saveMentorship() {
+    const saveBtn = document.getElementById('save-btn');
+    const saveText = saveBtn.querySelector('.save-text');
+    const spinner = saveBtn.querySelector('.loading-spinner');
+    
+    // 로딩 상태
+    saveText.style.display = 'none';
+    spinner.style.display = 'inline';
+    saveBtn.disabled = true;
+    
+    const formData = new FormData(document.getElementById('edit-form'));
+    const mentorshipId = document.getElementById('edit-mentorship-id').value;
+    
+    try {
+        const response = await fetch(`/account/mentorship/${mentorshipId}/update/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeEditModal();
+            showMessage('멘토쉽이 업데이트되었습니다.', 'success');
+            // 페이지 새로고침 대신 해당 행만 업데이트
+            await refreshMentorshipRow(mentorshipId);
+        } else {
+            throw new Error(data.error || '저장 실패');
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        showMessage('저장 중 오류가 발생했습니다.', 'error');
+    } finally {
+        // 로딩 상태 해제
+        saveText.style.display = 'inline';
+        spinner.style.display = 'none';
+        saveBtn.disabled = false;
+    }
+}
+
+// 특정 멘토쉽 행만 새로고침
+async function refreshMentorshipRow(mentorshipId) {
+    try {
+        const response = await fetch(`/account/mentorship/${mentorshipId}/detail/`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateMentorshipRow(mentorshipId, data.mentorship);
+        }
+    } catch (error) {
+        console.error('Refresh row error:', error);
+        // 실패 시 전체 페이지 새로고침
+        window.location.reload();
+    }
+}
+
+// 멘토쉽 행 업데이트
+function updateMentorshipRow(mentorshipId, mentorship) {
+    const row = document.querySelector(`tr[data-mentorship-id="${mentorshipId}"]`);
+    if (!row) return;
+    
+    // 상태 업데이트
+    const statusCell = row.querySelector('td:nth-child(6) span');
+    if (statusCell) {
+        statusCell.className = `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+            mentorship.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`;
+        statusCell.textContent = mentorship.is_active ? '활성' : '비활성';
+    }
+}
+
+// 메시지 표시 함수
+function showMessage(message, type = 'info') {
+    // 기존 메시지 제거
+    const existingMessage = document.querySelector('.toast-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // 새 메시지 생성
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `toast-message fixed top-4 right-4 px-4 py-2 rounded-md text-white z-50 ${
+        type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    }`;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        messageDiv.style.transition = 'opacity 0.3s';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 3000);
+}
+
+// CSRF 토큰 가져오기
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ||
+           getCookie('csrftoken');
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 모달 관련 기존 함수들
+function editMentorship(mentorshipId) {
+    // 기존 모달 열기 로직...
+    document.getElementById('edit-modal').classList.remove('hidden');
+    document.getElementById('edit-mentorship-id').value = mentorshipId;
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+}
+</script>
 {% endblock %}

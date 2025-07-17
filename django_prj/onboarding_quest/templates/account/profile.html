@@ -103,7 +103,13 @@
       <div id="passwordError" class="text-red-600 text-sm mb-2"></div>
       <div class="flex justify-end gap-2">
         <button type="button" id="cancelPasswordModal" class="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">취소</button>
-        <button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">변경</button>
+        <button type="submit" id="password-submit-btn" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+          <span class="btn-text">변경</span>
+          <span class="btn-loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            변경중...
+          </span>
+        </button>
       </div>
     </form>
   </div>
@@ -130,7 +136,17 @@ document.getElementById('passwordChangeForm').onsubmit = async function(e) {
   const data = new FormData(form);
   const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
   const errorDiv = document.getElementById('passwordError');
+  const submitBtn = document.getElementById('password-submit-btn');
+  const btnText = submitBtn.querySelector('.btn-text');
+  const btnLoading = submitBtn.querySelector('.btn-loading');
+  
   errorDiv.textContent = '';
+  
+  // 로딩 상태 시작
+  btnText.style.display = 'none';
+  btnLoading.style.display = 'inline-flex';
+  submitBtn.disabled = true;
+  
   try {
     const response = await fetch("{% url 'account:password_change' %}", {
       method: 'POST',
@@ -142,12 +158,49 @@ document.getElementById('passwordChangeForm').onsubmit = async function(e) {
     });
     const result = await response.json();
     if (result.success) {
-      window.location.href = result.redirect_url;
+      // 성공 메시지 표시
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'alert alert-success';
+      messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        background-color: #28a745;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+      `;
+      messageDiv.textContent = '비밀번호가 성공적으로 변경되었습니다!';
+      
+      document.body.appendChild(messageDiv);
+      
+      // 슬라이드 인 애니메이션
+      setTimeout(() => {
+        messageDiv.style.transform = 'translateX(0)';
+      }, 10);
+      
+      // 모달 닫기
+      document.getElementById('passwordModal').classList.add('hidden');
+      
+      // 2초 후 리다이렉트
+      setTimeout(() => {
+        window.location.href = result.redirect_url;
+      }, 2000);
     } else {
       errorDiv.textContent = (result.errors && result.errors.length) ? result.errors.join('\n') : '비밀번호 변경에 실패했습니다.';
     }
   } catch (err) {
+    console.error('비밀번호 변경 오류:', err);
     errorDiv.textContent = '서버 오류가 발생했습니다.';
+  } finally {
+    // 로딩 상태 종료
+    btnText.style.display = 'inline';
+    btnLoading.style.display = 'none';
+    submitBtn.disabled = false;
   }
 };
 
@@ -196,5 +249,30 @@ document.addEventListener('DOMContentLoaded', function() {
   // 초기 태그 미리보기
   updateTagPreview();
 });
+
+// 로딩 스피너 스타일 추가
+const style = document.createElement('style');
+style.textContent = `
+.loading-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff33;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+}
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %}

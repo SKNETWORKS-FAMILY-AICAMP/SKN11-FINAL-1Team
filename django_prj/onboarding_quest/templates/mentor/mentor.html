@@ -19,9 +19,15 @@
       <div class="search-container">
         <div class="search-box">
           <span class="search-icon">🔍</span>
-          <input type="text" placeholder="멘티 이름을 검색해주세요...">
+          <input type="text" id="mentee-search" placeholder="멘티 이름을 검색해주세요...">
         </div>
-        <button class="filter-btn">🔎 검색</button>
+        <button class="filter-btn" id="search-btn">
+          <span class="btn-text">🔎 검색</span>
+          <span class="btn-loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            검색중...
+          </span>
+        </button>
       </div>
 
       <div class="mentors-grid">
@@ -59,4 +65,185 @@
       </div>
     </div>
   </div>
+
+<script>
+// CSRF 토큰 가져오기
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 멘티 검색 AJAX 처리
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('mentee-search');
+    const searchBtn = document.getElementById('search-btn');
+    const btnText = searchBtn.querySelector('.btn-text');
+    const btnLoading = searchBtn.querySelector('.btn-loading');
+    const mentorsGrid = document.querySelector('.mentors-grid');
+    
+    // 검색 함수
+    async function searchMentees(query = '') {
+        // 로딩 상태 시작
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline-flex';
+        searchBtn.disabled = true;
+        
+        try {
+            const response = await fetch(`/mentor/?search=${encodeURIComponent(query)}`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    // 멘티 카드 업데이트
+                    updateMenteeCards(result.mentee_cards);
+                } else {
+                    throw new Error(result.error || '검색에 실패했습니다.');
+                }
+            } else {
+                throw new Error('서버 오류가 발생했습니다.');
+            }
+        } catch (error) {
+            console.error('멘티 검색 오류:', error);
+            // 오류 시 전체 페이지 새로고침
+            window.location.reload();
+        } finally {
+            // 로딩 상태 종료
+            btnText.style.display = 'inline';
+            btnLoading.style.display = 'none';
+            searchBtn.disabled = false;
+        }
+    }
+    
+    // 멘티 카드 업데이트 함수
+    function updateMenteeCards(cards) {
+        if (!mentorsGrid) return;
+        
+        // 기존 카드들을 페이드 아웃
+        mentorsGrid.style.opacity = '0.5';
+        
+        setTimeout(() => {
+            mentorsGrid.innerHTML = '';
+            
+            if (cards.length === 0) {
+                mentorsGrid.innerHTML = `
+                    <div class="no-results" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #6b7280;">
+                        검색 결과가 없습니다.
+                    </div>
+                `;
+            } else {
+                cards.forEach(card => {
+                    const cardElement = createMenteeCard(card);
+                    mentorsGrid.appendChild(cardElement);
+                });
+            }
+            
+            // 페이드 인
+            mentorsGrid.style.opacity = '1';
+        }, 200);
+    }
+    
+    // 멘티 카드 생성 함수
+    function createMenteeCard(card) {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'mentor-card cursor-pointer hover:shadow-lg transition';
+        cardDiv.onclick = () => window.location.href = `/mentee/task_list/?mentorship_id=${card.mentorship_id}`;
+        
+        const tagsHtml = card.tags.map(tag => 
+            `<span class="tag bg-gray-100 text-xs px-2 py-1 rounded">${tag}</span>`
+        ).join('');
+        
+        cardDiv.innerHTML = `
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">커리큘럼: ${card.curriculum_title}</span>
+                <span class="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">총 주차: ${card.total_weeks}주</span>
+            </div>
+            <div class="flex items-center gap-4 mb-4">
+                <div class="mentor-avatar"></div>
+                <div class="flex flex-col justify-center">
+                    <div class="mentor-name font-bold mb-1">${card.name}</div>
+                    <div class="flex items-center gap-2">
+                        ${tagsHtml}
+                    </div>
+                </div>
+                <div class="ml-auto flex items-center gap-2">
+                    <span class="bg-red-200 text-gray-800 text-xs font-bold px-3 py-1 rounded">${card.dday}</span>
+                </div>
+            </div>
+            <div class="w-32 flex items-center gap-2">
+                <div>
+                    <div class="progress-label text-lg text-gray-500 mb-2">진척도</div>
+                    <div class="progress-bar bg-gray-200 rounded-full h-2 w-72">
+                        <div class="progress-fill bg-green-500 h-2 rounded-full" style="width: ${card.progress}%;"></div>
+                    </div>
+                    <span class="text-lg text-gray-600 font-bold mt-7">${card.progress}%</span>
+                </div>
+            </div>
+        `;
+        
+        return cardDiv;
+    }
+    
+    // 검색 버튼 클릭 이벤트
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function() {
+            const query = searchInput.value.trim();
+            searchMentees(query);
+        });
+    }
+    
+    // 엔터 키 검색
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                searchMentees(query);
+            }
+        });
+    }
+});
+
+// 로딩 스피너 스타일 추가
+const style = document.createElement('style');
+style.textContent = `
+.loading-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff33;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+}
+
+.mentors-grid {
+    transition: opacity 0.2s ease;
+}
+`;
+document.head.appendChild(style);
+</script>
 {% endblock %}

@@ -13,7 +13,13 @@
   <div class="template-left">
     <div class="template-list-row">
       <span class="template-title">커리큘럼 목록</span>
-      <button class="add-template-btn">커리큘럼 생성</button>
+      <button class="add-template-btn" id="add-template-btn">
+        <span class="btn-text">커리큘럼 생성</span>
+        <span class="btn-loading" style="display: none;">
+          <div class="loading-spinner"></div>
+          생성중...
+        </span>
+      </button>
     </div>
     <div class="template-list" id="template-list">
       {% for curriculum in curriculums %}
@@ -41,9 +47,27 @@
   <div class="template-right">
     <div class="template-detail-header">
       <div class="template-detail-header-buttons">
-        <button class="template-btn">복제</button>
-        <button class="template-btn">삭제</button>
-        <button class="template-edit-btn">커리큘럼 편집</button>
+        <button class="template-btn" id="clone-btn">
+          <span class="btn-text">복제</span>
+          <span class="btn-loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            복제중...
+          </span>
+        </button>
+        <button class="template-btn" id="delete-btn">
+          <span class="btn-text">삭제</span>
+          <span class="btn-loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            삭제중...
+          </span>
+        </button>
+        <button class="template-edit-btn" id="edit-btn">
+          <span class="btn-text">커리큘럼 편집</span>
+          <span class="btn-loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            로딩중...
+          </span>
+        </button>
       </div>
     </div>
     
@@ -53,10 +77,304 @@
   </div>
 </div>
 
-<!-- 커리큘럼 작업 데이터를 JavaScript에 전달 -->
 <script>
   // curriculumTasksData는 { [curriculum_id]: [ { week, title, guideline, description, period, priority, ... } ] } 형태여야 합니다.
   window.curriculumTasksData = {% if curriculum_tasks_json %}{{ curriculum_tasks_json|safe }}{% else %}{}{% endif %};
+</script>
+
+<script>
+// CSRF 토큰 가져오기
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 메시지 표시 함수
+function showMessage(message, type = 'success') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `alert alert-${type}`;
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+        ${type === 'success' ? 'background-color: #28a745;' : 'background-color: #dc3545;'}
+    `;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 슬라이드 인 애니메이션
+    setTimeout(() => {
+        messageDiv.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        messageDiv.style.transform = 'translateX(100%)';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 3000);
+}
+
+// 커리큘럼 관리 AJAX 처리
+document.addEventListener('DOMContentLoaded', function() {
+    let selectedCurriculumId = null;
+    
+    // 커리큘럼 선택 처리
+    const templateItems = document.querySelectorAll('.template-item');
+    templateItems.forEach(item => {
+        item.addEventListener('click', function() {
+            templateItems.forEach(i => i.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedCurriculumId = this.dataset.curriculum_id;
+            loadCurriculumDetail(selectedCurriculumId);
+        });
+    });
+    
+    // 커리큘럼 생성 버튼
+    const addBtn = document.getElementById('add-template-btn');
+    if (addBtn) {
+        addBtn.addEventListener('click', function() {
+            window.location.href = '/mentor/add_template/';
+        });
+    }
+    
+    // 커리큘럼 복제 버튼
+    const cloneBtn = document.getElementById('clone-btn');
+    if (cloneBtn) {
+        cloneBtn.addEventListener('click', async function() {
+            if (!selectedCurriculumId) {
+                showMessage('복제할 커리큘럼을 선택해주세요.', 'error');
+                return;
+            }
+            
+            const btnText = this.querySelector('.btn-text');
+            const btnLoading = this.querySelector('.btn-loading');
+            
+            // 로딩 상태 시작
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            this.disabled = true;
+            
+            try {
+                const response = await fetch(`/mentor/api/clone_curriculum/${selectedCurriculumId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        showMessage('커리큘럼이 성공적으로 복제되었습니다!');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error(result.error || '커리큘럼 복제에 실패했습니다.');
+                    }
+                } else {
+                    throw new Error('서버 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('커리큘럼 복제 오류:', error);
+                showMessage(error.message || '커리큘럼 복제 중 오류가 발생했습니다.', 'error');
+            } finally {
+                // 로딩 상태 종료
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                this.disabled = false;
+            }
+        });
+    }
+    
+    // 커리큘럼 삭제 버튼
+    const deleteBtn = document.getElementById('delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async function() {
+            if (!selectedCurriculumId) {
+                showMessage('삭제할 커리큘럼을 선택해주세요.', 'error');
+                return;
+            }
+            
+            if (!confirm('이 커리큘럼을 삭제하시겠습니까? 삭제된 커리큘럼은 복구할 수 없습니다.')) {
+                return;
+            }
+            
+            const btnText = this.querySelector('.btn-text');
+            const btnLoading = this.querySelector('.btn-loading');
+            
+            // 로딩 상태 시작
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            this.disabled = true;
+            
+            try {
+                const response = await fetch(`/mentor/api/delete_curriculum/${selectedCurriculumId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        showMessage('커리큘럼이 성공적으로 삭제되었습니다!');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error(result.error || '커리큘럼 삭제에 실패했습니다.');
+                    }
+                } else {
+                    throw new Error('서버 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('커리큘럼 삭제 오류:', error);
+                showMessage(error.message || '커리큘럼 삭제 중 오류가 발생했습니다.', 'error');
+            } finally {
+                // 로딩 상태 종료
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                this.disabled = false;
+            }
+        });
+    }
+    
+    // 커리큘럼 편집 버튼
+    const editBtn = document.getElementById('edit-btn');
+    if (editBtn) {
+        editBtn.addEventListener('click', function() {
+            if (!selectedCurriculumId) {
+                showMessage('편집할 커리큘럼을 선택해주세요.', 'error');
+                return;
+            }
+            
+            window.location.href = `/mentor/add_template/${selectedCurriculumId}/`;
+        });
+    }
+    
+    // 커리큘럼 상세 정보 로딩
+    function loadCurriculumDetail(curriculumId) {
+        const detailContainer = document.getElementById('curriculum-detail');
+        const item = document.querySelector(`.template-item[data-curriculum_id="${curriculumId}"]`);
+        
+        if (!item) return;
+        
+        const title = item.dataset.title || '제목 없음';
+        const description = item.dataset.desc || '설명 없음';
+        const weeks = item.dataset.weeks || '주차 정보 없음';
+        const isCommon = item.dataset.common === 'True';
+        
+        detailContainer.innerHTML = `
+            <div class="curriculum-info">
+                <h3 class="curriculum-title">${title}</h3>
+                ${isCommon ? '<span class="common-badge">공용 커리큘럼</span>' : ''}
+                <div class="curriculum-description">
+                    <h4>설명</h4>
+                    <p>${description}</p>
+                </div>
+                <div class="curriculum-weeks">
+                    <h4>주차 일정</h4>
+                    <pre>${weeks}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 첫 번째 커리큘럼 자동 선택
+    if (templateItems.length > 0) {
+        templateItems[0].click();
+    }
+});
+
+// 로딩 스피너 스타일 추가
+const style = document.createElement('style');
+style.textContent = `
+.loading-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff33;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+}
+
+.curriculum-info {
+    padding: 20px;
+}
+
+.curriculum-title {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.common-badge {
+    background: #28a745;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-left: 10px;
+}
+
+.curriculum-description,
+.curriculum-weeks {
+    margin: 20px 0;
+}
+
+.curriculum-description h4,
+.curriculum-weeks h4 {
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.curriculum-description p {
+    line-height: 1.6;
+    color: #555;
+}
+
+.curriculum-weeks pre {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    color: #555;
+}
+`;
+document.head.appendChild(style);
 </script>
 <script src="{% static 'js/mentor/manage_template.js' %}"></script>
 {% endblock %}

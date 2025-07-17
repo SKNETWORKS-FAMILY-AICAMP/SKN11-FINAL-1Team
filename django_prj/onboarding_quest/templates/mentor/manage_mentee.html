@@ -279,7 +279,13 @@
         {% endfor %}
       </div>
       <div class="end-date-label" id="end-date-label">종료일: 2025-08-05</div>
-      <button type="submit">생성</button>
+      <button type="submit" id="mentoring-submit-btn">
+        <span class="btn-text">생성</span>
+        <span class="btn-loading" style="display: none;">
+          <div class="loading-spinner"></div>
+          생성중...
+        </span>
+      </button>
     </form>
   </div>
 </div>
@@ -471,11 +477,21 @@ mentoringForm.addEventListener('submit', async function(e) {
   
   // 각 커리큘럼별로 멘토쉽 생성 (다중 커리큘럼 지원)
   try {
+    // 로딩 상태 시작
+    const submitBtn = document.getElementById('mentoring-submit-btn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline-flex';
+    submitBtn.disabled = true;
+    
     const res = await fetch('/mentor/create_mentorship/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'X-Requested-With': 'XMLHttpRequest'
       },
       body: JSON.stringify({ 
         mentee_id: menteeId, 
@@ -486,13 +502,88 @@ mentoringForm.addEventListener('submit', async function(e) {
     });
     const data = await res.json();
     if (data.success) {
-      window.location.href = '/mentor/';
+      // 성공 메시지 표시
+      showMessage('멘토쉽이 성공적으로 생성되었습니다!');
+      
+      // 2초 후 리다이렉트
+      setTimeout(() => {
+        window.location.href = '/mentor/';
+      }, 2000);
     } else {
-      alert('생성 실패: ' + (data.message || ''));
+      throw new Error(data.message || '멘토쉽 생성에 실패했습니다.');
     }
   } catch (err) {
-    alert('서버 오류');
+    console.error('멘토쉽 생성 오류:', err);
+    showMessage(err.message || '멘토쉽 생성 중 오류가 발생했습니다.', 'error');
+    
+    // 로딩 상태 종료
+    const submitBtn = document.getElementById('mentoring-submit-btn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    
+    btnText.style.display = 'inline';
+    btnLoading.style.display = 'none';
+    submitBtn.disabled = false;
   }
 });
+
+// 메시지 표시 함수
+function showMessage(message, type = 'success') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `alert alert-${type}`;
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+        ${type === 'success' ? 'background-color: #28a745;' : 'background-color: #dc3545;'}
+    `;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 슬라이드 인 애니메이션
+    setTimeout(() => {
+        messageDiv.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        messageDiv.style.transform = 'translateX(100%)';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 3000);
+}
+
+// 로딩 스피너 스타일 추가
+const style = document.createElement('style');
+style.textContent = `
+.loading-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff33;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+}
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %}
