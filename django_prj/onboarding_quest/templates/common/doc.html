@@ -4,17 +4,399 @@
 {% block title %}문서 업로드{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/common/doc.css' %}">
+<style>
+:root {
+  --primary-blue: #2563eb;
+  --light-blue: #3b82f6;
+  --very-light-blue: #eff6ff;
+  --blue-50: #f0f9ff;
+  --blue-100: #e0f2fe;
+  --blue-200: #bae6fd;
+  --blue-600: #0284c7;
+  --blue-700: #0369a1;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --danger-red: #dc2626;
+  --success-green: #16a34a;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--gray-50);
+  margin: 0;
+  padding: 0;
+  color: var(--gray-800);
+  line-height: 1.6;
+}
+
+.doc-container {
+  padding: 2rem;
+}
+
+.doc-left {
+  width: 100%;
+  max-width: 1400px;
+}
+
+.doc-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--black);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.doc-upload-box {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--blue-100);
+}
+
+.doc-drop-area {
+  border: 2px dashed var(--blue-200);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, var(--blue-50) 0%, var(--very-light-blue) 100%);
+  color: var(--gray-600);
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 2rem;
+}
+
+.doc-drop-area:hover {
+  border-color: var(--primary-blue);
+  background: linear-gradient(135deg, var(--blue-100) 0%, var(--blue-50) 100%);
+  color: var(--primary-blue);
+  transform: translateY(-2px);
+}
+
+.doc-drop-area.dragover {
+  border-color: var(--primary-blue);
+  background: linear-gradient(135deg, var(--blue-200) 0%, var(--blue-100) 100%);
+  color: var(--primary-blue);
+}
+
+.doc-upload-list {
+  margin-bottom: 2rem;
+}
+
+.doc-upload-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.doc-upload-list-table thead {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--light-blue) 100%);
+  color: white;
+}
+
+.doc-upload-list-table th,
+.doc-upload-list-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.doc-upload-list-table th {
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.doc-upload-list-table tbody tr:hover {
+  background-color: var(--blue-50);
+}
+
+.doc-upload-list-table input[type="text"] {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: border-color 0.3s ease;
+}
+
+.doc-upload-list-table input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.doc-upload-list-table input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--primary-blue);
+}
+
+.doc-upload-btn {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--light-blue) 100%);
+  color: white;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  display: none; /* 처음에는 숨김 */
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+}
+
+.doc-upload-btn.show {
+  display: flex; /* 파일이 추가되면 보이게 함 */
+}
+
+.doc-upload-btn:hover {
+  background: linear-gradient(135deg, var(--blue-700) 0%, var(--blue-600) 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.doc-upload-btn:active {
+  transform: translateY(0);
+}
+
+.doc-file-list {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--blue-100);
+}
+
+.doc-file-list .doc-title {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--gray-700);
+}
+
+.doc-file-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.doc-file-list-table thead {
+  background: linear-gradient(135deg, var(--gray-700) 0%, var(--gray-600) 100%);
+  color: white;
+}
+
+.doc-file-list-table th,
+.doc-file-list-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.doc-file-list-table th {
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.doc-file-list-table tbody tr:hover {
+  background-color: var(--blue-50);
+}
+
+.doc-download-link {
+  color: var(--primary-blue);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.doc-download-link:hover {
+  color: var(--blue-700);
+  text-decoration: underline;
+}
+
+.doc-edit-btn,
+.doc-delete-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 0.5rem;
+}
+
+.doc-edit-btn {
+  background: #60a5fa;
+  color: white;
+}
+
+.doc-edit-btn:hover {
+  background: #3b82f6;
+  transform: translateY(-1px);
+}
+
+.doc-delete-btn {
+  background: #f87171;
+  color: white;
+}
+
+.doc-delete-btn:hover {
+  background: #ef4444;
+  transform: translateY(-1px);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--gray-200);
+}
+
+.modal-content h3 {
+  margin: 0 0 1rem 0;
+  color: var(--gray-800);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.modal-content p {
+  margin: 0 0 2rem 0;
+  color: var(--gray-600);
+  line-height: 1.6;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 80px;
+}
+
+.modal-btn.cancel {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.modal-btn.cancel:hover {
+  background: var(--gray-300);
+}
+
+.modal-btn.confirm {
+  background: linear-gradient(135deg, var(--danger-red) 0%, #ef4444 100%);
+  color: white;
+}
+
+.modal-btn.confirm:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, var(--danger-red) 100%);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .doc-container {
+    padding: 1rem;
+  }
+
+  .doc-title {
+    font-size: 1.5rem;
+  }
+
+  .doc-upload-box,
+  .doc-file-list {
+    padding: 1rem;
+  }
+
+  .doc-drop-area {
+    padding: 2rem 1rem;
+  }
+
+  .doc-upload-list-table,
+  .doc-file-list-table {
+    font-size: 0.85rem;
+  }
+
+  .doc-upload-list-table th,
+  .doc-upload-list-table td,
+  .doc-file-list-table th,
+  .doc-file-list-table td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .modal-content {
+    margin: 1rem;
+  }
+}
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="doc-container">
   <div class="doc-left">
-    <div class="doc-title">문서 업로드</div>
-
     <!-- 문서 업로드 박스 -->
     <div class="doc-upload-box">
-      <!-- 노란색 카테고리 탭 버튼 제거됨 -->
+      <div class="doc-title">문서 업로드</div>
 
       <!-- 드래그 앤 드롭 영역 -->
       <div class="doc-drop-area" id="doc-drop-area">
@@ -46,7 +428,7 @@
 
     <!-- 등록된 파일 목록 -->
     <div class="doc-file-list">
-      <div class="doc-title">등록된 파일 목록</div>
+      <div class="doc-title">파일 목록</div>
       <table class="doc-file-list-table">
         <thead>
           <tr>
@@ -81,7 +463,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="5" style="text-align: center; padding: 40px;">등록된 문서가 없습니다.</td>
+            <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray-500);">등록된 문서가 없습니다.</td>
           </tr>
           {% endfor %}
         </tbody>

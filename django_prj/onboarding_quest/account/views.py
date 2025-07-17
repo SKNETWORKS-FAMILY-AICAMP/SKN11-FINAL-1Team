@@ -10,7 +10,8 @@ from core.models import User, Department, Mentorship, Curriculum
 from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm, DepartmentForm
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Value as V
+from django.db.models.functions import Concat
 import json
 
 
@@ -70,7 +71,11 @@ def supervisor(request):
     
     # 검색 조건 적용
     if search_query:
-        users = users.filter(
+        # 전체 이름 검색을 위한 annotate 추가
+        users = users.annotate(
+            full_name=Concat('last_name', 'first_name')
+        ).filter(
+            Q(full_name__icontains=search_query) |
             Q(first_name__icontains=search_query) |
             Q(last_name__icontains=search_query) |
             Q(email__icontains=search_query) |
@@ -272,10 +277,23 @@ def user_edit(request, user_id):
 # 사용자 삭제
 @login_required
 def user_delete(request, user_id):
+    if not request.user.is_admin:
+        return JsonResponse({'success': False, 'error': '관리자 권한이 필요합니다.'}, status=403)
+        
     user = get_object_or_404(User, user_id=user_id)
-    if request.user.is_admin and user != request.user:
+    
+    if user == request.user:
+        return JsonResponse({'success': False, 'error': '자신의 계정은 삭제할 수 없습니다.'}, status=400)
+    
+    try:
         user.delete()
-    return redirect('account:supervisor')
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('account:supervisor')
+    except Exception as e:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return redirect('account:supervisor')
 
 # 사용자 수정
 def user_update_view(request, pk):
@@ -504,3 +522,5 @@ def mentorship_delete(request, mentorship_id):
     return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 
 #endregion 멘토쉽 관리
+
+

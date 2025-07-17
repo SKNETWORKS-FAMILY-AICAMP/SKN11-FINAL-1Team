@@ -8,196 +8,298 @@
 <style>
 .mentee-container {
   display: flex;
-  gap: 40px;
+  gap: 24px;
   width: 100%;
   min-height: 700px;
-  margin-top: 40px;
+  margin-top: 24px;
 }
+
 .mentee-list-area {
   flex: none;
-  width: 260px;
-  background: #fafbfc;
+  width: 280px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border-radius: 16px;
-  padding: 32px 18px 32px 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+  border: 1px solid #bae6fd;
   display: flex;
   flex-direction: column;
   height: fit-content;
 }
+
 .mentee-list-search {
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
+
 .mentee-list-search input {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 2px solid #7dd3fc;
   font-size: 1em;
+  background: white;
+  transition: all 0.2s ease;
+  color: #0369a1;
 }
+
+.mentee-list-search input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
 .mentee-list-ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
+
 .mentee-list-ul li {
   margin-bottom: 8px;
 }
-.mentee-list-ul li:last-child { margin-bottom: 0; }
+
+.mentee-list-ul li:last-child { 
+  margin-bottom: 0; 
+}
+
 .mentee-list-ul a {
   display: block;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: #fff;
-  color: #222;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: white;
+  color: #0369a1;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid #bae6fd;
 }
-.mentee-list-ul a.selected, .mentee-list-ul a:hover {
-  background: #ffd600;
-  color: #222;
+
+.mentee-list-ul a.selected {
+  background: #0ea5e9;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
 }
+
+.mentee-list-ul a:hover:not(.selected) {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  transform: translateY(-1px);
+}
+
 .mentee-profile-area {
   flex: 1 1 0;
-  background: #fff;
+  background: white;
   border-radius: 16px;
-  padding: 24px 32px;
+  padding: 32px;
   min-width: 340px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+  border: 1px solid #bae6fd;
   display: flex;
   flex-direction: column;
   align-items: center;
   height: fit-content;
 }
+
 .mentee-avatar {
-  width: 80px; height: 80px;
+  width: 80px; 
+  height: 80px;
   border-radius: 50%;
-  background: #e6f9e6;
-  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #dbeafe 0%, #bae6fd 100%);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
   font-size: 2.8em;
-  margin-bottom: 18px;
-  border: 2px solid #b2e5b2;
+  margin-bottom: 20px;
+  border: 3px solid #0ea5e9;
+  color: #0369a1;
 }
+
 .mentee-name {
-  font-size: 1.3em;
+  font-size: 1.4em;
   font-weight: bold;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  color: #0369a1;
 }
+
 .mentee-role {
-  color: #4caf50;
+  color: #0ea5e9;
   font-size: 1em;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
+
 .mentee-extra {
-  color: #555;
+  color: #0369a1;
   font-size: 1em;
-  background: #fafbfc;
-  border-radius: 8px;
-  padding: 12px 18px;
+  background: #f0f9ff;
+  border-radius: 12px;
+  padding: 16px 20px;
   margin-bottom: 0;
   min-width: 180px;
   text-align: center;
+  border: 1px solid #bae6fd;
 }
+
 .mentoring-settings-area {
   flex: none;
   width: 320px;
-  background: #fff;
+  background: white;
   border-radius: 16px;
-  padding: 32px 28px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+  border: 1px solid #bae6fd;
   display: flex;
   flex-direction: column;
   height: fit-content;
 }
+
 .mentoring-settings-area h4 {
-  font-size: 1.1em;
+  font-size: 1.2em;
   font-weight: bold;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
+  color: #0369a1;
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e0f2fe;
 }
+
 .mentoring-settings-area label {
   font-size: 0.98em;
-  font-weight: 500;
-  margin-bottom: 4px;
+  font-weight: 600;
+  margin-bottom: 6px;
   display: block;
+  color: #0369a1;
 }
+
 .mentoring-settings-area input[type="text"],
 .mentoring-settings-area input[type="date"],
 .mentoring-settings-area select {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 2px solid #7dd3fc;
   font-size: 1em;
-  margin-bottom: 14px;
-}
-.mentoring-settings-area button[type="submit"] {
-  width: 100%;
-  background: #ffd600;
-  color: #222;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 0;
-  font-size: 1.1em;
-  font-weight: bold;
-  cursor: pointer;
-  margin-top: 10px;
-}
-.mentoring-settings-area .end-date-label {
-  margin-top: 8px;
-  font-size: 0.97em;
-  color: #888;
-}
-.curriculum-toggle {
-  background-color: #f4f4f4;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-bottom: 8px;
-  text-align: center;
-  font-size: 0.95em;
+  margin-bottom: 16px;
+  background: white;
+  color: #0369a1;
+  transition: all 0.2s ease;
 }
 
-.curriculum-option-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 8px 0;
-  border: 1px solid #ccc;
+.mentoring-settings-area input[type="text"]:focus,
+.mentoring-settings-area input[type="date"]:focus,
+.mentoring-settings-area select:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.mentoring-settings-area button[type="submit"] {
+  flex: 1;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 0;
+  font-size: 1.05em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.mentoring-settings-area button[type="submit"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+}
+
+.mentoring-settings-area button[type="button"] {
+  flex: 1;
+  background: white;
+  color: #0ea5e9;
+  border: 2px solid #7dd3fc;
+  border-radius: 12px;
+  padding: 14px 0;
+  font-size: 1.05em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mentoring-settings-area button[type="button"]:hover {
+  background: #f0f9ff;
+  border-color: #0ea5e9;
+  transform: translateY(-1px);
+}
+
+.mentoring-settings-area .end-date-label {
+  margin-top: 8px;
+  font-size: 1em;
+  color: #0ea5e9;
+  font-weight: 500;
+  background: #f0f9ff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #bae6fd;
+  text-align: center;
+}
+
+#curriculum-checkbox-container {
+  max-height: 200px; 
+  overflow-y: auto; 
+  border: 2px solid #7dd3fc; 
+  border-radius: 12px; 
+  padding: 16px; 
+  margin-bottom: 16px;
+  background: #f0f9ff;
+}
+
+#curriculum-checkbox-container label {
+  display: flex; 
+  align-items: center; 
+  font-weight: normal; 
+  margin-bottom: 12px;
+  color: #0369a1;
+  cursor: pointer;
+  padding: 8px;
   border-radius: 8px;
-  max-height: 140px;
-  overflow-y: auto;
+  transition: background 0.2s ease;
+}
+
+#curriculum-checkbox-container label:hover {
   background: white;
 }
 
-.curriculum-option-list li {
-  padding: 8px 12px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
+#curriculum-checkbox-container input[type="checkbox"] {
+  margin-right: 12px;
+  width: 16px;
+  height: 16px;
+  accent-color: #0ea5e9;
 }
 
-.curriculum-option-list li:hover {
-  background-color: #f2f2f2;
+/* 멘티 정보 테이블 스타일 개선 */
+.mentee-info-table textarea {
+  background: #f0f9ff !important;
+  border: 1px solid #bae6fd !important;
+  color: #0369a1 !important;
+  border-radius: 8px !important;
 }
 
-.selected-curriculum-list {
-  list-style: none;
-  margin: 0 0 8px 0;
-  padding-left: 0;
+.mentee-info-table .font-bold {
+  color: #0369a1 !important;
 }
 
-.selected-curriculum-list li {
-  background: #f9f9f9;
-  padding: 6px 10px;
-  margin-bottom: 4px;
-  border-radius: 6px;
-  font-size: 0.92em;
+.tag {
+  background: linear-gradient(135deg, #dbeafe 0%, #bae6fd 100%) !important;
+  color: #0369a1 !important;
+  border: 1px solid #7dd3fc !important;
+  font-weight: 500 !important;
 }
-
-.hidden {
-  display: none;
-}
-
-
 </style>
 
 {% endblock %}
@@ -263,9 +365,9 @@
     <h4>멘토링 설정</h4>
     <form id="mentoring-form">
       {% csrf_token %}
-      <label>선택된 멘티</label>
+      <label>멘티 이름</label>
       <input type="text" id="selected-mentee" value="" readonly>
-      <label>멘토쉽 시작일자</label>
+      <label>시작일자</label>
       <input type="date" id="start-date" value="2025-07-16">
       <label>커리큘럼 선택</label>
       <div id="curriculum-checkbox-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-bottom: 14px;">
@@ -278,8 +380,11 @@
         </div>
         {% endfor %}
       </div>
-      <div class="end-date-label" id="end-date-label">종료일: 2025-08-05</div>
-      <button type="submit">생성</button>
+      <div class="end-date-label" id="end-date-label">종료일 : 2025-08-05</div>
+      <div class="button-group">
+        <button type="button" onclick="resetForm()">초기화</button>
+        <button type="submit">멘토쉽 생성</button>
+      </div>
     </form>
   </div>
 </div>
@@ -494,5 +599,15 @@ mentoringForm.addEventListener('submit', async function(e) {
     alert('서버 오류');
   }
 });
+
+// 초기화 버튼 기능
+function resetForm() {
+  document.getElementById('start-date').value = '2025-07-16';
+  document.querySelectorAll('input[name="curriculum"]').forEach(cb => cb.checked = false);
+  document.getElementById('selected-mentee').value = '';
+  document.querySelector('#mentee-list a.selected')?.classList.remove('selected');
+  updateEndDate();
+  updateMenteeDetail(null);
+}
 </script>
 {% endblock %}
