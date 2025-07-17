@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}챗봇{% endblock %}
+{% block title %}AI 어시스턴트{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/common/chatbot.css' %}">
@@ -25,6 +25,427 @@
             opacity: 1;
         }
     }
+
+    /* 회사용 깔끔한 UI 스타일 */
+    .chatbot-container {
+        display: flex;
+        gap: 20px;
+        width: 100%;
+        min-height: 700px;
+        height: 85vh;
+        box-sizing: border-box;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 12px;
+        margin: 20px 0;
+    }
+
+    .chatbot-left {
+        flex: none;
+        width: 400px;
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        overflow-y: auto;
+        height: 100%;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e9ecef;
+    }
+
+    .chatbot-title {
+        font-size: 1.2em;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #343a40;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .toggle-icon {
+        font-size: 16px;
+        transition: transform 0.3s ease;
+        color: #6c757d;
+    }
+
+    .toggle-icon.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .chatbot-session-content {
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+
+    .chatbot-session-content.collapsed {
+        max-height: 0;
+        opacity: 0;
+    }
+
+    /* 새 채팅 버튼 - 비즈니스 스타일 */
+    .new-chat-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+    }
+
+    .new-chat-btn:hover {
+        background: #0056b3;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+    }
+
+    .plus-icon {
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .chatbot-session-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .chatbot-session-item {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid #e9ecef;
+    }
+
+    .chatbot-session-item:hover {
+        background: #e9ecef;
+        border-color: #007bff;
+    }
+
+    .chatbot-session-item.selected {
+        background: #e3f2fd;
+        border-color: #007bff;
+        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+    }
+
+    .session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .chatbot-session-title {
+        font-weight: 600;
+        color: #343a40;
+        font-size: 14px;
+        flex: 1;
+    }
+
+    .delete-session-btn {
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delete-session-btn:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    .delete-icon {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .chatbot-session-preview {
+        color: #6c757d;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .no-sessions {
+        text-align: center;
+        color: #6c757d;
+        font-size: 14px;
+        padding: 40px 20px;
+    }
+
+    .chatbot-right {
+        flex: 1;
+        background: white;
+        border-radius: 12px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e9ecef;
+        overflow: hidden;
+    }
+
+    .chatbot-chat-area {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        background: #ffffff;
+        position: relative;
+        scroll-behavior: smooth;
+    }
+
+    /* 위로 가기 버튼 */
+    .scroll-to-top {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .scroll-to-top.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .scroll-to-top:hover {
+        background: #0056b3;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
+    }
+
+    .empty-chat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #6c757d;
+        font-size: 18px;
+        text-align: center;
+    }
+
+    .chatbot-msg-row {
+        margin-bottom: 16px;
+        display: flex;
+    }
+
+    .chatbot-msg-row.user {
+        justify-content: flex-end;
+    }
+
+    .chatbot-msg-user {
+        background: #007bff;
+        color: white;
+        padding: 14px 18px;
+        border-radius: 18px 18px 4px 18px;
+        font-size: 16px;
+        line-height: 1.5;
+        font-weight: 400;
+    }
+
+    .chatbot-msg-chabot {
+        background: #f8f9fa;
+        color: #343a40;
+        padding: 14px 18px;
+        border-radius: 18px 18px 18px 4px;
+        font-size: 16px;
+        line-height: 1.5;
+        border: 1px solid #e9ecef;
+        font-weight: 400;
+    }
+
+
+    .loading-wave {
+        display: inline-flex;
+        gap: 1px;
+    }
+
+    .loading-wave span {
+        display: inline-block;
+        animation: wave 1.4s ease-in-out infinite;
+        animation-delay: calc(var(--i) * 0.1s);
+    }
+
+    @keyframes wave {
+        0%, 60%, 100% {
+            transform: translateY(0);
+        }
+        30% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .chatbot-form-row {
+        padding: 20px 24px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .chatbot-input {
+        flex: 1;
+        padding: 14px 18px;
+        border: 1px solid #ced4da;
+        border-radius: 24px;
+        font-size: 15px;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    .chatbot-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+
+    .chatbot-send-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 12px 24px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+    }
+
+    .chatbot-send-btn:hover {
+        background: #0056b3;
+        transform: translateY(-1px);
+    }
+
+    /* 모달 스타일 */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-content h3 {
+        margin: 0 0 12px 0;
+        color: #343a40;
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+
+    .modal-content p {
+        margin: 0 0 24px 0;
+        color: #6c757d;
+        line-height: 1.5;
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .modal-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 80px;
+    }
+
+    .modal-btn.cancel {
+        background: #6c757d;
+        color: white;
+    }
+
+    .modal-btn.cancel:hover {
+        background: #545b62;
+    }
+
+    .modal-btn.confirm {
+        background: #dc3545;
+        color: white;
+    }
+
+    .modal-btn.confirm:hover {
+        background: #c82333;
+    }
+
+    /* 반응형 디자인 */
+    @media (max-width: 768px) {
+        .chatbot-container {
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px;
+            height: auto;
+            min-height: auto;
+        }
+        
+        .chatbot-left {
+            width: 100%;
+            height: auto;
+            min-height: 200px;
+        }
+        
+        .chatbot-right {
+            height: 400px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -46,7 +467,7 @@
                     <div class="chatbot-session-item {% if current_session_id and current_session_id == chat_session.session.session_id|stringformat:'s' %}selected{% elif not current_session_id and forloop.first %}selected{% endif %}" 
                          data-session-id="{{ chat_session.session.session_id }}">
                         <div class="session-header">
-                            <div class="chatbot-session-title">{{ chat_session.session.summary|default:"새 채팅" }}</div>
+                            <div class="chatbot-session-title">💬 {{ chat_session.session.summary|default:"새 대화" }}</div>
                             <button class="delete-session-btn" 
                                     data-session-id="{{ chat_session.session.session_id }}"
                                     onclick="deleteSession(this, event)">
@@ -76,7 +497,11 @@
                     </div>
                 {% endfor %}
             {% else %}
-                <div class="no-sessions">채팅 세션이 없습니다.</div>
+                <div class="no-sessions">
+                    <div style="font-size: 48px; margin-bottom: 16px;">💭</div>
+                    <div>아직 대화가 없습니다</div>
+                    <div style="font-size: 12px; margin-top: 8px; color: #adb5bd;">새 대화를 시작해보세요!</div>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -107,7 +532,11 @@
                     {% endif %}
                 {% endfor %}
             {% else %}
-                <div class="empty-chat">새 채팅을 시작해보세요!</div>
+                <div class="empty-chat">
+                    <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">🤖</div>
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">AI 어시스턴트에게 질문해보세요</div>
+                    <div style="font-size: 14px; color: #6c757d;">업무 관련 궁금한 것이 있으시면 언제든 물어보세요!</div>
+                </div>
             {% endif %}
         </div>
 
@@ -141,7 +570,7 @@
         <form method="post" class="chatbot-form-row" id="chatbot-form">
             {% csrf_token %}
             <input type="hidden" name="session_id" id="selected-session-id" value="{% if current_session_id %}{{ current_session_id }}{% elif chat_sessions %}{{ chat_sessions.0.session.session_id }}{% endif %}">
-            <input type="text" name="message" placeholder="메시지를 입력하세요..." class="chatbot-input" id="chatbot-input" required>
+            <input type="text" name="message" placeholder="무엇을 도와드릴까요? 궁금한 것을 자유롭게 물어보세요..." class="chatbot-input" id="chatbot-input" required>
             <button type="submit" class="chatbot-send-btn">전송</button>
         </form>
     </div>
@@ -150,8 +579,8 @@
 <!-- 삭제 확인 모달 -->
 <div class="modal-overlay" id="deleteModal" style="display: none;">
     <div class="modal-content">
-        <h3>채팅 세션 삭제</h3>
-        <p>이 채팅 세션을 삭제하시겠습니까?<br>삭제된 세션은 복구할 수 없습니다.</p>
+        <h3>🗑️ 대화 삭제</h3>
+        <p>이 대화를 삭제하시겠습니까?<br>삭제된 대화는 복구할 수 없습니다.</p>
         <div class="modal-buttons">
             <button class="modal-btn cancel" onclick="closeDeleteModal()">취소</button>
             <button class="modal-btn confirm" onclick="confirmDelete()">삭제</button>

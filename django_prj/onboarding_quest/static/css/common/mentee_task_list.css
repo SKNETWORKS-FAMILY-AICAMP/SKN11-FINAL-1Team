@@ -127,8 +127,8 @@
 }
 .task-dday {
   margin-left: auto;
-  background: #1976d2;
-  color: #fff;
+  background: #fce4ec;
+  color: #d32f2f;
   font-size: 12px;
   font-weight: bold;
   padding: 3px 8px;
@@ -137,10 +137,12 @@
   text-align: center;
 }
 .task-dday.urgent {
-  background: #f44336;
+  background: #fce4ec;
+  color: #d32f2f;
 }
 .task-dday.warning {
-  background: #ff9800;
+  background: #fce4ec;
+  color: #d32f2f;
 }
 .task-xp { color: #888; font-size: 15px; display: flex; align-items: center; gap: 4px; }
 .icon-trophy { width: 18px; height: 18px; vertical-align: middle; }
@@ -165,6 +167,18 @@
 .task-badge.red { background: #f44336; color: #fff; }
 .task-badge.green { background: #4caf50; color: #fff; }
 .task-badge.yellow { background: #ffd600 !important; color: #222 !important; }
+
+.d-day-badge {
+  background: #fce4ec;
+  color: #d32f2f;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 10px;
+  min-width: 40px;
+  text-align: center;
+  display: inline-block;
+}
 
 .status-badge {
   display: inline-block;

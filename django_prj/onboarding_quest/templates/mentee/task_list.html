@@ -9,19 +9,16 @@
 <div class="tasklist-container">
   <!-- 좌측: Task 목록 -->
 <div class="tasklist-left" id="tasklist-left">
-  <div class="tasklist-title">Task 목록</div>
   
   <!-- 정렬/필터 컨트롤 -->
-  <div class="task-controls" style="margin: 12px 0; padding: 8px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0;">
-    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-      <label style="font-size: 13px; font-weight: 500; color: #333;">정렬:</label>
-      <select id="task-sort" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+  <div class="task-controls" style="margin: 12px 0; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; justify-content: space-between;">
+      <select id="task-sort" style="padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; flex: 1; height: 40px;">
         <option value="week">주차별</option>
         <option value="deadline">마감일별</option>
       </select>
-      
-      <label style="font-size: 13px; font-weight: 500; color: #333; margin-left: 8px;">필터:</label>
-      <select id="task-filter-status" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+
+      <select id="task-filter-status" style="padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; flex: 1; height: 40px;">
         <option value="all">전체 상태</option>
         <option value="진행전">진행 전</option>
         <option value="진행중">진행 중</option>
@@ -29,7 +26,7 @@
         <option value="완료">완료</option>
       </select>
       
-      <select id="task-filter-priority" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+      <select id="task-filter-priority" style="padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; flex: 1; height: 40px;">
         <option value="all">전체 우선순위</option>
         <option value="상">상</option>
         <option value="중">중</option>
@@ -38,7 +35,7 @@
     </div>
   </div>
   {% for week, tasks in week_tasks.items %}
-    <div style="font-weight:bold; margin:18px 0 8px 0; color:#1976d2;">{{ week }}주차</div>
+    <div style="font-weight:bold; margin:18px 0 8px 0; color:#000000; font-size:18px;">{{ week }}주차</div>
     {% for task in tasks %}
       {% if not task.parent %}
       <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
@@ -62,9 +59,6 @@
         </div>
         <div class="task-desc-row">
           <div class="task-desc">{{ task.description }}</div>
-          <div class="task-meta-row">
-            <span class="task-badge {% if task.priority == '상' %}red{% elif task.priority == '중' %}green{% else %}yellow{% endif %}">{{ task.priority|default:'하' }}</span>
-          </div>
         </div>
         {# 직접적인 하위 테스크만 필터링 #}
         {% with direct_subtasks=task.subtasks|dictsort:'task_assign_id' %}
