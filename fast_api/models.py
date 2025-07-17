@@ -65,6 +65,25 @@ class User(Base):
     chat_sessions = relationship("ChatSession", back_populates="user")
 
 
+class Mentorship(Base):
+    """멘토쉽 테이블"""
+    __tablename__ = "core_mentorship"
+    
+    mentorship_id = Column(Integer, primary_key=True, index=True, comment="멘토쉽 고유 ID")
+    mentor_id = Column(Integer, ForeignKey("core_user.user_id"), nullable=False, comment="멘토 User ID")
+    mentee_id = Column(Integer, ForeignKey("core_user.user_id"), nullable=False, comment="멘티 User ID")
+    start_date = Column(Date, comment="시작일")
+    end_date = Column(Date, comment="종료일")
+    is_active = Column(Boolean, default=True, comment="멘토쉽 활성화 여부")
+    curriculum_title = Column(String(255), comment="커리큘럼 제목")
+    total_weeks = Column(Integer, default=0, comment="총 주차 수")
+    
+    # 관계 설정
+    mentor = relationship("User", foreign_keys=[mentor_id], back_populates="mentor_relationships")
+    mentee = relationship("User", foreign_keys=[mentee_id], back_populates="mentee_relationships")
+    task_assigns = relationship("TaskAssign", back_populates="mentorship")
+
+
 class Curriculum(Base):
     """커리큘럼 테이블"""
     __tablename__ = "core_curriculum"

@@ -176,7 +176,7 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # FastAPI 설정
-FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://localhost:8000')
+FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')
 
 
 # 미디어 파일 설정

@@ -75,7 +75,7 @@ async def create_department_form(
     request: Request,
     department_name: str = Form(...),
     description: Optional[str] = Form(None),
-    company_id: int = Form(...),
+    company_id: str = Form(...),  # String으로 변경
     db: Session = Depends(get_db)
 ):
     """부서 생성 폼 처리"""
@@ -126,14 +126,14 @@ async def create_user_form(
     email: str = Form(...),
     password: str = Form(...),
     job_part: str = Form(...),
-    position: int = Form(...),
+    position: str = Form(...),  # String으로 변경
     join_date: str = Form(...),
-    skill: Optional[str] = Form(None),
     role: str = Form(...),
-    exp: Optional[int] = Form(0),
-    admin: Optional[bool] = Form(False),
-    department_id: int = Form(...),
-    company_id: int = Form(...),
+    employee_number: Optional[int] = Form(None),  # 실제 모델 필드 사용
+    is_admin: Optional[bool] = Form(False),  # admin -> is_admin으로 변경
+    tag: Optional[str] = Form(None),  # 실제 모델 필드 추가
+    department_id: Optional[int] = Form(None),  # Integer로 다시 변경
+    company_id: Optional[str] = Form(None),  # String은 맞음
     db: Session = Depends(get_db)
 ):
     """사용자 생성 폼 처리"""
@@ -149,10 +149,10 @@ async def create_user_form(
             job_part=job_part,
             position=position,
             join_date=join_date_obj,
-            skill=skill,
             role=role,
-            exp=exp,
-            admin=admin,
+            employee_number=employee_number,
+            is_admin=is_admin,
+            tag=tag,
             department_id=department_id,
             company_id=company_id
         )
@@ -189,7 +189,7 @@ async def create_template_form(
     request: Request,
     template_title: str = Form(...),
     template_description: Optional[str] = Form(None),
-    department_id: int = Form(...),
+    department_id: int = Form(...),  # Integer로 다시 변경
     db: Session = Depends(get_db)
 ):
     """템플릿 생성 폼 처리"""
@@ -383,10 +383,10 @@ async def department_edit_form(request: Request, department_id: int, db: Session
 @router.post("/departments/{department_id}/edit")
 async def update_department_form(
     request: Request,
-    department_id: int,
+    department_id: int,  # Integer로 다시 변경
     department_name: str = Form(...),
     description: Optional[str] = Form(None),
-    company_id: int = Form(...),
+    company_id: str = Form(...),  # String은 맞음
     db: Session = Depends(get_db)
 ):
     """부서 수정 폼 처리"""
@@ -465,14 +465,14 @@ async def update_user_form(
     email: str = Form(...),
     password: str = Form(...),
     job_part: str = Form(...),
-    position: int = Form(...),
+    position: str = Form(...),  # String으로 변경
     join_date: str = Form(...),
-    skill: Optional[str] = Form(None),
     role: str = Form(...),
-    exp: Optional[int] = Form(0),
-    admin: Optional[bool] = Form(False),
-    department_id: Optional[int] = Form(None),
-    company_id: Optional[int] = Form(None),
+    employee_number: Optional[int] = Form(None),  # 실제 모델 필드 사용
+    is_admin: Optional[bool] = Form(False),  # admin -> is_admin으로 변경
+    tag: Optional[str] = Form(None),  # 실제 모델 필드 추가
+    department_id: Optional[int] = Form(None),  # Integer로 다시 변경
+    company_id: Optional[str] = Form(None),  # String은 맞음
     db: Session = Depends(get_db)
 ):
     """사용자 수정 폼 처리"""
@@ -488,10 +488,10 @@ async def update_user_form(
             job_part=job_part,
             position=position,
             join_date=join_date_obj,
-            skill=skill,
             role=role,
-            exp=exp,
-            admin=admin,
+            employee_number=employee_number,
+            is_admin=is_admin,
+            tag=tag,
             department_id=department_id,
             company_id=company_id
         )
@@ -556,7 +556,7 @@ async def update_template_form(
     template_id: int,
     template_title: str = Form(...),
     template_description: Optional[str] = Form(None),
-    department_id: Optional[int] = Form(None),
+    department_id: Optional[int] = Form(None),  # Integer로 다시 변경
     db: Session = Depends(get_db)
 ):
     """템플릿 수정 폼 처리"""

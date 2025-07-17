@@ -54,7 +54,7 @@ class DepartmentCreate(DepartmentBase):
     company_id: str
 
 class Department(DepartmentBase):
-    department_id: int
+    department_id: int  # Integer로 다시 변경
     company_id: str
     is_active: Optional[bool] = True
     company: Optional[Company] = None
@@ -95,12 +95,15 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    department_id: Optional[int] = None
+    department_id: Optional[int] = None  # Integer로 다시 변경
     company_id: Optional[str] = None
+    employee_number: Optional[int] = None
+    is_admin: Optional[bool] = False
+    tag: Optional[str] = None
 
 class User(UserBase):
     user_id: int
-    department_id: Optional[int] = None
+    department_id: Optional[int] = None  # Integer로 다시 변경
     company_id: Optional[str] = None
     mentorship_id: Optional[int] = None
     last_login: Optional[datetime] = None
@@ -121,11 +124,11 @@ class CurriculumBase(BaseModel):
     week_schedule: Optional[str] = None
 
 class CurriculumCreate(CurriculumBase):
-    department_id: Optional[int] = None
+    department_id: Optional[int] = None  # Integer로 다시 변경
 
 class Curriculum(CurriculumBase):
     curriculum_id: int
-    department_id: Optional[int] = None
+    department_id: Optional[int] = None  # Integer로 다시 변경
     department: Optional[Department] = None
     
     class Config:
@@ -261,11 +264,40 @@ class DocsBase(BaseModel):
     common_doc: Optional[bool] = False
 
 class DocsCreate(DocsBase):
-    department_id: int
+    department_id: int  # Integer로 다시 변경
 
 class Docs(DocsBase):
     docs_id: int
     create_time: datetime
+    department_id: int  # Integer로 다시 변경
+    department: Optional[Department] = None
+    
+    class Config:
+        from_attributes = True
+
+
+# Template schemas
+class TemplateBase(BaseModel):
+    template_title: str
+    template_description: Optional[str] = None
+    
+    @validator('template_title')
+    def template_title_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('템플릿 제목은 비어있을 수 없습니다')
+        return v.strip()
+    
+    @validator('template_description')
+    def description_strip_whitespace(cls, v):
+        if v is not None:
+            return v.strip() if v.strip() else None
+        return v
+
+class TemplateCreate(TemplateBase):
+    department_id: int
+
+class Template(TemplateBase):
+    template_id: int
     department_id: int
     department: Optional[Department] = None
     
@@ -287,7 +319,7 @@ class UserFormData(BaseModel):
     role: str
     employee_number: Optional[int] = None
     is_admin: Optional[bool] = False
-    department_id: Optional[int] = None
+    department_id: Optional[int] = None  # Integer로 다시 변경
     company_id: Optional[str] = None
 
 
@@ -319,7 +351,7 @@ class CurriculumFormData(BaseModel):
     """커리큘럼 폼 데이터 스키마"""
     curriculum_title: str
     curriculum_description: Optional[str] = None
-    department_id: Optional[int] = None
+    department_id: Optional[int] = None  # Integer로 다시 변경
     common: Optional[bool] = False
     total_weeks: Optional[int] = 0
     week_schedule: Optional[str] = None
