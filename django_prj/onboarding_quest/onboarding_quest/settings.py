@@ -78,6 +78,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.fastapi_token.FastAPITokenMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -174,6 +175,8 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# FastAPI 설정
+FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://localhost:8000')
 
 
 # 미디어 파일 설정

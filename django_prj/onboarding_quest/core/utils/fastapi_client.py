@@ -1,0 +1,421 @@
+import requests
+import json
+from django.conf import settings
+from typing import Dict, Any, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+class FastAPIClient:
+    """FastAPI 서버와 통신하기 위한 클라이언트"""
+    
+    def __init__(self):
+        self.base_url = getattr(settings, 'FASTAPI_BASE_URL', 'http://localhost:8000')
+        self.session = requests.Session()
+        self.session.headers.update({
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        })
+    
+    def set_auth_token(self, token: str):
+        """JWT 토큰 설정"""
+        self.session.headers.update({
+            'Authorization': f'Bearer {token}'
+        })
+    
+    def remove_auth_token(self):
+        """JWT 토큰 제거"""
+        if 'Authorization' in self.session.headers:
+            del self.session.headers['Authorization']
+    
+    def _handle_response(self, response: requests.Response) -> Dict[str, Any]:
+        """응답 처리"""
+        try:
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP Error: {e}")
+            if response.status_code == 401:
+                raise AuthenticationError("인증이 필요합니다.")
+            elif response.status_code == 403:
+                raise PermissionError("권한이 없습니다.")
+            elif response.status_code == 404:
+                raise NotFoundError("리소스를 찾을 수 없습니다.")
+            else:
+                raise APIError(f"API 오류: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request Error: {e}")
+            raise ConnectionError("FastAPI 서버에 연결할 수 없습니다.")
+    
+    # 인증 관련
+    def login(self, email: str, password: str) -> Dict[str, Any]:
+        """로그인"""
+        url = f"{self.base_url}/api/auth/login"
+        data = {"email": email, "password": password}
+        response = self.session.post(url, json=data)
+        return self._handle_response(response)
+    
+    def logout(self) -> Dict[str, Any]:
+        """로그아웃"""
+        url = f"{self.base_url}/api/auth/logout"
+        response = self.session.post(url)
+        return self._handle_response(response)
+    
+    def get_current_user(self) -> Dict[str, Any]:
+        """현재 사용자 정보"""
+        url = f"{self.base_url}/api/auth/me"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    # 사용자 관리
+    def get_users(self, 
+                  skip: int = 0, 
+                  limit: int = 100,
+                  company_id: Optional[str] = None,
+                  department_id: Optional[int] = None,
+                  search: Optional[str] = None) -> Dict[str, Any]:
+        """사용자 목록 조회"""
+        url = f"{self.base_url}/api/users/"
+        params = {"skip": skip, "limit": limit}
+        if company_id:
+            params["company_id"] = company_id
+        if department_id:
+            params["department_id"] = department_id
+        if search:
+            params["search"] = search
+        
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    def get_user(self, user_id: int) -> Dict[str, Any]:
+        """사용자 상세 조회"""
+        url = f"{self.base_url}/api/users/{user_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """사용자 생성"""
+        url = f"{self.base_url}/api/users/"
+        response = self.session.post(url, json=user_data)
+        return self._handle_response(response)
+    
+    def update_user(self, user_id: int, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """사용자 수정"""
+        url = f"{self.base_url}/api/users/{user_id}"
+        response = self.session.put(url, json=user_data)
+        return self._handle_response(response)
+    
+    def delete_user(self, user_id: int) -> Dict[str, Any]:
+        """사용자 삭제"""
+        url = f"{self.base_url}/api/users/{user_id}"
+        response = self.session.delete(url)
+        return self._handle_response(response)
+    
+    # 부서 관리
+    def get_departments(self, company_id: Optional[str] = None) -> Dict[str, Any]:
+        """부서 목록 조회"""
+        url = f"{self.base_url}/api/departments/"
+        params = {}
+        if company_id:
+            params["company_id"] = company_id
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    def get_department(self, department_id: int) -> Dict[str, Any]:
+        """부서 상세 조회"""
+        url = f"{self.base_url}/api/departments/{department_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def create_department(self, dept_data: Dict[str, Any]) -> Dict[str, Any]:
+        """부서 생성"""
+        url = f"{self.base_url}/api/departments/"
+        response = self.session.post(url, json=dept_data)
+        return self._handle_response(response)
+    
+    def update_department(self, department_id: int, dept_data: Dict[str, Any]) -> Dict[str, Any]:
+        """부서 수정"""
+        url = f"{self.base_url}/api/departments/{department_id}"
+        response = self.session.put(url, json=dept_data)
+        return self._handle_response(response)
+    
+    def delete_department(self, department_id: int) -> Dict[str, Any]:
+        """부서 삭제"""
+        url = f"{self.base_url}/api/departments/{department_id}"
+        response = self.session.delete(url)
+        return self._handle_response(response)
+    
+    # 회사 관리
+    def get_companies(self) -> Dict[str, Any]:
+        """회사 목록 조회"""
+        url = f"{self.base_url}/api/companies/"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def get_company(self, company_id: str) -> Dict[str, Any]:
+        """회사 상세 조회"""
+        url = f"{self.base_url}/api/companies/{company_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    # 태스크 관리
+    def get_task_assigns(self, 
+                        mentorship_id: Optional[int] = None,
+                        user_id: Optional[int] = None,
+                        status: Optional[str] = None,
+                        week: Optional[int] = None) -> Dict[str, Any]:
+        """태스크 할당 목록 조회"""
+        url = f"{self.base_url}/api/tasks/assigns"
+        params = {}
+        if mentorship_id:
+            params["mentorship_id"] = mentorship_id
+        if user_id:
+            params["user_id"] = user_id
+        if status:
+            params["status"] = status
+        if week:
+            params["week"] = week
+        
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    def get_task_assign(self, task_assign_id: int) -> Dict[str, Any]:
+        """태스크 할당 상세 조회"""
+        url = f"{self.base_url}/api/tasks/assigns/{task_assign_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def create_task_assign(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """태스크 할당 생성"""
+        url = f"{self.base_url}/api/tasks/assigns"
+        response = self.session.post(url, json=task_data)
+        return self._handle_response(response)
+    
+    def update_task_assign(self, task_assign_id: int, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """태스크 할당 수정"""
+        url = f"{self.base_url}/api/tasks/assigns/{task_assign_id}"
+        response = self.session.put(url, json=task_data)
+        return self._handle_response(response)
+    
+    def delete_task_assign(self, task_assign_id: int) -> Dict[str, Any]:
+        """태스크 할당 삭제"""
+        url = f"{self.base_url}/api/tasks/assigns/{task_assign_id}"
+        response = self.session.delete(url)
+        return self._handle_response(response)
+    
+    # 멘토쉽 관리
+    def get_mentorships(self, 
+                       mentor_id: Optional[int] = None,
+                       mentee_id: Optional[int] = None,
+                       is_active: Optional[bool] = None) -> Dict[str, Any]:
+        """멘토쉽 목록 조회"""
+        url = f"{self.base_url}/api/mentorship/"
+        params = {}
+        if mentor_id:
+            params["mentor_id"] = mentor_id
+        if mentee_id:
+            params["mentee_id"] = mentee_id
+        if is_active is not None:
+            params["is_active"] = is_active
+        
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    def get_mentorship(self, mentorship_id: int) -> Dict[str, Any]:
+        """멘토쉽 상세 조회"""
+        url = f"{self.base_url}/api/mentorship/{mentorship_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def create_mentorship(self, mentorship_data: Dict[str, Any]) -> Dict[str, Any]:
+        """멘토쉽 생성"""
+        url = f"{self.base_url}/api/mentorship/"
+        response = self.session.post(url, json=mentorship_data)
+        return self._handle_response(response)
+    
+    def update_mentorship(self, mentorship_id: int, mentorship_data: Dict[str, Any]) -> Dict[str, Any]:
+        """멘토쉽 수정"""
+        url = f"{self.base_url}/api/mentorship/{mentorship_id}"
+        response = self.session.put(url, json=mentorship_data)
+        return self._handle_response(response)
+    
+    def delete_mentorship(self, mentorship_id: int) -> Dict[str, Any]:
+        """멘토쉽 삭제"""
+        url = f"{self.base_url}/api/mentorship/{mentorship_id}"
+        response = self.session.delete(url)
+        return self._handle_response(response)
+    
+    # 커리큘럼 관리
+    def get_curriculums(self, 
+                       department_id: Optional[int] = None,
+                       common: Optional[bool] = None) -> Dict[str, Any]:
+        """커리큘럼 목록 조회"""
+        url = f"{self.base_url}/api/curriculum/"
+        params = {}
+        if department_id:
+            params["department_id"] = department_id
+        if common is not None:
+            params["common"] = common
+        
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    def get_curriculum(self, curriculum_id: int) -> Dict[str, Any]:
+        """커리큘럼 상세 조회"""
+        url = f"{self.base_url}/api/curriculum/{curriculum_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def get_task_manages(self, curriculum_id: Optional[int] = None) -> Dict[str, Any]:
+        """태스크 관리 목록 조회"""
+        url = f"{self.base_url}/api/tasks/manages"
+        params = {}
+        if curriculum_id:
+            params["curriculum_id"] = curriculum_id
+        
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    # 태스크 관리 (TaskManage) 메서드들
+    def get_task_manage(self, task_manage_id: int) -> Dict[str, Any]:
+        """태스크 관리 상세 조회"""
+        url = f"{self.base_url}/api/tasks/manages/{task_manage_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def create_task_manage(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """태스크 관리 생성"""
+        url = f"{self.base_url}/api/tasks/manages"
+        response = self.session.post(url, json=task_data)
+        return self._handle_response(response)
+    
+    def update_task_manage(self, task_manage_id: int, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """태스크 관리 수정"""
+        url = f"{self.base_url}/api/tasks/manages/{task_manage_id}"
+        response = self.session.put(url, json=task_data)
+        return self._handle_response(response)
+    
+    def delete_task_manage(self, task_manage_id: int) -> Dict[str, Any]:
+        """태스크 관리 삭제"""
+        url = f"{self.base_url}/api/tasks/manages/{task_manage_id}"
+        response = self.session.delete(url)
+        return self._handle_response(response)
+
+    def delete_task_manages_by_curriculum(self, curriculum_id: int) -> Dict[str, Any]:
+        """커리큘럼별 태스크 관리 일괄 삭제"""
+        url = f"{self.base_url}/api/tasks/manages"
+        params = {"curriculum_id": curriculum_id, "delete_all": True}
+        response = self.session.delete(url, params=params)
+        return self._handle_response(response)
+    
+    # 커리큘럼 관리 추가 메서드들
+    def create_curriculum(self, curriculum_data: Dict[str, Any]) -> Dict[str, Any]:
+        """커리큘럼 생성"""
+        url = f"{self.base_url}/api/curriculum/"
+        response = self.session.post(url, json=curriculum_data)
+        return self._handle_response(response)
+    
+    def update_curriculum(self, curriculum_id: int, curriculum_data: Dict[str, Any]) -> Dict[str, Any]:
+        """커리큘럼 수정"""
+        url = f"{self.base_url}/api/curriculum/{curriculum_id}"
+        response = self.session.put(url, json=curriculum_data)
+        return self._handle_response(response)
+    
+    def delete_curriculum(self, curriculum_id: int) -> Dict[str, Any]:
+        """커리큘럼 삭제"""
+        url = f"{self.base_url}/api/curriculum/{curriculum_id}"
+        response = self.session.delete(url)
+        return self._handle_response(response)
+
+    def copy_curriculum(self, curriculum_id: int, new_data: Dict[str, Any]) -> Dict[str, Any]:
+        """커리큘럼 복사"""
+        url = f"{self.base_url}/api/curriculum/{curriculum_id}/copy"
+        response = self.session.post(url, json=new_data)
+        return self._handle_response(response)
+
+    # 메모 관리
+    def get_memos(self, task_assign_id: Optional[int] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
+        """메모 목록 조회"""
+        url = f"{self.base_url}/api/memo/"
+    
+    # 메모 관리
+    def get_memos(self, task_assign_id: Optional[int] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
+        """메모 목록 조회"""
+        url = f"{self.base_url}/api/memo/"
+        params = {}
+        if task_assign_id:
+            params["task_assign_id"] = task_assign_id
+        if user_id:
+            params["user_id"] = user_id
+        
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    def create_memo(self, memo_data: Dict[str, Any]) -> Dict[str, Any]:
+        """메모 생성"""
+        url = f"{self.base_url}/api/memo/"
+        response = self.session.post(url, json=memo_data)
+        return self._handle_response(response)
+    
+    # 문서 관리
+    def get_docs(self, department_id: Optional[int] = None, common_doc: Optional[bool] = None) -> Dict[str, Any]:
+        """문서 목록 조회"""
+        url = f"{self.base_url}/api/docs/"
+        params = {}
+        if department_id:
+            params["department_id"] = department_id
+        if common_doc is not None:
+            params["common_doc"] = common_doc
+        
+        response = self.session.get(url, params=params)
+        return self._handle_response(response)
+    
+    def get_doc(self, doc_id: int) -> Dict[str, Any]:
+        """문서 상세 조회"""
+        url = f"{self.base_url}/api/docs/{doc_id}"
+        response = self.session.get(url)
+        return self._handle_response(response)
+    
+    def create_doc(self, doc_data: Dict[str, Any]) -> Dict[str, Any]:
+        """문서 생성"""
+        url = f"{self.base_url}/api/docs/"
+        response = self.session.post(url, json=doc_data)
+        return self._handle_response(response)
+    
+    def delete_doc(self, doc_id: int) -> Dict[str, Any]:
+        """문서 삭제"""
+        url = f"{self.base_url}/api/docs/{doc_id}"
+        response = self.session.delete(url)
+        return self._handle_response(response)
+
+    def upload_file(self, file_data, file_info: Dict[str, Any]) -> Dict[str, Any]:
+        """파일 업로드"""
+        url = f"{self.base_url}/api/docs/upload"
+        files = {'file': file_data}
+        data = file_info
+        
+        # 파일 업로드는 multipart/form-data 사용
+        response = self.session.post(url, files=files, data=data)
+        return self._handle_response(response)
+
+
+# 커스텀 예외 클래스들
+class APIError(Exception):
+    """일반적인 API 오류"""
+    pass
+
+class AuthenticationError(APIError):
+    """인증 오류"""
+    pass
+
+class PermissionError(APIError):
+    """권한 오류"""
+    pass
+
+class NotFoundError(APIError):
+    """리소스 없음 오류"""
+    pass
+
+
+# 전역 클라이언트 인스턴스
+fastapi_client = FastAPIClient()

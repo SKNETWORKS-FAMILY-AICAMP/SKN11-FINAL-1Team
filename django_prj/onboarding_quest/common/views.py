@@ -10,10 +10,14 @@ import mimetypes
 from urllib.parse import quote
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
 @csrf_exempt
+@login_required
 def doc_upload(request):
-    if request.method == 'POST' and request.user.is_authenticated:
+    if request.method == 'POST':
         try:
             uploaded_file = request.FILES.get('file')
             title = request.POST.get('title')
@@ -21,8 +25,11 @@ def doc_upload(request):
             tags = request.POST.get('tags', '')
             common_doc = request.POST.get('common_doc', 'false').lower() == 'true'
             
-            department = request.user.department
-            if not uploaded_file or not title or not department:
+            # 현재 사용자 정보
+            user_data = request.session.get('user_data', {})
+            department_id = user_data.get('department_id')
+            
+            if not uploaded_file or not title or not department_id:
                 return JsonResponse({'success': False, 'error': '필수 정보 누락'})
 
             # 원본 파일명에서 확장자 추출
@@ -32,32 +39,43 @@ def doc_upload(request):
             # 고유한 파일명 생성
             unique_filename = f"{uuid.uuid4()}{file_extension}"
             
-            # 부서별 디렉토리 생성
-            upload_dir = f"documents/{department.department_name}/"
-            if not os.path.exists(os.path.join(settings.MEDIA_ROOT, upload_dir)):
-                os.makedirs(os.path.join(settings.MEDIA_ROOT, upload_dir))
+            # 파일 저장 (로컬)
+            upload_dir = f"documents/dept_{department_id}/"
+            full_upload_dir = os.path.join(settings.MEDIA_ROOT, upload_dir)
+            if not os.path.exists(full_upload_dir):
+                os.makedirs(full_upload_dir)
             
-            # 파일 저장
             file_path = os.path.join(upload_dir, unique_filename)
             saved_path = default_storage.save(file_path, ContentFile(uploaded_file.read()))
             
-            # 데이터베이스에 저장 (확장자 포함된 제목으로 저장)
+            # 제목 정리
             clean_title = title
             if not clean_title.endswith(file_extension):
                 clean_title += file_extension
             
-            doc = Docs.objects.create(
-                title=clean_title,
-                description=description,
-                department=department,
-                file_path=saved_path,
-                common_doc=common_doc
-            )
-
-            return JsonResponse({'success': True, 'doc_id': doc.docs_id})
+            # FastAPI로 문서 정보 저장
+            doc_data = {
+                'title': clean_title,
+                'description': description,
+                'file_path': saved_path,
+                'common_doc': common_doc,
+                'department_id': department_id
+            }
             
+            result = fastapi_client.create_doc(doc_data)
+            
+            return JsonResponse({
+                'success': True, 
+                'doc_id': result.get('docs_id'),
+                'message': '파일이 성공적으로 업로드되었습니다.'
+            })
+            
+        except AuthenticationError:
+            return JsonResponse({'success': False, 'error': '인증이 만료되었습니다.'})
+        except APIError as e:
+            return JsonResponse({'success': False, 'error': f'문서 저장 오류: {str(e)}'})
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            return JsonResponse({'success': False, 'error': f'파일 업로드 중 오류가 발생했습니다: {str(e)}'})
     
     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
@@ -116,11 +134,31 @@ def doc_download(request, doc_id):
 
 
 def doc(request):
-    user = request.user
-    common_docs = Docs.objects.filter(common_doc=True)
-    dept_docs = Docs.objects.filter(department=user.department, common_doc=False) if user.is_authenticated and user.department else Docs.objects.none()
-    all_docs = list(common_docs) + [doc for doc in dept_docs if doc not in common_docs]
-    return render(request, 'common/doc.html', {'core_docs': all_docs})
+    try:
+        if not request.user.is_authenticated:
+            return render(request, 'common/doc.html', {'core_docs': []})
+            
+        user_data = request.session.get('user_data', {})
+        department_id = user_data.get('department_id')
+        
+        # FastAPI에서 공통 문서 조회
+        common_docs_result = fastapi_client.get_docs(common_doc=True)
+        common_docs = common_docs_result.get('docs', [])
+        
+        # FastAPI에서 부서 문서 조회
+        dept_docs = []
+        if department_id:
+            dept_docs_result = fastapi_client.get_docs(department_id=department_id, common_doc=False)
+            dept_docs = dept_docs_result.get('docs', [])
+        
+        # 중복 제거하여 모든 문서 합치기
+        all_docs = common_docs + [doc for doc in dept_docs if doc not in common_docs]
+        
+        return render(request, 'common/doc.html', {'core_docs': all_docs})
+        
+    except (AuthenticationError, APIError) as e:
+        messages.error(request, f'문서 목록 조회 중 오류가 발생했습니다: {str(e)}')
+        return render(request, 'common/doc.html', {'core_docs': []})
 
 def task_add(request):
     return render(request, 'common/task_add.html')
@@ -129,12 +167,19 @@ def task_add(request):
 def doc_delete(request, doc_id):
     if request.method == 'POST' and request.user.is_authenticated:
         try:
-            doc = Docs.objects.get(pk=doc_id)
-            if doc.department != request.user.department:
+            # FastAPI에서 문서 정보 조회
+            doc_result = fastapi_client.get_doc(doc_id)
+            doc = doc_result
+            
+            user_data = request.session.get('user_data', {})
+            user_department_id = user_data.get('department_id')
+            
+            # 권한 확인
+            if doc.get('department_id') != user_department_id:
                 return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
             
             # 실제 파일 삭제
-            if doc.file_path:
+            if doc.get('file_path'):
                 file_path = os.path.join(settings.MEDIA_ROOT, doc.file_path)
                 if os.path.exists(file_path):
                     os.remove(file_path)
