@@ -340,8 +340,9 @@ window.curriculum = JSON.parse('{{ curriculum|escapejs|default:"null" }}');
 if (window.curriculum && !window.curriculum.curriculum_id) {
   if (window.curriculum.pk) {
     window.curriculum.curriculum_id = window.curriculum.pk;
-  } else if (window.curriculum.id) {
-    window.curriculum.curriculum_id = window.curriculum.id;
+  } else if (window.curriculum.curriculum_id) {
+    // 이미 올바른 필드가 있으면 그대로 사용
+    window.curriculum.curriculum_id = window.curriculum.curriculum_id;
   }
 }
 window.tasks_json = JSON.parse('{{ tasks_json|escapejs|default:"[]" }}');
@@ -650,7 +651,7 @@ document.getElementById('save-curriculum-btn').onclick = async function() {
   // edit_mode와 curriculum이 있으면 curriculum_id도 전송
   let curriculum_id = null;
   if (window.edit_mode && window.curriculum) {
-    curriculum_id = window.curriculum.curriculum_id || window.curriculum.pk || window.curriculum.id;
+    curriculum_id = window.curriculum.curriculum_id || window.curriculum.pk;
   }
   
   console.log('Edit mode:', window.edit_mode);

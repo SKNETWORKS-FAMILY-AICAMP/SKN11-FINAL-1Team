@@ -183,7 +183,7 @@
       <div class="kanban-column todo-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">진행 전</div>
         {% for task in status_tasks.진행전 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.id }}">
+        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               {% if task.dday_text %}
@@ -207,7 +207,7 @@
       <div class="kanban-column processing-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">진행 중</div>
         {% for task in status_tasks.진행중 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.id }}">
+        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               {% if task.dday_text %}
@@ -231,7 +231,7 @@
       <div class="kanban-column review-request-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">검토요청</div>
         {% for task in status_tasks.검토요청 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.id }}">
+        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               {% if task.dday_text %}
@@ -255,7 +255,7 @@
       <div class="kanban-column success-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">완료</div>
         {% for task in status_tasks.완료 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.id }}">
+        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
           <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
             <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
               <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
