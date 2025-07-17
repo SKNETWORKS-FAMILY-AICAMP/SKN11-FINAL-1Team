@@ -4,6 +4,16 @@ from datetime import date, datetime
 from fastapi import Form, UploadFile, File
 
 
+# Token schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: 'User'
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
 # Base schemas
 class CompanyBase(BaseModel):
     company_name: str
@@ -321,4 +331,4 @@ class FileUploadResponse(BaseModel):
     file_path: str
     file_size: int
     content_type: str
-    upload_time: datetime 
+    upload_time: datetime

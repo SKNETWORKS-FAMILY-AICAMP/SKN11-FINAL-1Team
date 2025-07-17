@@ -172,15 +172,15 @@ async def create_user_form(
 
 
 # 템플릿 관리 폼
-@router.get("/templates", response_class=HTMLResponse)
-async def template_form(request: Request, db: Session = Depends(get_db)):
-    """템플릿 생성 폼"""
+@router.get("/curriculum", response_class=HTMLResponse)
+async def curriculum_form(request: Request, db: Session = Depends(get_db)):
+    """커리큘럼 생성 폼"""
     departments = crud.get_departments(db)
-    templates_list = crud.get_templates(db)
-    return templates.TemplateResponse("forms/template_form.html", {
+    curriculum_list = crud.get_curricula(db)
+    return templates.TemplateResponse("forms/curriculum_form.html", {
         "request": request,
         "departments": departments,
-        "templates_list": templates_list
+        "curriculum_list": curriculum_list
     })
 
 
