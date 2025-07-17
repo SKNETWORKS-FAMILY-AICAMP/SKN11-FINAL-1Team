@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}문서 업로드{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/common/doc.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="doc-container">
+  <div class="doc-left">
+    <div class="doc-title">문서 업로드</div>
+
+    <!-- 문서 업로드 박스 -->
+    <div class="doc-upload-box">
+      <!-- 노란색 카테고리 탭 버튼 제거됨 -->
+
+      <!-- 드래그 앤 드롭 영역 -->
+      <div class="doc-drop-area" id="doc-drop-area">
+        클릭하거나 파일을 여기로 끌어오세요
+      </div>
+      <input type="file" id="doc-file-input" multiple accept=".pdf,.doc,.docx,.txt,.hwp,.jpg,.png,.ppt,.pptx,.xls,.xlsx"
+        style="display: none;">
+
+      <!-- 추가된 파일 목록 -->
+      <div class="doc-upload-list" id="doc-upload-list">
+        <table class="doc-upload-list-table">
+          <thead>
+            <tr>
+              <th>파일명</th>
+              <th>설명</th>
+              <th>분류(태그)</th>
+              <th>공통문서</th>
+              <th>제거</th>
+            </tr>
+          </thead>
+          <tbody id="doc-upload-list-tbody">
+            <!-- 동적으로 추가됨 -->
+          </tbody>
+        </table>
+      </div>
+
+      <button class="doc-upload-btn" id="doc-upload-btn">업로드</button>
+    </div>
+
+    <!-- 등록된 파일 목록 -->
+    <div class="doc-file-list">
+      <div class="doc-title">등록된 파일 목록</div>
+      <table class="doc-file-list-table">
+        <thead>
+          <tr>
+            <th>파일명</th>
+            <th>설명</th>
+            <th>분류(태그)</th>
+            <th>관리부서</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in core_docs %}
+          <tr data-doc-id="{{ doc.docs_id }}">
+            <td>
+              <!-- 파일명을 다운로드 링크로 변경 -->
+              <a href="/common/doc/{{ doc.docs_id }}/download/" class="doc-download-link" title="클릭하여 다운로드"
+                target="_blank">
+                📄 {{ doc.title }}
+              </a>
+            </td>
+            <td>{{ doc.description|default:"-" }}</td>
+            <td>-</td>
+            <td>
+              {% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}
+            </td>
+            <td>
+              {% if user.department and doc.department and user.department.pk == doc.department.pk %}
+              <button class="doc-edit-btn" onclick="editDoc({{ doc.docs_id }})">수정</button>
+              <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px;">등록된 문서가 없습니다.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal-overlay" id="deleteModal" style="display: none;">
+  <div class="modal-content">
+    <h3>문서 삭제</h3>
+    <p>이 문서를 삭제하시겠습니까?<br>삭제된 문서는 복구할 수 없습니다.</p>
+    <div class="modal-buttons">
+      <button class="modal-btn cancel" onclick="closeDeleteModal()">취소</button>
+      <button class="modal-btn confirm" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/common/doc.js' %}"></script>
+{% endblock %}

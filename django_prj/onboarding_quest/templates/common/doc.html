@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}문서 업로드{% endblock %}
 
 {% block extra_head %}
@@ -10,21 +9,17 @@
 {% block content %}
 <div class="doc-container">
   <div class="doc-left">
-    <div class="doc-title">문서 업로드</div>
+    <div class="doc-title">📄 문서 업로드</div>
 
-    <!-- 문서 업로드 박스 -->
     <div class="doc-upload-box">
-      <!-- 노란색 카테고리 탭 버튼 제거됨 -->
-
-      <!-- 드래그 앤 드롭 영역 -->
       <div class="doc-drop-area" id="doc-drop-area">
-        클릭하거나 파일을 여기로 끌어오세요
+        <div style="font-size: 1.3em; margin-bottom: 8px;">📁 파일을 드래그하여 업로드하세요</div>
+        <div style="font-size: 0.9em; color: #999;">또는 클릭하여 파일을 선택하세요</div>
       </div>
-      <input type="file" id="doc-file-input" multiple accept=".pdf,.doc,.docx,.txt,.hwp,.jpg,.png,.ppt,.pptx,.xls,.xlsx"
-        style="display: none;">
 
-      <!-- 추가된 파일 목록 -->
-      <div class="doc-upload-list" id="doc-upload-list">
+      <input type="file" id="doc-file-input" style="display: none;" multiple>
+
+      <div style="margin-top: 20px;">
         <table class="doc-upload-list-table">
           <thead>
             <tr>
@@ -36,17 +31,16 @@
             </tr>
           </thead>
           <tbody id="doc-upload-list-tbody">
-            <!-- 동적으로 추가됨 -->
+            <!-- 업로드할 파일 목록이 여기에 표시됩니다 -->
           </tbody>
         </table>
       </div>
 
-      <button class="doc-upload-btn" id="doc-upload-btn">업로드</button>
+      <button id="doc-upload-btn" class="doc-upload-btn" style="display: none;">📤 업로드</button>
     </div>
 
-    <!-- 등록된 파일 목록 -->
     <div class="doc-file-list">
-      <div class="doc-title">등록된 파일 목록</div>
+      <h3>📋 등록된 문서 목록</h3>
       <table class="doc-file-list-table">
         <thead>
           <tr>
@@ -59,29 +53,32 @@
         </thead>
         <tbody>
           {% for doc in core_docs %}
-          <tr data-doc-id="{{ doc.docs_id }}">
+          <tr>
             <td>
-              <!-- 파일명을 다운로드 링크로 변경 -->
-              <a href="/common/doc/{{ doc.docs_id }}/download/" class="doc-download-link" title="클릭하여 다운로드"
-                target="_blank">
+              <a href="{% url 'common:doc_download' doc.docs_id %}" class="doc-download-link">
                 📄 {{ doc.title }}
               </a>
             </td>
             <td>{{ doc.description|default:"-" }}</td>
-            <td>-</td>
+            <td>{{ doc.tags|default:"-" }}</td>
             <td>
-              {% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}
+              {% if doc.department %}
+              {{ doc.department.department_name }}
+              {% else %}
+              -
+              {% endif %}
             </td>
             <td>
               {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-              <button class="doc-edit-btn" onclick="editDoc({{ doc.docs_id }})">수정</button>
+              <button class="doc-edit-btn"
+                onclick="openEditModal({{ doc.docs_id }}, '{{ doc.description|default:'' }}', '{{ doc.tags|default:'' }}')">수정</button>
               <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
               {% endif %}
             </td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="5" style="text-align: center; padding: 40px;">등록된 문서가 없습니다.</td>
+            <td colspan="5" style="text-align: center; color: #999;">등록된 문서가 없습니다.</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -90,14 +87,38 @@
   </div>
 </div>
 
-<!-- 삭제 확인 모달 -->
-<div class="modal-overlay" id="deleteModal" style="display: none;">
+<!-- 수정 모달 -->
+<div id="edit-modal" class="modal-overlay" style="display: none;">
   <div class="modal-content">
-    <h3>문서 삭제</h3>
-    <p>이 문서를 삭제하시겠습니까?<br>삭제된 문서는 복구할 수 없습니다.</p>
+    <h3>문서 정보 수정</h3>
+    <form id="edit-form">
+      {% csrf_token %}
+      <div style="margin-bottom: 15px;">
+        <label for="edit-description">설명:</label>
+        <textarea id="edit-description" rows="3"
+          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label for="edit-tags">분류(태그):</label>
+        <input type="text" id="edit-tags" placeholder="태그를 입력하세요"
+          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+      <div class="modal-buttons">
+        <button type="button" class="modal-btn cancel" onclick="closeEditModal()">취소</button>
+        <button type="submit" class="modal-btn confirm">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div id="delete-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <h3>문서 삭제 확인</h3>
+    <p>정말로 이 문서를 삭제하시겠습니까?<br>삭제된 문서는 복구할 수 없습니다.</p>
     <div class="modal-buttons">
-      <button class="modal-btn cancel" onclick="closeDeleteModal()">취소</button>
-      <button class="modal-btn confirm" onclick="confirmDelete()">삭제</button>
+      <button type="button" class="modal-btn cancel" onclick="closeDeleteModal()">취소</button>
+      <button type="button" class="modal-btn confirm" onclick="confirmDelete()">삭제</button>
     </div>
   </div>
 </div>

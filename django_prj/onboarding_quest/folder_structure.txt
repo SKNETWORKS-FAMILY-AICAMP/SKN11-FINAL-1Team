@@ -1,0 +1,224 @@
+폴더 PATH의 목록입니다.
+볼륨 일련 번호는 382E-C517입니다.
+C:.
+│  db.sqlite3
+│  folder_structure.txt
+│  manage.py
+│  models.py
+│  requirements.txt
+│  
+├─account
+│  │  admin.py
+│  │  apps.py
+│  │  forms.py
+│  │  models.py
+│  │  tests.py
+│  │  urls.py
+│  │  views.py
+│  │  __init__.py
+│  │  
+│  ├─migrations
+│  │  │  __init__.py
+│  │  │  
+│  │  └─__pycache__
+│  │          __init__.cpython-313.pyc
+│  │          
+│  └─__pycache__
+│          admin.cpython-313.pyc
+│          apps.cpython-313.pyc
+│          forms.cpython-313.pyc
+│          models.cpython-313.pyc
+│          urls.cpython-313.pyc
+│          views.cpython-313.pyc
+│          __init__.cpython-313.pyc
+│          
+├─common
+│  │  admin.py
+│  │  apps.py
+│  │  models.py
+│  │  tests.py
+│  │  urls.py
+│  │  views.py
+│  │  __init__.py
+│  │  
+│  ├─migrations
+│  │  │  __init__.py
+│  │  │  
+│  │  └─__pycache__
+│  │          __init__.cpython-313.pyc
+│  │          
+│  └─__pycache__
+│          admin.cpython-313.pyc
+│          apps.cpython-313.pyc
+│          models.cpython-313.pyc
+│          urls.cpython-313.pyc
+│          views.cpython-313.pyc
+│          __init__.cpython-313.pyc
+│          
+├─core
+│  │  admin.py
+│  │  apps.py
+│  │  context_processors.py
+│  │  models.py
+│  │  tests.py
+│  │  views.py
+│  │  __init__.py
+│  │  
+│  ├─management
+│  │  └─commands
+│  │      │  make_sample.py
+│  │      │  
+│  │      └─__pycache__
+│  │              make_sample.cpython-313.pyc
+│  │              
+│  ├─migrations
+│  │  │  0001_initial.py
+│  │  │  __init__.py
+│  │  │  
+│  │  └─__pycache__
+│  │          0001_initial.cpython-313.pyc
+│  │          __init__.cpython-313.pyc
+│  │          
+│  └─__pycache__
+│          admin.cpython-313.pyc
+│          apps.cpython-313.pyc
+│          context_processors.cpython-313.pyc
+│          models.cpython-313.pyc
+│          __init__.cpython-313.pyc
+│          
+├─media
+│  └─documents
+│      └─개발
+│              06c7c4a5-4375-4c45-b7c4-322bf609ab5f.pdf
+│              
+├─mentee
+│  │  admin.py
+│  │  apps.py
+│  │  models.py
+│  │  tests.py
+│  │  urls.py
+│  │  views.py
+│  │  __init__.py
+│  │  
+│  ├─migrations
+│  │  │  __init__.py
+│  │  │  
+│  │  └─__pycache__
+│  │          __init__.cpython-313.pyc
+│  │          
+│  └─__pycache__
+│          admin.cpython-313.pyc
+│          apps.cpython-313.pyc
+│          models.cpython-313.pyc
+│          urls.cpython-313.pyc
+│          views.cpython-313.pyc
+│          __init__.cpython-313.pyc
+│          
+├─mentor
+│  │  apps.py
+│  │  models.py
+│  │  tests.py
+│  │  urls.py
+│  │  views.py
+│  │  __init__.py
+│  │  
+│  ├─migrations
+│  │  │  __init__.py
+│  │  │  
+│  │  └─__pycache__
+│  │          __init__.cpython-313.pyc
+│  │          
+│  └─__pycache__
+│          apps.cpython-313.pyc
+│          models.cpython-313.pyc
+│          urls.cpython-313.pyc
+│          views.cpython-313.pyc
+│          __init__.cpython-313.pyc
+│          
+├─onboarding_quest
+│  │  asgi.py
+│  │  settings.py
+│  │  urls.py
+│  │  wsgi.py
+│  │  __init__.py
+│  │  
+│  └─__pycache__
+│          settings.cpython-313.pyc
+│          urls.cpython-313.pyc
+│          wsgi.cpython-313.pyc
+│          __init__.cpython-313.pyc
+│          
+├─static
+│  ├─css
+│  │  │  base.css
+│  │  │  
+│  │  ├─account
+│  │  │      change_pwd.css
+│  │  │      login.css
+│  │  │      profile.css
+│  │  │      supervisor.css
+│  │  │      user_add_modify.css
+│  │  │      
+│  │  ├─common
+│  │  │      chatbot.css
+│  │  │      doc.css
+│  │  │      mentee_task_list.css
+│  │  │      task_add.css
+│  │  │      
+│  │  ├─mentee
+│  │  │      mentee.css
+│  │  │      
+│  │  └─mentor
+│  │          add_template.css
+│  │          manage_mentee.css
+│  │          manage_template.css
+│  │          mentor.css
+│  │          
+│  ├─img
+│  │      default_profile.png
+│  │      
+│  └─js
+│      │  base.js
+│      │  
+│      ├─account
+│      │      manage_mentorship.js
+│      │      supervisor.js
+│      │      
+│      ├─common
+│      │      chatbot.js
+│      │      doc.js
+│      │      mentee_task_list.js
+│      │      task_add.js
+│      │      
+│      ├─mentee
+│      │      mentee.js
+│      │      
+│      └─mentor
+│              add_template.js
+│              manage_template.js
+│              
+└─templates
+    │  base.html
+    │  
+    ├─account
+    │      login.html
+    │      manage_mentorship.html
+    │      profile.html
+    │      supervisor.html
+    │      user_add_modify.html
+    │      
+    ├─common
+    │      chatbot.html
+    │      doc.html
+    │      task_add.html
+    │      
+    ├─mentee
+    │      mentee.html
+    │      task_list.html
+    │      
+    └─mentor
+            add_template.html
+            manage_mentee.html
+            manage_template.html
+            mentor.html
+            

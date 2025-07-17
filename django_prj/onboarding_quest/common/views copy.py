@@ -6,7 +6,6 @@ from core.models import Docs, ChatSession, ChatMessage
 import json
 import os
 import uuid
-import threading
 import mimetypes
 from urllib.parse import quote
 from django.core.files.storage import default_storage
@@ -14,66 +13,12 @@ from django.core.files.base import ContentFile
 import aiohttp
 import asyncio
 import logging
-from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue
-from embed_and_upsert import advanced_embed_and_upsert, get_existing_point_ids
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
 
-# Qdrant 삭제 함수
-def delete_from_qdrant(file_path, department_id):
-    """Qdrant에서 특정 파일의 모든 청크 삭제"""
-    try:
-        client = QdrantClient(url=os.getenv("QDRANT_URL"))
-        absolute_path = os.path.abspath(file_path)
-        
-        # 파일 기반 필터링으로 삭제
-        delete_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="metadata.source",
-                    match=MatchValue(value=absolute_path)
-                ),
-                FieldCondition(
-                    key="metadata.department_id",
-                    match=MatchValue(value=department_id)
-                )
-            ]
-        )
-        
-        # 삭제 실행
-        delete_result = client.delete(
-            collection_name="rag_multiformat",
-            points_selector=delete_filter
-        )
-        
-        return delete_result.operation_id
-        
-    except Exception as e:
-        logger.error(f"Qdrant 삭제 중 오류: {e}")
-        return None
-
-# 비동기 임베딩 함수
-def embed_document_async(file_path, department_id, common_doc):
-    """비동기로 문서 임베딩 처리"""
-    try:
-        existing_ids = get_existing_point_ids()
-        embedded_chunks = advanced_embed_and_upsert(
-            file_path, 
-            existing_ids,
-            department_id=department_id,
-            common_doc=common_doc
-        )
-        logger.info(f"문서 임베딩 완료: {file_path}, 청크 수: {embedded_chunks}")
-        return embedded_chunks
-    except Exception as e:
-        logger.error(f"문서 임베딩 중 오류: {e}")
-        return 0
-
 # RAG API 호출 함수
-# views.py의 call_rag_api 함수 완전 수정
-async def call_rag_api(question, session_id=None, user_id=None, department_id=None):
+async def call_rag_api(question, session_id=None, user_id=None):
     """RAG API 호출"""
     try:
         logger.info(f"RAG API 호출: {question[:50]}...")
@@ -83,9 +28,8 @@ async def call_rag_api(question, session_id=None, user_id=None, department_id=No
                 f"{settings.RAG_API_URL}/chat",
                 json={
                     "question": question,
-                    "session_id": str(session_id) if session_id else None,  # 문자열로 변환
-                    "user_id": user_id or "anonymous",
-                    "department_id": department_id or 0
+                    "session_id": session_id,
+                    "user_id": user_id or "anonymous"
                 },
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
@@ -116,8 +60,6 @@ async def call_rag_api(question, session_id=None, user_id=None, department_id=No
             "error": str(e)
         }
 
-
-# 챗봇 메인 함수
 def chatbot(request):
     current_session_id = None
     if request.method == 'POST':
@@ -161,8 +103,7 @@ def chatbot(request):
                         call_rag_api(
                             question=message_text,
                             session_id=current_session_id,
-                            user_id=str(request.user.user_id),
-                            department_id=request.user.department.department_id if request.user.department else None
+                            user_id=str(request.user.user_id)
                         )
                     )
                     
@@ -205,7 +146,7 @@ def chatbot(request):
         'current_session_id': current_session_id,
     })
 
-# 문서 업로드 함수 (자동 임베딩 포함)
+# 기존 문서 업로드 관련 함수들은 그대로 유지
 @csrf_exempt
 def doc_upload(request):
     if request.method == 'POST' and request.user.is_authenticated:
@@ -213,6 +154,7 @@ def doc_upload(request):
             uploaded_file = request.FILES.get('file')
             title = request.POST.get('title')
             description = request.POST.get('description', '')
+            tags = request.POST.get('tags', '')
             common_doc = request.POST.get('common_doc', 'false').lower() == 'true'
             department = request.user.department
 
@@ -248,87 +190,13 @@ def doc_upload(request):
                 common_doc=common_doc
             )
 
-            # 자동 임베딩 (백그라운드 처리)
-            full_file_path = os.path.join(settings.MEDIA_ROOT, saved_path)
-            thread = threading.Thread(
-                target=embed_document_async,
-                args=(full_file_path, department.department_id, common_doc)
-            )
-            thread.daemon = True
-            thread.start()
-
-            return JsonResponse({
-                'success': True,
-                'doc_id': doc.docs_id,
-                'message': '문서 업로드 완료. 임베딩 처리 중...'
-            })
+            return JsonResponse({'success': True, 'doc_id': doc.docs_id})
 
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
-# 문서 수정 함수
-@csrf_exempt
-def doc_update(request, doc_id):
-    if request.method == 'POST' and request.user.is_authenticated:
-        try:
-            doc = Docs.objects.get(pk=doc_id)
-            
-            # 권한 확인 (자신의 부서 문서만 수정 가능)
-            if doc.department != request.user.department:
-                return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
-            
-            # 설명만 업데이트
-            description = request.POST.get('description', '')
-            doc.description = description
-            doc.save()
-            
-            return JsonResponse({'success': True, 'message': '설명이 수정되었습니다.'})
-            
-        except Docs.DoesNotExist:
-            return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
-
-# 문서 삭제 함수 (자동 Qdrant 삭제 포함)
-@csrf_exempt
-def doc_delete(request, doc_id):
-    if request.method == 'POST' and request.user.is_authenticated:
-        try:
-            doc = Docs.objects.get(pk=doc_id)
-            if doc.department != request.user.department:
-                return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
-
-            # 파일 정보 저장
-            file_path = os.path.join(settings.MEDIA_ROOT, doc.file_path)
-            department_id = doc.department.department_id
-            
-            # 1. 실제 파일 삭제
-            if doc.file_path and os.path.exists(file_path):
-                os.remove(file_path)
-            
-            # 2. Qdrant에서 관련 청크 삭제
-            delete_operation = delete_from_qdrant(file_path, department_id)
-            
-            # 3. 데이터베이스에서 문서 삭제
-            doc.delete()
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'문서 및 벡터 데이터가 삭제되었습니다. (작업 ID: {delete_operation})'
-            })
-
-        except Docs.DoesNotExist:
-            return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
-
-# 문서 다운로드 함수
 def doc_download(request, doc_id):
     """파일 다운로드 API"""
     if not request.user.is_authenticated:
@@ -376,7 +244,6 @@ def doc_download(request, doc_id):
     except Exception as e:
         return HttpResponse(f'파일 다운로드 중 오류가 발생했습니다: {str(e)}', status=500)
 
-# 문서 목록 함수
 def doc(request):
     user = request.user
     common_docs = Docs.objects.filter(common_doc=True)
@@ -384,9 +251,33 @@ def doc(request):
     all_docs = list(common_docs) + [doc for doc in dept_docs if doc not in common_docs]
     return render(request, 'common/doc.html', {'core_docs': all_docs})
 
-# 기타 함수들
 def task_add(request):
     return render(request, 'common/task_add.html')
+
+@csrf_exempt
+def doc_delete(request, doc_id):
+    if request.method == 'POST' and request.user.is_authenticated:
+        try:
+            doc = Docs.objects.get(pk=doc_id)
+            if doc.department != request.user.department:
+                return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
+
+            # 실제 파일 삭제
+            if doc.file_path:
+                file_path = os.path.join(settings.MEDIA_ROOT, doc.file_path)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+
+            # 데이터베이스에서 문서 삭제
+            doc.delete()
+            return JsonResponse({'success': True})
+
+        except Docs.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
 @csrf_exempt
 def new_chat_session(request):

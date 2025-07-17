@@ -113,6 +113,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 30,
+            'check_same_thread': False,
+        }
     }
 }
 
@@ -173,3 +177,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # 파일 업로드 크기 제한
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+RAG_API_URL = "http://localhost:8001"
+
+
+RAG_API_URL = os.getenv('RAG_API_URL', 'http://localhost:8001')
