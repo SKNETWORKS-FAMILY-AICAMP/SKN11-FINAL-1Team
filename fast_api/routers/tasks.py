@@ -137,20 +137,22 @@ async def update_task_status(task_id: int, status: int, db: Session = Depends(ge
     return {"message": f"태스크 상태가 '{status_names.get(status, status)}'로 업데이트되었습니다"}
 
 
-# 하위 태스크
-@router.post("/subtask/", response_model=schemas.Subtask)
-async def create_subtask(subtask: schemas.SubtaskCreate, db: Session = Depends(get_db)):
-    """새 하위 태스크 생성"""
+# 하위 태스크 (TaskAssign의 서브태스크)
+@router.post("/subtask/", response_model=schemas.TaskAssign)
+async def create_subtask(subtask: schemas.TaskAssignCreate, db: Session = Depends(get_db)):
+    """새 하위 태스크 생성 (TaskAssign의 서브태스크)"""
     # 부모 태스크 할당 존재 확인
-    db_task_assign = crud.get_task_assign(db, task_id=subtask.task_assign_id)
-    if db_task_assign is None:
-        raise HTTPException(status_code=404, detail="부모 태스크를 찾을 수 없습니다")
+    if subtask.parent_id:
+        db_parent_task = crud.get_task_assign(db, task_id=subtask.parent_id)
+        if db_parent_task is None:
+            raise HTTPException(status_code=404, detail="부모 태스크를 찾을 수 없습니다")
     
-    db_subtask = models.Subtask(**subtask.dict())
-    db.add(db_subtask)
-    db.commit()
-    db.refresh(db_subtask)
-    return db_subtask
+    # 멘토십 존재 확인
+    db_mentorship = crud.get_mentorship(db, mentorship_id=subtask.mentorship_id)
+    if db_mentorship is None:
+        raise HTTPException(status_code=404, detail="멘토십을 찾을 수 없습니다")
+    
+    return crud.create_task_assign(db=db, task=subtask)
 
 
 # 멘토링과 관련된 태스크 기능

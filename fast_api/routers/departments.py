@@ -47,7 +47,7 @@ async def update_department(department_id: int, department: schemas.DepartmentCr
 @router.delete("/{department_id}/company/{company_id}")
 async def delete_department_with_validation(
     department_id: int, 
-    company_id: int, 
+    company_id: str, 
     db: Session = Depends(get_db)
 ):
     """회사 정보 검증 후 부서 삭제"""

@@ -22,7 +22,7 @@ async def get_companies(skip: int = 0, limit: int = 100, db: Session = Depends(g
 
 
 @router.get("/{company_id}", response_model=schemas.Company)
-async def get_company(company_id: int, db: Session = Depends(get_db)):
+async def get_company(company_id: str, db: Session = Depends(get_db)):
     """특정 회사 조회"""
     db_company = crud.get_company(db, company_id=company_id)
     if db_company is None:
@@ -31,7 +31,7 @@ async def get_company(company_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{company_id}", response_model=schemas.Company)
-async def update_company(company_id: int, company: schemas.CompanyCreate, db: Session = Depends(get_db)):
+async def update_company(company_id: str, company: schemas.CompanyCreate, db: Session = Depends(get_db)):
     """회사 정보 수정"""
     db_company = crud.get_company(db, company_id=company_id)
     if db_company is None:
@@ -40,7 +40,7 @@ async def update_company(company_id: int, company: schemas.CompanyCreate, db: Se
 
 
 @router.delete("/{company_id}")
-async def delete_company(company_id: int, db: Session = Depends(get_db)):
+async def delete_company(company_id: str, db: Session = Depends(get_db)):
     """회사 삭제"""
     db_company = crud.get_company(db, company_id=company_id)
     if db_company is None:

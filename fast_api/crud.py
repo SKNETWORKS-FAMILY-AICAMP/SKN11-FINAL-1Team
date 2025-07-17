@@ -26,7 +26,7 @@ def create_company(db: Session, company: schemas.CompanyCreate):
     db.refresh(db_company)
     return db_company
 
-def get_company(db: Session, company_id: int):
+def get_company(db: Session, company_id: str):
     """회사 단일 조회"""
     return db.query(models.Company).filter(models.Company.company_id == company_id).first()
 
@@ -34,7 +34,7 @@ def get_companies(db: Session, skip: int = 0, limit: int = 100):
     """회사 목록 조회"""
     return db.query(models.Company).offset(skip).limit(limit).all()
 
-def update_company(db: Session, company_id: int, company_update: schemas.CompanyCreate):
+def update_company(db: Session, company_id: str, company_update: schemas.CompanyCreate):
     """회사 정보 업데이트"""
     db_company = get_company(db, company_id)
     if db_company:
@@ -44,7 +44,7 @@ def update_company(db: Session, company_id: int, company_update: schemas.Company
         db.refresh(db_company)
     return db_company
 
-def delete_company(db: Session, company_id: int):
+def delete_company(db: Session, company_id: str):
     """회사 삭제"""
     db_company = get_company(db, company_id)
     if db_company:
@@ -81,7 +81,7 @@ def update_department(db: Session, department_id: int, department_update: schema
     return db_department
 
 # Department CRUD - 수정된 함수들
-def get_department_by_company(db: Session, department_id: int, company_id: int):
+def get_department_by_company(db: Session, department_id: int, company_id: str):
     """회사별 부서 조회 (검증용)"""
     return db.query(models.Department).filter(
         and_(
@@ -90,7 +90,7 @@ def get_department_by_company(db: Session, department_id: int, company_id: int):
         )
     ).first()
 
-def delete_department_with_company(db: Session, department_id: int, company_id: int):
+def delete_department_with_company(db: Session, department_id: int, company_id: str):
     """회사 정보를 검증하여 부서 삭제"""
     # 1. 회사 존재 확인
     company = get_company(db, company_id)
@@ -170,7 +170,7 @@ def update_user(db: Session, user_id: int, user_update: schemas.UserCreate):
     return db_user
 
 # User CRUD - 수정된 함수들
-def get_user_by_company_department(db: Session, user_id: int, company_id: int, department_id: int):
+def get_user_by_company_department(db: Session, user_id: int, company_id: str, department_id: int):
     """회사, 부서별 사용자 조회 (검증용)"""
     return db.query(models.User).filter(
         and_(
@@ -180,7 +180,7 @@ def get_user_by_company_department(db: Session, user_id: int, company_id: int, d
         )
     ).first()
 
-def delete_user_with_company_department(db: Session, user_id: int, company_id: int, department_id: int):
+def delete_user_with_company_department(db: Session, user_id: int, company_id: str, department_id: int):
     """회사, 부서 정보를 검증하여 사용자 삭제"""
     # 1. 회사 존재 확인
     company = get_company(db, company_id)
@@ -208,9 +208,12 @@ def delete_user_with_company_department(db: Session, user_id: int, company_id: i
     if mentorship_as_mentor or mentorship_as_mentee:
         return None, "멘토링 관계가 있는 사용자는 삭제할 수 없습니다."
     
-    # 5. 할당된 태스크 확인
-    assigned_tasks = db.query(models.TaskAssign).filter(
-        models.TaskAssign.user_id == user_id
+    # 5. 멘토십을 통한 할당된 태스크 확인
+    assigned_tasks = db.query(models.TaskAssign).join(models.Mentorship).filter(
+        or_(
+            models.Mentorship.mentor_id == user_id,
+            models.Mentorship.mentee_id == user_id
+        )
     ).first()
     if assigned_tasks:
         return None, "할당된 태스크가 있는 사용자는 삭제할 수 없습니다."
@@ -236,42 +239,6 @@ def delete_mentorship(db: Session, mentorship_id: int):
         db.delete(db_mentorship)
         db.commit()
     return db_mentorship
-
-
-# Template CRUD
-def create_template(db: Session, template: schemas.TemplateCreate):
-    """템플릿 생성"""
-    db_template = models.Template(**template.dict())
-    db.add(db_template)
-    db.commit()
-    db.refresh(db_template)
-    return db_template
-
-def get_template(db: Session, template_id: int):
-    """템플릿 단일 조회"""
-    return db.query(models.Template).filter(models.Template.template_id == template_id).first()
-
-def get_templates(db: Session, skip: int = 0, limit: int = 100):
-    """템플릿 목록 조회"""
-    return db.query(models.Template).offset(skip).limit(limit).all()
-
-def update_template(db: Session, template_id: int, template_update: schemas.TemplateCreate):
-    """템플릿 정보 업데이트"""
-    db_template = get_template(db, template_id)
-    if db_template:
-        for key, value in template_update.dict().items():
-            setattr(db_template, key, value)
-        db.commit()
-        db.refresh(db_template)
-    return db_template
-
-def delete_template(db: Session, template_id: int):
-    """템플릿 삭제"""
-    db_template = get_template(db, template_id)
-    if db_template:
-        db.delete(db_template)
-        db.commit()
-    return db_template
 
 
 # TaskManage CRUD
@@ -328,8 +295,13 @@ def get_task_assigns(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.TaskAssign).offset(skip).limit(limit).all()
 
 def get_task_assigns_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    """사용자별 태스크 할당 목록 조회"""
-    return db.query(models.TaskAssign).filter(models.TaskAssign.user_id == user_id).offset(skip).limit(limit).all()
+    """사용자별 태스크 할당 목록 조회 (멘토십을 통해)"""
+    return db.query(models.TaskAssign).join(models.Mentorship).filter(
+        or_(
+            models.Mentorship.mentor_id == user_id,
+            models.Mentorship.mentee_id == user_id
+        )
+    ).offset(skip).limit(limit).all()
 
 def update_task_assign(db: Session, task_id: int, task_update: schemas.TaskAssignCreate):
     """태스크 할당 정보 업데이트"""
@@ -381,4 +353,228 @@ def delete_mentorship(db: Session, mentorship_id: int):
     if db_mentorship:
         db.delete(db_mentorship)
         db.commit()
-    return db_mentorship 
+    return db_mentorship
+
+
+# Curriculum CRUD
+def create_curriculum(db: Session, curriculum: schemas.CurriculumCreate):
+    """커리큘럼 생성"""
+    db_curriculum = models.Curriculum(**curriculum.dict())
+    db.add(db_curriculum)
+    db.commit()
+    db.refresh(db_curriculum)
+    return db_curriculum
+
+def get_curriculum(db: Session, curriculum_id: int):
+    """커리큘럼 단일 조회"""
+    return db.query(models.Curriculum).filter(models.Curriculum.curriculum_id == curriculum_id).first()
+
+def get_curricula(db: Session, skip: int = 0, limit: int = 100):
+    """커리큘럼 목록 조회"""
+    return db.query(models.Curriculum).offset(skip).limit(limit).all()
+
+def get_curricula_by_department(db: Session, department_id: int):
+    """부서별 커리큘럼 조회"""
+    return db.query(models.Curriculum).filter(models.Curriculum.department_id == department_id).all()
+
+def get_common_curricula(db: Session):
+    """공용 커리큘럼 조회"""
+    return db.query(models.Curriculum).filter(models.Curriculum.common == True).all()
+
+def update_curriculum(db: Session, curriculum_id: int, curriculum_update: schemas.CurriculumCreate):
+    """커리큘럼 정보 업데이트"""
+    db_curriculum = get_curriculum(db, curriculum_id)
+    if db_curriculum:
+        for key, value in curriculum_update.dict().items():
+            setattr(db_curriculum, key, value)
+        db.commit()
+        db.refresh(db_curriculum)
+    return db_curriculum
+
+def delete_curriculum(db: Session, curriculum_id: int):
+    """커리큘럼 삭제"""
+    db_curriculum = get_curriculum(db, curriculum_id)
+    if db_curriculum:
+        db.delete(db_curriculum)
+        db.commit()
+    return db_curriculum
+
+
+# Mentorship 추가 CRUD
+def get_mentorships_by_mentor(db: Session, mentor_id: int):
+    """멘토별 멘토십 조회"""
+    return db.query(models.Mentorship).filter(models.Mentorship.mentor_id == mentor_id).all()
+
+def get_mentorships_by_mentee(db: Session, mentee_id: int):
+    """멘티별 멘토십 조회"""
+    return db.query(models.Mentorship).filter(models.Mentorship.mentee_id == mentee_id).all()
+
+def update_mentorship_status(db: Session, mentorship_id: int, is_active: bool):
+    """멘토십 활성화 상태 업데이트"""
+    db_mentorship = get_mentorship(db, mentorship_id)
+    if db_mentorship:
+        db_mentorship.is_active = is_active
+        db.commit()
+        db.refresh(db_mentorship)
+    return db_mentorship
+
+
+def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schemas.MentorshipCreate):
+    """멘토십 정보 업데이트"""
+    db_mentorship = get_mentorship(db, mentorship_id)
+    if db_mentorship:
+        for key, value in mentorship_update.dict().items():
+            setattr(db_mentorship, key, value)
+        db.commit()
+        db.refresh(db_mentorship)
+    return db_mentorship
+
+
+# Memo CRUD
+def create_memo(db: Session, memo: schemas.MemoCreate):
+    """메모 생성"""
+    db_memo = models.Memo(**memo.dict())
+    db.add(db_memo)
+    db.commit()
+    db.refresh(db_memo)
+    return db_memo
+
+def get_memo(db: Session, memo_id: int):
+    """메모 단일 조회"""
+    return db.query(models.Memo).filter(models.Memo.memo_id == memo_id).first()
+
+def get_memos(db: Session, skip: int = 0, limit: int = 100):
+    """메모 목록 조회"""
+    return db.query(models.Memo).offset(skip).limit(limit).all()
+
+def get_memos_by_task(db: Session, task_assign_id: int):
+    """과제별 메모 조회"""
+    return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
+
+def get_memos_by_user(db: Session, user_id: int):
+    """사용자별 메모 조회"""
+    return db.query(models.Memo).filter(models.Memo.user_id == user_id).all()
+
+def update_memo(db: Session, memo_id: int, memo_update: schemas.MemoCreate):
+    """메모 정보 업데이트"""
+    db_memo = get_memo(db, memo_id)
+    if db_memo:
+        for key, value in memo_update.dict().items():
+            setattr(db_memo, key, value)
+        db.commit()
+        db.refresh(db_memo)
+    return db_memo
+
+def delete_memo(db: Session, memo_id: int):
+    """메모 삭제"""
+    db_memo = get_memo(db, memo_id)
+    if db_memo:
+        db.delete(db_memo)
+        db.commit()
+    return db_memo
+
+
+# Docs CRUD
+def create_docs(db: Session, docs: schemas.DocsCreate):
+    """문서 생성"""
+    db_docs = models.Docs(**docs.dict())
+    db.add(db_docs)
+    db.commit()
+    db.refresh(db_docs)
+    return db_docs
+
+def get_docs(db: Session, docs_id: int):
+    """문서 단일 조회"""
+    return db.query(models.Docs).filter(models.Docs.docs_id == docs_id).first()
+
+def get_all_docs(db: Session, skip: int = 0, limit: int = 100):
+    """문서 목록 조회"""
+    return db.query(models.Docs).offset(skip).limit(limit).all()
+
+def get_docs_by_department(db: Session, department_id: int):
+    """부서별 문서 조회"""
+    return db.query(models.Docs).filter(models.Docs.department_id == department_id).all()
+
+def get_common_docs(db: Session):
+    """공용 문서 조회"""
+    return db.query(models.Docs).filter(models.Docs.common_doc == True).all()
+
+def update_docs(db: Session, docs_id: int, docs_update: schemas.DocsCreate):
+    """문서 정보 업데이트"""
+    db_docs = get_docs(db, docs_id)
+    if db_docs:
+        for key, value in docs_update.dict().items():
+            setattr(db_docs, key, value)
+        db.commit()
+        db.refresh(db_docs)
+    return db_docs
+
+def delete_docs(db: Session, docs_id: int):
+    """문서 삭제"""
+    db_docs = get_docs(db, docs_id)
+    if db_docs:
+        db.delete(db_docs)
+        db.commit()
+    return db_docs
+
+
+# ChatSession CRUD
+def create_chat_session(db: Session, chat_session: schemas.ChatSessionCreate):
+    """채팅 세션 생성"""
+    db_session = models.ChatSession(**chat_session.dict())
+    db.add(db_session)
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+def get_chat_session(db: Session, session_id: int):
+    """채팅 세션 단일 조회"""
+    return db.query(models.ChatSession).filter(models.ChatSession.session_id == session_id).first()
+
+def get_chat_sessions_by_user(db: Session, user_id: int):
+    """사용자별 채팅 세션 조회"""
+    return db.query(models.ChatSession).filter(models.ChatSession.user_id == user_id).all()
+
+def update_chat_session(db: Session, session_id: int, session_update: schemas.ChatSessionCreate):
+    """채팅 세션 정보 업데이트"""
+    db_session = get_chat_session(db, session_id)
+    if db_session:
+        for key, value in session_update.dict().items():
+            setattr(db_session, key, value)
+        db.commit()
+        db.refresh(db_session)
+    return db_session
+
+def delete_chat_session(db: Session, session_id: int):
+    """채팅 세션 삭제"""
+    db_session = get_chat_session(db, session_id)
+    if db_session:
+        db.delete(db_session)
+        db.commit()
+    return db_session
+
+
+# ChatMessage CRUD
+def create_chat_message(db: Session, chat_message: schemas.ChatMessageCreate):
+    """채팅 메시지 생성"""
+    db_message = models.ChatMessage(**chat_message.dict())
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    return db_message
+
+def get_chat_message(db: Session, message_id: int):
+    """채팅 메시지 단일 조회"""
+    return db.query(models.ChatMessage).filter(models.ChatMessage.message_id == message_id).first()
+
+def get_chat_messages_by_session(db: Session, session_id: int):
+    """세션별 채팅 메시지 조회"""
+    return db.query(models.ChatMessage).filter(models.ChatMessage.session_id == session_id).order_by(models.ChatMessage.create_time).all()
+
+def delete_chat_message(db: Session, message_id: int):
+    """채팅 메시지 삭제"""
+    db_message = get_chat_message(db, message_id)
+    if db_message:
+        db.delete(db_message)
+        db.commit()
+    return db_message
