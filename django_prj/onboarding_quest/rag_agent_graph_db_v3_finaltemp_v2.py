@@ -27,18 +27,13 @@ COLLECTION_NAME = "rag_multiformat"
 # SQLite DB 연결
 DATABASE_PATH = os.getenv("DATABASE_PATH", "db.sqlite3")
 
+# 스레드 로컬 저장소
 _local = threading.local()
-
-# def get_db_connection():
-#     """SQLite 연결 함수"""
-#     conn = sqlite3.connect(DATABASE_PATH)
-#     conn.row_factory = sqlite3.Row  # 딕셔너리처럼 접근 가능
-#     return conn
 
 @contextmanager
 def get_db_connection():
     """안전한 SQLite 연결 관리"""
-    conn = sqlite3.connect(DATABASE_PATH, timeout=30.0)
+    conn = sqlite3.connect(DATABASE_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -125,8 +120,8 @@ def create_chat_session(user_id: str) -> str:
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO core_chatsession (session_id, user_id, created_at) VALUES (?, ?, ?)",
-            (session_id, user_id, datetime.now().isoformat())
+            "INSERT INTO core_chatsession (session_id, user_id) VALUES (?, ?)",
+            (session_id, user_id)
         )
     
     return session_id

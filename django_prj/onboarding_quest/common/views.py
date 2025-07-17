@@ -76,42 +76,31 @@ def embed_document_async(file_path, department_id, common_doc):
 async def call_rag_api(question, session_id=None, user_id=None, department_id=None):
     """RAG API 호출"""
     try:
-        logger.info(f"RAG API 호출: {question[:50]}...")
-        
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{settings.RAG_API_URL}/chat",
                 json={
                     "question": question,
-                    "session_id": str(session_id) if session_id else None,  # 문자열로 변환
-                    "user_id": user_id or "anonymous",
-                    "department_id": department_id or 0
+                    "session_id": str(session_id) if session_id else None,
+                    "user_id": str(user_id) if user_id else "anonymous",
+                    "department_id": int(department_id) if department_id else 0
                 },
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
                 if response.status == 200:
-                    result = await response.json()
-                    logger.info("RAG API 응답 성공")
-                    return result
+                    return await response.json()
                 else:
                     error_text = await response.text()
-                    logger.error(f"RAG API 오류: {error_text}")
+                    logger.error(f"RAG API 오류 ({response.status}): {error_text}")
                     return {
                         "answer": "죄송합니다. 일시적인 오류가 발생했습니다.",
                         "success": False,
                         "error": error_text
                     }
-    except asyncio.TimeoutError:
-        logger.error("RAG API 타임아웃")
-        return {
-            "answer": "응답 시간이 초과되었습니다. 다시 시도해주세요.",
-            "success": False,
-            "error": "timeout"
-        }
     except Exception as e:
         logger.error(f"RAG API 연결 오류: {str(e)}")
         return {
-            "answer": f"연결 오류가 발생했습니다: {str(e)}",
+            "answer": f"시스템 오류가 발생했습니다: {str(e)}",
             "success": False,
             "error": str(e)
         }
