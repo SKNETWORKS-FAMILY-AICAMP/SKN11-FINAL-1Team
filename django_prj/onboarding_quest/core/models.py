@@ -128,7 +128,7 @@ class ChatMessage(models.Model):
         help_text='메시지 타입(user/chatbot)'
     )
     message_text = models.CharField(max_length=1000, null=True, blank=True, help_text='메시지 내용')
-    create_time = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='메시지 생성일')
+    create_time = models.DateTimeField(auto_now_add=True, blank=True, help_text='메시지 생성일')
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, help_text='채팅 세션')
 
 class Docs(models.Model):

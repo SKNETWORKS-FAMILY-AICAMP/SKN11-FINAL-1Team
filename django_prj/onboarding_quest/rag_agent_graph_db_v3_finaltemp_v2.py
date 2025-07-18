@@ -17,7 +17,6 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import threading
 from contextlib import contextmanager
 
-
 # 로딩
 load_dotenv()
 QDRANT_URL = os.getenv("QDRANT_URL")
@@ -26,9 +25,6 @@ COLLECTION_NAME = "rag_multiformat"
 
 # SQLite DB 연결
 DATABASE_PATH = os.getenv("DATABASE_PATH", "db.sqlite3")
-
-# 스레드 로컬 저장소
-_local = threading.local()
 
 @contextmanager
 def get_db_connection():
@@ -99,79 +95,55 @@ class QualityMetrics:
 # 전역 품질 메트릭 인스턴스
 quality_metrics = QualityMetrics()
 
-# 세션 및 메시지 DB 함수 (SQLite 버전)
-# def create_chat_session(user_id: str) -> str:
-#     session_id = str(uuid.uuid4())
-#     conn = get_db_connection()
-#     cursor = conn.cursor()
-    
-#     cursor.execute(
-#         "INSERT INTO core_chatsession (session_id, user_id, created_at) VALUES (?, ?, ?)",
-#         (session_id, user_id, datetime.now().isoformat())
-#     )
-#     conn.commit()
-#     conn.close()
-#     return session_id
-
-# create_chat_session 함수 수정
+# 세션 및 메시지 DB 함수 (수정됨)
 def create_chat_session(user_id: str) -> str:
-    session_id = str(uuid.uuid4())
-    
+    """Context Manager만 사용하는 세션 생성"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        # AutoField이므로 session_id 자동 생성
         cursor.execute(
-            "INSERT INTO core_chatsession (session_id, user_id) VALUES (?, ?)",
-            (session_id, user_id)
+            "INSERT INTO core_chatsession (user_id, summary) VALUES (?, ?)",
+            (int(user_id), "새 채팅 세션")
         )
-    
-    return session_id
-
-
-
-# def save_message(session_id: str, text: str, message_type: str):
-#     conn = get_db_connection()
-#     cursor = conn.cursor()
-    
-#     cursor.execute(
-#         "INSERT INTO core_chatmessage (message_id, session_id, create_time, message_text, message_type) VALUES (?, ?, ?, ?, ?)",
-#         (str(uuid.uuid4()), session_id, datetime.now().isoformat(), text, message_type)
-#     )
+        
+        # 생성된 session_id 조회
+        cursor.execute("SELECT last_insert_rowid()")
+        session_id = cursor.fetchone()[0]
+        
+    return str(session_id)
 
 def save_message(session_id: str, text: str, message_type: str):
+    """Context Manager만 사용하는 메시지 저장"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO core_chatmessage (message_id, session_id, create_time, message_text, message_type) VALUES (?, ?, ?, ?, ?)",
-            (str(uuid.uuid4()), session_id, datetime.now().isoformat(), text, message_type)
+            "INSERT INTO core_chatmessage (session_id, create_time, message_text, message_type) VALUES (?, ?, ?, ?)",
+            (int(session_id), datetime.now().isoformat(), text, message_type)
         )
-
-    conn.commit()
-    conn.close()
+    # Context Manager가 자동으로 commit()과 close() 처리
 
 def load_user_history(user_id: str, limit: int = 10) -> List[str]:
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    """Context Manager만 사용하는 히스토리 로드"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT cm.message_text, cm.message_type
+            FROM core_chatmessage cm
+            JOIN core_chatsession cs ON cm.session_id = cs.session_id
+            WHERE cs.user_id = ?
+            ORDER BY cm.create_time DESC
+            LIMIT ?
+        """, (int(user_id), limit * 2))
+        
+        messages = cursor.fetchall()
     
-    cursor.execute("""
-        SELECT message_text, message_type
-        FROM core_chatmessage
-        WHERE session_id IN (
-            SELECT session_id FROM core_chatsession WHERE user_id = ?
-        )
-        ORDER BY create_time DESC
-        LIMIT ?
-    """, (user_id, limit * 2))
-    
-    messages = cursor.fetchall()
-    conn.close()
-    
-    # 최신 메시지부터 역순으로 정렬
+    # 기존 처리 로직 유지
     messages = list(reversed(messages))
     
     history = []
     buffer = {}
     for row in messages:
-        text, mtype = row['message_text'], row['message_type']
+        text, mtype = row[0], row[1]
         if mtype == "user":
             buffer["user"] = text
         elif mtype == "bot":
@@ -412,54 +384,55 @@ def search_documents_filtered(state: AgentState) -> AgentState:
     
     return {**state, "contexts": contexts}
 
-# 세션 요약 함수
+# 세션 요약 함수 (수정됨)
 def summarize_session(state: AgentState) -> AgentState:
+    """단일 연결에서 모든 작업 처리"""
     session_id = state.get("session_id")
     if not session_id:
         return state
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT message_text, message_type
-        FROM core_chatmessage
-        WHERE session_id = ?
-        ORDER BY create_time ASC
-    """, (session_id,))
-    
-    messages = cursor.fetchall()
-    conn.close()
-    
-    history = []
-    buffer = {}
-    for row in messages:
-        text, mtype = row['message_text'], row['message_type']
-        if mtype == "user":
-            buffer["user"] = text
-        elif mtype == "bot":
-            buffer["bot"] = text
-        if "user" in buffer and "bot" in buffer:
-            history.append(f"Q: {buffer['user']}\nA: {buffer['bot']}")
-            buffer = {}
-    
-    combined = "\n".join(history[-10:])
-    
-    messages = [
-        SystemMessage(content="당신은 기업 내부 상담용 챗봇입니다. 다음 대화 내용은 한 사용자의 상담 기록입니다. 핵심 질문과 답변이 무엇이었는지 중심으로 요약해 주세요."),
-        HumanMessage(content=f"대화 내용:\n{combined}\n\n요약:")
-    ]
-    
-    summary = llm.invoke(messages).content.strip()
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE core_chatsession SET summary = ? WHERE session_id = ?",
-        (summary, session_id)
-    )
-    conn.commit()
-    conn.close()
+    # 하나의 연결에서 모든 작업 처리
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # 메시지 조회
+        cursor.execute("""
+            SELECT message_text, message_type
+            FROM core_chatmessage
+            WHERE session_id = ?
+            ORDER BY create_time ASC
+        """, (session_id,))
+        
+        messages = cursor.fetchall()
+        
+        # 히스토리 처리
+        history = []
+        buffer = {}
+        for row in messages:
+            text, mtype = row[0], row[1]
+            if mtype == "user":
+                buffer["user"] = text
+            elif mtype == "bot":
+                buffer["bot"] = text
+            if "user" in buffer and "bot" in buffer:
+                history.append(f"Q: {buffer['user']}\nA: {buffer['bot']}")
+                buffer = {}
+        
+        combined = "\n".join(history[-10:])
+        
+        # LLM으로 요약 생성
+        messages_for_llm = [
+            SystemMessage(content="당신은 기업 내부 상담용 챗봇입니다. 다음 대화 내용은 한 사용자의 상담 기록입니다. 핵심 질문과 답변이 무엇이었는지 중심으로 요약해 주세요."),
+            HumanMessage(content=f"대화 내용:\n{combined}\n\n요약:")
+        ]
+        
+        summary = llm.invoke(messages_for_llm).content.strip()
+        
+        # 같은 연결에서 요약 업데이트
+        cursor.execute(
+            "UPDATE core_chatsession SET summary = ? WHERE session_id = ?",
+            (summary, session_id)
+        )
     
     return {**state, "summary": summary}
 

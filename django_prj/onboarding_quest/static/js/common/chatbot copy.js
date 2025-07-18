@@ -1,9 +1,3 @@
-document.addEventListener('DOMContentLoaded', function () {
-    if (!window.chatBot) {
-        window.chatBot = new ChatBot();
-    }
-});
-
 class ChatBot {
     constructor() {
         this.chatArea = document.getElementById('chatbot-chat-area');
@@ -11,8 +5,7 @@ class ChatBot {
         this.deleteModalSessionId = null;
         this.isSubmitting = false;
         this.loadingMessageElement = null;
-        this.renderLock = false;
-
+        this.renderLock = false;  // ✅ 메시지 중복 렌더링 방지
         this.refreshSessionList();
     }
 
@@ -56,8 +49,11 @@ class ChatBot {
 
         this.isSubmitting = true;
 
-        // ✅ 사용자 메시지 즉시 출력 (DOM에만, script에는 저장 안함)
+        // ✅ 사용자 메시지 즉시 출력 (UX)
         this.addMessageToChat('user', message);
+
+        // ❌ session-messages에는 넣지 않음 (중복 방지)
+        // this.updateSessionMessagesInDOM('user', message); ← 이 줄 제거해야 함
 
         this.showLoadingAnimation();
 
@@ -77,13 +73,14 @@ class ChatBot {
             if (data.success) {
                 this.selectedSessionInput.value = data.session_id;
 
+                // ✅ 응답을 기존 자리에 타자 애니메이션으로 출력
                 if (this.loadingMessageElement) {
                     await this.typeText(this.loadingMessageElement, data.answer);
                     this.loadingMessageElement.parentElement.classList.remove('loading');
                     this.loadingMessageElement = null;
                 }
 
-                // ✅ 챗봇 메시지만 script에 저장
+                // ✅ session-messages에 챗봇 메시지만 동기화
                 this.updateSessionMessagesInDOM('chatbot', data.answer);
             } else {
                 alert('오류: ' + data.error);
@@ -97,6 +94,7 @@ class ChatBot {
         this.isSubmitting = false;
     }
 
+
     showLoadingAnimation() {
         const oldLoading = document.querySelector('.chatbot-msg-row.bot.loading');
         if (oldLoading) oldLoading.remove();
@@ -106,9 +104,14 @@ class ChatBot {
 
         const messageContent = document.createElement('div');
         messageContent.className = 'chatbot-msg-chabot loading';
-        messageContent.innerHTML = `<div class="loading-wave">` +
-            [..."답변을 생성하고 있습니다..."].map((ch, i) => `<span style="--i:${i}">${ch}</span>`).join('') +
-            `</div>`;
+        messageContent.innerHTML = `
+            <div class="loading-wave">
+                <span style="--i:0">답</span><span style="--i:1">변</span><span style="--i:2">을</span><span style="--i:3">&nbsp;</span>
+                <span style="--i:4">생</span><span style="--i:5">성</span><span style="--i:6">하</span><span style="--i:7">고</span>
+                <span style="--i:8">&nbsp;</span><span style="--i:9">있</span><span style="--i:10">습</span><span style="--i:11">니</span>
+                <span style="--i:12">다</span><span style="--i:13">.</span><span style="--i:14">.</span><span style="--i:15">.</span>
+            </div>
+        `;
 
         messageRow.appendChild(messageContent);
         this.chatArea.appendChild(messageRow);
@@ -127,7 +130,6 @@ class ChatBot {
     }
 
     updateSessionMessagesInDOM(type, text) {
-        if (type === 'user') return;  // ✅ 사용자 메시지는 저장 안함
         const sessionId = this.selectedSessionInput.value;
         const sessionItem = document.querySelector(`[data-session-id="${sessionId}"]`);
         if (!sessionItem) return;
@@ -185,30 +187,19 @@ class ChatBot {
 
     renderMessages(messages) {
         if (this.renderLock) return;
-        this.renderLock = true;
+        this.renderLock = true;  // ✅ 중복 렌더링 방지
+
+        console.log("✅ renderMessages 실행됨", messages);
 
         this.chatArea.innerHTML = '';
-
-        const renderedUserSet = new Set();
-
         if (!messages || messages.length === 0) {
             this.chatArea.innerHTML = '<div class="empty-chat">메시지가 없습니다.</div>';
             this.renderLock = false;
             return;
         }
 
-        messages.forEach(msg => {
-            const type = msg.type === 'user' ? 'user' : 'bot';
-
-            if (type === 'user') {
-                if (renderedUserSet.has(msg.text)) {
-                    console.log(`⚠️ 중복 사용자 메시지 생략: ${msg.text}`);
-                    return;
-                }
-                renderedUserSet.add(msg.text);
-            }
-
-            this.addMessageToChat(type, msg.text);
+        messages.forEach(message => {
+            this.addMessageToChat(message.type === 'user' ? 'user' : 'bot', message.text);
         });
 
         this.renderLock = false;
@@ -261,6 +252,7 @@ class ChatBot {
     }
 }
 
+// 전역 함수들
 function createNewSession() {
     fetch('/common/chatbot/new-session/', {
         method: 'POST',
@@ -313,3 +305,9 @@ function getCsrfToken() {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
     return csrfToken ? csrfToken.value : '';
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.chatBot) {
+        window.chatBot = new ChatBot();  // ✅ 한 번만 실행되도록 보장
+    }
+});

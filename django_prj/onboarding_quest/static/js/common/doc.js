@@ -122,12 +122,15 @@ if (uploadBtn) {
 //#endregion
 
 //#region 문서 수정 기능
-function openEditModal(docId, currentDescription, currentTags) {
+function openEditModal(docId, currentDescription, currentTags, currentCommonDoc) {
   document.getElementById('edit-description').value = currentDescription || '';
   document.getElementById('edit-tags').value = currentTags || '';
+  document.getElementById('edit-common-doc').checked = currentCommonDoc === true || currentCommonDoc === 'true';
   document.getElementById('edit-modal').style.display = 'flex';
   document.getElementById('edit-form').dataset.docId = docId;
 }
+
+
 
 function closeEditModal() {
   document.getElementById('edit-modal').style.display = 'none';
@@ -140,10 +143,12 @@ document.getElementById('edit-form').addEventListener('submit', function (e) {
   const docId = this.dataset.docId;
   const description = document.getElementById('edit-description').value;
   const tags = document.getElementById('edit-tags').value;
+  const commonDocChecked = document.getElementById('edit-common-doc').checked;
 
   const formData = new FormData();
   formData.append('description', description);
   formData.append('tags', tags);
+  formData.append('common_doc', commonDocChecked ? 'true' : 'false');  // ← 문자열로 명확하게 전달
 
   fetch(`/common/doc/${docId}/update/`, {
     method: 'POST',

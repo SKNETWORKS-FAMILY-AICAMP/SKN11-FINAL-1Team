@@ -71,7 +71,8 @@
             <td>
               {% if user.department and doc.department and user.department.pk == doc.department.pk %}
               <button class="doc-edit-btn"
-                onclick="openEditModal({{ doc.docs_id }}, '{{ doc.description|default:'' }}', '{{ doc.tags|default:'' }}')">수정</button>
+                onclick="openEditModal({{ doc.docs_id }}, '{{ doc.description|default:'' }}', '{{ doc.tags|default:'' }}', '{{ doc.common_doc }}')">수정</button>
+
               <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
               {% endif %}
             </td>
@@ -103,6 +104,11 @@
         <input type="text" id="edit-tags" placeholder="태그를 입력하세요"
           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
       </div>
+      <div style="margin-bottom: 20px;">
+        <label for="edit-common-doc">공통문서 여부:</label>
+        <input type="checkbox" id="edit-common-doc">
+      </div>
+
       <div class="modal-buttons">
         <button type="button" class="modal-btn cancel" onclick="closeEditModal()">취소</button>
         <button type="submit" class="modal-btn confirm">저장</button>

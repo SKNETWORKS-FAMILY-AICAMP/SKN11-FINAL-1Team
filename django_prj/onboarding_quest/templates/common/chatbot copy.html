@@ -58,16 +58,16 @@
                 </div>
 
                 <script type="application/json" class="session-messages">
-                [
-                    {% for message in chat_session.messages %}
-                    {
-                        "type": "{{ message.message_type }}",
-                        "text": "{{ message.message_text|escapejs }}",
-                        "time": "{{ message.create_time|date:'Y-m-d' }}"
-                    }{% if not forloop.last %},{% endif %}
-                    {% endfor %}
-                ]
-                </script>
+                            [
+                                {% for message in chat_session.messages %}
+                                {
+                                    "type": "{{ message.message_type }}",
+                                    "text": "{{ message.message_text|escapejs }}",
+                                    "time": "{{ message.create_time|date:'Y-m-d' }}"
+                                }{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            ]
+                        </script>
             </div>
             {% endfor %}
             {% else %}
@@ -77,7 +77,7 @@
     </div>
 
     <div class="chatbot-right">
-        <!-- ✅ 메시지 출력은 JS가 전담 -->
+        <!-- ✅ 메시지 출력은 JS가 전담하도록 비움 -->
         <div class="chatbot-chat-area" id="chatbot-chat-area">
             <div class="empty-chat">메시지를 불러오는 중입니다...</div>
         </div>
@@ -107,8 +107,7 @@
             </div>
         </div>
 
-        <!-- ✅ form 기본 제출 방지 -->
-        <form method="post" class="chatbot-form-row" id="chatbot-form" onsubmit="return false;">
+        <form method="post" class="chatbot-form-row" id="chatbot-form">
             {% csrf_token %}
             <input type="hidden" name="session_id" id="selected-session-id"
                 value="{% if current_session_id %}{{ current_session_id }}{% elif chat_sessions %}{{ chat_sessions.0.session.session_id }}{% endif %}">
@@ -130,6 +129,5 @@
     </div>
 </div>
 
-<!-- ✅ JS는 한 번만 로드됨 -->
 <script src="{% static 'js/common/chatbot.js' %}"></script>
 {% endblock %}

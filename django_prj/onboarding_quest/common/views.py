@@ -7,6 +7,7 @@ import json
 import os
 import uuid
 import threading
+from django.utils import timezone
 import mimetypes
 from urllib.parse import quote
 from django.core.files.storage import default_storage
@@ -17,6 +18,10 @@ import logging
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 from embed_and_upsert import advanced_embed_and_upsert, get_existing_point_ids
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+from datetime import timedelta
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -72,9 +77,7 @@ def embed_document_async(file_path, department_id, common_doc):
         return 0
 
 # RAG API 호출 함수
-# views.py의 call_rag_api 함수 완전 수정
 async def call_rag_api(question, session_id=None, user_id=None, department_id=None):
-    """RAG API 호출"""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -105,81 +108,16 @@ async def call_rag_api(question, session_id=None, user_id=None, department_id=No
             "error": str(e)
         }
 
-
 # 챗봇 메인 함수
 def chatbot(request):
     current_session_id = None
-    if request.method == 'POST':
-        if request.user.is_authenticated:
-            message_text = request.POST.get('message', '').strip()
-            selected_session_id = request.POST.get('session_id')
-
-            if message_text:
-                logger.info(f"사용자 메시지: {message_text[:50]}...")
-                
-                # 세션 처리 로직
-                if selected_session_id:
-                    try:
-                        session = ChatSession.objects.get(session_id=selected_session_id, user=request.user)
-                        current_session_id = session.session_id
-                    except ChatSession.DoesNotExist:
-                        session = ChatSession.objects.create(
-                            user=request.user,
-                            summary=message_text[:50] + '...' if len(message_text) > 50 else message_text
-                        )
-                        current_session_id = session.session_id
-                else:
-                    session = ChatSession.objects.create(
-                        user=request.user,
-                        summary=message_text[:50] + '...' if len(message_text) > 50 else message_text
-                    )
-                    current_session_id = session.session_id
-
-                # 사용자 메시지 저장
-                ChatMessage.objects.create(
-                    session=session,
-                    message_type='user',
-                    message_text=message_text
-                )
-
-                # RAG API 호출
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    rag_result = loop.run_until_complete(
-                        call_rag_api(
-                            question=message_text,
-                            session_id=current_session_id,
-                            user_id=str(request.user.user_id),
-                            department_id=request.user.department.department_id if request.user.department else None
-                        )
-                    )
-                    
-                    bot_response = rag_result.get("answer", "응답을 생성할 수 없습니다.")
-                    
-                    # 세션 요약 업데이트 (RAG에서 제공한 경우)
-                    if rag_result.get("summary"):
-                        session.summary = rag_result["summary"]
-                        session.save()
-                        
-                    logger.info(f"RAG 응답: {bot_response[:50]}...")
-                        
-                except Exception as e:
-                    logger.error(f"RAG 시스템 오류: {str(e)}")
-                    bot_response = f"RAG 시스템 오류: {str(e)}"
-
-                # 봇 응답 저장
-                ChatMessage.objects.create(
-                    session=session,
-                    message_type='chatbot',
-                    message_text=bot_response
-                )
-
-                return redirect(f'/common/chatbot/?session={current_session_id}')
     
-    # 기존 렌더링 로직
+    
+    
+    # GET 요청 처리 (기본 페이지 렌더링)
     current_session_id = request.GET.get('session')
     chat_sessions = []
+    
     if request.user.is_authenticated:
         sessions = ChatSession.objects.filter(user=request.user).order_by('-session_id')
         for session in sessions:
@@ -263,24 +201,30 @@ def doc_update(request, doc_id):
     if request.method == 'POST' and request.user.is_authenticated:
         try:
             doc = Docs.objects.get(pk=doc_id)
-            
-            # 권한 확인 (자신의 부서 문서만 수정 가능)
+
             if doc.department != request.user.department:
                 return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
-            
-            # 설명만 업데이트
+
             description = request.POST.get('description', '')
+            tags = request.POST.get('tags', '')
+            common_doc_str = request.POST.get('common_doc', 'false')  # ← 문자열 그대로 받음
+            common_doc = common_doc_str.lower() == 'true'  # ← 정확한 문자열 비교
+
             doc.description = description
+            doc.tags = tags
+            doc.common_doc = common_doc
             doc.save()
-            
-            return JsonResponse({'success': True, 'message': '설명이 수정되었습니다.'})
-            
+
+            return JsonResponse({'success': True, 'message': '문서 정보가 수정되었습니다.'})
+
         except Docs.DoesNotExist:
             return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
-    
+
     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
+
+
 
 # 문서 삭제 함수 (자동 Qdrant 삭제 포함)
 @csrf_exempt
@@ -406,3 +350,103 @@ def delete_chat_session(request, session_id):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
+
+
+
+
+
+
+
+import uuid
+
+@csrf_exempt
+@require_POST
+def chatbot_send_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
+
+    try:
+        data = json.loads(request.body)
+        message_text = data.get('message', '').strip()
+        session_id = data.get('session_id')
+
+        if not message_text:
+            return JsonResponse({'success': False, 'error': '메시지가 비어 있습니다.'})
+
+        # 세션 처리
+        if session_id:
+            try:
+                session = ChatSession.objects.get(session_id=session_id, user=request.user)
+            except ChatSession.DoesNotExist:
+                return JsonResponse({'success': False, 'error': '세션을 찾을 수 없습니다.'})
+        else:
+            session = ChatSession.objects.create(
+                user=request.user,
+                summary=message_text[:50] + '...' if len(message_text) > 50 else message_text
+            )
+            session_id = session.session_id
+
+        # ✅ 중복 사용자 메시지 차단 (같은 텍스트 + 같은 세션 + 3초 이내)
+        three_seconds_ago = timezone.now() - timezone.timedelta(seconds=3)
+        already_sent = ChatMessage.objects.filter(
+            session=session,
+            message_type='user',
+            message_text=message_text,
+            create_time__gte=three_seconds_ago
+        ).exists()
+
+        if already_sent:
+            return JsonResponse({
+                'success': True,
+                'session_id': session_id,
+                'answer': "(동일 메시지가 이미 방금 저장되어 있어 응답을 생략했습니다)"
+            })
+
+        # 사용자 메시지 저장
+        ChatMessage.objects.create(
+            session=session,
+            message_type='user',
+            message_text=message_text
+        )
+
+        # LLM 호출
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        from .views import call_rag_api
+        rag_result = loop.run_until_complete(
+            call_rag_api(
+                question=message_text,
+                session_id=session_id,
+                user_id=str(request.user.user_id),
+                department_id=request.user.department.department_id if request.user.department else None
+            )
+        )
+
+        answer = rag_result.get("answer", "응답을 생성할 수 없습니다.")
+
+        # 챗봇 응답 저장 (중복 방지)
+        if not ChatMessage.objects.filter(
+            session=session,
+            message_type__in=['bot', 'chatbot'],
+            message_text=answer
+        ).exists():
+            ChatMessage.objects.create(
+                session=session,
+                message_type='chatbot',
+                message_text=answer
+            )
+
+        # 세션 summary 업데이트
+        if rag_result.get("summary"):
+            session.summary = rag_result["summary"]
+            session.save()
+
+        return JsonResponse({
+            'success': True,
+            'session_id': session_id,
+            'answer': answer
+        })
+
+    except Exception as e:
+        logger.error(f"[chatbot_send_api 오류] {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
