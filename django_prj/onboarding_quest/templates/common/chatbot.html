@@ -42,11 +42,13 @@
 
     .chatbot-left {
         flex: none;
-        width: 550px;
+        min-width: 320px;
+        width: 100%;
         background: white;
         border-radius: 12px;
         padding: 24px;
         overflow-y: auto;
+        overflow-x: hidden;
         height: 100%;
         box-sizing: border-box;
         display: flex;
@@ -121,6 +123,8 @@
     .chatbot-session-list {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 5px;
     }
 
     .chatbot-session-item {
