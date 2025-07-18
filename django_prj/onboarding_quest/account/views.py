@@ -11,7 +11,7 @@ from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm, Depa
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q
-from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError
+from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError, NotFoundError
 import json
 import logging
 
@@ -102,25 +102,59 @@ def login_view(request):
         
         return render(request, 'account/login.html')
     
+    # GET 요청일 때 특정 에러 메시지들을 필터링
+    if request.method == 'GET':
+        storage = messages.get_messages(request)
+        filtered_messages = []
+        for message in storage:
+            # "데이터를 불러오는 중 오류가 발생했습니다"로 시작하는 메시지는 제외
+            if not str(message).startswith('데이터를 불러오는 중 오류가 발생했습니다'):
+                filtered_messages.append(message)
+        
+        # 필터링된 메시지들을 다시 추가
+        for msg in filtered_messages:
+            messages.add_message(request, msg.level, str(msg))
+    
     return render(request, 'account/login.html')
 
 def logout_view(request):
-    try:
-        # FastAPI 로그아웃 (옵션)
-        if 'jwt_token' in request.session:
-            fastapi_client.set_auth_token(request.session['jwt_token'])
-            fastapi_client.logout()
-            fastapi_client.remove_auth_token()
-    except:
-        pass  # FastAPI 로그아웃 실패해도 Django 로그아웃은 진행
+    """로그아웃 처리 - 안전한 방식으로 개선"""
+    logger.info("Logout process started")
     
-    # Django 세션 정리
-    logout(request)
+    # FastAPI 로그아웃 시도 (선택적, 실패해도 Django 로그아웃은 진행)
     if 'jwt_token' in request.session:
-        del request.session['jwt_token']
-    if 'user_data' in request.session:
-        del request.session['user_data']
+        try:
+            fastapi_client.set_auth_token(request.session['jwt_token'])
+            logout_result = fastapi_client.logout()
+            logger.info(f"FastAPI logout: {logout_result.get('message', 'Success')}")
+        except Exception as e:
+            logger.warning(f"FastAPI logout failed: {str(e)} - continuing with Django logout")
     
+    # Django 세션 정리 (항상 수행)
+    try:
+        logout(request)
+        logger.info("Django logout completed successfully")
+    except Exception as e:
+        logger.error(f"Django logout error: {str(e)}")
+    
+    # 세션 데이터 정리
+    session_keys_to_remove = ['jwt_token', 'user_data']
+    for key in session_keys_to_remove:
+        try:
+            if key in request.session:
+                del request.session[key]
+        except Exception as e:
+            logger.warning(f"Session key {key} removal failed: {str(e)}")
+    
+    # 모든 기존 메시지 정리 (에러 메시지 포함)
+    storage = messages.get_messages(request)
+    for message in storage:
+        pass  # 메시지 소비하여 제거
+    
+    # 새로운 요청 객체로 리다이렉트하여 메시지 시스템 초기화
+    logger.info("Logout process completed - redirecting to login")
+    
+    # 로그아웃 성공 메시지는 쿼리 파라미터로 전달
     return redirect('account:login')
 #endregion 로그인/로그아웃 
 
@@ -133,9 +167,24 @@ def logout_view(request):
 @login_required
 def supervisor(request):
     try:
+        # 사용자 인증 상태 확인
+        if not request.user.is_authenticated:
+            logger.warning("Unauthenticated user accessing supervisor")
+            return redirect('account:login')
+        
+        # 세션 데이터 확인
+        if 'user_data' not in request.session:
+            logger.warning("No user_data in session for supervisor access")
+            messages.error(request, '세션이 만료되었습니다. 다시 로그인해주세요.')
+            return redirect('account:login')
+        
         # JWT 토큰 설정
         if 'jwt_token' in request.session:
             fastapi_client.set_auth_token(request.session['jwt_token'])
+        else:
+            logger.warning("No JWT token in session")
+            messages.error(request, '인증 토큰이 없습니다. 다시 로그인해주세요.')
+            return redirect('account:login')
         
         # 현재 사용자 정보 가져오기 - 안전한 방식으로 처리
         user_data_raw = request.session.get('user_data', {})

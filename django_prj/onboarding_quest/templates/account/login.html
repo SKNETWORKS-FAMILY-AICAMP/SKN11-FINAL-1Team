@@ -158,10 +158,25 @@
       border-radius: 8px;
       font-size: 14px;
       line-height: 1.4;
+      display: none;
+    }
+
+    .message.error {
       background: #fee;
       color: #c53030;
       border: 1px solid #fecaca;
-      display: none;
+    }
+
+    .message.success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
+    .message.info {
+      background: #ebf8ff;
+      color: #2d3748;
+      border: 1px solid #90cdf4;
     }
 
     .message:not(:empty) {
@@ -313,7 +328,7 @@
       <div class="login-body">
         {% if messages %}
           {% for message in messages %}
-            <div class="message">{{ message }}</div>
+            <div class="message {{ message.tags }}">{{ message }}</div>
           {% endfor %}
         {% else %}
           <div class="message"></div>
