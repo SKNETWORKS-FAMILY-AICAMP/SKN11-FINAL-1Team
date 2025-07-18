@@ -87,11 +87,11 @@
   transition: background-color 0.2s ease;
 }
 .button-row .btn-create {
-  background-color: #4CAF50;
+  background-color: #1976d2;
   color: white;
 }
 .button-row .btn-create:hover {
-  background-color: #43a047;
+  background-color: #1565c0;
 }
 .button-row .btn-cancel {
   background-color: #e0e0e0;

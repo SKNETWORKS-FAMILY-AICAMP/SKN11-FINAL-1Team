@@ -350,6 +350,21 @@ def password_reset(request, user_id):
 # 사용자 프로필 뷰 (누락된 함수 추가)
 @login_required
 def profile(request):
+    if request.method == 'POST':
+        # 태그 업데이트 처리
+        tags = request.POST.get('tags', '').strip()
+        if tags:
+            # 쉼표로 구분된 태그를 정리
+            tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+            # 다시 쉼표로 구분된 문자열로 저장
+            request.user.tag = ', '.join(tag_list)
+        else:
+            request.user.tag = ''
+        
+        request.user.save()
+        messages.success(request, '프로필이 성공적으로 업데이트되었습니다.')
+        return redirect('account:profile')
+    
     return render(request, 'account/profile.html', {'user': request.user})
 
 # 비밀번호 변경

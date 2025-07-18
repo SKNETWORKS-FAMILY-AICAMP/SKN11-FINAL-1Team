@@ -30,7 +30,7 @@
   flex: 1;
   padding: 8px 12px;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 1px;
   font-size: 15px;
 }
 .tasklist-create-btn {
@@ -94,16 +94,12 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   margin-bottom: 18px;
   padding: 18px 20px 14px 20px;
-  border-left: 6px solid #ffd600;
   transition: box-shadow 0.2s, border-color 0.2s;
   cursor: pointer;
   position: relative;
 }
-.task-card.in-progress { border-left-color: #4caf50; }
-.task-card.done { border-left-color: #ffd600; background: #f6fff6; }
-.task-card.selected { box-shadow: 0 0 0 3px #1976d233; border-left-color: #1976d2; }
-.task-card.not-started { border-left-color: #f44336; }
-.task-card.review-requested { border-left-color: #ffd600; }
+.task-card.done { background: #ffffff; }
+.task-card.selected { box-shadow: 0 0 0 3px #1976d233; }
 .task-title {
   color: #222;
 }
@@ -187,14 +183,14 @@
   border-radius: 10px;
   font-size: 13px;
   font-weight: bold;
-  color: #fff;
+  color: #000;
   margin-right: 10px;
   vertical-align: middle;
 }
-.status-badge.not-started { background: #888; }
-.status-badge.in-progress { background: #1976d2; }
-.status-badge.review-requested { background: #f44336; }
-.status-badge.done { background: #43a047; }
+.status-badge.not-started { background: #dedede; }
+.status-badge.in-progress { background: #fbf7cb; }
+.status-badge.review-requested { background: #f9dede; }
+.status-badge.done { background: #dff9e6; }
 
 .subtask-toggle {
   display: flex;
@@ -271,7 +267,7 @@
   display: flex;
   gap: 14px;
   align-items: center;
-  font-size: 15px;
+  font-size: 17px;
   margin-bottom: 12px;
 }
 .task-detail-divider {
@@ -334,8 +330,8 @@
 }
 .chat-send-btn {
   padding: 0 24px;
-  background: #ffd600;
-  color: #222;
+  background: #1976d2;
+  color: #fff;
   border: none;
   border-radius: 8px;
   font-weight: bold;
