@@ -19,7 +19,7 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 10px;
-    font-size: 1em;
+    font-size: 1.1em;
     color: #1976d2;
     font-weight: bold;
   }
@@ -127,8 +127,8 @@
     font-size: 11px;
   }
   .add-task-btn {
-    background: #ffd600;
-    color: #222;
+    background: #1976d2;
+    color: white;
     border: none;
     border-radius: 8px;
     padding: 8px 18px;
@@ -156,9 +156,10 @@
   }
   .template-form-label {
     font-weight: bold;
-    color: #7c5c1e;
+    color: #000000;
     margin-bottom: 6px;
     display: block;
+    font-size: 1.05em;
   }
   .template-form-textarea {
     width: 100%;
@@ -166,7 +167,7 @@
     border: 1px solid #bbb;
     border-radius: 8px;
     padding: 12px;
-    font-size: 1em;
+    font-size: 1.05em;
     color: #555;
     background: #fafbfc;
     resize: none;
@@ -183,8 +184,8 @@
     margin-top: 30px;
   }
   .template-btn {
-    background: #ffd600;
-    color: #222;
+    background: #1976d2;
+    color: white;
     border: none;
     border-radius: 8px;
     padding: 10px 32px;
@@ -193,7 +194,7 @@
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
   }
-  .template-btn:hover { background: #ffe066; }
+  .template-btn:hover { background: #1565c0; }
 </style>
   <style>
     /* 좌측 하단 고정 버튼 스타일 */
@@ -226,13 +227,13 @@
       </div>
       <div class="template-form-row">
         <label class="template-form-label">커리큘럼 제목</label>
-        <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력">
+        <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력" style="font-size: 1.05em;">
       </div>
       <div class="template-form-row">
         <label class="template-form-label">커리큘럼 설명</label>
         <textarea class="template-form-textarea" id="curriculum-desc" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
         <div style="display: flex; justify-content: flex-end;">
-          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;">커리큘럼 초안 생성</button>
+          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">✨AI 커리큘럼 생성</button>
         </div>
       </div>
       <div class="template-form-row" id="draft-section">
@@ -246,7 +247,7 @@
 
 위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
         <div style="display: flex; justify-content: flex-end;">
-          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px;">세부 Task 생성</button>
+          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">✨AI 세부 Task 생성</button>
         </div>
       </div>
     </form>
@@ -273,12 +274,12 @@
             <input type="text" name="title" id="modal-title" class="template-form-textarea" style="min-height:unset; height:32px;">
           </div>
           <div style="margin-bottom:14px;">
-            <label>과제 설명</label>
-            <textarea name="description" id="modal-description" class="template-form-textarea"></textarea>
-          </div>
-          <div style="margin-bottom:14px;">
             <label>가이드라인</label>
             <input type="text" name="guideline" id="modal-guideline" class="template-form-textarea" style="min-height:unset; height:32px;">
+          </div>
+                    <div style="margin-bottom:14px;">
+            <label>작성 양식</label>
+            <textarea name="description" id="modal-description" class="template-form-textarea"></textarea>
           </div>
           <div style="margin-bottom:14px; display:flex; gap:10px; align-items:flex-end;">
             <div style="flex:1;">
@@ -291,7 +292,7 @@
             </div>
             <div style="flex:1;">
               <label>우선순위</label>
-              <select name="priority" id="modal-priority" style="min-height:unset; height:32px; width:100%; border:1px solid #bbb; border-radius:8px; padding:5px; font-size:1em; color:#222; background:#fafbfc; appearance:auto;">
+              <select name="priority" id="modal-priority" style="min-height:unset; height:32px; width:100%; border:1px solid #bbb; border-radius:8px; padding:5px; font-size:0.8em; color:#222; background:#fafbfc; appearance:auto;">
                 <option value="상">상</option>
                 <option value="중">중</option>
                 <option value="하" selected>하</option>
@@ -506,9 +507,9 @@ document.addEventListener('DOMContentLoaded', function() {
       weekSection.dataset.week = week;
       // 주차 헤더 + Task 추가 버튼
       const weekHeader = document.createElement('div');
-      weekHeader.style = 'font-weight:bold; font-size:1.1em; margin-bottom:10px; color:#7c5c1e; display:flex; align-items:center; justify-content:space-between;';
+      weekHeader.style = 'font-weight:bold; font-size:1.1em; margin-bottom:10px; color:#000000; display:flex; align-items:center; justify-content:space-between;';
       // Task 추가 버튼은 이벤트 위임으로 처리
-      weekHeader.innerHTML = `<span>${week}주차</span><button class='template-btn add-task-modal-btn' style='padding:2px 14px; font-size:13px; margin-left:10px;' data-week="${week}">Task 추가</button>`;
+      weekHeader.innerHTML = `<span>${week}주차</span><button class='template-btn add-task-modal-btn' style='padding:6px 18px; font-size:14px; margin-left:10px;' data-week="${week}">Task 추가</button>`;
       weekSection.appendChild(weekHeader);
       // 각 Task 카드
       weekTasks.forEach((task, idx) => {

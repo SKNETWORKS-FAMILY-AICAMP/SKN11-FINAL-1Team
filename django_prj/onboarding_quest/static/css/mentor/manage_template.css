@@ -31,7 +31,8 @@
 /* 헤더 섹션 */
 .template-list-row {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
     gap: 20px;
     margin-bottom: 32px;
     padding: 24px;
@@ -43,11 +44,12 @@
 .template-title {
     font-size: 1.6em;
     font-weight: 700;
-    color: #1e40af;
+    color: #000000;
     letter-spacing: -0.5px;
     font-family: 'Pretendard', sans-serif !important;
-    text-align: center;
-    margin: 0 0 8px 0;
+    text-align: left;
+    margin: 0;
+    flex: 1;
 }
 
 .template-subtitle {
@@ -90,6 +92,12 @@
 .add-template-btn {
     background: #007bff;
     color: white;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 16px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .add-template-btn:hover {
@@ -110,22 +118,22 @@
     box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
-/* 편집 버튼 - 초록색 */
+/* 편집 버튼 - 파란색 */
 .template-edit-btn {
-    background: #28a745;
+    background: #007bff;
     color: white;
 }
 
 .template-edit-btn:hover {
-    background: #1e7e34;
+    background: #0056b3;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
 .template-edit-btn:hover {
-    background: #1e7e34;
+    background: #0056b3;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
 /* 커리큘럼 목록 */
@@ -220,10 +228,6 @@
     align-items: flex-start;
     margin-bottom: 32px;
     gap: 16px;
-    padding: 24px;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-radius: 12px;
-    border-left: 4px solid #007bff;
 }
 
 .template-detail-header-buttons {

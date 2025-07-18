@@ -185,12 +185,34 @@ document.addEventListener('DOMContentLoaded', function() {
     updateTagPreview();
   };
   
-  tagInput.addEventListener('input', updateTagPreview);
+  tagInput.addEventListener('input', function() {
+    // 실시간으로 태그 형식 정리
+    let value = tagInput.value;
+    // 연속된 쉼표나 공백 정리
+    value = value.replace(/,+/g, ',').replace(/,\s*,/g, ',');
+    if (tagInput.value !== value) {
+      tagInput.value = value;
+    }
+    updateTagPreview();
+  });
+  
   tagInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
+      // Enter 키를 누르면 현재 입력된 내용을 정리
+      let value = tagInput.value.trim();
+      if (value && !value.endsWith(',')) {
+        tagInput.value = value + ', ';
+      }
       updateTagPreview();
     }
+  });
+  
+  // 폼 제출 전에 태그 값 정리
+  const form = tagInput.closest('form');
+  form.addEventListener('submit', function(e) {
+    const tags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+    tagInput.value = tags.join(', ');
   });
   
   // 초기 태그 미리보기
