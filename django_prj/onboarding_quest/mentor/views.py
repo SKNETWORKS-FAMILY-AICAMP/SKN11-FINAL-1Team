@@ -239,32 +239,67 @@ def save_curriculum(request):
 @login_required
 def mentor(request):
     try:
-        mentor_id = request.user.user_id
+        # 현재 사용자 정보 - 두 가지 방법 모두 시도
+        user_data = request.session.get('user_data', {})
+        mentor_id = user_data.get('user_id')
+        
+        # Django User 모델에서도 시도
+        if not mentor_id and hasattr(request.user, 'user_id'):
+            mentor_id = request.user.user_id
+            user_data = {'role': getattr(request.user, 'role', 'mentor')}
+        
+        print(f"DEBUG - 멘토 ID: {mentor_id}, 사용자 데이터: {user_data}")
+        
+        if not mentor_id:
+            messages.error(request, '사용자 정보를 찾을 수 없습니다.')
+            return render(request, 'mentor/mentor.html', {'mentee_cards': []})
+        
+        # 역할 확인은 좀 더 유연하게
+        user_role = user_data.get('role', '').lower()
+        if user_role and user_role not in ['mentor', 'both']:
+            messages.error(request, '멘토 권한이 필요합니다.')
+            return render(request, 'mentor/mentor.html', {'mentee_cards': []})
         
         # FastAPI에서 로그인한 유저가 멘토로 포함된 멘토쉽 목록 조회
-        mentorships_result = fastapi_client.get_mentorships(mentor_id=mentor_id)
-        mentorships = mentorships_result.get('mentorships', [])
+        print(f"DEBUG - 멘토쉽 정보 요청 중... mentor_id={mentor_id}")
+        # 멘토별 멘토쉽 조회 API 사용
+        mentorships_url = f"{fastapi_client.base_url}/api/mentorship/mentor/{mentor_id}"
+        response = fastapi_client.session.get(mentorships_url)
+        mentorships = fastapi_client._handle_response(response)
+        print(f"DEBUG - 멘토쉽 응답: {mentorships}")
+        print(f"DEBUG - 멘토쉽 목록: {mentorships}")
         
         # 멘티 정보 조회
         if mentorships:
             mentee_ids = [m.get('mentee_id') for m in mentorships]
             # 현재 회사의 모든 사용자 조회 (성능 최적화)
-            user_data = request.session.get('user_data', {})
             company_id = user_data.get('company_id')
-            users_result = fastapi_client.get_users(company_id=company_id)
-            all_users = {user['user_id']: user for user in users_result.get('users', [])}
+            print(f"DEBUG - 회사 ID: {company_id}")
+            if company_id:
+                users_result = fastapi_client.get_users(company_id=company_id)
+                all_users = {user['user_id']: user for user in users_result.get('users', [])}
+                print(f"DEBUG - 사용자 수: {len(all_users)}")
+            else:
+                all_users = {}
+                print("DEBUG - 회사 ID가 없어서 사용자 정보를 가져올 수 없습니다.")
         else:
             mentee_ids = []
             all_users = {}
+            print("DEBUG - 멘토쉽이 없습니다.")
         
         # 진척도, D-day 등 계산
         mentee_cards = []
         from datetime import date
         
+        print(f"DEBUG - 멘토쉽 카드 생성 시작... 총 {len(mentorships)}개")
+        
         for ms in mentorships:
             mentee_id = ms.get('mentee_id')
             mentee = all_users.get(mentee_id)
+            print(f"DEBUG - 멘토쉽 처리 중: mentee_id={mentee_id}, mentee={mentee}")
+            
             if not mentee:
+                print(f"DEBUG - 멘티 정보를 찾을 수 없음: mentee_id={mentee_id}")
                 continue
 
             # D-day 계산: 멘토쉽 종료일 기준
@@ -272,33 +307,68 @@ def mentor(request):
             end_date_str = ms.get('end_date')
             if end_date_str:
                 from datetime import datetime
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                dday_val = (end_date - date.today()).days
-                dday = f"D-{dday_val}" if dday_val > 0 else ("D-DAY" if dday_val == 0 else "종료")
+                try:
+                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                    dday_val = (end_date - date.today()).days
+                    if dday_val > 0:
+                        dday = f"D-{dday_val}"
+                    elif dday_val == 0:
+                        dday = "D-DAY"
+                    else:
+                        dday = "종료"
+                except:
+                    dday = ""
             else:
                 dday = ""
             
             # 진척도: 멘토쉽에 할당된 TaskAssign 중 완료된 개수/전체 개수
-            tasks_result = fastapi_client.get_task_assigns(mentorship_id=ms.get('mentorship_id'))
-            all_tasks = tasks_result.get('task_assigns', [])
-            total_tasks = len(all_tasks)
-            completed_tasks = len([t for t in all_tasks if t.get('status') == '완료'])
-            progress = int((completed_tasks / total_tasks) * 100) if total_tasks else 0
+            print(f"DEBUG - 태스크 조회 중... mentorship_id={ms.get('mentorship_id')}")
+            try:
+                tasks_result = fastapi_client.get_task_assigns(mentorship_id=ms.get('mentorship_id'))
+                all_tasks = tasks_result.get('task_assigns', [])  # 'tasks' 대신 'task_assigns' 사용
+                total_tasks = len(all_tasks)
+                completed_tasks = len([t for t in all_tasks if t.get('status') == '완료'])
+                progress = int((completed_tasks / total_tasks) * 100) if total_tasks else 0
+                
+                print(f"DEBUG - 진척도 계산: 총 {total_tasks}개, 완료 {completed_tasks}개, 진척도 {progress}%")
+            except (AuthenticationError, APIError) as e:
+                print(f"DEBUG - 태스크 조회 실패: {e}")
+                # 태스크 조회에 실패해도 멘토쉽 카드는 표시 (진척도는 0%)
+                total_tasks = 0
+                completed_tasks = 0
+                progress = 0
+                print(f"DEBUG - 태스크 조회 실패로 진척도 0%로 설정")
+            except Exception as e:
+                print(f"DEBUG - 태스크 조회 중 예외 발생: {e}")
+                total_tasks = 0
+                completed_tasks = 0
+                progress = 0
             
-            mentee_cards.append({
+            card_data = {
                 'name': f'{mentee.get("last_name", "")}{mentee.get("first_name", "")}',
                 'tags': [mentee.get('tag')] if mentee.get('tag') else [],
                 'dday': dday,
                 'progress': progress,
                 'mentorship_id': ms.get('mentorship_id'),
-                'curriculum_title': ms.get('curriculum_title'),
-                'total_weeks': ms.get('total_weeks'),
-            })
+                'curriculum_title': ms.get('curriculum_title', '커리큘럼 정보 없음'),
+                'total_weeks': ms.get('total_weeks', 0),
+            }
             
+            mentee_cards.append(card_data)
+            print(f"DEBUG - 카드 생성 완료: {card_data}")
+            
+        print(f"DEBUG - 최종 멘티 카드 수: {len(mentee_cards)}")
         return render(request, 'mentor/mentor.html', {'mentee_cards': mentee_cards})
         
     except (AuthenticationError, APIError) as e:
+        print(f"DEBUG - API 오류: {e}")
         messages.error(request, f'멘토 정보 조회 중 오류가 발생했습니다: {str(e)}')
+        return render(request, 'mentor/mentor.html', {'mentee_cards': []})
+    except Exception as e:
+        print(f"DEBUG - 예외 발생: {e}")
+        import traceback
+        traceback.print_exc()
+        messages.error(request, f'데이터를 불러오는 중 오류가 발생했습니다: {str(e)}')
         return render(request, 'mentor/mentor.html', {'mentee_cards': []})
 
 @login_required

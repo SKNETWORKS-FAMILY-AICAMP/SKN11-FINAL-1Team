@@ -340,6 +340,30 @@ def get_task_assign(db: Session, task_id: int):
     """태스크 할당 단일 조회"""
     return db.query(models.TaskAssign).filter(models.TaskAssign.task_assign_id == task_id).first()
 
+def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: int = None, status: str = None, week: int = None, skip: int = 0, limit: int = 100):
+    """필터링된 태스크 할당 목록 조회"""
+    query = db.query(models.TaskAssign)
+    
+    if mentorship_id:
+        query = query.filter(models.TaskAssign.mentorship_id == mentorship_id)
+    
+    if user_id:
+        # 멘토십을 통해 사용자와 연관된 태스크 조회
+        query = query.join(models.Mentorship).filter(
+            or_(
+                models.Mentorship.mentor_id == user_id,
+                models.Mentorship.mentee_id == user_id
+            )
+        )
+    
+    if status:
+        query = query.filter(models.TaskAssign.status == status)
+    
+    if week:
+        query = query.filter(models.TaskAssign.week == week)
+    
+    return query.offset(skip).limit(limit).all()
+
 def get_task_assigns(db: Session, skip: int = 0, limit: int = 100):
     """태스크 할당 목록 조회"""
     return db.query(models.TaskAssign).offset(skip).limit(limit).all()
