@@ -98,7 +98,6 @@ JSON 형식:
 def generate_all_tasks(data: CurriculumInput) -> list:
     # 1. 커리큘럼 초안 생성
     draft = generate_curriculum_draft(data)
-    print("\n📘 생성된 커리큘럼 초안:")
     print(draft)
 
     # 2. 주차별 초안 분리 (정규식으로 각 주차 내용 나누기)
@@ -121,15 +120,15 @@ def generate_all_tasks(data: CurriculumInput) -> list:
 if __name__ == "__main__":
     input_data = CurriculumInput(
         curriculum_title="AI 엔지니어 온보딩",
-        curriculum_description="신입 AI 엔지니어를 위한 12주 온보딩. 실습 중심이며, 프로젝트 기반으로 구성됨.",
+        curriculum_description="신입 AI 엔지니어를 위한 6주 온보딩. 실습 중심이며, 프로젝트 기반으로 구성됨.",
         job_role="AI 엔지니어",
-        weeks=12,
+        weeks=6,
         goal="신입사원의 기술 적응과 프로젝트 수행 역량 평가"
     )
 
     all_tasks = generate_all_tasks(input_data)
 
     # 4. 전체 Task JSON 파일로 저장
-    with open("tasks_12weeks.json", "w", encoding="utf-8") as f:
+    with open("tasks_6weeks.json", "w", encoding="utf-8") as f:
         json.dump(all_tasks, f, ensure_ascii=False, indent=2)
-    print("\n✅ 전체 Task가 tasks_12weeks.json 파일로 저장되었습니다.")
+    print("\n✅ 전체 Task가 tasks_6weeks.json 파일로 저장되었습니다.")
