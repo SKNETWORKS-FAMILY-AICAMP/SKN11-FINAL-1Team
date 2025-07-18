@@ -21,7 +21,6 @@ from embed_and_upsert import advanced_embed_and_upsert, get_existing_point_ids
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
-from datetime import timedelta
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -357,23 +356,29 @@ def delete_chat_session(request, session_id):
 
 
 
-import uuid
-
 @csrf_exempt
 @require_POST
 def chatbot_send_api(request):
+    logger.warning(f"🚨 chatbot_send_api 요청 도착! 사용자: {request.user}, 세션: {request.body}")
+
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
 
     try:
         data = json.loads(request.body)
+
+        # ✅ 안전한 로깅
+        logger.warning(
+            f"📥 chatbot_send_api() 호출됨 | 사용자 ID: {request.user.user_id} | 메시지: {data.get('message')}"
+        )
+
         message_text = data.get('message', '').strip()
         session_id = data.get('session_id')
 
         if not message_text:
             return JsonResponse({'success': False, 'error': '메시지가 비어 있습니다.'})
 
-        # 세션 처리
+        # 세션 가져오기 또는 새로 생성
         if session_id:
             try:
                 session = ChatSession.objects.get(session_id=session_id, user=request.user)
@@ -386,21 +391,24 @@ def chatbot_send_api(request):
             )
             session_id = session.session_id
 
-        # ✅ 중복 사용자 메시지 차단 (같은 텍스트 + 같은 세션 + 3초 이내)
-        three_seconds_ago = timezone.now() - timezone.timedelta(seconds=3)
-        already_sent = ChatMessage.objects.filter(
+        # ✅ 사용자 메시지 중복 차단 (5초 이내 동일 메시지)
+        recent_user_msg = ChatMessage.objects.filter(
             session=session,
             message_type='user',
-            message_text=message_text,
-            create_time__gte=three_seconds_ago
-        ).exists()
+            message_text=message_text
+        ).order_by('-create_time').first()
 
-        if already_sent:
-            return JsonResponse({
-                'success': True,
-                'session_id': session_id,
-                'answer': "(동일 메시지가 이미 방금 저장되어 있어 응답을 생략했습니다)"
-            })
+        if recent_user_msg:
+            time_diff = (timezone.now() - recent_user_msg.create_time).total_seconds()
+            logger.warning(f"[중복 검사] 최근 메시지: {recent_user_msg}")
+            logger.warning(f"[중복 검사] 시간 차이: {time_diff:.2f}초")
+            if time_diff < 5:
+                logger.warning(f"[중복 차단] 사용자 메시지 중복 저장 차단됨: {message_text}")
+                return JsonResponse({
+            'success': True,
+            'session_id': session_id,
+            'answer': "(중복 메시지로 인해 응답 생략됨)"
+        })
 
         # 사용자 메시지 저장
         ChatMessage.objects.create(
@@ -408,11 +416,12 @@ def chatbot_send_api(request):
             message_type='user',
             message_text=message_text
         )
+        logger.info(f"[chatbot_send_api] 사용자 메시지 저장됨: {message_text}")
 
-        # LLM 호출
+        # RAG 호출 (비동기)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        from .views import call_rag_api
+        from .views import call_rag_api  # 필요 시 위치 변경
         rag_result = loop.run_until_complete(
             call_rag_api(
                 question=message_text,
@@ -423,20 +432,26 @@ def chatbot_send_api(request):
         )
 
         answer = rag_result.get("answer", "응답을 생성할 수 없습니다.")
+        logger.info(f"[chatbot_send_api] 챗봇 응답 생성됨: {answer}")
 
-        # 챗봇 응답 저장 (중복 방지)
-        if not ChatMessage.objects.filter(
+        # ✅ 챗봇 메시지 중복 저장 방지
+        already_exists = ChatMessage.objects.filter(
             session=session,
-            message_type__in=['bot', 'chatbot'],
+            message_type__in=['chatbot', 'bot'],
             message_text=answer
-        ).exists():
+        ).exists()
+
+        if not already_exists:
             ChatMessage.objects.create(
                 session=session,
                 message_type='chatbot',
                 message_text=answer
             )
+            logger.info("[chatbot_send_api] 챗봇 응답 저장됨")
+        else:
+            logger.warning("[중복 차단] 챗봇 응답 중복 저장 차단됨")
 
-        # 세션 summary 업데이트
+        # 세션 summary 업데이트 (있으면)
         if rag_result.get("summary"):
             session.summary = rag_result["summary"]
             session.save()
