@@ -6,7 +6,17 @@ import schemas
 from passlib.context import CryptContext
 
 # 비밀번호 암호화 설정
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=[
+        "bcrypt", 
+        "pbkdf2_sha256", 
+        "django_pbkdf2_sha256",
+        "django_pbkdf2_sha1",
+        "django_bcrypt",
+        "argon2"
+    ],
+    deprecated="auto"
+)
 
 def hash_password(password: str) -> str:
     """비밀번호 해시화"""
@@ -14,7 +24,13 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """비밀번호 검증"""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        # 해시 형식을 인식할 수 없는 경우 False 반환
+        print(f"Password verification error: {e}")
+        print(f"Hash format: {hashed_password[:50]}...")
+        return False
 
 
 # Company CRUD

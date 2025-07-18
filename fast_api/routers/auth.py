@@ -20,7 +20,7 @@ class LoginData(schemas.BaseModel):
     password: str
 
 @router.post("/login", response_model=schemas.Token)
-async def login(login_data: LoginData, db: Session = Depends(get_db)):
+async def login(login_data: LoginData, db: Session = Depends(get_db)):    
     """사용자 로그인"""
     # 이메일로 사용자 조회
     user = crud.get_user_by_email(db, email=login_data.email)
@@ -30,7 +30,6 @@ async def login(login_data: LoginData, db: Session = Depends(get_db)):
             detail="이메일 또는 비밀번호가 올바르지 않습니다",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
     # 비밀번호 검증
     if not verify_password(login_data.password, user.password):
         raise HTTPException(
@@ -38,24 +37,23 @@ async def login(login_data: LoginData, db: Session = Depends(get_db)):
             detail="이메일 또는 비밀번호가 올바르지 않습니다",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
     # 비활성화된 사용자 체크
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="비활성화된 계정입니다",
         )
-    
     # 액세스 토큰 생성
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    
+    # user를 딕셔너리로 변환해서 반환
+    user_dict = schemas.User.from_orm(user).dict()
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": user
+        "user": user_dict
     }
 
 @router.post("/logout")
@@ -76,11 +74,10 @@ async def refresh_token(current_user: schemas.User = Depends(get_current_user)):
     access_token = create_access_token(
         data={"sub": current_user.email}, expires_delta=access_token_expires
     )
-    
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": current_user
+        "user": current_user  # 이미 Pydantic 모델이므로 그대로 반환
     }
 
 @router.get("/check")

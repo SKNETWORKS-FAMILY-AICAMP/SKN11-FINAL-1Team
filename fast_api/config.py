@@ -10,12 +10,10 @@ project_root = current_dir.parent
 env_path = project_root / '.env'
 load_dotenv(env_path)
 
+def str2bool(v):
+    return str(v).lower() in ("1", "true", "yes", "on")
+
 class Settings(BaseSettings):
-    # FastAPI 서버 설정
-    app_name: str = "Onboarding Quest API"
-    app_version: str = "1.0.0"
-    debug: bool = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
-    
     # 서버 설정 (환경변수에서 가져오기)
     host: str = os.getenv("FASTAPI_HOST", "0.0.0.0")
     port: int = int(os.getenv("FASTAPI_PORT", "8000"))
@@ -49,9 +47,13 @@ class Settings(BaseSettings):
         "http://127.0.0.1:8001"   # FastAPI 자체
     ]
     
+
+    # 디버그 모드 (환경변수에서 가져오기)
+    debug: bool = str2bool(os.getenv("DEBUG", "0"))
+
     # 로깅 설정
     log_level: str = "INFO"
-    
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

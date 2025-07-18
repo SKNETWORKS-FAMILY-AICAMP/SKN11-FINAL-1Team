@@ -12,18 +12,7 @@ import models  # 모델을 임포트하여 테이블 생성
 models.Base.metadata.create_all(bind=engine)
 
 # FastAPI 앱 생성
-app = FastAPI(
-    title=settings.app_name,
-    description="멘토링 온보딩 퀘스트를 위한 FastAPI 서버 - PostgreSQL 기반 CRUD 구현",
-    version=settings.app_version,
-    debug=settings.debug
-)
-
-# 정적 파일 서빙 설정
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# 템플릿 설정
-templates = Jinja2Templates(directory="templates")
+app = FastAPI()
 
 # CORS 설정
 app.add_middleware(
@@ -60,7 +49,6 @@ async def api_root():
     """API 루트 엔드포인트"""
     return {
         "message": "Onboarding Quest FastAPI 서버가 실행 중입니다! (PostgreSQL DB 기반)",
-        "version": settings.app_version,
         "docs_url": "/docs",
         "redoc_url": "/redoc",
         "database": "PostgreSQL",

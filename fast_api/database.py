@@ -11,8 +11,8 @@ DATABASE_URL = settings.database_url
 engine = create_engine(
     DATABASE_URL,
     echo=True,  # SQL 쿼리 로깅 (개발 환경에서만 사용)
-    pool_pre_ping=True,
-    pool_recycle=300
+    # pool_pre_ping=True,
+    # pool_recycle=300
 )
 
 # 세션 로컬 클래스 생성
