@@ -741,11 +741,21 @@ mentoringForm.addEventListener('submit', async function(e) {
   }
   
   try {
+    // 로딩 상태 시작
+    const submitBtn = document.getElementById('mentoring-submit-btn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline-flex';
+    submitBtn.disabled = true;
+    
     const res = await fetch('/mentor/create_mentorship/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'X-Requested-With': 'XMLHttpRequest'
       },
       body: JSON.stringify({ 
         mentee_id: menteeId, 
@@ -757,9 +767,15 @@ mentoringForm.addEventListener('submit', async function(e) {
     
     const data = await res.json();
     if (data.success) {
-      window.location.href = '/mentor/';
+      // 성공 메시지 표시
+      showMessage('멘토쉽이 성공적으로 생성되었습니다!');
+      
+      // 2초 후 리다이렉트
+      setTimeout(() => {
+        window.location.href = '/mentor/';
+      }, 2000);
     } else {
-      alert('생성 실패: ' + (data.message || ''));
+      throw new Error(data.message || '멘토쉽 생성에 실패했습니다.');
     }
   } catch (err) {
     alert('서버 오류가 발생했습니다.');

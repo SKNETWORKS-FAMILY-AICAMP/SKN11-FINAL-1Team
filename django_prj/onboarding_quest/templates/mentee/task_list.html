@@ -39,7 +39,7 @@
     {% for task in tasks %}
       {% if not task.parent %}
       <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
-        data-task-id="{{ task.id }}"
+        data-task-id="{{ task.task_id }}"
         data-title="{{ task.title|escapejs }}"
         data-desc="{{ task.description|default_if_none:''|escapejs }}"
         data-priority="{{ task.priority|default:'하'|escapejs }}"

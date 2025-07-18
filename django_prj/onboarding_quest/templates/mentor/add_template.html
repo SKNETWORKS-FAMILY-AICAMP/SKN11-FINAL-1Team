@@ -259,7 +259,13 @@
     </div>
     <div class="template-form-actions" style="display:flex; gap:18px; justify-content:flex-end; margin-top:30px;">
       <button class="add-task-btn" id="add-week-btn" type="button" style="margin-bottom:0; margin-top:0;">주차 추가</button>
-      <button type="button" class="template-btn" id="save-curriculum-btn">저장</button>
+      <button type="button" class="template-btn" id="save-curriculum-btn">
+        <span class="btn-text">저장</span>
+        <span class="btn-loading" style="display: none;">
+          <div class="loading-spinner"></div>
+          저장 중...
+        </span>
+      </button>
       <button type="button" class="template-btn" onclick="window.location.href='/mentor/manage_template'">취소</button>
     </div>
     <!-- Task 추가/수정 모달 -->
@@ -300,16 +306,153 @@
             </div>
           </div>
           <div style="display:flex; gap:16px; justify-content:flex-end; margin-top:18px;">
-            <button type="submit" class="template-btn" id="modal-save-btn">저장</button>
+            <button type="submit" class="template-btn" id="modal-save-btn">
+              <span class="btn-text">저장</span>
+              <span class="btn-loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                저장 중...
+              </span>
+            </button>
           </div>
         </form>
       </div>
     </div>
   </div>
 </div>
+
 <script>
+// CSRF 토큰 가져오기
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// 메시지 표시 함수
+function showMessage(message, type = 'success') {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `alert alert-${type}`;
+  messageDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    z-index: 10000;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    ${type === 'success' ? 'background-color: #28a745;' : 'background-color: #dc3545;'}
+  `;
+  messageDiv.textContent = message;
+  
+  document.body.appendChild(messageDiv);
+  
+  // 슬라이드 인 애니메이션
+  setTimeout(() => {
+    messageDiv.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // 3초 후 자동 제거
+  setTimeout(() => {
+    messageDiv.style.opacity = '0';
+    messageDiv.style.transform = 'translateX(100%)';
+    setTimeout(() => messageDiv.remove(), 300);
+  }, 3000);
+}
+
 // 공용 커리큘럼 체크박스 체크 상태 JS로 처리
 document.addEventListener('DOMContentLoaded', function() {
+  // 커리큘럼 초안 생성 버튼에 AJAX 기능 추가
+  document.getElementById('generate-draft-btn').addEventListener('click', async function() {
+    const btnText = this.querySelector('.btn-text');
+    const btnLoading = this.querySelector('.btn-loading');
+    const description = document.getElementById('curriculum-desc').value.trim();
+    
+    if (!description) {
+      showMessage('커리큘럼 설명을 입력해주세요.', 'error');
+      return;
+    }
+    
+    // 로딩 상태 시작
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline-flex';
+    this.disabled = true;
+    
+    try {
+      // 실제로는 AI API를 호출하거나 서버에서 초안을 생성할 수 있지만
+      // 현재는 기본 초안 템플릿을 사용
+      setTimeout(() => {
+        generateDraftContent();
+        showMessage('커리큘럼 초안이 생성되었습니다!');
+        
+        // 로딩 상태 종료
+        btnText.style.display = 'inline';
+        btnLoading.style.display = 'none';
+        this.disabled = false;
+      }, 1500); // 1.5초 대기로 로딩 효과 시연
+      
+    } catch (error) {
+      console.error('초안 생성 오류:', error);
+      showMessage('초안 생성 중 오류가 발생했습니다.', 'error');
+      
+      // 로딩 상태 종료
+      btnText.style.display = 'inline';
+      btnLoading.style.display = 'none';
+      this.disabled = false;
+    }
+  });
+  
+  // 세부 Task 생성 버튼에 AJAX 기능 추가
+  document.getElementById('generate-task-btn').addEventListener('click', async function() {
+    const btnText = this.querySelector('.btn-text');
+    const btnLoading = this.querySelector('.btn-loading');
+    const weekSchedule = document.getElementById('curriculum-textarea').value.trim();
+    
+    if (!weekSchedule) {
+      showMessage('주차별 커리큘럼 일정을 입력해주세요.', 'error');
+      return;
+    }
+    
+    // 로딩 상태 시작
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline-flex';
+    this.disabled = true;
+    
+    try {
+      // 실제로는 AI API를 호출하여 세부 Task를 생성할 수 있지만
+      // 현재는 주차별 기본 Task를 생성
+      setTimeout(() => {
+        generateTasksFromSchedule(weekSchedule);
+        showMessage('세부 Task가 생성되었습니다!');
+        
+        // 로딩 상태 종료
+        btnText.style.display = 'inline';
+        btnLoading.style.display = 'none';
+        this.disabled = false;
+      }, 2000); // 2초 대기로 로딩 효과 시연
+      
+    } catch (error) {
+      console.error('Task 생성 오류:', error);
+      showMessage('Task 생성 중 오류가 발생했습니다.', 'error');
+      
+      // 로딩 상태 종료
+      btnText.style.display = 'inline';
+      btnLoading.style.display = 'none';
+      this.disabled = false;
+    }
+  });
+
   // '주차 추가' 버튼 동작 구현
   document.getElementById('add-week-btn').addEventListener('click', function(e) {
     e.preventDefault();
@@ -327,12 +470,58 @@ document.addEventListener('DOMContentLoaded', function() {
       renderTasksByWeek(window.tasks_json);
     }
   });
+  
   if (window.edit_mode && window.curriculum && window.curriculum.is_common) {
     document.getElementById('is-public-curriculum').checked = true;
   } else {
     document.getElementById('is-public-curriculum').checked = false;
   }
 });
+
+// 주차별 커리큘럼에서 기본 Task 생성
+function generateTasksFromSchedule(schedule) {
+  const lines = schedule.split('\n').filter(line => line.trim());
+  const weekPattern = /^#\s*week(\d+)\s+(.+)$/i;
+  
+  // 기존 tasks_json 클리어
+  window.tasks_json = [];
+  
+  lines.forEach(line => {
+    const match = line.match(weekPattern);
+    if (match) {
+      const week = parseInt(match[1]);
+      const weekTitle = match[2].trim();
+      
+      // 각 주차별로 기본 Task 생성
+      window.tasks_json.push({
+        week: week,
+        title: `${weekTitle} - 실습`,
+        description: `${weekTitle}에 대한 실습 과제입니다.`,
+        guideline: '실습 가이드라인을 참고하여 수행하세요.',
+        order: 1,
+        period: '7',
+        priority: '중'
+      });
+      
+      window.tasks_json.push({
+        week: week,
+        title: `${weekTitle} - 보고서 작성`,
+        description: `${weekTitle} 활동에 대한 보고서를 작성합니다.`,
+        guideline: '보고서 양식에 맞춰 작성하세요.',
+        order: 2,
+        period: '3',
+        priority: '하'
+      });
+    }
+  });
+  
+  // Task 목록 렌더링
+  if (window.tasks_json.length > 0) {
+    renderTasksByWeek(window.tasks_json);
+    toggleTaskSection(); // Task 섹션 보이기
+  }
+}
+
 // edit_mode, curriculum, tasks_json이 context로 전달될 경우 window에 할당
 // edit_mode가 'True', 'true', '1' 등 다양한 값으로 올 수 있으니 모두 True로 인식
 window.edit_mode = ["true", "True", "1"].includes("{{ edit_mode|default:'false' }}");
@@ -341,8 +530,9 @@ window.curriculum = JSON.parse('{{ curriculum|escapejs|default:"null" }}');
 if (window.curriculum && !window.curriculum.curriculum_id) {
   if (window.curriculum.pk) {
     window.curriculum.curriculum_id = window.curriculum.pk;
-  } else if (window.curriculum.id) {
-    window.curriculum.curriculum_id = window.curriculum.id;
+  } else if (window.curriculum.curriculum_id) {
+    // 이미 올바른 필드가 있으면 그대로 사용
+    window.curriculum.curriculum_id = window.curriculum.curriculum_id;
   }
 }
 window.tasks_json = JSON.parse('{{ tasks_json|escapejs|default:"[]" }}');
@@ -581,6 +771,11 @@ document.getElementById('task-modal').addEventListener('click', function(e) {
 });
 document.getElementById('task-form').onsubmit = function(e) {
   e.preventDefault();
+  
+  const modalSaveBtn = document.getElementById('modal-save-btn');
+  const btnText = modalSaveBtn.querySelector('.btn-text');
+  const btnLoading = modalSaveBtn.querySelector('.btn-loading');
+  
   // 입력값 가져오기
   const title = document.getElementById('modal-title').value.trim();
   const description = document.getElementById('modal-description').value.trim();
@@ -593,95 +788,124 @@ document.getElementById('task-form').onsubmit = function(e) {
   const editIdx = document.getElementById('modal-edit-index').value;
 
   if (!title) {
-    alert('과제 제목을 입력하세요.');
+    showMessage('과제 제목을 입력하세요.', 'error');
     return;
   }
 
-  // 수정 모드: editIdx가 있으면 해당 인덱스 수정
-  if (editIdx !== '') {
-    const idx = Number(editIdx);
-    if (window.tasks_json[idx]) {
-      window.tasks_json[idx] = { title, description, guideline, week, order, period, priority };
+  // 로딩 상태 시작
+  btnText.style.display = 'none';
+  btnLoading.style.display = 'inline-flex';
+  modalSaveBtn.disabled = true;
+
+  try {
+    // 수정 모드: editIdx가 있으면 해당 인덱스 수정
+    if (editIdx !== '') {
+      const idx = Number(editIdx);
+      if (window.tasks_json[idx]) {
+        window.tasks_json[idx] = { title, description, guideline, week, order, period, priority };
+      }
+    } else {
+      // 추가 모드: 해당 주차에 추가
+      window.tasks_json.push({ title, description, guideline, week, order, period, priority });
     }
-  } else {
-    // 추가 모드: 해당 주차에 추가
-    window.tasks_json.push({ title, description, guideline, week, order, period, priority });
+    
+    // 성공 메시지
+    showMessage(editIdx !== '' ? 'Task가 수정되었습니다!' : 'Task가 추가되었습니다!');
+    
+    renderTasksByWeek(window.tasks_json);
+    closeTaskModal();
+  } catch (error) {
+    console.error('Task 저장 오류:', error);
+    showMessage('Task 저장 중 오류가 발생했습니다.', 'error');
+  } finally {
+    // 로딩 상태 종료
+    btnText.style.display = 'inline';
+    btnLoading.style.display = 'none';
+    modalSaveBtn.disabled = false;
   }
-  renderTasksByWeek(window.tasks_json);
-  closeTaskModal();
 };
 
 // 저장 버튼 AJAX 핸들러
 document.getElementById('save-curriculum-btn').onclick = async function() {
+  const btnText = this.querySelector('.btn-text');
+  const btnLoading = this.querySelector('.btn-loading');
+  
   // 커리큘럼 정보
   const curriculum_title = document.querySelector('input.tasklist-search').value.trim();
   const curriculum_description = document.getElementById('curriculum-desc').value.trim();
   const week_schedule = document.getElementById('curriculum-textarea').value.trim();
   const is_common = document.getElementById('is-public-curriculum').checked;
 
-  // Task 리스트: 주차별, 카드 순서대로 order 부여
-  let tasks = [];
-  // task-list의 DOM에서 주차별, 카드 순서대로 추출
-  const taskList = document.getElementById('task-list');
-  const weekSections = taskList.querySelectorAll('.week-section');
-  weekSections.forEach(weekSection => {
-    const week = Number(weekSection.dataset.week);
-    const cards = weekSection.querySelectorAll('.template-task-item');
-    cards.forEach((card, idx) => {
-      // 카드의 idx에 해당하는 window.tasks_json에서 정보 추출
-      // title로 매칭 (title+week+description+guideline+period+priority)
-      const title = card.querySelector('.task-content > div[style*="font-weight:bold"]')?.textContent.trim() || '';
-      const badge = card.querySelector('.task-badge');
-      const priority = badge ? badge.textContent.trim() : '하';
-      const period = card.querySelector('.exp-badge') ? (card.querySelector('.exp-badge').textContent.replace('일','').trim()) : '';
-      const guideline = card.querySelector('div[style*="color:#1976d2"]') ? card.querySelector('div[style*="color:#1976d2"]').textContent.replace('가이드:','').trim() : '';
-      const description = card.querySelector('div[style*="color:#555"]') ? card.querySelector('div[style*="color:#555"]').textContent.replace('설명:','').trim() : '';
-      tasks.push({
-        week,
-        order: idx + 1,
-        title,
-        guideline,
-        description,
-        period,
-        priority
+  // 입력 검증
+  if (!curriculum_title) {
+    showMessage('커리큘럼 제목을 입력해주세요.', 'error');
+    return;
+  }
+
+  if (!curriculum_description) {
+    showMessage('커리큘럼 설명을 입력해주세요.', 'error');
+    return;
+  }
+
+  if (!week_schedule) {
+    showMessage('주차별 커리큘럼 일정을 입력해주세요.', 'error');
+    return;
+  }
+
+  // 로딩 상태 시작
+  btnText.style.display = 'none';
+  btnLoading.style.display = 'inline-flex';
+  this.disabled = true;
+
+  try {
+    // Task 리스트: 주차별, 카드 순서대로 order 부여
+    let tasks = [];
+    // task-list의 DOM에서 주차별, 카드 순서대로 추출
+    const taskList = document.getElementById('task-list');
+    const weekSections = taskList.querySelectorAll('.week-section');
+    weekSections.forEach(weekSection => {
+      const week = Number(weekSection.dataset.week);
+      const cards = weekSection.querySelectorAll('.template-task-item');
+      cards.forEach((card, idx) => {
+        // 카드의 idx에 해당하는 window.tasks_json에서 정보 추출
+        // title로 매칭 (title+week+description+guideline+period+priority)
+        const title = card.querySelector('.task-content > div[style*="font-weight:bold"]')?.textContent.trim() || '';
+        const badge = card.querySelector('.task-badge');
+        const priority = badge ? badge.textContent.trim() : '하';
+        const period = card.querySelector('.exp-badge') ? (card.querySelector('.exp-badge').textContent.replace('일','').trim()) : '';
+        const guideline = card.querySelector('div[style*="color:#1976d2"]') ? card.querySelector('div[style*="color:#1976d2"]').textContent.replace('가이드:','').trim() : '';
+        const description = card.querySelector('div[style*="color:#555"]') ? card.querySelector('div[style*="color:#555"]').textContent.replace('설명:','').trim() : '';
+        tasks.push({
+          week,
+          order: idx + 1,
+          title,
+          guideline,
+          description,
+          period,
+          priority
+        });
       });
     });
-  });
 
-  // edit_mode와 curriculum이 있으면 curriculum_id도 전송
-  let curriculum_id = null;
-  if (window.edit_mode && window.curriculum) {
-    curriculum_id = window.curriculum.curriculum_id || window.curriculum.pk || window.curriculum.id;
-  }
-  
-  console.log('Edit mode:', window.edit_mode);
-  console.log('Curriculum:', window.curriculum);
-  console.log('Curriculum ID to send:', curriculum_id);
-
-  // CSRF 토큰
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
+    // edit_mode와 curriculum이 있으면 curriculum_id도 전송
+    let curriculum_id = null;
+    if (window.edit_mode && window.curriculum) {
+      curriculum_id = window.curriculum.curriculum_id || window.curriculum.pk;
     }
-    return cookieValue;
-  }
-  const csrftoken = getCookie('csrftoken');
+    
+    console.log('Edit mode:', window.edit_mode);
+    console.log('Curriculum:', window.curriculum);
+    console.log('Curriculum ID to send:', curriculum_id);
 
-  // AJAX POST
-  try {
+    const csrftoken = getCookie('csrftoken');
+
+    // AJAX POST
     const resp = await fetch('/mentor/api/save_curriculum/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': csrftoken
+        'X-CSRFToken': csrftoken,
+        'X-Requested-With': 'XMLHttpRequest'
       },
       body: JSON.stringify({
         curriculum_id,
@@ -692,15 +916,28 @@ document.getElementById('save-curriculum-btn').onclick = async function() {
         tasks
       })
     });
-    const data = await resp.json();
-    if (data.success) {
-      alert('저장되었습니다.');
-      window.location.href = '/mentor/manage_template';
+
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.success) {
+        showMessage('커리큘럼이 성공적으로 저장되었습니다!');
+        setTimeout(() => {
+          window.location.href = '/mentor/manage_template';
+        }, 1500);
+      } else {
+        throw new Error(data.message || '저장에 실패했습니다.');
+      }
     } else {
-      alert('저장 실패: ' + (data.message || '오류'));
+      throw new Error('서버 오류가 발생했습니다.');
     }
-  } catch (e) {
-    alert('저장 중 오류 발생: ' + e);
+  } catch (error) {
+    console.error('저장 오류:', error);
+    showMessage(error.message || '저장 중 오류가 발생했습니다.', 'error');
+  } finally {
+    // 로딩 상태 종료
+    btnText.style.display = 'inline';
+    btnLoading.style.display = 'none';
+    this.disabled = false;
   }
 };
 

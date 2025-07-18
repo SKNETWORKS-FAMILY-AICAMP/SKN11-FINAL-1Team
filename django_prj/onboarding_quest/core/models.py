@@ -64,7 +64,7 @@ class Department(models.Model):
     
 class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, help_text='유저 고유 ID')
-    employee_number = models.IntegerField(unique=True, null=True, blank=True, help_text='사번')
+    employee_number = models.IntegerField(null=True, blank=True, help_text='사번')
     is_admin = models.BooleanField(default=False, help_text='관리자 여부')
     mentorship_id = models.IntegerField(null=True, blank=True, help_text='멘토쉽 ID(옵션)')
     company = models.ForeignKey(  
@@ -237,4 +237,4 @@ class Memo(models.Model):
     create_date = models.DateField(auto_now_add=True, null=True, blank=True, help_text='생성일')
     comment = models.CharField(max_length=1000, null=True, blank=True, help_text='메모 내용')
     task_assign = models.ForeignKey(TaskAssign, on_delete=models.CASCADE, help_text='과제 할당')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, help_text='유저')
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, help_text='유저')

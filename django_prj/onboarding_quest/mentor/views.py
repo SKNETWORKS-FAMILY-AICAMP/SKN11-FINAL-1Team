@@ -9,21 +9,29 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Mentorship, User
+from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError
+from django.contrib import messages
 
 
 # 멘토링 생성 API
-
 @login_required
 @require_POST
 @csrf_exempt
 def create_mentorship(request):
     try:
         data = json.loads(request.body)
-        mentor_id = request.user.user_id
+        
+        # 현재 사용자 정보 가져오기
+        user_data = request.session.get('user_data', {})
+        mentor_id = user_data.get('user_id')
+        
+        if not mentor_id:
+            return JsonResponse({'success': False, 'message': '멘토 정보를 찾을 수 없습니다.'})
+        
         mentee_id = int(data.get('mentee_id'))
-        scheduled_start_date = data.get('start_date')  # yyyy-mm-dd
-        scheduled_end_date = data.get('end_date')      # yyyy-mm-dd
-        curriculum_ids = data.get('curriculum_ids', [])  # 다중 커리큘럼 ID 배열
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        curriculum_ids = data.get('curriculum_ids', [])
         
         # 단일 커리큘럼도 지원 (기존 호환성)
         if 'curriculum_id' in data and not curriculum_ids:
@@ -36,132 +44,150 @@ def create_mentorship(request):
         if not curriculum_ids:
             return JsonResponse({'success': False, 'message': '커리큘럼을 선택해주세요.'})
         
-        from core.models import Curriculum, TaskManage, TaskAssign
+        # FastAPI로 커리큘럼들 조회
+        curriculum_titles = []
+        max_weeks = 0
         
-        # 선택된 커리큘럼들 가져오기
-        curriculums = Curriculum.objects.filter(curriculum_id__in=curriculum_ids)
-        curriculum_titles = [c.curriculum_title for c in curriculums]
+        for curriculum_id in curriculum_ids:
+            try:
+                curriculum = fastapi_client.get_curriculum(curriculum_id)
+                curriculum_titles.append(curriculum['curriculum_title'])
+                max_weeks = max(max_weeks, curriculum.get('total_weeks', 0))
+            except:
+                continue
+        
         combined_title = ' + '.join(curriculum_titles)
         
-        # 전체 주차 수 계산 (가장 긴 커리큘럼 기준)
-        max_weeks = max([c.total_weeks for c in curriculums]) if curriculums else 0
+        # FastAPI로 멘토쉽 생성
+        mentorship_data = {
+            'mentor_id': mentor_id,
+            'mentee_id': mentee_id,
+            'start_date': start_date,
+            'end_date': end_date,
+            'curriculum_title': combined_title,
+            'total_weeks': max_weeks,
+            'is_active': True
+        }
         
-        with transaction.atomic():
-            # 이미 존재하는 멘토-멘티 조합 처리
-            mentorship, created = Mentorship.objects.get_or_create(
-                mentor_id=mentor_id,
-                mentee_id=mentee_id,
-                defaults={
-                    'start_date': scheduled_start_date,
-                    'end_date': scheduled_end_date,
-                    'is_active': True,
-                    'curriculum_title': combined_title,
-                    'total_weeks': max_weeks
-                }
-            )
-            if not created:
-                mentorship.start_date = scheduled_start_date
-                mentorship.end_date = scheduled_end_date
-                mentorship.curriculum_title = combined_title
-                mentorship.total_weeks = max_weeks
-                mentorship.save()
-
-            # 기존 TaskAssign 삭제 (새로 생성하기 위해)
-            TaskAssign.objects.filter(mentorship_id=mentorship).delete()
-
-            # 모든 커리큘럼의 Task들을 주차별로 병합
-            weekly_tasks = {}  # {week: [tasks]}
-            
-            for curriculum in curriculums:
-                tasks = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
-                for task in tasks:
-                    week = task.week
-                    if week not in weekly_tasks:
-                        weekly_tasks[week] = []
-                    
-                    # 같은 주차에 동일한 제목의 과제가 있는지 확인
-                    existing_titles = [t.title for t in weekly_tasks[week]]
-                    if task.title not in existing_titles:
-                        weekly_tasks[week].append(task)
-
-            # TaskManage → TaskAssign 생성
-            from datetime import datetime, timedelta
-            mentorship_start = datetime.strptime(scheduled_start_date, '%Y-%m-%d')
-            
-            for week in sorted(weekly_tasks.keys()):
-                tasks_in_week = weekly_tasks[week]
-                # 같은 주차 내에서 order로 정렬
-                tasks_in_week.sort(key=lambda x: x.order if x.order else 0)
+        result = fastapi_client.create_mentorship(mentorship_data)
+        mentorship_id = result.get('mentorship_id')
+        
+        # FastAPI로 TaskManage들 조회하고 TaskAssign 생성
+        for curriculum_id in curriculum_ids:
+            try:
+                task_manages = fastapi_client.get_task_manages(curriculum_id=curriculum_id)
                 
-                for order_index, task in enumerate(tasks_in_week, 1):
-                    # 주차별 시작일 계산: mentorship 시작일 + (week-1)*7
+                # TaskManage → TaskAssign 변환 로직
+                mentorship_start = datetime.strptime(start_date, '%Y-%m-%d')
+                
+                for task in task_manages.get('tasks', []):
+                    week = task.get('week', 1)
                     task_start = mentorship_start + timedelta(days=(week-1)*7)
-                    period = task.period if task.period else 1
-                    scheduled_start = task_start.date()
-                    scheduled_end = (task_start + timedelta(days=period-1)).date()
+                    period = task.get('period', 1)
                     
-                    TaskAssign.objects.create(
-                        mentorship_id=mentorship,
-                        title=task.title,
-                        description=task.description,
-                        guideline=task.guideline,
-                        week=week,
-                        order=order_index,  # 주차 내 순서 재정렬
-                        scheduled_start_date=scheduled_start,
-                        scheduled_end_date=scheduled_end,
-                        real_start_date=None,
-                        real_end_date=None,
-                        priority=task.priority,
-                        status='진행전'
-                    )
+                    task_assign_data = {
+                        'title': task.get('title'),
+                        'description': task.get('description'),
+                        'guideline': task.get('guideline'),
+                        'week': week,
+                        'order': task.get('order'),
+                        'scheduled_start_date': task_start.date().isoformat(),
+                        'scheduled_end_date': (task_start.date() + timedelta(days=period)).isoformat(),
+                        'status': '진행전',
+                        'priority': task.get('priority'),
+                        'mentorship_id': mentorship_id
+                    }
                     
-        return JsonResponse({'success': True, 'mentorship_id': mentorship.mentorship_id})
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})
+                    fastapi_client.create_task_assign(task_assign_data)
+                    
+            except Exception as e:
+                print(f"Task creation error for curriculum {curriculum_id}: {e}")
+                continue
         
+        return JsonResponse({'success': True, 'message': '멘토십이 성공적으로 생성되었습니다.'})
+        
+    except AuthenticationError:
+        return JsonResponse({'success': False, 'message': '인증이 만료되었습니다.'})
+    except APIError as e:
+        return JsonResponse({'success': False, 'message': f'API 오류: {str(e)}'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'멘토십 생성 중 오류가 발생했습니다: {str(e)}'})
+
 
 @login_required
 def mentee_detail(request, user_id):
     try:
-        mentee = User.objects.get(user_id=user_id, department=request.user.department, role='mentee')
-    except User.DoesNotExist:
+        # FastAPI로 멘티 정보 조회
+        mentee_info = fastapi_client.get_user(user_id)
+        
+        # 현재 사용자의 부서와 같은지 확인
+        current_user_data = request.session.get('user_data', {})
+        current_dept_id = current_user_data.get('department_id')
+        
+        if mentee_info.get('department_id') != current_dept_id or mentee_info.get('role') != 'mentee':
+            return JsonResponse({'error': 'not found'}, status=404)
+            
+        data = {
+            'id': mentee_info.get('user_id'),
+            'emp': mentee_info.get('employee_number'),
+            'email': mentee_info.get('email'),
+            'dept': mentee_info.get('department', {}).get('department_name', '') if mentee_info.get('department') else '',
+            'job': mentee_info.get('job_part'),
+            'position': mentee_info.get('position'),
+            'join': mentee_info.get('join_date'),
+            'tag': mentee_info.get('tag'),
+            'lastname': mentee_info.get('last_name'),
+            'firstname': mentee_info.get('first_name'),
+        }
+        return JsonResponse(data)
+        
+    except AuthenticationError:
+        return JsonResponse({'error': 'authentication required'}, status=401)
+    except APIError:
         return JsonResponse({'error': 'not found'}, status=404)
-    data = {
-        'id': mentee.user_id,
-        'emp': mentee.employee_number,
-        'email': mentee.email,
-        'dept': mentee.department.department_name if mentee.department else '',
-        'job': mentee.job_part,
-        'position': mentee.position,
-        'join': mentee.join_date,
-        'tag': mentee.tag,
-        'lastname': mentee.last_name,
-        'firstname': mentee.first_name,
-    }
-    return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 @login_required
 @require_GET
 def mentees_api(request):
-    user = request.user
-    mentees = User.objects.filter(department=user.department, role='mentee')
-    mentee_list = [
-        {
-            'id': m.user_id,
-            'emp': m.employee_number,
-            'email': m.email,
-            'dept': m.department.department_name if m.department else '',
-            'job': m.job_part,
-            'position': m.position,
-            'join': m.join_date,
-            'tag': m.tag,
-            'lastname': m.last_name,
-            'firstname': m.first_name,
-        }
-        for m in mentees
-    ]
-    return JsonResponse({'mentees': mentee_list})
+    try:
+        # 현재 사용자 정보
+        user_data = request.session.get('user_data', {})
+        department_id = user_data.get('department_id')
+        
+        if not department_id:
+            return JsonResponse({'mentees': []})
+        
+        # FastAPI로 멘티 목록 조회
+        users_response = fastapi_client.get_users(department_id=department_id)
+        all_users = users_response.get('users', [])
+        
+        # 멘티만 필터링
+        mentees = [user for user in all_users if user.get('role') == 'mentee']
+        
+        mentee_list = [
+            {
+                'id': m.get('user_id'),
+                'emp': m.get('employee_number'),
+                'email': m.get('email'),
+                'dept': m.get('department', {}).get('department_name', '') if m.get('department') else '',
+                'job': m.get('job_part'),
+                'position': m.get('position'),
+                'join': m.get('join_date'),
+                'tag': m.get('tag'),
+                'lastname': m.get('last_name'),
+                'firstname': m.get('first_name'),
+            }
+            for m in mentees
+        ]
+        return JsonResponse({'mentees': mentee_list})
+        
+    except AuthenticationError:
+        return JsonResponse({'mentees': []})
+    except Exception as e:
+        return JsonResponse({'mentees': [], 'error': str(e)})
 
 # 커리큘럼+Task 저장 API
 @require_POST
@@ -212,42 +238,68 @@ def save_curriculum(request):
 
 @login_required
 def mentor(request):
-    from core.models import Mentorship, User
-    mentor_id = request.user.user_id
-    # 로그인한 유저가 멘토로 포함된 멘토쉽 목록
-    mentorships = Mentorship.objects.filter(mentor_id=mentor_id)
-    mentee_ids = mentorships.values_list('mentee_id', flat=True)
-    mentees = User.objects.filter(user_id__in=mentee_ids)
-    # 진척도, D-day 등은 예시값(실제 로직에 맞게 수정 가능)
-    mentee_cards = []
-    from datetime import date
-    for ms in mentorships:
-        mentee = mentees.filter(user_id=ms.mentee_id).first()
-        if not mentee:
-            continue
-
-        # D-day 계산: 멘토쉽 종료일 기준
-        dday = ''
-        if ms.end_date:
-            dday_val = (ms.end_date - date.today()).days
-            dday = f"D-{dday_val}" if dday_val > 0 else ("D-DAY" if dday_val == 0 else "종료")
+    try:
+        mentor_id = request.user.user_id
+        
+        # FastAPI에서 로그인한 유저가 멘토로 포함된 멘토쉽 목록 조회
+        mentorships_result = fastapi_client.get_mentorships(mentor_id=mentor_id)
+        mentorships = mentorships_result.get('mentorships', [])
+        
+        # 멘티 정보 조회
+        if mentorships:
+            mentee_ids = [m.get('mentee_id') for m in mentorships]
+            # 현재 회사의 모든 사용자 조회 (성능 최적화)
+            user_data = request.session.get('user_data', {})
+            company_id = user_data.get('company_id')
+            users_result = fastapi_client.get_users(company_id=company_id)
+            all_users = {user['user_id']: user for user in users_result.get('users', [])}
         else:
-            dday = ""
-        # 진척도: 멘토쉽에 할당된 TaskAssign 중 완료된 개수/전체 개수
-        from core.models import TaskAssign
-        total_tasks = TaskAssign.objects.filter(mentorship_id=ms).count()
-        completed_tasks = TaskAssign.objects.filter(mentorship_id=ms, status='완료').count()
-        progress = int((completed_tasks / total_tasks) * 100) if total_tasks else 0
-        mentee_cards.append({
-            'name': f'{mentee.last_name}{mentee.first_name}',
-            'tags': [mentee.tag] if mentee.tag else [],
-            'dday': dday,
-            'progress': progress,
-            'mentorship_id': ms.mentorship_id,
-            'curriculum_title': ms.curriculum_title,
-            'total_weeks': ms.total_weeks,
-        })
-    return render(request, 'mentor/mentor.html', {'mentee_cards': mentee_cards})
+            mentee_ids = []
+            all_users = {}
+        
+        # 진척도, D-day 등 계산
+        mentee_cards = []
+        from datetime import date
+        
+        for ms in mentorships:
+            mentee_id = ms.get('mentee_id')
+            mentee = all_users.get(mentee_id)
+            if not mentee:
+                continue
+
+            # D-day 계산: 멘토쉽 종료일 기준
+            dday = ''
+            end_date_str = ms.get('end_date')
+            if end_date_str:
+                from datetime import datetime
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                dday_val = (end_date - date.today()).days
+                dday = f"D-{dday_val}" if dday_val > 0 else ("D-DAY" if dday_val == 0 else "종료")
+            else:
+                dday = ""
+            
+            # 진척도: 멘토쉽에 할당된 TaskAssign 중 완료된 개수/전체 개수
+            tasks_result = fastapi_client.get_task_assigns(mentorship_id=ms.get('mentorship_id'))
+            all_tasks = tasks_result.get('task_assigns', [])
+            total_tasks = len(all_tasks)
+            completed_tasks = len([t for t in all_tasks if t.get('status') == '완료'])
+            progress = int((completed_tasks / total_tasks) * 100) if total_tasks else 0
+            
+            mentee_cards.append({
+                'name': f'{mentee.get("last_name", "")}{mentee.get("first_name", "")}',
+                'tags': [mentee.get('tag')] if mentee.get('tag') else [],
+                'dday': dday,
+                'progress': progress,
+                'mentorship_id': ms.get('mentorship_id'),
+                'curriculum_title': ms.get('curriculum_title'),
+                'total_weeks': ms.get('total_weeks'),
+            })
+            
+        return render(request, 'mentor/mentor.html', {'mentee_cards': mentee_cards})
+        
+    except (AuthenticationError, APIError) as e:
+        messages.error(request, f'멘토 정보 조회 중 오류가 발생했습니다: {str(e)}')
+        return render(request, 'mentor/mentor.html', {'mentee_cards': []})
 
 @login_required
 def add_template(request):
@@ -257,18 +309,36 @@ def add_template(request):
 
 @login_required
 def manage_mentee(request):
-    from core.models import User, Curriculum
-    user = request.user
-    # 같은 회사의 모든 멘티 목록
-    mentees = User.objects.filter(company=user.company, role='mentee')
-    # 부서 커리큘럼 목록 (공용+부서)
-    curriculums = Curriculum.objects.filter(
-        models.Q(common=True) | models.Q(department=user.department)
-    ).order_by('-common', 'curriculum_title')
-    return render(request, 'mentor/manage_mentee.html', {
-        'mentees': mentees,
-        'curriculums': curriculums,
-    })
+    try:
+        user_data = request.session.get('user_data', {})
+        company_id = user_data.get('company_id')
+        department_id = user_data.get('department_id')
+        
+        # 같은 회사의 모든 멘티 목록
+        mentees_result = fastapi_client.get_users(company_id=company_id, role='mentee')
+        mentees = mentees_result.get('users', [])
+        
+        # 부서 커리큘럼 목록 (공용+부서)
+        curriculums_result = fastapi_client.get_curriculums(department_id=department_id)
+        curriculums = curriculums_result.get('curriculums', [])
+        
+        # 공통 커리큘럼도 포함
+        common_curriculums_result = fastapi_client.get_curriculums(common=True)
+        common_curriculums = common_curriculums_result.get('curriculums', [])
+        
+        all_curriculums = common_curriculums + curriculums
+        
+        return render(request, 'mentor/manage_mentee.html', {
+            'mentees': mentees,
+            'curriculums': all_curriculums,
+        })
+        
+    except (AuthenticationError, APIError) as e:
+        messages.error(request, f'멘티 관리 정보 조회 중 오류가 발생했습니다: {str(e)}')
+        return render(request, 'mentor/manage_mentee.html', {
+            'mentees': [],
+            'curriculums': [],
+        })
 
 @login_required
 def manage_template(request):
