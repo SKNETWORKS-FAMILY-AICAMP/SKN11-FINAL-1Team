@@ -300,11 +300,11 @@ document.querySelectorAll('.kanban-card').forEach(card => {
     dragged = null;
     document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drop-hover'));
   });
-  // 카드 클릭 시 task_add 페이지로 이동 (드래그가 아닐 때만)
+  // 카드 클릭 시 해당 태스크 페이지로 이동 (드래그가 아닐 때만)
   card.addEventListener('click', function(e) {
     // 드래그 중이 아닐 때만 페이지 이동
     if (!dragged) {
-      window.location.href = '/common/task_add/';
+      // window.location.href = 
     }
   });
 });

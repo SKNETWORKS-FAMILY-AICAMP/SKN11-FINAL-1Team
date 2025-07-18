@@ -160,9 +160,6 @@ def doc(request):
         messages.error(request, f'문서 목록 조회 중 오류가 발생했습니다: {str(e)}')
         return render(request, 'common/doc.html', {'core_docs': []})
 
-def task_add(request):
-    return render(request, 'common/task_add.html')
-
 @csrf_exempt
 def doc_delete(request, doc_id):
     if request.method == 'POST' and request.user.is_authenticated:

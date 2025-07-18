@@ -160,4 +160,4 @@ curl -X POST "http://localhost:8001/api/users/" \
 **개발자**: SKN11-FINAL-1Team  
 **버전**: 1.0.0  
 **데이터베이스**: PostgreSQL  
-**Python**: 3.13+ 
+**Python**: 3.11+ 

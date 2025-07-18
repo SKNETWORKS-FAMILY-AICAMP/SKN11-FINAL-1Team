@@ -17,12 +17,12 @@
 #### 1.1 PostgreSQL 다운로드
 1. https://www.postgresql.org/download/windows/ 접속
 2. "Download the installer" 클릭
-3. Windows x86-64 최신 버전 다운로드 (예: PostgreSQL 15 또는 16)
+3. Windows x86-64 17 버전 다운로드
 
 #### 1.2 설치 진행
 1. 다운로드한 파일을 관리자 권한으로 실행
 2. 설치 중 설정:
-   - **설치 경로**: 기본값 사용 (C:\Program Files\PostgreSQL\15\)
+   - **설치 경로**: 기본값 사용 (C:\Program Files\PostgreSQL\17\)
    - **구성 요소**: 모두 선택 (PostgreSQL Server, pgAdmin 4, Stack Builder, Command Line Tools)
    - **데이터 디렉토리**: 기본값 사용
    - **비밀번호**: postgres 사용자 비밀번호 설정 (.env 파일에 추가)
@@ -32,8 +32,8 @@
 #### 1.3 환경 변수 설정 (자동으로 안 된 경우)
 1. 시스템 속성 > 고급 > 환경 변수
 2. 시스템 변수의 Path에 추가:
-   - C:\Program Files\PostgreSQL\{version}\bin
-   - C:\Program Files\PostgreSQL\{version}\lib
+   - C:\Program Files\PostgreSQL\17\bin
+   - C:\Program Files\PostgreSQL\17\lib
 
 ### 방법 2: Chocolatey 사용 (개발자용)
 
@@ -75,11 +75,11 @@ psql --version
 ### 2.2 PostgreSQL 서비스 시작 (Windows)
 ```cmd
 # 서비스 관리자에서 PostgreSQL 서비스 시작하거나:
-net start postgresql-x64-15
+net start postgresql-x64-17
 
 # 서비스 상태 확인
 services.msc
-# postgresql-x64-15 서비스가 실행 중인지 확인
+# postgresql-x64-17 서비스가 실행 중인지 확인
 ```
 
 ### 2.3 데이터베이스 생성
@@ -118,12 +118,11 @@ psql
 
 **1단계: pg_hba.conf 파일 찾기**
 일반적인 위치:
-- C:\Program Files\PostgreSQL\15\data\pg_hba.conf
-- C:\Program Files\PostgreSQL\16\data\pg_hba.conf
+- C:\Program Files\PostgreSQL\17\data\pg_hba.conf
 
 **2단계: 파일 백업**
 ```cmd
-copy "C:\Program Files\PostgreSQL\15\data\pg_hba.conf" "C:\Program Files\PostgreSQL\15\data\pg_hba.conf.backup"
+copy "C:\Program Files\PostgreSQL\17\data\pg_hba.conf" "C:\Program Files\PostgreSQL\17\data\pg_hba.conf.backup"
 ```
 
 **3단계: 메모장으로 편집 (관리자 권한 필요)**
@@ -141,8 +140,8 @@ host    all             all             127.0.0.1/32            trust
 
 **4단계: PostgreSQL 서비스 재시작**
 ```cmd
-net stop postgresql-x64-15
-net start postgresql-x64-15
+net stop postgresql-x64-17
+net start postgresql-x64-17
 ```
 
 #### 방법 3: 새 사용자 생성

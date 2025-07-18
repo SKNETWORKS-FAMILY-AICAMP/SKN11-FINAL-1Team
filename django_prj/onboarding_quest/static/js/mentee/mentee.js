@@ -40,8 +40,8 @@ function initializeKanbanCards() {
       // 현재 카드에 selected 클래스 추가
       this.classList.add('selected');
       
-      // 페이지 이동
-      window.location.href = '/common/task_add/';
+      // 해당 태스크 페이지 이동
+      // window.location.href = 
     });
     
     // 카드 호버 시 임시 선택 효과

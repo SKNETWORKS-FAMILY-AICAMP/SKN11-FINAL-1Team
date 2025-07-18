@@ -73,7 +73,6 @@ async def health_check():
     return {
         "status": "healthy",
         "message": "서버가 정상적으로 작동중입니다",
-        "version": settings.app_version,
         "database": "PostgreSQL"
     }
 

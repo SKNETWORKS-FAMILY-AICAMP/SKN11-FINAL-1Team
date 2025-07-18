@@ -11,5 +11,4 @@ urlpatterns = [
     path('doc/upload/', views.doc_upload, name='doc_upload'),
     path('doc/<int:doc_id>/delete/', views.doc_delete, name='doc_delete'),
     path('doc/<int:doc_id>/download/', views.doc_download, name='doc_download'),
-    path('task_add/', views.task_add, name='common_task_add'),
 ]
