@@ -54,7 +54,7 @@ class ChatBot {
         // ✅ 사용자 메시지 즉시 출력 (UX)
         this.addMessageToChat('user', message);
 
-
+        
 
         this.showLoadingAnimation();
 
@@ -187,39 +187,24 @@ class ChatBot {
     }
 
     renderMessages(messages) {
-        console.log("📥 렌더링할 메시지:", messages);  // 추가
         if (this.renderLock) return;
-        this.renderLock = true;
+        this.renderLock = true;  // ✅ 중복 렌더링 방지
+
+        console.log("✅ renderMessages 실행됨", messages);
 
         this.chatArea.innerHTML = '';
-
         if (!messages || messages.length === 0) {
             this.chatArea.innerHTML = '<div class="empty-chat">메시지가 없습니다.</div>';
             this.renderLock = false;
             return;
         }
 
-        // ✅ 타입 정규화 및 순서대로 렌더링
-    messages.forEach(message => {
-        // 타입 정규화 처리
-        let messageType = 'bot'; // 기본값
-        if (message.type === 'user') {
-            messageType = 'user';
-        } else if (message.type === 'chatbot' || message.type === 'bot') {
-            messageType = 'bot';
-        }
-        
-        console.log(`렌더링: ${messageType} - ${message.text.substring(0, 50)}...`);
-        this.addMessageToChat(messageType, message.text);
-    });
-
-        // ✅ 항상 아래로 스크롤
-        this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        messages
+            .filter(message => message.type !== 'user')
+            .forEach(message => this.addMessageToChat('bot', message.text));
 
         this.renderLock = false;
     }
-
-
 
     addMessageToChat(type, text) {
         const messageRow = document.createElement('div');
@@ -227,18 +212,12 @@ class ChatBot {
 
         const messageContent = document.createElement('div');
         messageContent.className = `chatbot-msg-${type === 'user' ? 'user' : 'chabot'}`;
-
-        // ✅ 유일성 보장을 위해 random ID 또는 timestamp 적용 (디버깅 목적)
         messageContent.textContent = text;
 
-        // ✅ 반드시 새로운 노드로 append
         messageRow.appendChild(messageContent);
         this.chatArea.appendChild(messageRow);
-
-        // ✅ 항상 스크롤 아래로 유지
         this.chatArea.scrollTop = this.chatArea.scrollHeight;
     }
-
 
     closeDeleteModal() {
         const modal = document.getElementById('deleteModal');

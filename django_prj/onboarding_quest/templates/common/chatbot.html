@@ -513,12 +513,13 @@
                     {% if current_session_id and current_session_id == chat_session.session.session_id|stringformat:'s' %}
                         <!-- 현재 세션의 메시지 표시 -->
                         {% for message in chat_session.messages %}
-                            <div class="chatbot-msg-row {% if message.message_type == 'user' %}user{% else %}bot{% endif %}">
-                                <div class="chatbot-msg-{% if message.message_type == 'user' %}user{% else %}chabot{% endif %}">
-                                    {{ message.message_text }}
-                                </div>
+                        <div class="chatbot-msg-row {% if message.message_type == 'user' %}user{% else %}bot{% endif %}">
+                            <div class="chatbot-msg-{% if message.message_type == 'user' %}user{% else %}chabot{% endif %}">
+                                {{ message.message_text }}
                             </div>
+                        </div>
                         {% endfor %}
+
                     {% elif not current_session_id and forloop.first %}
                         <!-- 현재 세션 ID가 없으면 첫 번째 세션 표시 -->
                         {% for message in chat_session.messages %}

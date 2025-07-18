@@ -122,37 +122,32 @@ def save_message(session_id: str, text: str, message_type: str):
         )
     # Context Manager가 자동으로 commit()과 close() 처리
 
-def load_user_history(user_id: str, limit: int = 10) -> List[str]:
-    """Context Manager만 사용하는 히스토리 로드"""
+def load_session_history(session_id: str, limit: int = 10) -> List[str]:
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT cm.message_text, cm.message_type
-            FROM core_chatmessage cm
-            JOIN core_chatsession cs ON cm.session_id = cs.session_id
-            WHERE cs.user_id = ?
-            ORDER BY cm.create_time DESC
-            LIMIT ?
-        """, (int(user_id), limit * 2))
+            SELECT message_text, message_type
+            FROM core_chatmessage
+            WHERE session_id = ?
+            ORDER BY create_time ASC
+        """, (int(session_id),))
         
         messages = cursor.fetchall()
-    
-    # 기존 처리 로직 유지
-    messages = list(reversed(messages))
-    
+
     history = []
     buffer = {}
     for row in messages:
         text, mtype = row[0], row[1]
         if mtype == "user":
             buffer["user"] = text
-        elif mtype == "bot":
+        elif mtype in ["bot", "chatbot"]:
             buffer["bot"] = text
         if "user" in buffer and "bot" in buffer:
             history.append(f"Q: {buffer['user']}\nA: {buffer['bot']}")
             buffer = {}
-    
+
     return history[-limit:]
+
 
 # 질문 유형 분류 함수
 def classify_question_type(question: str) -> str:
@@ -531,7 +526,8 @@ graph = builder.compile()
 # 실행 진입점
 def run_agent(user_id: str):
     session_id = create_chat_session(user_id)
-    history = load_user_history(user_id, limit=5)
+    history = load_session_history(session_id=session_id, limit=5)
+
     
     state: AgentState = {
         "chat_history": history,

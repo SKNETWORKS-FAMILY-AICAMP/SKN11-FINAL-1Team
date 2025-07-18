@@ -13,5 +13,5 @@ urlpatterns = [
     path('doc/<int:doc_id>/download/', views.doc_download, name='doc_download'),
     path('task_add/', views.task_add, name='common_task_add'),
     path('doc/<int:doc_id>/update/', views.doc_update, name='doc_update'),
-     path('chatbot/api/send/', views.chatbot_send_api, name='chatbot_send_api'),
+    path('chatbot/api/send/', views.chatbot_send_api, name='chatbot_send_api'),
 ]

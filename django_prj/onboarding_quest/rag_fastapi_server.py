@@ -53,9 +53,9 @@ async def chat_with_rag(request: ChatRequest):
             logger.info(f"새 세션 생성: {session_id}")
         else:
             session_id = request.session_id
-        
+        logger.warning(f"🔥 사용자 메시지 저장됨 - FastAPI: {request.question}")
         # 사용자 메시지 저장
-        save_message(session_id, request.question, "user")
+        # save_message(session_id, request.question, "user")
         
         # 사용자 히스토리 로드
         history = load_user_history(request.user_id, limit=5)
