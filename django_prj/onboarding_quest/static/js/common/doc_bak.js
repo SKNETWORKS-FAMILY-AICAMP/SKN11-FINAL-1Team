@@ -37,7 +37,7 @@ function handleFiles(files) {
         file,
         name: file.name,
         description: '',
-        
+        tags: '',
         common_doc: false
       });
     }
@@ -52,11 +52,12 @@ function renderUploadList() {
   addedFiles.forEach((f, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-            <td style="width:25%;">${f.name}</td>
-            <td style="width:40%;"><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
-            <td style="width:15%;"><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
-            <td style="width:20%;"><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
-        `;;;;
+            <td>${f.name}</td>
+            <td><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
+            <td><input type="text" placeholder="태그 입력" value="${f.tags}" onchange="updateFileInfo(${idx}, 'tags', this.value)"></td>
+            <td><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
+            <td><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
+        `;
     uploadListTbody.appendChild(tr);
   });
 
@@ -127,9 +128,9 @@ if (uploadBtn) {
 //#endregion
 
 //#region 문서 수정 기능
-function openEditModal(docId, currentDescription, currentCommonDoc) {
+function openEditModal(docId, currentDescription, currentTags, currentCommonDoc) {
   document.getElementById('edit-description').value = currentDescription || '';
-  
+  document.getElementById('edit-tags').value = currentTags || '';
   document.getElementById('edit-common-doc').checked = currentCommonDoc === true || currentCommonDoc === 'true';
   document.getElementById('edit-modal').style.display = 'flex';
   document.getElementById('edit-form').dataset.docId = docId;
@@ -147,12 +148,12 @@ document.getElementById('edit-form').addEventListener('submit', function (e) {
 
   const docId = this.dataset.docId;
   const description = document.getElementById('edit-description').value;
-  
+  const tags = document.getElementById('edit-tags').value;
   const commonDocChecked = document.getElementById('edit-common-doc').checked;
 
   const formData = new FormData();
   formData.append('description', description);
-  
+  formData.append('tags', tags);
   formData.append('common_doc', commonDocChecked ? 'true' : 'false');  // ← 문자열로 명확하게 전달
 
   fetch(`/common/doc/${docId}/update/`, {

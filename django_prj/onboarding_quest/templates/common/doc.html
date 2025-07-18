@@ -410,11 +410,11 @@ body {
         <table class="doc-upload-list-table">
           <thead>
             <tr>
-              <th>파일명</th>
-              <th>설명</th>
-              <th>분류(태그)</th>
-              <th>공통문서</th>
-              <th>제거</th>
+              <th style="width:25%;">파일명</th>
+              <th style="width:40%;">설명</th>
+              
+              <th style="width:15%;">공통문서</th>
+              <th style="width:20%;">제거</th>
             </tr>
           </thead>
           <tbody id="doc-upload-list-tbody">
@@ -432,11 +432,11 @@ body {
       <table class="doc-file-list-table">
         <thead>
           <tr>
-            <th>파일명</th>
-            <th>설명</th>
-            <th>분류(태그)</th>
-            <th>관리부서</th>
-            <th>관리</th>
+            <th style="width:25%;">파일명</th>
+            <th style="width:40%;">설명</th>
+            
+            <th style="width:15%;">관리부서</th>
+            <th style="width:20%;">관리</th>
           </tr>
         </thead>
         <tbody>
@@ -450,13 +450,12 @@ body {
               </a>
             </td>
             <td>{{ doc.description|default:"-" }}</td>
-            <td>-</td>
             <td>
               {% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}
             </td>
             <td>
               {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-              <button class="doc-edit-btn" onclick="openEditModal({{ doc.docs_id }}, '{{ doc.description|default:'' }}', '{{ doc.tags|default:'' }}', '{{ doc.common_doc }}')">수정</button>
+              <button class="doc-edit-btn" onclick="openEditModal({{ doc.docs_id }}, '{{ doc.description|default:'' }}', '{{ doc.common_doc }}')">수정</button>
               <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
               {% endif %}
             </td>
@@ -484,11 +483,7 @@ body {
         <textarea id="edit-description" rows="3"
           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
       </div>
-      <div style="margin-bottom: 20px;">
-        <label for="edit-tags">분류(태그):</label>
-        <input type="text" id="edit-tags" placeholder="태그를 입력하세요"
-          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-      </div>
+      
       <div style="margin-bottom: 20px;">
         <label for="edit-common-doc">공통문서 여부:</label>
         <input type="checkbox" id="edit-common-doc">

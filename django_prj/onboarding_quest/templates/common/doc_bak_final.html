@@ -412,7 +412,7 @@ body {
             <tr>
               <th>파일명</th>
               <th>설명</th>
-              <th>분류(태그)</th>
+              
               <th>공통문서</th>
               <th>제거</th>
             </tr>
@@ -434,7 +434,7 @@ body {
           <tr>
             <th>파일명</th>
             <th>설명</th>
-            <th>분류(태그)</th>
+            
             <th>관리부서</th>
             <th>관리</th>
           </tr>
@@ -450,13 +450,12 @@ body {
               </a>
             </td>
             <td>{{ doc.description|default:"-" }}</td>
-            <td>-</td>
             <td>
               {% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}
             </td>
             <td>
               {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-              <button class="doc-edit-btn" onclick="editDoc({{ doc.docs_id }})">수정</button>
+              <button class="doc-edit-btn" onclick="openEditModal({{ doc.docs_id }}, '{{ doc.description|default:'' }}', '{{ doc.common_doc }}')">수정</button>
               <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
               {% endif %}
             </td>
@@ -472,6 +471,33 @@ body {
   </div>
 </div>
 
+
+<!-- 수정 모달 -->
+<div id="edit-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <h3>문서 정보 수정</h3>
+    <form id="edit-form">
+      {% csrf_token %}
+      <div style="margin-bottom: 15px;">
+        <label for="edit-description">설명:</label>
+        <textarea id="edit-description" rows="3"
+          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label for="edit-common-doc">공통문서 여부:</label>
+        <input type="checkbox" id="edit-common-doc">
+      </div>
+
+      <div class="modal-buttons">
+        <button type="button" class="modal-btn cancel" onclick="closeEditModal()">취소</button>
+        <button type="submit" class="modal-btn confirm">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
 <!-- 삭제 확인 모달 -->
 <div class="modal-overlay" id="deleteModal" style="display: none;">
   <div class="modal-content">
@@ -486,16 +512,3 @@ body {
 
 <script src="{% static 'js/common/doc.js' %}"></script>
 {% endblock %}
-<!-- 📌 Functional Code Injection -->
-<div id="edit-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content">
-    <h3>문서 정보 수정</h3>
-    <form id="edit-form">
-      {% csrf_token %}
-      <div style="margin-bottom: 15px;">
-        <label for="edit-description">설명:</label>
-        <textarea id="edit-description" rows="3"
-          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
-      </div>
-
-<script src="{% static 'js/common/doc.js' %}"></script>

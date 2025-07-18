@@ -52,11 +52,11 @@ function renderUploadList() {
   addedFiles.forEach((f, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-            <td style="width:25%;">${f.name}</td>
-            <td style="width:40%;"><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
-            <td style="width:15%;"><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
-            <td style="width:20%;"><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
-        `;;;;
+            <td>${f.name}</td>
+            <td><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
+            <td><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
+            <td><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
+        `;
     uploadListTbody.appendChild(tr);
   });
 

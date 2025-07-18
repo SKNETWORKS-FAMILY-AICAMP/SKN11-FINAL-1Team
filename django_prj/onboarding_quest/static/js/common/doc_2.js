@@ -37,7 +37,7 @@ function handleFiles(files) {
         file,
         name: file.name,
         description: '',
-        tags: '',
+        
         common_doc: false
       });
     }
@@ -54,14 +54,19 @@ function renderUploadList() {
     tr.innerHTML = `
             <td>${f.name}</td>
             <td><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
-            <td><input type="text" placeholder="태그 입력" value="${f.tags}" onchange="updateFileInfo(${idx}, 'tags', this.value)"></td>
-            <td><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
             <td><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
-        `;
+            <td><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
+        `;;;
     uploadListTbody.appendChild(tr);
   });
 
-  uploadBtn.style.display = addedFiles.length > 0 ? 'block' : 'none';
+  if (uploadBtn) {
+    if (addedFiles.length > 0) {
+      uploadBtn.classList.add('show');
+    } else {
+      uploadBtn.classList.remove('show');
+    }
+  }
 }
 
 function updateFileInfo(idx, field, value) {
@@ -122,9 +127,9 @@ if (uploadBtn) {
 //#endregion
 
 //#region 문서 수정 기능
-function openEditModal(docId, currentDescription, currentTags, currentCommonDoc) {
+function openEditModal(docId, currentDescription, currentCommonDoc) {
   document.getElementById('edit-description').value = currentDescription || '';
-  document.getElementById('edit-tags').value = currentTags || '';
+  
   document.getElementById('edit-common-doc').checked = currentCommonDoc === true || currentCommonDoc === 'true';
   document.getElementById('edit-modal').style.display = 'flex';
   document.getElementById('edit-form').dataset.docId = docId;
@@ -142,12 +147,12 @@ document.getElementById('edit-form').addEventListener('submit', function (e) {
 
   const docId = this.dataset.docId;
   const description = document.getElementById('edit-description').value;
-  const tags = document.getElementById('edit-tags').value;
+  
   const commonDocChecked = document.getElementById('edit-common-doc').checked;
 
   const formData = new FormData();
   formData.append('description', description);
-  formData.append('tags', tags);
+  
   formData.append('common_doc', commonDocChecked ? 'true' : 'false');  // ← 문자열로 명확하게 전달
 
   fetch(`/common/doc/${docId}/update/`, {
@@ -180,11 +185,11 @@ let deleteDocId = null;
 
 function deleteDoc(docId) {
   deleteDocId = docId;
-  document.getElementById('delete-modal').style.display = 'flex';
+  document.getElementById('deleteModal').style.display = 'flex';
 }
 
 function closeDeleteModal() {
-  document.getElementById('delete-modal').style.display = 'none';
+  document.getElementById('deleteModal').style.display = 'none';
   deleteDocId = null;
 }
 
@@ -218,7 +223,7 @@ function confirmDelete() {
 // 모달 외부 클릭 시 닫기
 window.addEventListener('click', function (e) {
   const editModal = document.getElementById('edit-modal');
-  const deleteModal = document.getElementById('delete-modal');
+  const deleteModal = document.getElementById('deleteModal');
 
   if (e.target === editModal) {
     closeEditModal();
