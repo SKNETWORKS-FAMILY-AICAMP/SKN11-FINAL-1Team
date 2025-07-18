@@ -1,11 +1,12 @@
 from django.core.management.base import BaseCommand
 from core.models import (
     Company, Department, User, Mentorship, Curriculum, TaskManage,
-    TaskAssign, Subtask, Memo, ChatSession, ChatMessage, Docs
+    TaskAssign, Memo, ChatSession, ChatMessage, Docs
 )
 from django.contrib.auth.hashers import make_password
 from datetime import date, timedelta
 from random import sample, randint
+import random
 
 
 
@@ -447,5 +448,174 @@ class Command(BaseCommand):
                             message_type='chatbot',
                             message_text=bot_msgs[i]
                         )
+
+        # 10. 멘토쉽 샘플 데이터 생성
+        self.stdout.write('10. 멘토쉽 샘플 데이터 생성...')
+        
+        # 멘토와 멘티 사용자 조회
+        mentors = list(User.objects.filter(role='mentor'))
+        mentees = list(User.objects.filter(role='mentee'))
+        curriculums = list(Curriculum.objects.all())
+        
+        if not mentors or not mentees or not curriculums:
+            self.stdout.write(self.style.ERROR('멘토/멘티/커리큘럼 데이터가 부족합니다.'))
+        else:
+            mentorships = []
+            mentee_idx = 0
+            
+            # 멘토 3명을 사용하여 총 9개의 멘토쉽 생성 (멘토 1명당 3명의 멘티)
+            for i, mentor in enumerate(mentors[:3]):
+                for j in range(3):
+                    if mentee_idx >= len(mentees):
+                        break
+                    
+                    mentee = mentees[mentee_idx]
+                    
+                    # 날짜 설정 - 첫 번째 멘토쉽은 종료일이 지난 비활성화
+                    if i == 0 and j == 0:
+                        # 2025-07-16 기준으로 종료일이 지난 비활성화 멘토쉽
+                        start_date = date(2024, 6, 1)
+                        end_date = date(2024, 12, 31)  # 이미 종료된 날짜
+                        is_active = False
+                    else:
+                        # 활성화된 멘토쉽들
+                        start_date = date(2025, 7, 1)
+                        end_date = date(2025, 12, 31)  # 아직 종료되지 않은 날짜
+                        is_active = True
+                    
+                    # 커리큘럼 할당 (순환 방식)
+                    curriculum = curriculums[(i * 3 + j) % len(curriculums)]
+                    
+                    # 멘토쉽 생성
+                    mentorship = Mentorship.objects.create(
+                        mentor_id=mentor.user_id,
+                        mentee_id=mentee.user_id,
+                        start_date=start_date,
+                        end_date=end_date,
+                        is_active=is_active,
+                        curriculum_title=curriculum.curriculum_title,
+                        total_weeks=curriculum.total_weeks
+                    )
+                    mentorships.append(mentorship)
+                    
+                    # 해당 커리큘럼의 TaskManage를 기반으로 TaskAssign 생성
+                    task_manages = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
+                    for task_manage in task_manages:
+                        # 예정 시작일/종료일 계산 (멘토쉽 시작일 기준으로 주차별 계산)
+                        week_offset = (task_manage.week - 1) * 7  # 주차별 7일 간격
+                        scheduled_start = start_date + timedelta(days=week_offset)
+                        scheduled_end = scheduled_start + timedelta(days=task_manage.period or 7)
+                        
+                        # TaskAssign 생성
+                        task_assign = TaskAssign.objects.create(
+                            mentorship_id=mentorship,
+                            title=task_manage.title,
+                            description=task_manage.description,
+                            guideline=task_manage.guideline,
+                            week=task_manage.week,
+                            order=task_manage.order,
+                            scheduled_start_date=scheduled_start,
+                            scheduled_end_date=scheduled_end,
+                            status='진행전',
+                            priority=task_manage.priority
+                        )
+                        
+                        # 상위 TaskAssign에 대한 하위 태스크 생성 (1~3개)
+                        num_subtasks = randint(1, 3)
+                        subtask_templates = {
+                            '개발환경 세팅': ['IDE 설치', '깃허브 연동', '패키지 설치'],
+                            '코드리뷰 참여하기': ['PR 생성', '코드 수정', '리뷰 반영'],
+                            '사내 개발가이드 숙지': ['가이드 문서 읽기', '예시 코드 실습', '질문 정리'],
+                            '고객사 DB 열람': ['CRM 접속', '고객 정보 확인', '데이터 분석'],
+                            '영업 스크립트 학습': ['기본 스크립트 암기', '상황별 대응법', '롤플레잉 연습'],
+                            '인사관리 시스템 실습': ['시스템 접속', '기능별 실습', '테스트 데이터 입력'],
+                            '사내 조직도 열람': ['조직구조 파악', '부서별 역할', '핵심 인물 확인'],
+                            '오리엔테이션 시청': ['영상 시청', '내용 정리', '질의응답'],
+                            '사내 규정 숙지': ['규정집 읽기', '핵심 내용 정리', '확인 테스트'],
+                            '입사 오리엔테이션': ['회사 소개 듣기', '부서 소개 듣기', '동료 인사']
+                        }
+                        
+                        # 기본 하위 태스크 템플릿
+                        default_subtasks = ['계획 수립', '실행', '완료 보고']
+                        
+                        # 해당 태스크에 맞는 하위 태스크 선택
+                        available_subtasks = subtask_templates.get(task_manage.title, default_subtasks)
+                        selected_subtasks = random.sample(available_subtasks, min(num_subtasks, len(available_subtasks)))
+                        
+                        for idx, subtask_title in enumerate(selected_subtasks):
+                            subtask_start = scheduled_start + timedelta(days=idx)
+                            subtask_end = subtask_start + timedelta(days=1)
+                            
+                            TaskAssign.objects.create(
+                                parent=task_assign,
+                                mentorship_id=mentorship,
+                                title=f"{task_manage.title} - {subtask_title}",
+                                description=f"{task_manage.title}의 세부 단계: {subtask_title}",
+                                week=task_manage.week,
+                                order=idx + 1,
+                                scheduled_start_date=subtask_start,
+                                scheduled_end_date=subtask_end,
+                                status='진행전',
+                                priority=task_manage.priority
+                            )
+                        
+                        # TaskAssign에 대한 멘토-멘티 댓글(Memo) 생성 (2~3개)
+                        num_memos = randint(2, 3)
+                        memo_templates = {
+                            'mentor': [
+                                "안녕하세요! 이 과제에 대해 궁금한 점이 있으면 언제든 말씀해 주세요.",
+                                "진행하시면서 어려운 부분이 있으면 바로 연락 주시기 바랍니다.",
+                                "좋은 진전이 있으신 것 같네요! 계속 화이팅하세요.",
+                                "이 부분은 실무에서 매우 중요한 내용이니 꼼꼼히 학습해 주세요.",
+                                "혹시 참고할 만한 자료가 필요하시면 말씀해 주세요.",
+                                "과제 진행 상황을 중간중간 공유해 주시면 도움이 될 것 같습니다."
+                            ],
+                            'mentee': [
+                                "안녕하세요! 과제를 시작했는데 이 부분이 잘 이해가 안 가네요.",
+                                "진행 중인데 예상보다 시간이 많이 걸리고 있습니다.",
+                                "과제 완료했습니다! 검토 부탁드립니다.",
+                                "이 부분에 대해 추가 설명을 들을 수 있을까요?",
+                                "관련 자료를 더 찾아볼 필요가 있을 것 같습니다.",
+                                "다음 단계로 진행해도 될까요?"
+                            ]
+                        }
+                        
+                        for memo_idx in range(num_memos):
+                            # 멘토/멘티 교대로 댓글 작성
+                            if memo_idx % 2 == 0:
+                                # 멘토가 먼저 댓글
+                                user = mentor
+                                comment = random.choice(memo_templates['mentor'])
+                            else:
+                                # 멘티가 응답
+                                user = mentee
+                                comment = random.choice(memo_templates['mentee'])
+                            
+                            # 댓글 생성일을 과제 시작일 이후로 설정
+                            memo_date = scheduled_start + timedelta(days=memo_idx)
+                            
+                            memo = Memo.objects.create(
+                                task_assign=task_assign,
+                                user=user,
+                                comment=comment
+                            )
+                            # 생성일을 수동으로 설정 (auto_now_add 때문에 직접 수정)
+                            memo.create_date = memo_date
+                            memo.save()
+                    
+                    mentee_idx += 1
+            
+            self.stdout.write(f'멘토쉽 샘플 {len(mentorships)}개 생성 완료!')
+            
+            # TaskAssign 및 하위 태스크, 댓글 총 개수 확인
+            total_task_assigns = TaskAssign.objects.count()
+            total_parent_tasks = TaskAssign.objects.filter(parent__isnull=True).count()
+            total_subtasks = TaskAssign.objects.filter(parent__isnull=False).count()
+            total_memos = Memo.objects.count()
+            
+            self.stdout.write(f'TaskAssign 총 {total_task_assigns}개 생성 완료!')
+            self.stdout.write(f'  - 상위 태스크: {total_parent_tasks}개')
+            self.stdout.write(f'  - 하위 태스크: {total_subtasks}개')
+            self.stdout.write(f'Memo(댓글) 총 {total_memos}개 생성 완료!')
 
         self.stdout.write(self.style.SUCCESS('샘플 데이터 생성 완료!'))

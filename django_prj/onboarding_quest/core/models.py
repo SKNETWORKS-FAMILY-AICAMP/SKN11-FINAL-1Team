@@ -107,6 +107,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
+    
+    def get_full_name(self):
+        """전체 이름 반환"""
+        return f'{self.last_name} {self.first_name}'
 
 
 class ChatSession(models.Model):
@@ -190,18 +194,21 @@ class Mentorship(models.Model):
 
 class TaskAssign(models.Model):
     task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subtasks', help_text='상위 과제(TaskAssign)')
     mentorship_id = models.ForeignKey(Mentorship, on_delete=models.CASCADE, help_text='멘토쉽')
     title = models.CharField(max_length=255, null=True, blank=True, help_text='과제 할당 제목')
     description = models.CharField(max_length=255, null=True, blank=True, help_text='설명')
     guideline = models.CharField(max_length=255, null=True, blank=True, help_text='과제 가이드라인')
     week = models.IntegerField(help_text='몇 주차 과제인지')
     order = models.IntegerField(null=True, blank=True, help_text='과제 순서')
-    start_date = models.DateField(null=True, blank=True, help_text='시작일')
-    end_date = models.DateField(null=True, blank=True, help_text='종료일')
+    scheduled_start_date = models.DateField(null=True, blank=True, help_text='예정 시작일')
+    scheduled_end_date = models.DateField(null=True, blank=True, help_text='예정 종료일')
+    real_start_date = models.DateField(null=True, blank=True, help_text='실제 시작일')
+    real_end_date = models.DateField(null=True, blank=True, help_text='실제 종료일')
     STATUS_CHOICES = [
-        ('진행 전', '진행 전'),
-        ('진행 중', '진행 중'),
-        ('검토 요청', '검토 요청'),
+        ('진행전', '진행전'),
+        ('진행중', '진행중'),
+        ('검토요청', '검토요청'),
         ('완료', '완료'),
     ]
     status = models.CharField(
@@ -209,7 +216,7 @@ class TaskAssign(models.Model):
         choices=STATUS_CHOICES,
         null=True,
         blank=True,
-        help_text='과제 상태(진행 전/진행 중/검토요청/완료)'
+        help_text='과제 상태(진행전/진행중/검토요청/완료)'
     )
     PRIORITY_CHOICES = [
         ('상', '상'),
@@ -224,10 +231,6 @@ class TaskAssign(models.Model):
         help_text='과제 우선순위(상/중/하)'
     )
     order = models.IntegerField(null=True, blank=True, help_text='순서')
-
-class Subtask(models.Model):
-    subtask_id = models.AutoField(primary_key=True, help_text='서브태스크 고유 ID')
-    task_assign = models.ForeignKey(TaskAssign, on_delete=models.CASCADE, help_text='상위 과제 할당')
 
 class Memo(models.Model):
     memo_id = models.AutoField(primary_key=True, help_text='메모 고유 ID')

@@ -249,3 +249,29 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 12px;
   font-weight: 500;
 }
+
+/* 사이드바 접힌 상태 스타일 */
+.sidebar-collapsed .sidebar-text {
+    display: none !important;
+}
+
+.sidebar-collapsed .sidebar-link {
+    display: none !important;
+}
+
+.sidebar-collapsed #level-area {
+    display: none !important;
+}
+
+.sidebar-collapsed nav {
+    display: none !important;
+}
+
+/* 접힌 상태에서는 햄버거 버튼만 표시 */
+.sidebar-collapsed .flex.items-center.justify-between {
+    justify-content: center !important;
+}
+
+.sidebar-collapsed .flex.items-center.justify-between .sidebar-text {
+    display: none !important;
+}

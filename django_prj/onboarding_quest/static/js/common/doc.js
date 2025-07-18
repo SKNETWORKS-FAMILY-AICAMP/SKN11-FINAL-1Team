@@ -61,7 +61,13 @@ function renderUploadList() {
     uploadListTbody.appendChild(tr);
   });
 
-  uploadBtn.style.display = addedFiles.length > 0 ? 'block' : 'none';
+  if (uploadBtn) {
+    if (addedFiles.length > 0) {
+      uploadBtn.classList.add('show');
+    } else {
+      uploadBtn.classList.remove('show');
+    }
+  }
 }
 
 function updateFileInfo(idx, field, value) {
