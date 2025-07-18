@@ -11,126 +11,170 @@
 {% block content %}
 {% csrf_token %}
 <div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold text-gray-800 mb-8">멘토쉽 관리</h1>
-    
-    <!-- 검색 및 필터 -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div class="flex flex-wrap gap-4 mb-4">
-            <div class="flex-1 min-w-64">
-                <label class="block text-sm font-medium text-gray-700 mb-2">이름</label>
+<!-- 검색 및 필터 -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <div class="text-left">
+        <div class="flex flex-wrap items-end gap-6">
+            <!-- 이름 -->
+            <div class="flex-1 min-w-[220px]">
+                <label class="block text-base font-medium text-gray-700 mb-1">이름</label>
                 <input type="text" id="search-input" placeholder="멘토/멘티 이름 검색" value="{{ search_query }}"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-            <div class="flex-1 min-w-48">
-                <label class="block text-sm font-medium text-gray-700 mb-2">상태</label>
-                <select id="status-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+            <!-- 상태 -->
+            <div class="flex-1 min-w-[180px]">
+                <label class="block text-base font-medium text-gray-700 mb-1">상태</label>
+                <select id="status-filter"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">전체</option>
                     <option value="active" {% if status_filter == 'active' %}selected{% endif %}>활성</option>
                     <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>비활성</option>
                 </select>
             </div>
-            <div class="flex-1 min-w-48">
-                <label class="block text-sm font-medium text-gray-700 mb-2">부서</label>
-                <select id="department-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+            <!-- 부서 -->
+            <div class="flex-1 min-w-[220px]">
+                <label class="block text-base font-medium text-gray-700 mb-1">부서</label>
+                <select id="department-filter"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">전체 부서</option>
                     {% for department in departments %}
-                    <option value="{{ department.department_id }}" {% if department.department_id|stringformat:"s" == department_filter %}selected{% endif %}>{{ department.department_name }}</option>
+                    <option value="{{ department.department_id }}" {% if department.department_id|stringformat:"s" == department_filter %}selected{% endif %}>
+                        {{ department.department_name }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
-        </div>
-        <div class="flex justify-end">
-            <button onclick="searchMentorships()" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-                검색
-            </button>
-        </div>
-    </div>
 
-    <!-- 멘토쉽 목록 -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full" id="mentorship-table">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">멘토쉽 ID</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">멘토</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">멘티</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">커리큘럼</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">기간</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for mentorship in mentorships %}
-                    <tr class="hover:bg-gray-50" data-mentorship-id="{{ mentorship.mentorship_id }}">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ mentorship.mentorship_id }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{% if mentorship.mentor %}{{ mentorship.mentor.get_full_name }}{% else %}알 수 없음{% endif %}</div>
-                                    <div class="text-sm text-gray-500">{% if mentorship.mentor and mentorship.mentor.department %}{{ mentorship.mentor.department.department_name }}{% else %}-{% endif %}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{% if mentorship.mentee %}{{ mentorship.mentee.get_full_name }}{% else %}알 수 없음{% endif %}</div>
-                                    <div class="text-sm text-gray-500">{% if mentorship.mentee and mentorship.mentee.department %}{{ mentorship.mentee.department.department_name }}{% else %}-{% endif %}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ mentorship.curriculum_title }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div>{{ mentorship.start_date|date:"Y-m-d" }}</div>
-                            <div class="text-gray-500">~ {{ mentorship.end_date|date:"Y-m-d" }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                       {% if mentorship.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
-                                {% if mentorship.is_active %}활성{% else %}비활성{% endif %}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button onclick="editMentorship({{ mentorship.mentorship_id }})" 
-                                    class="text-indigo-600 hover:text-indigo-900 mr-3">수정</button>
-                            <button onclick="deleteMentorship({{ mentorship.mentorship_id }})" 
-                                    class="text-red-600 hover:text-red-900">삭제</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <!-- 검색 버튼 -->
+            <div class="mt-6">
+                <button onclick="searchMentorships()"
+                        class="px-5 py-2 bg-blue-500 text-white rounded-md text-base transition-colors">
+                    검색
+                </button>
+            </div>
         </div>
     </div>
+</div>
+
+<!-- 멘토쉽 목록 -->
+<div class="bg-white rounded-lg overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="table w-full" id="mentorship-table">
+            <thead>
+                <tr>
+                    <th class="w-20">멘토쉽 ID</th>
+                    <th class="w-40">멘토</th>
+                    <th class="w-40">멘티</th>
+                    <th class="w-48">커리큘럼</th>
+                    <th>기간</th>
+                    <th>상태</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for mentorship in mentorships %}
+                <tr class="hover:bg-gray-50 {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% endif %}" data-mentorship-id="{{ mentorship.mentorship_id }}">
+                    <td class="text-center {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% endif %}">
+                        {{ mentorship.mentorship_id }}
+                    </td>
+                    <td class="text-center">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="font-medium {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% endif %}">
+                                {% if mentorship.mentor %}
+                                    {{ mentorship.mentor.last_name }}{{ mentorship.mentor.first_name }}
+                                {% else %}
+                                    멘토 공석
+                                {% endif %}
+                            </div>
+                            <div class="text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-500{% endif %}">
+                                {% if mentorship.mentor and mentorship.mentor.department %}
+                                    {{ mentorship.mentor.department.department_name }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="text-base font-medium {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-900{% endif %}">
+                                {% if mentorship.mentee %}
+                                    {{ mentorship.mentee.last_name }}{{ mentorship.mentee.first_name }}
+                                {% else %}
+                                    멘티 탈퇴
+                                {% endif %}
+                            </div>
+                            <div class="text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-500{% endif %}">
+                                {% if mentorship.mentee and mentorship.mentee.department %}
+                                    {{ mentorship.mentee.department.department_name }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="px-6 py-4 whitespace-nowrap text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-900{% endif %}">
+                        {{ mentorship.curriculum_title }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-900{% endif %}">
+                        <div>{{ mentorship.start_date|date:"Y-m-d" }}</div>
+                        <div class="{% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-500{% endif %}">~ {{ mentorship.end_date|date:"Y-m-d" }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-3 py-1.5 text-base font-semibold rounded-md 
+                                   {% if mentorship.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {% if mentorship.is_active %}활성{% else %}비활성{% endif %}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-base font-medium">
+                        <button onclick="editMentorship({{ mentorship.mentorship_id }})"
+                                class="px-4 py-2 bg-blue-500 text-white rounded-md mr-2">
+                            수정
+                        </button>
+                        <button onclick="deleteMentorship({{ mentorship.mentorship_id }})"
+                                class="px-4 py-2 bg-red-500 text-white rounded-md">
+                            삭제
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
 
     <!-- 페이지네이션 -->
     {% if mentorships.has_other_pages %}
     <div class="flex justify-center mt-8">
         <nav class="flex items-center space-x-2">
             {% if mentorships.has_previous %}
-            <a href="?page={{ mentorships.previous_page_number }}" class="px-3 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50">이전</a>
+            <a href="?page={{ mentorships.previous_page_number }}&search={{ search_query }}&status={{ status_filter }}&department={{ department_filter }}"
+            class="px-3 py-2 bg-white border border-gray-300 rounded-md">이전</a>
             {% endif %}
-            
+
             {% for num in mentorships.paginator.page_range %}
-            {% if mentorships.number == num %}
-            <span class="px-3 py-2 bg-blue-500 text-white rounded-md">{{ num }}</span>
-            {% else %}
-            <a href="?page={{ num }}" class="px-3 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50">{{ num }}</a>
-            {% endif %}
+                {% if mentorships.number == num %}
+                    <span class="px-3 py-2 bg-blue-500 text-white rounded-md">{{ num }}</span>
+                {% elif num > mentorships.number|add:'-3' and num < mentorships.number|add:'3' %}
+                    <a href="?page={{ num }}&search={{ search_query }}&status={{ status_filter }}&department={{ department_filter }}"
+                    class="px-3 py-2 bg-white border border-gray-300 rounded-md">{{ num }}</a>
+                {% endif %}
             {% endfor %}
-            
+
             {% if mentorships.has_next %}
-            <a href="?page={{ mentorships.next_page_number }}" class="px-3 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50">다음</a>
+            <a href="?page={{ mentorships.next_page_number }}&search={{ search_query }}&status={{ status_filter }}&department={{ department_filter }}"
+            class="px-3 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50">다음</a>
             {% endif %}
         </nav>
     </div>
     {% endif %}
+
 </div>
 
 <!-- 멘토쉽 수정 모달 -->

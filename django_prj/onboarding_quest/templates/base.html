@@ -14,13 +14,13 @@
 </head>
 <body id="body" class="min-h-screen flex transition-colors duration-300">
     <!-- Sidebar -->
-    <div id="sidebar" class="bg-white shadow-lg w-72 min-h-screen transition-all duration-300 ease-in-out flex flex-col border-r border-gray-200" style="width: 18rem;">
+    <div id="sidebar" class="bg-white shadow-lg w-72 min-h-screen transition-all duration-300 ease-in-out flex flex-col border-r border-gray-200 fixed" style="width: 18rem;">
         <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
             <span class="font-bold text-xl sidebar-text flex items-center gap-3 text-gray-900">
                 <div class="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center shadow-md">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
-                온보딩 퀘스트
+                Sinnip
             </span>
             <button id="sidebarToggle" class="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors p-2 rounded-xl hover:bg-gray-50">
                 <svg id="sidebarToggleIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -28,50 +28,43 @@
                 </svg>
             </button>
         </div>
-        <div class="px-6 py-6 border-b border-gray-200 bg-gray-50" id="level-area">
-            <div class="flex items-center gap-3 mb-3">
+        <div class="px-7 py-7 border-b border-gray-200 bg-gray-50" id="level-area">
+            <div class="flex items-center gap-4 mb-4">
                 {% if request.user.role == 'mentee' %}
                     <!-- 유저 프로필 이미지 -->
-                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-14 h-14 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
                     <div class="flex flex-col">
-                        <span class="text-lg font-bold text-gray-900 sidebar-text">Lv. <span id="userLevel">1</span></span>
-                        <span class="text-xs text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">신입 멘티</span>
+                        <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
+                        <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">열정멘티</span>
                     </div>
                 {% elif request.user.role == 'mentor' %}
                     <!-- 유저 프로필 이미지 -->
-                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-14 h-14 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
                     <div class="flex flex-col">
-                        <span class="text-lg font-bold text-gray-900 sidebar-text">Lv. <span id="userLevel">5</span></span>
-                        <span class="text-xs text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">만렙 멘토</span>
+                        <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
+                        <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">만렙멘토</span>
                     </div>
                 {% elif request.user.is_admin %}
                     <!-- 유저 프로필 이미지 -->
-                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-14 h-14 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
                     <div class="flex flex-col">
-                        <span class="text-lg font-bold text-gray-900 sidebar-text">Lv. <span id="userLevel">max</span></span>
-                        <span class="text-xs text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">길드 마스터</span>
+                <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
+                    <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">관리자</span>
                     </div>
                 {% endif %}
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-1.5 mb-2">                
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-3">                
                 {% if request.user.role == 'mentee' %}
-                    <div id="expBar" class="bg-green-500 h-1.5 rounded-full transition-all duration-500" style="width: 30%"></div>
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 30%"></div>
                 {% elif request.user.role == 'mentor' %}
-                    <div id="expBar" class="bg-green-500 h-1.5 rounded-full transition-all duration-500" style="width: 100%"></div>
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
                 {% elif request.user.is_admin %}
-                    <div id="expBar" class="bg-green-500 h-1.5 rounded-full transition-all duration-500" style="width: 100%"></div>
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
                 {% endif %}
             </div>
-            {% if request.user.role == 'mentee' %}
-                <div class="text-xs text-gray-600 font-medium sidebar-text">EXP: <span id="userExp">30</span> / <span id="userExpMax">100</span></div>
-            {% elif request.user.role == 'mentor' %}
-                <div class="text-xs text-gray-600 font-medium sidebar-text">EXP: <span id="userExp">200</span> / <span id="userExpMax">200</span></div>
-            {% elif request.user.is_admin %}
-                <div class="text-xs text-gray-600 font-medium sidebar-text">EXP: <span id="userExp">300</span> / <span id="userExpMax">300</span></div>            
-            {% endif %}
 
             {% if request.user.is_authenticated %}
-            <div class="flex justify-end gap-2 mt-2">
+            <div class="flex justify-end gap-2 mt-3">
                 <a href="/account/profile/" class="text-xs text-gray-500 hover:text-blue-500 transition-colors">내 정보</a>
                 <span class="text-gray-300">|</span>
                 <a href="/account/login/" class="text-xs text-red-500 hover:text-red-500 transition-colors">로그아웃</a>
@@ -83,31 +76,31 @@
             {% if request.user.is_authenticated %}
                 {% if request.user.role == 'mentor' %}
                     {% if request.user.is_admin %}
-                        <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🔑</span>관리자</a>
-                        <a href="{% url 'account:manage_mentorship' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/manage_mentorship/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🤝</span>멘토쉽 관리</a>
+                        <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>관리자</a>
+                        <a href="{% url 'account:manage_mentorship' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/manage_mentorship/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 관리</a>
                     {% endif %}
-                    <a href="{% url 'mentor:mentor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🏠</span>메인</a>
-                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🤖</span>채팅</a>
-                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">📄</span>문서 업로드</a>
-                    <a href="{% url 'mentor:manage_mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">👤</span>멘토쉽 생성</a>
-                    <a href="{% url 'mentor:manage_template' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_template/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">📝</span>커리큘럼 관리</a>
+                    <a href="{% url 'mentor:mentor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
+                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
+                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
+                    <a href="{% url 'mentor:manage_mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 생성</a>
+                    <a href="{% url 'mentor:manage_template' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_template/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>커리큘럼 관리</a>
                 {% elif request.user.role == 'mentee' %}
-                    <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🏠</span>메인</a>
-                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🤖</span>채팅</a>
-                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">📄</span>문서 업로드</a>
+                    <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
+                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
+                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
                     {% if user_mentorship %}
-                        <a href="{% url 'mentee:task_list' %}?mentorship_id={{ user_mentorship.mentorship_id }}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if 'task_list' in request.path %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🗂️</span>태스크 목록</a>
+                        <a href="{% url 'mentee:task_list' %}?mentorship_id={{ user_mentorship.mentorship_id }}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if 'task_list' in request.path %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>태스크 목록</a>
                     {% else %}
-                        <span class="sidebar-link block py-3 px-4 rounded-lg flex items-center gap-3 font-bold text-gray-400 cursor-not-allowed"><span class="text-lg">🗂️</span>태스크 목록 <span class="text-xs">(멘토쉽 필요)</span></span>
+                        <span class="sidebar-link block py-3 px-4 rounded-lg flex items-center gap-3 font-bold text-gray-400 cursor-not-allowed"><span class="text-lg"></span>태스크 목록 <span class="text-xs">(멘토쉽 필요)</span></span>
                     {% endif %}
                 {% endif %}
             {% else %}
-                <a href="{% url 'account:login' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/login/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg">🔑</span>로그인</a>
+                <a href="{% url 'account:login' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/login/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>로그인</a>
             {% endif %}
         </nav>
     </div>
     <!-- Main Content -->
-    <div id="main-content" class="flex-1 flex flex-col transition-colors duration-300 bg-gray-50">
+    <div id="main-content" class="flex-1 flex flex-col transition-colors duration-300 bg-gray-50 ml-72" style="margin-left: 18rem;">
         <main class="flex-1 p-8 bg-gray-50">
             {% block content %}{% endblock %}
         </main>

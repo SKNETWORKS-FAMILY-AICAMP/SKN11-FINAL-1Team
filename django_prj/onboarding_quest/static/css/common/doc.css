@@ -133,8 +133,8 @@
 }
 
 .doc-file-list-table .doc-edit-btn {
-  background: linear-gradient(90deg, #ffd600 60%, #ffe066 100%);
-  color: #222;
+  background: #60a5fa;
+  color: white;
   border: none;
   border-radius: 8px;
   padding: 6px 18px;
@@ -147,14 +147,14 @@
 }
 
 .doc-file-list-table .doc-edit-btn:hover {
-  background: linear-gradient(90deg, #ffe066 60%, #ffd600 100%);
-  color: #111;
+  background: #3b82f6;
+  color: white;
   transform: translateY(-2px) scale(1.06);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
 }
 
 .doc-file-list-table .doc-delete-btn {
-  background: linear-gradient(90deg, #dc3545 60%, #e74c3c 100%);
+  background: #f87171;
   color: white;
   border: none;
   border-radius: 8px;
@@ -168,7 +168,7 @@
 }
 
 .doc-file-list-table .doc-delete-btn:hover {
-  background: linear-gradient(90deg, #e74c3c 60%, #dc3545 100%);
+  background: #ef4444;
   transform: translateY(-2px) scale(1.06);
   box-shadow: 0 4px 16px rgba(220, 53, 69, 0.25);
 }

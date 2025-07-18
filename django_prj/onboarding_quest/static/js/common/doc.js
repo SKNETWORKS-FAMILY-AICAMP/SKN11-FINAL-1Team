@@ -58,7 +58,11 @@ function renderUploadList() {
   });
 
   if (uploadBtn) {
-    uploadBtn.style.display = addedFiles.length > 0 ? 'block' : 'none';
+    if (addedFiles.length > 0) {
+      uploadBtn.classList.add('show');
+    } else {
+      uploadBtn.classList.remove('show');
+    }
   }
 }
 

@@ -170,12 +170,11 @@
       <div class="flex flex-col flex-1">
         <div class="flex items-center gap-3 mb-2">
           <span class="text-xl font-bold text-gray-900">완료율: <span id="userLevelTop">{{ completion_percentage|default:0 }}%</span></span>
-          <span class="text-sm text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200 font-medium">신입 멘티</span>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
           <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: {{ completion_percentage|default:0 }}%"></div>
         </div>
-        <div class="text-sm text-gray-600 font-medium">완료 Task: <span id="userExpTop">{{ completed_tasks|default:0 }}</span> / <span id="userExpMaxTop">{{ total_tasks|default:0 }}</span></div>
+        <div class="text-sm text-gray-600 font-medium">완료된 작업 : <span id="userExpTop">{{ completed_tasks|default:0 }}</span> / <span id="userExpMaxTop">{{ total_tasks|default:0 }}</span></div>
       </div>      
     </div>
 
