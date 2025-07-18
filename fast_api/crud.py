@@ -353,6 +353,12 @@ def get_task_assigns_by_user(db: Session, user_id: int, skip: int = 0, limit: in
         )
     ).offset(skip).limit(limit).all()
 
+def get_task_assigns_by_mentorship(db: Session, mentorship_id: int, skip: int = 0, limit: int = 100):
+    """멘토십별 태스크 할당 목록 조회"""
+    return db.query(models.TaskAssign).filter(
+        models.TaskAssign.mentorship_id == mentorship_id
+    ).offset(skip).limit(limit).all()
+
 def update_task_assign(db: Session, task_id: int, task_update: schemas.TaskAssignCreate):
     """태스크 할당 정보 업데이트"""
     db_task = get_task_assign(db, task_id)

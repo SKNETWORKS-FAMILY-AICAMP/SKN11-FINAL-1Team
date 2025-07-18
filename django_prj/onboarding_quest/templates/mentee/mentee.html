@@ -181,95 +181,103 @@
     <div class="kanban-section bg-white rounded-xl shadow-md border border-gray-200 p-3 mb-8" style="display: flex;">
       <div class="kanban-column todo-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">진행 전</div>
-        {% for task in status_tasks.진행전 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              {% if task.dday_text %}
-                <span class="d-day-badge">{{ task.dday_text }}</span>
-              {% endif %}
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
+        {% if status_tasks.진행전 %}
+          {% for task in status_tasks.진행전 %}
+          <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_assign_id }}">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                {% if task.dday_text %}
+                  <span class="d-day-badge">{{ task.dday_text }}</span>
+                {% endif %}
+                <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority|default:"중" }}</span>
+              </div>
             </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">{{ task.title }}</span>
+            </div>
+            <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
           </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
+          {% endfor %}
+        {% else %}
+          <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+            진행 전인 태스크가 없습니다.
           </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
-        </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          진행 전인 태스크가 없습니다.
-        </div>
-        {% endfor %}
+        {% endif %}
       </div>
       
       <div class="kanban-column processing-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">진행 중</div>
-        {% for task in status_tasks.진행중 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              {% if task.dday_text %}
-                <span class="d-day-badge">{{ task.dday_text }}</span>
-              {% endif %}
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
+        {% if status_tasks.진행중 %}
+          {% for task in status_tasks.진행중 %}
+          <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_assign_id }}">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                {% if task.dday_text %}
+                  <span class="d-day-badge">{{ task.dday_text }}</span>
+                {% endif %}
+                <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority|default:"중" }}</span>
+              </div>
             </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">{{ task.title }}</span>
+            </div>
+            <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
           </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
+          {% endfor %}
+        {% else %}
+          <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+            진행 중인 태스크가 없습니다.
           </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
-        </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          진행 중인 태스크가 없습니다.
-        </div>
-        {% endfor %}
+        {% endif %}
       </div>
       
       <div class="kanban-column review-request-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">검토요청</div>
-        {% for task in status_tasks.검토요청 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              {% if task.dday_text %}
-                <span class="d-day-badge">{{ task.dday_text }}</span>
-              {% endif %}
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
+        {% if status_tasks.검토요청 %}
+          {% for task in status_tasks.검토요청 %}
+          <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_assign_id }}">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                {% if task.dday_text %}
+                  <span class="d-day-badge">{{ task.dday_text }}</span>
+                {% endif %}
+                <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority|default:"중" }}</span>
+              </div>
             </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">{{ task.title }}</span>
+            </div>
+            <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
           </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
+          {% endfor %}
+        {% else %}
+          <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+            검토 요청한 태스크가 없습니다.
           </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
-        </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          검토 요청한 태스크가 없습니다.
-        </div>
-        {% endfor %}
+        {% endif %}
       </div>
       
       <div class="kanban-column success-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
         <div class="kanban-header">완료</div>
-        {% for task in status_tasks.완료 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
+        {% if status_tasks.완료 %}
+          {% for task in status_tasks.완료 %}
+          <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_assign_id }}">
+            <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+              <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority|default:"중" }}</span>
+              </div>
             </div>
+            <div class="kanban-card-row">
+              <span class="kanban-title">{{ task.title }}</span>
+            </div>
+            <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
           </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
+          {% endfor %}
+        {% else %}
+          <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+            완료한 태스크가 없습니다.
           </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
-        </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          완료한 태스크가 없습니다.
-        </div>
-        {% endfor %}
+        {% endif %}
       </div>
     </div>
   </div>
@@ -518,7 +526,7 @@ function updateSuccessLine() {
 // 완료 컬럼 태스크 개수 기반 진행률 계산 및 welcome-section 동기화
 function updateTaskProgress() {
   const completedCount = document.querySelectorAll('.success-column .kanban-card').length;
-  const totalTasks = {{ total_tasks|default:0 }};
+  const totalTasks = parseInt('{{ total_tasks|default:0 }}') || 0;
   const completionPercentage = totalTasks > 0 ? (completedCount / totalTasks * 100) : 0;
   
   // 상단 완료율/진행률/Bar 동기화

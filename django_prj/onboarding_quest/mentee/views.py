@@ -165,30 +165,72 @@ def task_update(request, task_assign_id):
 @login_required
 def mentee(request):
     try:
-        # 현재 사용자 정보
+        # 현재 사용자 정보 - 두 가지 방법 모두 시도
         user_data = request.session.get('user_data', {})
         user_id = user_data.get('user_id')
         
-        if not user_id or user_data.get('role') != 'mentee':
+        # Django User 모델에서도 시도
+        if not user_id and hasattr(request.user, 'user_id'):
+            user_id = request.user.user_id
+            user_data = {'role': getattr(request.user, 'role', 'mentee')}
+        
+        print(f"DEBUG - 사용자 ID: {user_id}, 사용자 데이터: {user_data}")
+        
+        if not user_id:
+            messages.error(request, '사용자 정보를 찾을 수 없습니다.')
+            return redirect('account:login')
+        
+        # 역할 확인은 좀 더 유연하게
+        user_role = user_data.get('role', '').lower()
+        if user_role and user_role not in ['mentee', 'both']:
             messages.error(request, '멘티 권한이 필요합니다.')
             return redirect('account:login')
         
         context = {}
         
         # FastAPI로 멘토쉽 정보 가져오기
+        print(f"DEBUG - 멘토쉽 정보 요청 중... mentee_id={user_id}")
         mentorships_response = fastapi_client.get_mentorships(mentee_id=user_id, is_active=True)
         mentorships = mentorships_response.get('mentorships', [])
+        print(f"DEBUG - 멘토쉽 응답: {mentorships_response}")
+        print(f"DEBUG - 멘토쉽 목록: {mentorships}")
         
         if mentorships:
             mentorship = mentorships[0]  # 첫 번째 활성 멘토쉽
             mentorship_id = mentorship.get('mentorship_id')
+            print(f"DEBUG - 선택된 멘토쉽 ID: {mentorship_id}")
             
             # 해당 멘토쉽의 태스크들 가져오기 (상위 태스크만)
+            print(f"DEBUG - 태스크 목록 요청 중... mentorship_id={mentorship_id}")
             tasks_response = fastapi_client.get_task_assigns(mentorship_id=mentorship_id)
-            all_tasks = tasks_response.get('tasks', [])
+            all_tasks = tasks_response.get('task_assigns', [])  # 'tasks' 대신 'task_assigns' 사용
+            print(f"DEBUG - 태스크 응답: {tasks_response}")
+            print(f"DEBUG - 전체 태스크 수: {len(all_tasks)}")
             
             # 상위 태스크만 필터링 (parent_id가 None인 것들)
             main_tasks = [task for task in all_tasks if task.get('parent_id') is None]
+            print(f"DEBUG - 상위 태스크 수: {len(main_tasks)}")
+            print(f"DEBUG - 상위 태스크 목록: {[task.get('title') for task in main_tasks]}")
+            
+            # D-day 계산 및 태스크 데이터 보강
+            for task in main_tasks:
+                # D-day 계산
+                if task.get('scheduled_end_date'):
+                    try:
+                        end_date = datetime.strptime(task['scheduled_end_date'], '%Y-%m-%d').date()
+                        today = date.today()
+                        days_diff = (end_date - today).days
+                        
+                        if days_diff < 0:
+                            task['dday_text'] = f'D+{abs(days_diff)}'
+                        elif days_diff == 0:
+                            task['dday_text'] = 'D-Day'
+                        else:
+                            task['dday_text'] = f'D-{days_diff}'
+                    except:
+                        task['dday_text'] = None
+                else:
+                    task['dday_text'] = None
             
             # 상태별로 분류
             status_groups = defaultdict(list)
@@ -196,20 +238,54 @@ def mentee(request):
                 status = task.get('status', '진행전')
                 status_groups[status].append(task)
             
+            # 진행률 계산
+            total_tasks = len(main_tasks)
+            completed_tasks = len(status_groups['완료'])
+            completion_percentage = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0
+            
+            print(f"DEBUG - 총 태스크: {total_tasks}, 완료: {completed_tasks}, 완료율: {completion_percentage}%")
+            print(f"DEBUG - 상태별 분류: {dict(status_groups)}")
+            
             context.update({
                 'mentorship': mentorship,
-                'tasks_todo': status_groups['진행전'],
-                'tasks_in_progress': status_groups['진행중'],
-                'tasks_completed': status_groups['완료'],
+                'status_tasks': {
+                    '진행전': status_groups['진행전'],
+                    '진행중': status_groups['진행중'],
+                    '검토요청': status_groups['검토요청'],
+                    '완료': status_groups['완료']
+                },
+                'total_tasks': total_tasks,
+                'completed_tasks': completed_tasks,
+                'completion_percentage': completion_percentage,
                 'tasks_all': main_tasks
+            })
+        else:
+            print("DEBUG - 활성 멘토쉽이 없습니다.")
+            # 빈 데이터로 초기화
+            context.update({
+                'mentorship': None,
+                'status_tasks': {
+                    '진행전': [],
+                    '진행중': [],
+                    '검토요청': [],
+                    '완료': []
+                },
+                'total_tasks': 0,
+                'completed_tasks': 0,
+                'completion_percentage': 0,
+                'tasks_all': []
             })
         
         return render(request, 'mentee/mentee.html', context)
         
-    except AuthenticationError:
+    except AuthenticationError as e:
+        print(f"DEBUG - 인증 오류: {e}")
         messages.error(request, '인증이 만료되었습니다. 다시 로그인해주세요.')
         return redirect('account:login')
     except Exception as e:
+        print(f"DEBUG - 예외 발생: {e}")
+        import traceback
+        traceback.print_exc()
         messages.error(request, f'데이터를 불러오는 중 오류가 발생했습니다: {str(e)}')
         return render(request, 'mentee/mentee.html', {'mentorship': None})
 
@@ -224,7 +300,7 @@ def task_list(request):
         if mentorship_id:
             # FastAPI로 태스크 목록 조회
             tasks_response = fastapi_client.get_task_assigns(mentorship_id=int(mentorship_id))
-            all_tasks = tasks_response.get('tasks', [])
+            all_tasks = tasks_response.get('task_assigns', [])  # 'tasks' 대신 'task_assigns' 사용
             
             for task in all_tasks:
                 # 서브태스크 찾기

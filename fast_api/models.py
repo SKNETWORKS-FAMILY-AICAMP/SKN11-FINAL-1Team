@@ -125,7 +125,7 @@ class TaskAssign(Base):
     
     task_assign_id = Column(Integer, primary_key=True, index=True, comment="과제 할당 고유 ID")
     parent_id = Column(Integer, ForeignKey("core_taskassign.task_assign_id"), comment="상위 과제(TaskAssign)")
-    mentorship_id = Column(Integer, ForeignKey("core_mentorship.mentorship_id"), nullable=False, comment="멘토쉽")
+    mentorship_id = Column("mentorship_id_id", Integer, ForeignKey("core_mentorship.mentorship_id"), nullable=False, comment="멘토쉽")
     title = Column(String(255), comment="과제 할당 제목")
     description = Column(String(255), comment="설명")
     guideline = Column(String(255), comment="과제 가이드라인")
