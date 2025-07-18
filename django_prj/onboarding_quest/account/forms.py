@@ -28,7 +28,6 @@ class UserForm(forms.ModelForm):
             'job_part',
             'role',
             'tag',
-            'mentorship_id',
             'is_admin',
             'is_active',
         ]
@@ -42,7 +41,6 @@ class UserForm(forms.ModelForm):
             'job_part': '직무',
             'role': '역할',
             'tag': '태그',
-            'mentorship_id': '멘토십ID',
             'is_admin': '관리자여부',
             'is_active': '활성화',
         }
@@ -57,7 +55,6 @@ class UserForm(forms.ModelForm):
             'job_part': forms.TextInput(attrs={'placeholder': '직무', 'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-control'}),
             'tag': forms.TextInput(attrs={'placeholder': '태그', 'class': 'form-control'}),
-            'mentorship_id': forms.NumberInput(attrs={'placeholder': '멘토십ID', 'class': 'form-control'}),
             'is_admin': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
