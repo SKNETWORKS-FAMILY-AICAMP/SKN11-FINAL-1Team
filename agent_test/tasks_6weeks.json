@@ -1,0 +1,254 @@
+[
+  {
+    "title": "AI 개념 및 원리 소개",
+    "description": "AI의 기본 개념과 원리에 대해 학습합니다. 머신러닝과 딥러닝의 차이점, AI의 역사와 발전 방향을 이해합니다.",
+    "week": 1,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "회사 AI 기술 스택 및 도구 개요",
+    "description": "회사의 AI 프로젝트에 사용되는 주요 기술 스택과 도구에 대해 알아봅니다. 각 도구의 역할과 사용 사례를 설명합니다.",
+    "week": 1,
+    "period": 2,
+    "priority": "상"
+  },
+  {
+    "title": "개발 환경 설정 및 필수 소프트웨어 설치",
+    "description": "AI 개발에 필요한 소프트웨어와 도구를 설치하고 환경을 구성합니다. Python, Jupyter Notebook, TensorFlow 등 필수 프로그램을 포함합니다.",
+    "week": 1,
+    "period": 3,
+    "priority": "상"
+  },
+  {
+    "title": "간단한 AI 모델 실습: 데이터셋 로딩",
+    "description": "기본 AI 모델을 구축하기 위해 데이터셋을 로딩하고 구조를 이해합니다. 데이터의 특성을 파악하고 향후 전처리 방향을 설정합니다.",
+    "week": 1,
+    "period": 4,
+    "priority": "중"
+  },
+  {
+    "title": "간단한 AI 모델 실습: 기본 전처리",
+    "description": "로딩한 데이터셋에 대해 기본적인 전처리를 수행합니다. 데이터 정규화, 결측값 처리, 카테고리 인코딩 등의 기법을 적용합니다.",
+    "week": 1,
+    "period": 5,
+    "priority": "중"
+  },
+  {
+    "title": "데이터 전처리 기법 학습",
+    "description": "결측치 처리, 이상치 탐지 및 제거, 데이터 정규화와 표준화 기법을 학습한다.",
+    "week": 2,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "데이터 시각화 도구 및 기법 실습",
+    "description": "Matplotlib, Seaborn과 같은 시각화 도구를 활용하여 데이터를 시각화하는 방법을 실습한다.",
+    "week": 2,
+    "period": 2,
+    "priority": "중"
+  },
+  {
+    "title": "Numpy 사용법 익히기",
+    "description": "Numpy 라이브러리를 사용하여 배열 및 행렬 연산을 수행하는 방법을 익힌다.",
+    "week": 2,
+    "period": 1,
+    "priority": "중"
+  },
+  {
+    "title": "Pandas 사용법 익히기",
+    "description": "Pandas 라이브러리를 사용하여 데이터프레임을 생성하고 조작하는 방법을 익힌다.",
+    "week": 2,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "팀 내 데이터 분석 프로젝트 참여",
+    "description": "팀 프로젝트에 참여하여 실무 데이터 분석을 수행하고, 분석 결과를 공유한다.",
+    "week": 2,
+    "period": 3,
+    "priority": "상"
+  },
+  {
+    "title": "피드백 세션",
+    "description": "데이터 분석 프로젝트에 대한 팀 피드백을 받고 개선점을 학습한다.",
+    "week": 2,
+    "period": 1,
+    "priority": "중"
+  },
+  {
+    "title": "머신러닝 알고리즘 기본 개념 학습",
+    "description": "머신러닝의 이론적 배경과 주요 알고리즘의 기본 개념을 학습합니다.",
+    "week": 3,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "지도학습 실습",
+    "description": "지도학습의 다양한 알고리즘을 실습을 통해 이해하고 Scikit-learn을 사용하여 간단한 모델을 구현합니다.",
+    "week": 3,
+    "period": 2,
+    "priority": "상"
+  },
+  {
+    "title": "비지도학습 실습",
+    "description": "비지도학습 알고리즘을 실습하여 데이터의 패턴과 군집을 이해하고 Scikit-learn을 활용한 분석을 진행합니다.",
+    "week": 3,
+    "period": 2,
+    "priority": "중"
+  },
+  {
+    "title": "Scikit-learn 모델 구현",
+    "description": "Scikit-learn 라이브러리를 사용하여 간단한 머신러닝 모델을 구현하고 성능을 평가합니다.",
+    "week": 3,
+    "period": 3,
+    "priority": "중"
+  },
+  {
+    "title": "팀 미팅 참석",
+    "description": "팀 미팅에 참석하여 현재 진행 중인 프로젝트의 목표와 진행 상황을 이해하고, 팀원들과의 협업 방안을 모색합니다.",
+    "week": 3,
+    "period": 1,
+    "priority": "하"
+  },
+  {
+    "title": "모델 검증 기법 이해",
+    "description": "교차 검증, 홀드아웃 검증 등 다양한 모델 검증 기법에 대해 학습하고 실습합니다.",
+    "week": 4,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "모델 평가 기법 이해",
+    "description": "정확도, 정밀도, 재현율, F1-score 등 다양한 모델 평가 지표에 대해 학습합니다.",
+    "week": 4,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "하이퍼파라미터 튜닝",
+    "description": "Grid Search, Random Search와 같은 하이퍼파라미터 튜닝 기법을 실습합니다.",
+    "week": 4,
+    "period": 2,
+    "priority": "중"
+  },
+  {
+    "title": "모델 최적화 실습",
+    "description": "최적화 알고리즘을 활용하여 모델의 성능을 향상시키는 실습을 진행합니다.",
+    "week": 4,
+    "period": 2,
+    "priority": "중"
+  },
+  {
+    "title": "Kaggle 데이터셋 팀 프로젝트",
+    "description": "Kaggle 데이터셋을 활용하여 팀 프로젝트를 구성하고 진행합니다.",
+    "week": 4,
+    "period": 3,
+    "priority": "상"
+  },
+  {
+    "title": "프로젝트 결과 발표 준비",
+    "description": "팀 프로젝트 결과를 발표하기 위한 발표 자료를 준비합니다.",
+    "week": 4,
+    "period": 3,
+    "priority": "중"
+  },
+  {
+    "title": "프로젝트 결과 발표 및 피드백",
+    "description": "팀 프로젝트 결과를 발표하고 동료 및 멘토로부터 피드백을 받습니다.",
+    "week": 4,
+    "period": 4,
+    "priority": "상"
+  },
+  {
+    "title": "신경망과 딥러닝 기초 개념 이해",
+    "description": "신경망의 기본 구성 요소와 동작 원리 이해, 딥러닝의 기본 개념 학습",
+    "week": 5,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "TensorFlow 및 Keras 기본 사용법 학습",
+    "description": "TensorFlow와 Keras의 기초 사용법 및 환경 설정 방법 학습",
+    "week": 5,
+    "period": 2,
+    "priority": "상"
+  },
+  {
+    "title": "기본 모델 구현 연습",
+    "description": "TensorFlow 및 Keras를 활용한 간단한 신경망 모델 구현 실습",
+    "week": 5,
+    "period": 3,
+    "priority": "중"
+  },
+  {
+    "title": "이미지 분류 프로젝트 실습",
+    "description": "TensorFlow 및 Keras를 활용하여 이미지 분류 프로젝트를 설계하고 구현",
+    "week": 5,
+    "period": 4,
+    "priority": "상"
+  },
+  {
+    "title": "자연어 처리 프로젝트 실습",
+    "description": "자연어 처리 관련 프로젝트를 설계하고 TensorFlow 및 Keras로 구현",
+    "week": 5,
+    "period": 5,
+    "priority": "중"
+  },
+  {
+    "title": "프로젝트 중간 발표 및 개선점 논의",
+    "description": "프로젝트 진행 상황을 발표하고 피드백을 통해 개선점을 논의",
+    "week": 5,
+    "period": 6,
+    "priority": "상"
+  },
+  {
+    "title": "개별 프로젝트 계획 수립",
+    "description": "프로젝트의 목표, 범위, 필요한 리소스 및 일정 계획을 수립합니다.",
+    "week": 6,
+    "period": 1,
+    "priority": "상"
+  },
+  {
+    "title": "프로젝트 구현 및 테스트",
+    "description": "계획한 프로젝트를 구현하고, 각 단계별로 테스트를 진행하여 문제점을 파악하고 개선합니다.",
+    "week": 6,
+    "period": 2,
+    "priority": "상"
+  },
+  {
+    "title": "프로젝트 최종 결과물 작성",
+    "description": "프로젝트의 결과물을 문서화하고, 코드와 함께 제출할 보고서를 작성합니다.",
+    "week": 6,
+    "period": 3,
+    "priority": "중"
+  },
+  {
+    "title": "프로젝트 최종 발표 준비",
+    "description": "발표 자료를 준비하고, 발표 연습을 통해 발표의 완성도를 높입니다.",
+    "week": 6,
+    "period": 4,
+    "priority": "중"
+  },
+  {
+    "title": "프로젝트 최종 발표 및 코드 리뷰",
+    "description": "팀원 및 리뷰어 앞에서 프로젝트의 결과를 발표하고, 코드 리뷰를 통해 피드백을 받습니다.",
+    "week": 6,
+    "period": 5,
+    "priority": "상"
+  },
+  {
+    "title": "피드백 반영 및 최종 결과물 제출",
+    "description": "받은 피드백을 반영하여 프로젝트를 수정하고 최종 결과물을 제출합니다.",
+    "week": 6,
+    "period": 6,
+    "priority": "중"
+  },
+  {
+    "title": "기술 적응 및 역량 평가 회의",
+    "description": "기술 적응 수준과 프로젝트 수행 역량에 대한 평가를 받는 회의에 참석합니다.",
+    "week": 6,
+    "period": 7,
+    "priority": "상"
+  }
+]
