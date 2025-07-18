@@ -186,11 +186,11 @@ let deleteDocId = null;
 
 function deleteDoc(docId) {
   deleteDocId = docId;
-  document.getElementById('delete-modal').style.display = 'flex';
+  document.getElementById('deleteModal').style.display = 'flex';
 }
 
 function closeDeleteModal() {
-  document.getElementById('delete-modal').style.display = 'none';
+  document.getElementById('deleteModal').style.display = 'none';
   deleteDocId = null;
 }
 
@@ -224,7 +224,7 @@ function confirmDelete() {
 // 모달 외부 클릭 시 닫기
 window.addEventListener('click', function (e) {
   const editModal = document.getElementById('edit-modal');
-  const deleteModal = document.getElementById('delete-modal');
+  const deleteModal = document.getElementById('deleteModal');
 
   if (e.target === editModal) {
     closeEditModal();
