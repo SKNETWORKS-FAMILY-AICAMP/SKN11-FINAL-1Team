@@ -164,6 +164,40 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
     """사용자 목록 조회"""
     return db.query(models.User).offset(skip).limit(limit).all()
 
+def get_users_with_filters(
+    db: Session, 
+    skip: int = 0, 
+    limit: int = 100,
+    company_id: str = None,
+    department_id: int = None,
+    search: str = None,
+    role: str = None,
+    is_active: bool = None
+):
+    """필터링 옵션이 있는 사용자 목록 조회"""
+    query = db.query(models.User)
+    
+    if company_id:
+        query = query.filter(models.User.company_id == company_id)
+    
+    if department_id:
+        query = query.filter(models.User.department_id == department_id)
+    
+    if search:
+        query = query.filter(
+            (models.User.username.contains(search)) |
+            (models.User.email.contains(search)) |
+            (models.User.full_name.contains(search))
+        )
+    
+    if role:
+        query = query.filter(models.User.role == role)
+    
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    
+    return query.offset(skip).limit(limit).all()
+
 def get_mentors(db: Session, skip: int = 0, limit: int = 100):
     """멘토 목록 조회"""
     return db.query(models.User).filter(models.User.role == "mentor").offset(skip).limit(limit).all()

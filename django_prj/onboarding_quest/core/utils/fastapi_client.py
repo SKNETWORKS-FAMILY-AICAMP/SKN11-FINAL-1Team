@@ -166,7 +166,9 @@ class FastAPIClient:
                   limit: int = 100,
                   company_id: Optional[str] = None,
                   department_id: Optional[int] = None,
-                  search: Optional[str] = None) -> Dict[str, Any]:
+                  search: Optional[str] = None,
+                  role: Optional[str] = None,
+                  is_active: Optional[bool] = None) -> Dict[str, Any]:
         """사용자 목록 조회"""
         url = f"{self.base_url}/api/users/"
         params = {"skip": skip, "limit": limit}
@@ -176,6 +178,10 @@ class FastAPIClient:
             params["department_id"] = department_id
         if search:
             params["search"] = search
+        if role:
+            params["role"] = role
+        if is_active is not None:
+            params["is_active"] = is_active
         
         response = self.session.get(url, params=params)
         users_list = self._handle_response(response)

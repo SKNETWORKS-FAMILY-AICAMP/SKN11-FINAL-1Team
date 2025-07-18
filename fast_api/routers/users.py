@@ -19,9 +19,27 @@ async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[schemas.User])
-async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """모든 사용자 조회"""
-    users = crud.get_users(db, skip=skip, limit=limit)
+async def get_users(
+    skip: int = 0, 
+    limit: int = 100, 
+    company_id: str = None,
+    department_id: int = None,
+    search: str = None,
+    role: str = None,
+    is_active: bool = None,
+    db: Session = Depends(get_db)
+):
+    """사용자 목록 조회 - 필터링 옵션 포함"""
+    users = crud.get_users_with_filters(
+        db, 
+        skip=skip, 
+        limit=limit,
+        company_id=company_id,
+        department_id=department_id,
+        search=search,
+        role=role,
+        is_active=is_active
+    )
     return users
 
 
