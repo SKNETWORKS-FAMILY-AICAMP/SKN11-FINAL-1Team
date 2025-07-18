@@ -53,6 +53,10 @@ class DepartmentBase(BaseModel):
 class DepartmentCreate(DepartmentBase):
     company_id: str
 
+class DepartmentUpdate(DepartmentBase):
+    """부서 수정용 스키마 - company_id 없이도 수정 가능"""
+    pass
+
 class Department(DepartmentBase):
     department_id: int  # Integer로 다시 변경
     company_id: str

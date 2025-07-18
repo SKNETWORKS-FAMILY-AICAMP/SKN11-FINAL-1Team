@@ -86,11 +86,11 @@ def get_departments(db: Session, skip: int = 0, limit: int = 100):
     """부서 목록 조회"""
     return db.query(models.Department).offset(skip).limit(limit).all()
 
-def update_department(db: Session, department_id: int, department_update: schemas.DepartmentCreate):
+def update_department(db: Session, department_id: int, department_update: schemas.DepartmentUpdate):
     """부서 정보 업데이트"""
     db_department = get_department(db, department_id)
     if db_department:
-        for key, value in department_update.dict().items():
+        for key, value in department_update.dict(exclude_unset=True).items():
             setattr(db_department, key, value)
         db.commit()
         db.refresh(db_department)
