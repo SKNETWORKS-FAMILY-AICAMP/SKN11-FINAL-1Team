@@ -78,9 +78,15 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('click', function(e) {
-  if (!document.querySelector('.filter-dropdown').contains(e.target)) {
-    document.querySelector('.filter-dropdown').classList.remove('open');
-    document.getElementById('filter-menu').classList.remove('show');
+  const filterDropdown = document.querySelector('.filter-dropdown');
+  const filterMenu = document.getElementById('filter-menu');
+  
+  // 요소가 존재하는 경우에만 실행
+  if (filterDropdown && filterMenu) {
+    if (!filterDropdown.contains(e.target)) {
+      filterDropdown.classList.remove('open');
+      filterMenu.classList.remove('show');
+    }
   }
 });
 

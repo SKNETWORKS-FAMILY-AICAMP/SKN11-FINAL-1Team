@@ -88,7 +88,30 @@ def login_view(request):
             elif user_dict.get('role') == 'mentor':
                 return redirect('mentor:mentor')
             elif user_dict.get('role') == 'mentee':
-                return redirect('mentee:mentee')
+                # 🔧 멘티의 경우 활성 멘토십과 함께 리다이렉트
+                user_id = user_dict.get('user_id')
+                mentorship_id = None
+                
+                print(f"🔍 LOGIN - 멘티 로그인: user_id={user_id}")
+                
+                # Django ORM으로 활성 멘토십 조회
+                try:
+                    from core.models import Mentorship
+                    active_mentorship = Mentorship.objects.filter(
+                        mentee_id=user_id, 
+                        is_active=True
+                    ).first()
+                    
+                    if active_mentorship:
+                        mentorship_id = active_mentorship.mentorship_id
+                        print(f"🔍 LOGIN - 활성 멘토십 발견: mentorship_id={mentorship_id}")
+                        return redirect(f"/mentee/?mentorship_id={mentorship_id}")
+                    else:
+                        print(f"🔍 LOGIN - 활성 멘토십이 없음. 기본 리다이렉트")
+                        return redirect('mentee:mentee')
+                except Exception as e:
+                    print(f"🔍 LOGIN - 멘토십 조회 실패: {e}")
+                    return redirect('mentee:mentee')
             else:
                 return redirect('/')
                 

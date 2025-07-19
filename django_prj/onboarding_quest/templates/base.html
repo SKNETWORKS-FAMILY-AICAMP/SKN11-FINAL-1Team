@@ -85,13 +85,16 @@
                     <a href="{% url 'mentor:manage_mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 생성</a>
                     <a href="{% url 'mentor:manage_template' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_template/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>커리큘럼 관리</a>
                 {% elif request.user.role == 'mentee' %}
-                    <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
+                    <!-- 🔍 DEBUG: 사이드바 멘토십 정보 -->
+                    <!-- user_mentorship: {{ user_mentorship }} -->
+                    <!-- user_mentorship.mentorship_id: {{ user_mentorship.mentorship_id }} -->
+                    {% if user_mentorship %}
+                        <a href="{% url 'mentee:mentee' %}?mentorship_id={{ user_mentorship.mentorship_id }}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
+                    {% endif %}
                     <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
                     <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
                     {% if user_mentorship %}
                         <a href="{% url 'mentee:task_list' %}?mentorship_id={{ user_mentorship.mentorship_id }}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if 'task_list' in request.path %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>태스크 목록</a>
-                    {% else %}
-                        <span class="sidebar-link block py-3 px-4 rounded-lg flex items-center gap-3 font-bold text-gray-400 cursor-not-allowed"><span class="text-lg"></span>태스크 목록 <span class="text-xs">(멘토쉽 필요)</span></span>
                     {% endif %}
                 {% endif %}
             {% else %}

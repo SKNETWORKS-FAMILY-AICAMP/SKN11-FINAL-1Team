@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}태스크 목록 - 하위 태스크 생성{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/common/mentee_task_list.css' %}">
+<style>
+.create-subtask-btn {
+    font-size: 13px !important;
+    background: #28a745 !important;
+    color: white !important;
+    border: none !important;
+    padding: 4px 12px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+    margin-left: 8px !important;
+}
+.create-subtask-btn:hover {
+    background: #218838 !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tasklist-container">
+  <div class="tasklist-left" id="tasklist-left">
+    {% for week, tasks in week_tasks.items %}
+      <div style="font-weight:bold; margin:18px 0 8px 0;">{{ week }}주차</div>
+      {% for task in tasks %}
+        {% if not task.parent %}
+        <div class="task-card" data-task-id="{{ task.task_id }}">
+          <div class="task-card-header">
+            <span class="task-title">{{ task.title }}</span>
+          </div>
+          <div class="task-desc-row">
+            <div class="task-desc">{{ task.description }}</div>
+          </div>
+          
+          <!-- 하위 태스크 생성 버튼 -->
+          <button type="button" 
+                  class="create-subtask-btn" 
+                  onclick="openSubtaskModal({{ task.task_id }}, '{{ task.title|escapejs }}')">
+            + 하위 태스크 생성
+          </button>
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+  
+  <div class="tasklist-right">
+    <div id="detail-title">태스크를 선택하세요</div>
+    <div id="detail-desc">설명이 표시됩니다</div>
+    <div id="guideline-content">가이드라인이 표시됩니다</div>
+    <div id="chat-messages">메모가 표시됩니다</div>
+  </div>
+</div>
+
+<!-- 하위 태스크 생성 모달 -->
+<div id="subtask-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000;">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border-radius:12px; padding:24px; width:500px;">
+    <h3>하위 태스크 생성</h3>
+    <button onclick="closeSubtaskModal()" style="float:right;">×</button>
+    
+    <form id="subtask-form" onsubmit="createSubtask(event)">
+      <div style="margin-bottom:16px;">
+        <label>상위 Task</label>
+        <input id="parent-task-title" type="text" readonly style="width:100%; padding:10px;">
+        <input id="parent-task-id" type="hidden">
+      </div>
+      
+      <div style="margin-bottom:16px;">
+        <label>제목 *</label>
+        <input id="subtask-title" type="text" required style="width:100%; padding:10px;">
+      </div>
+      
+      <div style="margin-bottom:16px;">
+        <label>가이드라인</label>
+        <textarea id="subtask-guideline" style="width:100%; height:60px; padding:10px;"></textarea>
+      </div>
+      
+      <div style="margin-bottom:16px;">
+        <label>세부내용</label>
+        <textarea id="subtask-description" style="width:100%; height:80px; padding:10px;"></textarea>
+      </div>
+      
+      <div style="text-align:right;">
+        <button type="button" onclick="closeSubtaskModal()">취소</button>
+        <button type="submit" style="background:#28a745; color:white; margin-left:10px;">생성</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// 간단한 JavaScript 함수들
+function openSubtaskModal(parentId, parentTitle) {
+    console.log('모달 열기:', parentId, parentTitle);
+    document.getElementById('subtask-modal').style.display = 'block';
+    document.getElementById('parent-task-title').value = parentTitle;
+    document.getElementById('parent-task-id').value = parentId;
+}
+
+function closeSubtaskModal() {
+    document.getElementById('subtask-modal').style.display = 'none';
+    document.getElementById('subtask-form').reset();
+}
+
+async function createSubtask(event) {
+    event.preventDefault();
+    
+    const parentId = document.getElementById('parent-task-id').value;
+    const title = document.getElementById('subtask-title').value;
+    const guideline = document.getElementById('subtask-guideline').value;
+    const description = document.getElementById('subtask-description').value;
+    
+    console.log('하위 태스크 생성:', {parentId, title, guideline, description});
+    
+    try {
+        // URL에서 mentorship_id 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const mentorshipId = urlParams.get('mentorship_id');
+        console.log('🔍 URL에서 가져온 멘토십 ID:', mentorshipId);
+        
+        if (!mentorshipId) {
+            alert('URL에 mentorship_id가 필요합니다.');
+            return;
+        }
+        
+        const response = await fetch(`/mentee/create_subtask/${parentId}/?mentorship_id=${mentorshipId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                title: title,
+                guideline: guideline,
+                description: description,
+                mentorship_id: parseInt(mentorshipId),
+                status: '진행전'
+            })
+        });
+        
+        const data = await response.json();
+        console.log('응답:', data);
+        
+        if (data.success) {
+            alert('하위 태스크가 생성되었습니다!');
+            closeSubtaskModal();
+            location.reload();
+        } else {
+            alert('오류: ' + data.error);
+        }
+    } catch (error) {
+        console.error('오류:', error);
+        alert('생성 실패: ' + error.message);
+    }
+}
+</script>
+{% endblock %} 
