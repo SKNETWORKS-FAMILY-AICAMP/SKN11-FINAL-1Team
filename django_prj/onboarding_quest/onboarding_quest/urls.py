@@ -31,6 +31,9 @@ urlpatterns = [
     path('mentee/', include('mentee.urls')),
     path('account/', include('account.urls')),
     path('common/', include('common.urls')),
+    
+    # 알람 API 직접 연결
+    path('api/', include('common.urls')),
 
 ]
 
