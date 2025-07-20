@@ -496,7 +496,7 @@
         </div>
         
         <!-- 완료 컬럼 -->
-        <div class="kanban-column success-column" data-status="완료" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <div class="kanban-column success-column" data-status="완료" style="flex:1; min-width:280px;">
           <div class="kanban-header">완료</div>
           <div class="task-container" id="success-container">
             {% for task in status_tasks.완료 %}
@@ -509,9 +509,9 @@
                    data-status="{{ task.status|escapejs }}"
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
-                   draggable="true" 
                    onclick="showTaskDetail({{ task.task_assign_id }})"
-                   id="task{{ task.task_assign_id }}">
+                   id="task{{ task.task_assign_id }}"
+                   style="cursor: pointer;">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
                   <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
                     {% if task.dday is not None %}

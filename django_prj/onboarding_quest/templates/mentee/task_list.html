@@ -293,6 +293,7 @@
   </div>
 </div>
 
+
 {% csrf_token %}
 {{ selected_task|json_script:"selected-task-data" }}
 <script>
@@ -521,6 +522,21 @@ async function updateTaskDetailPanel(taskId) {
             // 메모 목록 업데이트
             console.log(`🔍 태스크 ${taskId} 메모 데이터:`, task.memos);
             updateMemoList(task.memos || []);
+            
+            // currentTask 설정 (편집 기능용)
+            currentTask = {
+                id: task.task_assign_id || task.id,
+                task_assign_id: task.task_assign_id || task.id,
+                title: task.title,
+                description: task.description,
+                guideline: task.guideline,
+                status: task.status,
+                priority: task.priority,
+                scheduled_end_date: task.scheduled_end_date,
+                week: task.week,
+                order: task.order,
+                parent_id: task.parent_id
+            };
             
             console.log(`✅ 태스크 ${taskId} 상세 정보 로드 완료 (메모 ${task.memos ? task.memos.length : 0}개)`);
             
@@ -1069,6 +1085,21 @@ function displaySelectedTask() {
         updateTaskInfo(window.selectedTaskData);
         updateGuideline(window.selectedTaskData.guideline);
         
+        // currentTask 설정 (편집 기능용)
+        currentTask = {
+            id: window.selectedTaskData.task_assign_id || window.selectedTaskData.id,
+            task_assign_id: window.selectedTaskData.task_assign_id || window.selectedTaskData.id,
+            title: window.selectedTaskData.title,
+            description: window.selectedTaskData.description,
+            guideline: window.selectedTaskData.guideline,
+            status: window.selectedTaskData.status,
+            priority: window.selectedTaskData.priority,
+            scheduled_end_date: window.selectedTaskData.scheduled_end_date,
+            week: window.selectedTaskData.week,
+            order: window.selectedTaskData.order,
+            parent_id: window.selectedTaskData.parent_id
+        };
+        
         // 메모는 별도로 로드해야 함 (selectedTaskData에 포함되지 않음)
         if (currentSelectedTaskId) {
             console.log(`🔍 태스크 ${currentSelectedTaskId}의 메모 로드 중...`);
@@ -1094,6 +1125,175 @@ function displaySelectedTask() {
         console.log('🔍 selectedTaskData 없음 - 기본 동작');
     }
 }
+
+// 🔧 인라인 편집 기능 추가
+let isEditing = false;
+let currentTask = null;
+
+// 편집 폼 표시 함수
+function showEditForm() {
+    if (!currentTask) return;
+    
+    const editForm = document.getElementById('task-edit-form');
+    const descDiv = document.getElementById('detail-desc');
+    const listDiv = document.getElementById('detail-list');
+    const editStatus = document.getElementById('edit-status');
+    const editTitle = document.getElementById('edit-title');
+    const editGuideline = document.getElementById('edit-guideline');
+    const editDescription = document.getElementById('edit-description');
+    const editPriority = document.getElementById('edit-priority');
+    const editEndDate = document.getElementById('edit-end-date');
+    
+    // 기존 영역 숨김
+    document.getElementById('detail-header-row').style.display = 'none';
+    document.getElementById('detail-meta-row').style.display = 'none';
+    
+    // 기존 값 세팅
+    editStatus.value = currentTask.status || '진행전';
+    editTitle.value = currentTask.title || '';
+    editGuideline.value = currentTask.guideline || '';
+    editDescription.value = currentTask.description || '';
+    editPriority.value = currentTask.priority || '하';
+    if (currentTask.scheduled_end_date) {
+        editEndDate.value = String(currentTask.scheduled_end_date).slice(0, 10);
+    } else {
+        editEndDate.value = '';
+    }
+    
+    // 폼 표시
+    editForm.style.display = 'block';
+    descDiv.style.display = 'none';
+    listDiv.style.display = 'none';
+    isEditing = true;
+    
+    // 편집 중일 때 좌측 카드들 비활성화
+    const taskListLeft = document.getElementById('tasklist-left');
+    if (taskListLeft) {
+        taskListLeft.classList.add('editing-mode');
+    }
+}
+
+// 편집 폼 숨김 함수
+function hideEditForm() {
+    const editForm = document.getElementById('task-edit-form');
+    const descDiv = document.getElementById('detail-desc');
+    const listDiv = document.getElementById('detail-list');
+    
+    editForm.style.display = 'none';
+    // 숨겼던 영역 다시 표시
+    document.getElementById('detail-header-row').style.display = 'flex';
+    document.getElementById('detail-meta-row').style.display = 'flex';
+    descDiv.style.display = 'block';
+    listDiv.style.display = 'block';
+    isEditing = false;
+    
+    // 편집 완료 시 좌측 카드들 다시 활성화
+    const taskListLeft = document.getElementById('tasklist-left');
+    if (taskListLeft) {
+        taskListLeft.classList.remove('editing-mode');
+    }
+}
+
+// 편집 버튼 이벤트 리스너
+document.addEventListener('click', function(e) {
+    if (e.target && (e.target.id === 'task-edit-btn' || e.target.classList.contains('task-detail-edit-btn'))) {
+        e.preventDefault();
+        if (isEditing) return;
+        showEditForm();
+    }
+});
+
+// 편집 폼 이벤트 리스너
+setTimeout(() => {
+    const editForm = document.getElementById('task-edit-form');
+    const editCancelBtn = document.getElementById('edit-cancel-btn');
+    
+    if (editCancelBtn) {
+        editCancelBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            hideEditForm();
+        });
+    }
+    
+    if (editForm) {
+        editForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!currentTask || !currentTask.id) {
+                alert('태스크 정보를 찾을 수 없습니다.');
+                return;
+            }
+            
+            // FastAPI 스키마에 맞는 완전한 데이터 준비
+            const payload = {
+                title: document.getElementById('edit-title').value || currentTask.title,
+                description: document.getElementById('edit-description').value || currentTask.description,
+                guideline: document.getElementById('edit-guideline').value || currentTask.guideline,
+                week: currentTask.week || 1,
+                order: currentTask.order,
+                scheduled_start_date: currentTask.scheduled_start_date || null,
+                scheduled_end_date: document.getElementById('edit-end-date').value || null,
+                real_start_date: currentTask.real_start_date || null,
+                real_end_date: currentTask.real_end_date || null,
+                status: document.getElementById('edit-status').value || currentTask.status,
+                priority: document.getElementById('edit-priority').value || currentTask.priority,
+                mentorship_id: parseInt(window.mentorshipId),
+                parent_id: currentTask.parent_id || null
+            };
+            
+            // 상태에 따른 날짜 자동 설정
+            const today = new Date().toISOString().split('T')[0];
+            if (payload.status === '진행중' && !payload.real_start_date) {
+                payload.real_start_date = today;
+            } else if (payload.status === '완료' && !payload.real_end_date) {
+                payload.real_end_date = today;
+            }
+            
+            try {
+                console.log('🚀 FastAPI로 태스크 업데이트 시작:', currentTask.id);
+                
+                const resp = await fetch(`http://localhost:8001/api/tasks/assign/${currentTask.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!resp.ok) {
+                    const errorText = await resp.text();
+                    throw new Error(`HTTP ${resp.status}: ${errorText}`);
+                }
+                
+                const data = await resp.json();
+                
+                if (data) {
+                    // 프론트 상태도 반영
+                    const oldStatus = currentTask.status;
+                    currentTask.status = payload.status;
+                    currentTask.title = payload.title;
+                    currentTask.guideline = payload.guideline;
+                    currentTask.description = payload.description;
+                    currentTask.priority = payload.priority;
+                    currentTask.scheduled_end_date = payload.scheduled_end_date;
+                    
+                    // 태스크 정보 업데이트
+                    updateTaskInfo(currentTask);
+                    updateGuideline(currentTask.guideline);
+                    
+                    // 성공 메시지 표시
+                    showSuccessMessage('태스크가 성공적으로 업데이트되었습니다.');
+                    
+                    hideEditForm();
+                }
+            } catch (err) {
+                console.error('❌ FastAPI 태스크 업데이트 실패:', err);
+                showErrorMessage('태스크 업데이트 중 오류가 발생했습니다: ' + err.message);
+            }
+        });
+    }
+}, 500);
 
 </script>
 <!-- 기존 JavaScript 파일은 주석 처리하여 충돌 방지 -->
