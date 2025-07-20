@@ -1,6 +1,3 @@
-const user_id = window.user_id;
-const department_id = window.department_id;
-
 class ChatBot {
     constructor() {
         this.chatArea = document.getElementById('chatbot-chat-area');
@@ -64,13 +61,13 @@ class ChatBot {
         const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
 
         try {
-            const response = await fetch('http://127.0.0.1:8001/chat', {
+            const response = await fetch('/common/chatbot/api/send/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': this.getCsrfToken()
                 },
-                body: JSON.stringify({ question: message, session_id: sessionId, user_id: user_id, department_id: department_id })
+                body: JSON.stringify({ message, session_id: sessionId })
             });
 
             const data = await response.json();
@@ -87,7 +84,7 @@ class ChatBot {
                 // ✅ session-messages에 챗봇 메시지만 동기화
                 this.updateSessionMessagesInDOM('chatbot', data.answer);
             } else {
-                alert('오류: ' + (data.error || data.detail || '알 수 없는 오류'));
+                alert('오류: ' + data.error);
             }
         } catch (err) {
             console.error('에러 발생:', err);

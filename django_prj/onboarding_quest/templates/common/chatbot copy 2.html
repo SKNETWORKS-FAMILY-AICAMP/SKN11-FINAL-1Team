@@ -586,10 +586,7 @@
         </div>
     </div>
 </div>
-<script>
-    window.user_id = "{{ request.user.user_id }}";
-    window.department_id = "{{ request.user.department.department_id }}";
-</script>
+
 <!-- ✅ JS는 한 번만 로드됨 -->
 <script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
 <script src="{% static 'js/common/chatbot.js' %}"></script>

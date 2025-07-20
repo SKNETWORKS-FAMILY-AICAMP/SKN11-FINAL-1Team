@@ -1,3 +1,7 @@
+const user_id = window.user_id;
+const department_id = window.department_id;
+
+
 class ChatBot {
     constructor() {
         this.chatArea = document.getElementById('chatbot-chat-area');

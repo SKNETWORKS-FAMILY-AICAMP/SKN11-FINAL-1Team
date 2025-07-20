@@ -19,15 +19,40 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 from fastapi.responses import FileResponse
 
+
+from rag_agent_graph_db_v3_finaltemp_v2 import (
+    create_chat_session,
+    save_message,
+    load_session_history,
+    graph, AgentState
+)
+
+
+from fastapi.middleware.cors import CORSMiddleware
+
+
+
 # 기존 RAG 시스템 임포트
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from rag_agent_graph_db_v3_finaltemp_v2 import graph, AgentState, load_session_history, save_message, create_chat_session
+
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="RAG Chatbot API", version="1.0.0")
+
+
+# ✅ CORS 미들웨어 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 🚨 개발 중만 허용
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 
 class ChatRequest(BaseModel):
     question: str
@@ -321,6 +346,119 @@ async def delete_chat_session(session_id: int = Form(...), user_id: int = Form(.
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+
+
+
+@app.post("/chat/message/send")
+async def send_chat_message(
+    session_id: int = Form(...),
+    user_id: int = Form(...),
+    message_text: str = Form(...),
+):
+    try:
+        # 1. 사용자 메시지 저장
+        # save_message(session_id, "user", message_text)
+        save_message(session_id, message_text, "user")
+
+        # 2. 대화 이력 불러오기
+        history = load_session_history(session_id)
+
+        # 3. Agent 실행
+        state: AgentState = {
+            "question": message_text,
+            "chat_history": history,
+            "rewrite_count": 0,
+            "session_id": session_id,
+            "user_department_id": 0  # 기본값 (없으면 전체 context)
+        }
+
+        result = graph.invoke(state)
+        answer = result.get("answer", "답변 생성 실패")
+        
+        
+        # response = graph.invoke({
+        #     "input": message_text,
+        #     "chat_history": history,
+        #     "state": state
+        # })
+
+        # answer = response.get("answer", "답변 생성 실패")
+
+        # 4. 응답 메시지 저장
+        # save_message(session_id, "bot", answer)
+        save_message(session_id, answer, "bot")
+
+        return {
+            "success": True,
+            "response": answer
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@app.get("/chat/messages/{session_id}")
+async def get_chat_messages(session_id: int):
+    try:
+        messages = []
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT message_type, message_text
+                FROM core_chatmessage
+                WHERE session_id = ?
+                ORDER BY message_id
+            """, (session_id,))
+            rows = cursor.fetchall()
+            for row in rows:
+                messages.append({
+                    "type": row["message_type"],
+                    "text": row["message_text"]
+                })
+
+        return {"success": True, "messages": messages}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/chat/sessions/{user_id}")
+async def get_user_sessions(user_id: int):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT session_id, summary FROM core_chatsession
+                WHERE user_id = ?
+                ORDER BY session_id DESC
+            """, (user_id,))
+            sessions = cursor.fetchall()
+
+            # 각 세션의 첫 번째 user 메시지도 함께 가져옴
+            result = []
+            for row in sessions:
+                session_id = row["session_id"]
+                summary = row["summary"]
+                cursor.execute("""
+                    SELECT message_text
+                    FROM core_chatmessage
+                    WHERE session_id = ? AND message_type = 'user'
+                    ORDER BY create_time ASC
+                    LIMIT 1
+                """, (session_id,))
+                preview_row = cursor.fetchone()
+                preview = preview_row["message_text"] if preview_row else ""
+                result.append({
+                    "session_id": session_id,
+                    "summary": summary,
+                    "preview": preview
+                })
+
+        return {"success": True, "sessions": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 

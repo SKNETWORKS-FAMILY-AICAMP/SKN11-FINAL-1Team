@@ -201,6 +201,7 @@ def chatbot(request):
 
 #     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
+# 문서 업로드 API (djnago DB에 저장)
 
 @csrf_exempt
 def doc_upload(request):
@@ -217,7 +218,6 @@ def doc_upload(request):
 
             # ✅ FastAPI에 업로드 요청 전송
             import requests
-
             files = {
                 'file': (uploaded_file.name, uploaded_file.read(), uploaded_file.content_type)
             }
@@ -229,12 +229,43 @@ def doc_upload(request):
 
             rag_api_url = f"{settings.RAG_API_URL}/upload"
             response = requests.post(rag_api_url, files=files, data=data, timeout=30)
-
+            
             if response.status_code == 200:
                 result = response.json()
                 if result.get('success'):
+                    # ✅ FastAPI 업로드 성공 시 Django DB에도 저장
+                    original_name = uploaded_file.name
+                    file_extension = os.path.splitext(original_name)[1]
+                    unique_filename = f"{uuid.uuid4()}{file_extension}"
+                    upload_dir = f"documents/{department.department_name}/"
+                    
+                    # 디렉토리 생성
+                    if not os.path.exists(os.path.join(settings.MEDIA_ROOT, upload_dir)):
+                        os.makedirs(os.path.join(settings.MEDIA_ROOT, upload_dir))
+                    
+                    file_path = os.path.join(upload_dir, unique_filename)
+                    
+                    # 파일 재저장 (FastAPI용과 Django용 별도 저장)
+                    uploaded_file.seek(0)  # 파일 포인터 초기화
+                    saved_path = default_storage.save(file_path, ContentFile(uploaded_file.read()))
+                    
+                    # 제목 정리
+                    clean_title = title
+                    if not clean_title.endswith(file_extension):
+                        clean_title += file_extension
+                    
+                    # Django DB에 저장
+                    doc = Docs.objects.create(
+                        title=clean_title,
+                        description=description,
+                        department=department,
+                        file_path=saved_path,
+                        common_doc=common_doc
+                    )
+                    
                     return JsonResponse({
                         'success': True,
+                        'doc_id': doc.docs_id,
                         'message': f"문서 업로드 완료 (청크 수: {result.get('chunks_uploaded')})",
                         'file': result.get('original_file')
                     })
@@ -245,138 +276,184 @@ def doc_upload(request):
 
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
+
+# @csrf_exempt
+# def doc_upload(request):
+#     if request.method == 'POST' and request.user.is_authenticated:
+#         try:
+#             uploaded_file = request.FILES.get('file')
+#             title = request.POST.get('title')
+#             description = request.POST.get('description', '')
+#             common_doc = request.POST.get('common_doc', 'false').lower() == 'true'
+#             department = request.user.department
+
+#             if not uploaded_file or not title or not department:
+#                 return JsonResponse({'success': False, 'error': '필수 정보 누락'})
+
+#             # ✅ FastAPI에 업로드 요청 전송
+#             import requests
+
+#             files = {
+#                 'file': (uploaded_file.name, uploaded_file.read(), uploaded_file.content_type)
+#             }
+#             data = {
+#                 'department_id': department.department_id,
+#                 'common_doc': str(common_doc).lower(),
+#                 'original_file_name': uploaded_file.name
+#             }
+
+#             rag_api_url = f"{settings.RAG_API_URL}/upload"
+#             response = requests.post(rag_api_url, files=files, data=data, timeout=30)
+
+#             if response.status_code == 200:
+#                 result = response.json()
+#                 if result.get('success'):
+#                     return JsonResponse({
+#                         'success': True,
+#                         'message': f"문서 업로드 완료 (청크 수: {result.get('chunks_uploaded')})",
+#                         'file': result.get('original_file')
+#                     })
+#                 else:
+#                     return JsonResponse({'success': False, 'error': result.get('error', 'FastAPI 처리 실패')})
+#             else:
+#                 return JsonResponse({'success': False, 'error': f'FastAPI 응답 오류 {response.status_code}'})
+
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)})
+
+#     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
+
+
+
+# 문서 수정 함수
+# @csrf_exempt
+# def doc_update(request, doc_id):
+#     if request.method == 'POST' and request.user.is_authenticated:
+#         try:
+#             import requests
+#             from django.conf import settings
+
+#             department_id = request.user.department.department_id
+#             description = request.POST.get('description', '')
+#             tags = request.POST.get('tags', '')
+#             common_doc = request.POST.get('common_doc', 'false').lower() == 'true'
+
+#             rag_api_url = f"{settings.RAG_API_URL}/update"
+
+#             response = requests.post(rag_api_url, data={
+#                 'docs_id': doc_id,
+#                 'department_id': department_id,
+#                 'description': description,
+#                 'tags': tags,
+#                 'common_doc': str(common_doc).lower()
+#             }, timeout=15)
+
+#             if response.status_code == 200 and response.json().get("success"):
+#                 return JsonResponse({'success': True})
+#             else:
+#                 error_msg = response.json().get("error", "수정 실패")
+#                 return JsonResponse({'success': False, 'error': error_msg})
+
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)})
+
+#     return JsonResponse({'success': False, 'error': '잘못된 요청입니다'})
+
+
+
+@csrf_exempt
+def doc_update(request, doc_id):
+    if request.method == 'POST' and request.user.is_authenticated:
+        try:
+            doc = Docs.objects.get(pk=doc_id)
+
+            if doc.department != request.user.department:
+                return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
+
+            description = request.POST.get('description', '')
+            tags = request.POST.get('tags', '')
+            common_doc_str = request.POST.get('common_doc', 'false')  # ← 문자열 그대로 받음
+            common_doc = common_doc_str.lower() == 'true'  # ← 정확한 문자열 비교
+
+            doc.description = description
+            doc.tags = tags
+            doc.common_doc = common_doc
+            doc.save()
+
+            return JsonResponse({'success': True, 'message': '문서 정보가 수정되었습니다.'})
+
+        except Docs.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
 
 
-# 문서 수정 함수
-@csrf_exempt
-def doc_update(request, doc_id):
-    if request.method == 'POST' and request.user.is_authenticated:
-        try:
-            import requests
-            from django.conf import settings
-
-            department_id = request.user.department.department_id
-            description = request.POST.get('description', '')
-            tags = request.POST.get('tags', '')
-            common_doc = request.POST.get('common_doc', 'false').lower() == 'true'
-
-            rag_api_url = f"{settings.RAG_API_URL}/update"
-
-            response = requests.post(rag_api_url, data={
-                'docs_id': doc_id,
-                'department_id': department_id,
-                'description': description,
-                'tags': tags,
-                'common_doc': str(common_doc).lower()
-            }, timeout=15)
-
-            if response.status_code == 200 and response.json().get("success"):
-                return JsonResponse({'success': True})
-            else:
-                error_msg = response.json().get("error", "수정 실패")
-                return JsonResponse({'success': False, 'error': error_msg})
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': '잘못된 요청입니다'})
-
-
-
-# @csrf_exempt
-# def doc_update(request, doc_id):
-#     if request.method == 'POST' and request.user.is_authenticated:
-#         try:
-#             doc = Docs.objects.get(pk=doc_id)
-
-#             if doc.department != request.user.department:
-#                 return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
-
-#             description = request.POST.get('description', '')
-#             tags = request.POST.get('tags', '')
-#             common_doc_str = request.POST.get('common_doc', 'false')  # ← 문자열 그대로 받음
-#             common_doc = common_doc_str.lower() == 'true'  # ← 정확한 문자열 비교
-
-#             doc.description = description
-#             doc.tags = tags
-#             doc.common_doc = common_doc
-#             doc.save()
-
-#             return JsonResponse({'success': True, 'message': '문서 정보가 수정되었습니다.'})
-
-#         except Docs.DoesNotExist:
-#             return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
-#         except Exception as e:
-#             return JsonResponse({'success': False, 'error': str(e)})
-
-#     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
-
-
-
 # 문서 삭제 함수 (자동 Qdrant 삭제 포함)
-@csrf_exempt
-def doc_delete(request, doc_id):
-    if request.method == 'POST' and request.user.is_authenticated:
-        try:
-            import requests
-            from django.conf import settings
-
-            department_id = request.user.department.department_id
-            rag_api_url = f"{settings.RAG_API_URL}/delete"
-
-            response = requests.post(rag_api_url, data={
-                'docs_id': doc_id,
-                'department_id': department_id
-            }, timeout=15)
-
-            if response.status_code == 200 and response.json().get("success"):
-                return redirect('common:doc')
-            else:
-                error_msg = response.json().get("error", "삭제 실패")
-                return HttpResponse(f"문서 삭제 실패: {error_msg}", status=400)
-
-        except Exception as e:
-            return HttpResponse(f"문서 삭제 중 오류 발생: {e}", status=500)
-
-    return HttpResponse("잘못된 요청입니다.", status=400)
-
-
 # @csrf_exempt
 # def doc_delete(request, doc_id):
 #     if request.method == 'POST' and request.user.is_authenticated:
 #         try:
-#             doc = Docs.objects.get(pk=doc_id)
-#             if doc.department != request.user.department:
-#                 return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
+#             import requests
+#             from django.conf import settings
 
-#             # 파일 정보 저장
-#             file_path = os.path.join(settings.MEDIA_ROOT, doc.file_path)
-#             department_id = doc.department.department_id
-            
-#             # 1. 실제 파일 삭제
-#             if doc.file_path and os.path.exists(file_path):
-#                 os.remove(file_path)
-            
-#             # 2. Qdrant에서 관련 청크 삭제
-#             delete_operation = delete_from_qdrant(file_path, department_id)
-            
-#             # 3. 데이터베이스에서 문서 삭제
-#             doc.delete()
-            
-#             return JsonResponse({
-#                 'success': True,
-#                 'message': f'문서 및 벡터 데이터가 삭제되었습니다. (작업 ID: {delete_operation})'
-#             })
+#             department_id = request.user.department.department_id
+#             rag_api_url = f"{settings.RAG_API_URL}/delete"
 
-#         except Docs.DoesNotExist:
-#             return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
+#             response = requests.post(rag_api_url, data={
+#                 'docs_id': doc_id,
+#                 'department_id': department_id
+#             }, timeout=15)
+
+#             if response.status_code == 200 and response.json().get("success"):
+#                 return redirect('common:doc')
+#             else:
+#                 error_msg = response.json().get("error", "삭제 실패")
+#                 return HttpResponse(f"문서 삭제 실패: {error_msg}", status=400)
+
 #         except Exception as e:
-#             return JsonResponse({'success': False, 'error': str(e)})
+#             return HttpResponse(f"문서 삭제 중 오류 발생: {e}", status=500)
 
-#     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
+#     return HttpResponse("잘못된 요청입니다.", status=400)
+
+
+@csrf_exempt
+def doc_delete(request, doc_id):
+    if request.method == 'POST' and request.user.is_authenticated:
+        try:
+            doc = Docs.objects.get(pk=doc_id)
+            if doc.department != request.user.department:
+                return JsonResponse({'success': False, 'error': '권한이 없습니다.'})
+
+            # 파일 정보 저장
+            file_path = os.path.join(settings.MEDIA_ROOT, doc.file_path)
+            department_id = doc.department.department_id
+            
+            # 1. 실제 파일 삭제
+            if doc.file_path and os.path.exists(file_path):
+                os.remove(file_path)
+            
+            # 2. Qdrant에서 관련 청크 삭제
+            delete_operation = delete_from_qdrant(file_path, department_id)
+            
+            # 3. 데이터베이스에서 문서 삭제
+            doc.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'문서 및 벡터 데이터가 삭제되었습니다. (작업 ID: {delete_operation})'
+            })
+
+        except Docs.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '문서를 찾을 수 없습니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
 # 문서 다운로드 함수
 def doc_download(request, doc_id):
@@ -426,39 +503,39 @@ def doc_download(request, doc_id):
     except Exception as e:
         return HttpResponse(f'파일 다운로드 중 오류가 발생했습니다: {str(e)}', status=500)
 
-# 문서 목록 함수
-def doc(request):
-    if request.user.is_authenticated:
-        try:
-            import requests
-            from django.conf import settings
-
-            department_id = request.user.department.department_id
-            rag_api_url = f"{settings.RAG_API_URL}/list"
-
-            response = requests.get(rag_api_url, params={
-                'department_id': department_id
-            }, timeout=15)
-
-            if response.status_code == 200:
-                docs = response.json().get('docs', [])
-                return render(request, 'common/doc.html', {'docs': docs})
-            else:
-                return HttpResponse("문서 목록 불러오기 실패", status=500)
-
-        except Exception as e:
-            return HttpResponse(f"문서 목록 요청 중 오류: {e}", status=500)
-
-    return redirect('account_login')
-
-
-
+# # 문서 목록 함수
 # def doc(request):
-#     user = request.user
-#     common_docs = Docs.objects.filter(common_doc=True)
-#     dept_docs = Docs.objects.filter(department=user.department, common_doc=False) if user.is_authenticated and user.department else Docs.objects.none()
-#     all_docs = list(common_docs) + [doc for doc in dept_docs if doc not in common_docs]
-#     return render(request, 'common/doc.html', {'core_docs': all_docs})
+#     if request.user.is_authenticated:
+#         try:
+#             import requests
+#             from django.conf import settings
+
+#             department_id = request.user.department.department_id
+#             rag_api_url = f"{settings.RAG_API_URL}/list"
+
+#             response = requests.get(rag_api_url, params={
+#                 'department_id': department_id
+#             }, timeout=15)
+
+#             if response.status_code == 200:
+#                 docs = response.json().get('docs', [])
+#                 return render(request, 'common/doc.html', {'core_docs': docs})
+#             else:
+#                 return HttpResponse("문서 목록 불러오기 실패", status=500)
+
+#         except Exception as e:
+#             return HttpResponse(f"문서 목록 요청 중 오류: {e}", status=500)
+
+#     return redirect('account_login')
+
+
+
+def doc(request):
+    user = request.user
+    common_docs = Docs.objects.filter(common_doc=True)
+    dept_docs = Docs.objects.filter(department=user.department, common_doc=False) if user.is_authenticated and user.department else Docs.objects.none()
+    all_docs = list(common_docs) + [doc for doc in dept_docs if doc not in common_docs]
+    return render(request, 'common/doc.html', {'core_docs': all_docs})
 
 # 기타 함수들
 def task_add(request):
