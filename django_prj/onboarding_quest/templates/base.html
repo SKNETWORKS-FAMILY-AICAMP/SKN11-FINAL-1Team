@@ -14,7 +14,7 @@
 </head>
 <body id="body" class="min-h-screen flex transition-colors duration-300">
     <!-- Sidebar -->
-    <div id="sidebar" class="bg-white shadow-lg w-72 min-h-screen transition-all duration-300 ease-in-out flex flex-col border-r border-gray-200 fixed" style="width: 18rem;">
+    <div id="sidebar" class="bg-white shadow-lg w-72 min-h-screen transition-all duration-300 ease-in-out flex flex-col border-r border-gray-200 fixed z-50" style="width: 18rem;">
         <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
             <span class="font-bold text-xl sidebar-text flex items-center gap-3 text-gray-900">
                 <div class="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center shadow-md">
@@ -131,7 +131,7 @@
     </div>
     
     <!-- 알람 사이드 패널 -->
-    <div id="alarmPanel" class="fixed top-0 right-0 w-72 h-full bg-white shadow-2xl border-l border-gray-200 transform translate-x-full transition-transform duration-300 ease-in-out z-50 hidden">
+    <div id="alarmPanel" class="fixed top-0 w-72 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden" style="left: 18rem;">
         <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
             <span class="font-bold text-lg text-gray-900 flex items-center gap-2">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,7 +160,7 @@
     </div>
     
     <!-- 알람 패널 오버레이 -->
-    <div id="alarmOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+    <div id="alarmOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
     
     <!-- Main Content -->
     <div id="main-content" class="flex-1 flex flex-col transition-colors duration-300 bg-gray-50 ml-72" style="margin-left: 18rem;">

@@ -2,6 +2,7 @@ const sidebar = document.getElementById('sidebar');
 const mainContent = document.getElementById('main-content');
 const toggleBtn = document.getElementById('sidebarToggle');
 const toggleIcon = document.getElementById('sidebarToggleIcon');
+const alarmPanel = document.getElementById('alarmPanel');
 let sidebarOpen = true;
 
 if (toggleBtn && sidebar && mainContent && toggleIcon) {
@@ -12,6 +13,10 @@ if (toggleBtn && sidebar && mainContent && toggleIcon) {
             sidebar.style.width = '18rem';
             sidebar.classList.remove('sidebar-collapsed');
             mainContent.style.marginLeft = '18rem';
+            // 알람 패널 위치도 조정
+            if (alarmPanel) {
+                alarmPanel.style.left = '18rem';
+            }
             // 펼쳐진 상태: 햄버거 메뉴 아이콘
             toggleIcon.innerHTML = `<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 6h16M4 12h16M4 18h16' />`;
         } else {
@@ -19,6 +24,10 @@ if (toggleBtn && sidebar && mainContent && toggleIcon) {
             sidebar.style.width = '4rem';
             sidebar.classList.add('sidebar-collapsed');
             mainContent.style.marginLeft = '4rem';
+            // 알람 패널 위치도 조정
+            if (alarmPanel) {
+                alarmPanel.style.left = '4rem';
+            }
             // 접힌 상태: 화살표 아이콘 (펼치기)
             toggleIcon.innerHTML = `<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5l7 7-7 7' />`;
         }
@@ -27,17 +36,21 @@ if (toggleBtn && sidebar && mainContent && toggleIcon) {
 
 // 알람 패널 기능
 const alarmToggle = document.getElementById('alarmToggle');
-const alarmPanel = document.getElementById('alarmPanel');
 const alarmOverlay = document.getElementById('alarmOverlay');
 const alarmClose = document.getElementById('alarmClose');
 const alarmList = document.getElementById('alarmList');
 const alarmBadge = document.getElementById('alarmBadge');
+let alarmPanelOpen = false; // 알람 패널 상태 추적
 
-// 알람 패널 열기
+// 알람 패널 열기/닫기 토글
 if (alarmToggle) {
     alarmToggle.addEventListener('click', () => {
-        openAlarmPanel();
-        loadAlarms();
+        if (alarmPanelOpen) {
+            closeAlarmPanel();
+        } else {
+            openAlarmPanel();
+            loadAlarms();
+        }
     });
 }
 
@@ -54,19 +67,25 @@ function openAlarmPanel() {
     if (alarmPanel && alarmOverlay) {
         alarmPanel.classList.remove('hidden');
         alarmOverlay.classList.remove('hidden');
+        // 사이드바 뒤에서 나오는 효과를 위해 초기 위치를 사이드바 아래쪽으로 설정
+        alarmPanel.style.transform = 'translateX(-100%)';
+        alarmPanel.style.zIndex = '40';
         setTimeout(() => {
             alarmPanel.style.transform = 'translateX(0)';
         }, 10);
+        alarmPanelOpen = true; // 상태 업데이트
     }
 }
 
 function closeAlarmPanel() {
     if (alarmPanel && alarmOverlay) {
-        alarmPanel.style.transform = 'translateX(100%)';
+        // 사이드바 뒤로 사라지는 효과
+        alarmPanel.style.transform = 'translateX(-100%)';
         setTimeout(() => {
             alarmPanel.classList.add('hidden');
             alarmOverlay.classList.add('hidden');
         }, 300);
+        alarmPanelOpen = false; // 상태 업데이트
     }
 }
 
