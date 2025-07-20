@@ -167,8 +167,11 @@ function displayAlarms(alarms) {
         <div class="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
             <span class="text-sm font-medium text-gray-700">알림 목록</span>
             <button onclick="markAllAlarmsRead()" 
-                    class="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
-                모두 읽음으로 표시
+                    class="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="모든 알림 읽음 처리">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
             </button>
         </div>
     ` : '';
