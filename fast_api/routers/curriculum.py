@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import crud
 import schemas
 from database import get_db
@@ -21,9 +21,25 @@ async def create_curriculum(curriculum: schemas.CurriculumCreate, db: Session = 
 
 
 @router.get("/", response_model=List[schemas.Curriculum])
-async def get_curricula(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """커리큘럼 목록 조회"""
-    curricula = crud.get_curricula(db, skip=skip, limit=limit)
+async def get_curricula(
+    department_id: Optional[int] = Query(None, description="부서 ID (지정 시 공통 커리큘럼 + 해당 부서 커리큘럼 반환)"),
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    """커리큘럼 목록 조회 (공통 커리큘럼 + 특정 부서 커리큘럼 필터링)"""
+    if department_id is not None:
+        # 부서 존재 확인
+        db_department = crud.get_department(db, department_id=department_id)
+        if db_department is None:
+            raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
+        
+        # 공통 커리큘럼 + 특정 부서 커리큘럼 반환
+        curricula = crud.get_filtered_curricula(db, department_id=department_id)
+    else:
+        # 기존 방식: 모든 커리큘럼 반환
+        curricula = crud.get_curricula(db, skip=skip, limit=limit)
+    
     return curricula
 
 

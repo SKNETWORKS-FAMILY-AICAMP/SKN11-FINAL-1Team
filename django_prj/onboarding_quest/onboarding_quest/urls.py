@@ -15,8 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from account import views as account_views
+from core import views as core_views
 from django.conf.urls.static import static
 from django.conf import settings
 
@@ -26,6 +27,12 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('', account_views.login_view, name='root_login'),
+
+    # 디버그 엔드포인트
+    path('debug/mentorship/', core_views.debug_mentorship_from_db, name='debug_mentorship'),
+
+    # API 프록시 (FastAPI로 전달)
+    re_path(r'^api/(?P<path>.*)$', core_views.fastapi_proxy, name='fastapi_proxy'),
 
     path('mentor/', include('mentor.urls')),
     path('mentee/', include('mentee.urls')),

@@ -43,22 +43,29 @@ class Command(BaseCommand):
             '#관리자', '#HR', '#온보딩', '#리더', '#조직문화', '#소통', '#혁신', '#책임감', '#전략', '#성장', '#팀워크'
         ]
         admin_tags = ' '.join(random.sample(tag_pool_admin, 3))
-        admin_user = User.objects.create_user(
-            email='hr_admin@ezflow.com',  # HR 구분
-            password='123',  # 비밀번호 통일
-            first_name='관리자',
-            last_name='이',  # 성만 다르게
-            employee_number=1000,
-            is_admin=True,
-            is_staff=True,
-            is_superuser=True,
-            company=company,
-            department=departments['HR'],
-            role='mentor',
-            position='HR팀장',
-            job_part='HR',
-            tag=admin_tags,
-        )
+        
+        # 기존 HR 관리자 확인
+        if not User.objects.filter(employee_number=1000).exists():
+            admin_user = User.objects.create_user(
+                email='hr_admin@ezflow.com',  # HR 구분
+                password='123',  # 비밀번호 통일
+                first_name='관리자',
+                last_name='이',  # 성만 다르게
+                employee_number=1000,
+                is_admin=True,
+                is_staff=True,
+                is_superuser=True,
+                company=company,
+                department=departments['HR'],
+                role='mentor',
+                position='HR팀장',
+                job_part='HR',
+                tag=admin_tags,
+            )
+            self.stdout.write('   ✅ HR 관리자 생성 완료')
+        else:
+            admin_user = User.objects.get(employee_number=1000)
+            self.stdout.write('   ℹ️ HR 관리자가 이미 존재합니다')
 
         # 4. 부서별 멘티 2명, 멘토 10명
         self.stdout.write('4. 부서별 멘티 2명, 멘토 10명 생성...')
@@ -82,47 +89,61 @@ class Command(BaseCommand):
                 email_prefix = 'hr'
             # 멘티 2명
             for i in range(2):
-                last_name = last_names[(dept_idx*2 + i) % len(last_names)]
-                mentee_tags = [f'#{dept_name}', '#멘티'] + random.sample(tag_pool_mentee, 2)
-                mentee = User.objects.create_user(
-                    email=f'{email_prefix}_mentee{i+1}@ezflow.com',
-                    password='123',
-                    first_name='멘티',
-                    last_name=last_name,
-                    employee_number=emp_num,
-                    is_admin=False,
-                    is_staff=False,
-                    is_superuser=False,
-                    company=company,
-                    department=dept,
-                    role='mentee',
-                    position=f'{dept_name}사원',
-                    job_part=dept_name,
-                    tag=' '.join(mentee_tags),
-                )
-                users_by_dept[dept_name]['mentees'].append(mentee)
+                mentee_email = f'{email_prefix}_mentee{i+1}@ezflow.com'
+                # 이메일 중복 체크
+                if not User.objects.filter(email=mentee_email).exists():
+                    last_name = last_names[(dept_idx*2 + i) % len(last_names)]
+                    mentee_tags = [f'#{dept_name}', '#멘티'] + random.sample(tag_pool_mentee, 2)
+                    mentee = User.objects.create_user(
+                        email=mentee_email,
+                        password='123',
+                        first_name='멘티',
+                        last_name=last_name,
+                        employee_number=emp_num,
+                        is_admin=False,
+                        is_staff=False,
+                        is_superuser=False,
+                        company=company,
+                        department=dept,
+                        role='mentee',
+                        position=f'{dept_name}사원',
+                        job_part=dept_name,
+                        tag=' '.join(mentee_tags),
+                    )
+                    users_by_dept[dept_name]['mentees'].append(mentee)
+                else:
+                    # 이미 존재하는 멘티 가져오기
+                    mentee = User.objects.get(email=mentee_email)
+                    users_by_dept[dept_name]['mentees'].append(mentee)
                 emp_num += 1
             # 멘토 10명
             for i in range(10):
-                last_name = last_names[(dept_idx*10 + i) % len(last_names)]
-                mentor_tags = [f'#{dept_name}', '#멘토'] + random.sample(tag_pool_mentor, 2)
-                mentor = User.objects.create_user(
-                    email=f'{email_prefix}_mentor{i+1}@ezflow.com',
-                    password='123',
-                    first_name='멘토',
-                    last_name=last_name,
-                    employee_number=emp_num,
-                    is_admin=False,
-                    is_staff=False,
-                    is_superuser=False,
-                    company=company,
-                    department=dept,
-                    role='mentor',
-                    position=f'{dept_name}선임',
-                    job_part=dept_name,
-                    tag=' '.join(mentor_tags),
-                )
-                users_by_dept[dept_name]['mentors'].append(mentor)
+                mentor_email = f'{email_prefix}_mentor{i+1}@ezflow.com'
+                # 이메일 중복 체크
+                if not User.objects.filter(email=mentor_email).exists():
+                    last_name = last_names[(dept_idx*10 + i) % len(last_names)]
+                    mentor_tags = [f'#{dept_name}', '#멘토'] + random.sample(tag_pool_mentor, 2)
+                    mentor = User.objects.create_user(
+                        email=mentor_email,
+                        password='123',
+                        first_name='멘토',
+                        last_name=last_name,
+                        employee_number=emp_num,
+                        is_admin=False,
+                        is_staff=False,
+                        is_superuser=False,
+                        company=company,
+                        department=dept,
+                        role='mentor',
+                        position=f'{dept_name}선임',
+                        job_part=dept_name,
+                        tag=' '.join(mentor_tags),
+                    )
+                    users_by_dept[dept_name]['mentors'].append(mentor)
+                else:
+                    # 이미 존재하는 멘토 가져오기
+                    mentor = User.objects.get(email=mentor_email)
+                    users_by_dept[dept_name]['mentors'].append(mentor)
                 emp_num += 1
 
         # 7. Docs (공통, 개발, 영업)

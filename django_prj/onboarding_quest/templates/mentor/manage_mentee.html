@@ -458,48 +458,6 @@
           <textarea id="mentee-tag" rows="1" readonly></textarea>
         </div>
       </div>
-      <div class="info-row">
-        <div class="info-label">멘토쉽ID</div>
-        <div class="info-value">
-          <textarea id="mentee-mentorship" rows="1" readonly></textarea>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">회사</div>
-        <div class="info-value">
-          <textarea id="mentee-company" rows="1" readonly></textarea>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">성</div>
-        <div class="info-value">
-          <textarea id="mentee-lastname" rows="1" readonly></textarea>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">이름</div>
-        <div class="info-value">
-          <textarea id="mentee-firstname" rows="1" readonly></textarea>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">최근 로그인</div>
-        <div class="info-value">
-          <textarea id="mentee-lastlogin" rows="1" readonly></textarea>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">계정 상태</div>
-        <div class="info-value">
-          <textarea id="mentee-active" rows="1" readonly></textarea>
-        </div>
-      </div>
-      <div class="info-row">
-        <div class="info-label">스태프 권한</div>
-        <div class="info-value">
-          <textarea id="mentee-staff" rows="1" readonly></textarea>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -563,7 +521,11 @@ menteeSearch.addEventListener('input', function() {
   const menteeLinks = menteeList.querySelectorAll('a');
   menteeLinks.forEach(link => {
     const name = (link.textContent || '').toLowerCase();
-    if (name.includes(val)) {
+    const isActive = link.getAttribute('data-active') === 'True';
+    const role = link.getAttribute('data-role');
+    
+    // 이름 검색 + 활성 사용자 + 멘티 역할 확인
+    if (name.includes(val) && isActive && role === 'mentee') {
       link.parentElement.style.display = '';
     } else {
       link.parentElement.style.display = 'none';
@@ -633,13 +595,6 @@ const menteeJob = document.getElementById('mentee-job');
 const menteePosition = document.getElementById('mentee-position');
 const menteeJoin = document.getElementById('mentee-join');
 const menteeTag = document.getElementById('mentee-tag');
-const menteeMentorship = document.getElementById('mentee-mentorship');
-const menteeCompany = document.getElementById('mentee-company');
-const menteeLastname = document.getElementById('mentee-lastname');
-const menteeFirstname = document.getElementById('mentee-firstname');
-const menteeLastlogin = document.getElementById('mentee-lastlogin');
-const menteeActive = document.getElementById('mentee-active');
-const menteeStaff = document.getElementById('mentee-staff');
 const menteeTags = document.getElementById('mentee-tags');
 
 function updateMenteeDetail(id) {
@@ -660,13 +615,6 @@ function updateMenteeDetail(id) {
     menteePosition.value = d.position;
     menteeJoin.value = d.join;
     menteeTag.value = d.tag;
-    menteeMentorship.value = d.mentorship;
-    menteeCompany.value = d.company;
-    menteeLastname.value = d.lastname;
-    menteeFirstname.value = d.firstname;
-    menteeLastlogin.value = d.lastlogin;
-    menteeActive.value = d.active;
-    menteeStaff.value = d.staff;
     
     // 태그 렌더링
     menteeTags.innerHTML = '';
@@ -691,13 +639,6 @@ function updateMenteeDetail(id) {
     menteePosition.value = '';
     menteeJoin.value = '';
     menteeTag.value = '';
-    menteeMentorship.value = '';
-    menteeCompany.value = '';
-    menteeLastname.value = '';
-    menteeFirstname.value = '';
-    menteeLastlogin.value = '';
-    menteeActive.value = '';
-    menteeStaff.value = '';
     menteeTags.innerHTML = '';
   }
 }
@@ -742,12 +683,10 @@ mentoringForm.addEventListener('submit', async function(e) {
   
   try {
     // 로딩 상태 시작
-    const submitBtn = document.getElementById('mentoring-submit-btn');
-    const btnText = submitBtn.querySelector('.btn-text');
-    const btnLoading = submitBtn.querySelector('.btn-loading');
+    const submitBtn = mentoringForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
     
-    btnText.style.display = 'none';
-    btnLoading.style.display = 'inline-flex';
+    submitBtn.textContent = '생성 중...';
     submitBtn.disabled = true;
     
     const res = await fetch('/mentor/create_mentorship/', {
@@ -766,20 +705,31 @@ mentoringForm.addEventListener('submit', async function(e) {
     });
     
     const data = await res.json();
+    
+    // 로딩 상태 해제
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    
     if (data.success) {
-      // 성공 메시지 표시
-      showMessage('멘토쉽이 성공적으로 생성되었습니다!');
+      // 성공 메시지 표시 및 즉시 리다이렉트
+      const mentorshipId = data.mentorship_id || '';
+      const successMessage = `멘토쉽이 성공적으로 생성되었습니다!${mentorshipId ? ` (ID: ${mentorshipId})` : ''}`;
       
-      // 2초 후 리다이렉트
-      setTimeout(() => {
-        window.location.href = '/mentor/';
-      }, 2000);
+      alert(successMessage);
+      
+      // 즉시 멘토 대시보드로 이동
+      window.location.href = '/mentor/';
     } else {
       throw new Error(data.message || '멘토쉽 생성에 실패했습니다.');
     }
   } catch (err) {
-    alert('서버 오류가 발생했습니다.');
-    console.error(err);
+    // 로딩 상태 해제
+    const submitBtn = mentoringForm.querySelector('button[type="submit"]');
+    submitBtn.textContent = '멘토쉽 생성';
+    submitBtn.disabled = false;
+    
+    console.error('멘토쉽 생성 오류:', err);
+    alert(`멘토쉽 생성 중 오류가 발생했습니다: ${err.message}`);
   }
 });
 

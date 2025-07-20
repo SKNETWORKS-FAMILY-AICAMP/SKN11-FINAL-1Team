@@ -191,16 +191,40 @@ class MentorshipBase(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     is_active: Optional[bool] = True
-    curriculum_title: str
+    curriculum_title: Optional[str] = None  # Django 모델에 맞게 curriculum_title 사용
     total_weeks: Optional[int] = 0
 
 class MentorshipCreate(MentorshipBase):
     pass
 
 class Mentorship(MentorshipBase):
-    mentorship_id: int
+    mentorship_id: int  # Django 모델의 기본키
     mentor: Optional[User] = None
     mentee: Optional[User] = None
+    
+    class Config:
+        from_attributes = True
+
+class MentorshipResponse(BaseModel):
+    """FastAPI 응답용 풍부한 멘토십 정보"""
+    id: int
+    mentor_id: int
+    mentee_id: int
+    curriculum_id: Optional[int] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    status: Optional[str] = "active"
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    # 추가 정보
+    mentee_name: str
+    mentor_name: str
+    curriculum_title: str
+    total_weeks: int
+    total_tasks: int
+    completed_tasks: int
+    tags: List[str] = []
     
     class Config:
         from_attributes = True

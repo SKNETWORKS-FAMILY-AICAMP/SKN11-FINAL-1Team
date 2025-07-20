@@ -308,6 +308,10 @@ def get_task_manages(db: Session, skip: int = 0, limit: int = 100):
     """태스크 관리 목록 조회"""
     return db.query(models.TaskManage).offset(skip).limit(limit).all()
 
+def get_task_manages_by_curriculum(db: Session, curriculum_id: int):
+    """커리큘럼별 태스크 관리 조회"""
+    return db.query(models.TaskManage).filter(models.TaskManage.curriculum_id == curriculum_id).all()
+
 def update_task_manage(db: Session, task_id: int, task_update: schemas.TaskManageCreate):
     """태스크 관리 정보 업데이트"""
     db_task = get_task_manage(db, task_id)
@@ -328,9 +332,12 @@ def delete_task_manage(db: Session, task_id: int):
 
 
 # TaskAssign CRUD
-def create_task_assign(db: Session, task: schemas.TaskAssignCreate):
-    """태스크 할당 생성"""
-    db_task = models.TaskAssign(**task.dict())
+def create_task_assign(db: Session, task):
+    """태스크 할당 생성 - dict 또는 TaskAssignCreate 스키마 모두 지원"""
+    if isinstance(task, dict):
+        db_task = models.TaskAssign(**task)
+    else:
+        db_task = models.TaskAssign(**task.dict())
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -339,6 +346,12 @@ def create_task_assign(db: Session, task: schemas.TaskAssignCreate):
 def get_task_assign(db: Session, task_id: int):
     """태스크 할당 단일 조회"""
     return db.query(models.TaskAssign).filter(models.TaskAssign.task_assign_id == task_id).first()
+
+def get_tasks_by_mentorship(db: Session, mentorship_id: int):
+    """특정 멘토십의 모든 태스크 조회"""
+    return db.query(models.TaskAssign).filter(
+        models.TaskAssign.mentorship_id == mentorship_id
+    ).all()
 
 def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: int = None, status: str = None, week: int = None, skip: int = 0, limit: int = 100):
     """필터링된 태스크 할당 목록 조회"""
@@ -409,6 +422,40 @@ def get_mentorship(db: Session, mentorship_id: int):
     """멘토링 단일 조회"""
     return db.query(models.Mentorship).filter(models.Mentorship.mentorship_id == mentorship_id).first()
 
+def get_mentorships_with_filters(
+    db: Session, 
+    mentor_id: int = None,
+    mentee_id: int = None,
+    search: str = None,
+    skip: int = 0, 
+    limit: int = 100
+):
+    """멘토십 목록 조회 (필터링 및 검색 지원)"""
+    query = db.query(models.Mentorship)
+    
+    # 멘토 ID 필터
+    if mentor_id:
+        query = query.filter(models.Mentorship.mentor_id == mentor_id)
+    
+    # 멘티 ID 필터
+    if mentee_id:
+        query = query.filter(models.Mentorship.mentee_id == mentee_id)
+    
+    # 검색 기능 (멘티 이름 또는 커리큘럼 제목으로 검색)
+    if search:
+        # 멘티 정보와 조인하여 검색 - Django 모델 구조에 맞게 수정
+        query = query.join(models.User, models.Mentorship.mentee_id == models.User.user_id)
+        
+        # 멘티 이름 또는 커리큘럼 제목으로 검색 - Django 모델 필드명 사용
+        search_filter = (
+            models.User.first_name.ilike(f"%{search}%") |
+            models.User.last_name.ilike(f"%{search}%") |
+            models.Mentorship.curriculum_title.ilike(f"%{search}%")
+        )
+        query = query.filter(search_filter)
+    
+    return query.offset(skip).limit(limit).all()
+
 def get_mentorships(db: Session, skip: int = 0, limit: int = 100):
     """멘토링 목록 조회"""
     return db.query(models.Mentorship).offset(skip).limit(limit).all()
@@ -454,6 +501,24 @@ def get_curricula_by_department(db: Session, department_id: int):
 def get_common_curricula(db: Session):
     """공용 커리큘럼 조회"""
     return db.query(models.Curriculum).filter(models.Curriculum.common == True).all()
+
+def get_filtered_curricula(db: Session, department_id: Optional[int] = None):
+    """공통 커리큘럼 + 특정 부서 커리큘럼 조회"""
+    query = db.query(models.Curriculum)
+    
+    if department_id is not None:
+        # 공통 커리큘럼 또는 특정 부서 커리큘럼
+        query = query.filter(
+            or_(
+                models.Curriculum.common == True,
+                models.Curriculum.department_id == department_id
+            )
+        )
+    else:
+        # 부서가 지정되지 않은 경우 공통 커리큘럼만
+        query = query.filter(models.Curriculum.common == True)
+    
+    return query.all()
 
 def update_curriculum(db: Session, curriculum_id: int, curriculum_update: schemas.CurriculumCreate):
     """커리큘럼 정보 업데이트"""

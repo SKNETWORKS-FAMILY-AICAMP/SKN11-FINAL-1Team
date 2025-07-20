@@ -360,19 +360,27 @@ class FastAPIClient:
     def get_curriculums(self, 
                        department_id: Optional[int] = None,
                        common: Optional[bool] = None) -> Dict[str, Any]:
-        """커리큘럼 목록 조회"""
+        """커리큘럼 목록 조회 (공통 커리큘럼 + 부서별 커리큘럼 필터링)"""
         url = f"{self.base_url}/api/curriculum/"
         params = {}
+        
+        # 새로운 필터링 방식: department_id가 있으면 공통 + 해당 부서 커리큘럼
         if department_id:
             params["department_id"] = department_id
-        if common is not None:
-            params["common"] = common
+        
+        # 기존 common 파라미터는 하위 호환성을 위해 유지 (사용하지 않음)
+        # if common is not None:
+        #     params["common"] = common
         
         response = self.session.get(url, params=params)
         curriculums_list = self._handle_response(response)
         
         # 리스트를 딕셔너리로 래핑
         return {"curriculums": curriculums_list}
+    
+    def get_filtered_curriculums(self, department_id: Optional[int] = None) -> Dict[str, Any]:
+        """필터링된 커리큘럼 목록 조회 (공통 커리큘럼 + 특정 부서 커리큘럼)"""
+        return self.get_curriculums(department_id=department_id)
     
     def get_curriculum(self, curriculum_id: int) -> Dict[str, Any]:
         """커리큘럼 상세 조회"""
@@ -440,9 +448,15 @@ class FastAPIClient:
     
     def delete_curriculum(self, curriculum_id: int) -> Dict[str, Any]:
         """커리큘럼 삭제"""
-        url = f"{self.base_url}/api/curriculum/{curriculum_id}"
-        response = self.session.delete(url)
-        return self._handle_response(response)
+        try:
+            url = f"{self.base_url}/api/curriculum/{curriculum_id}"
+            logger.info(f"커리큘럼 삭제 요청: {url}")
+            response = self.session.delete(url)
+            logger.info(f"삭제 응답 상태: {response.status_code}")
+            return self._handle_response(response)
+        except Exception as e:
+            logger.error(f"커리큘럼 삭제 오류: {e}")
+            raise APIError(f"커리큘럼 삭제 실패: {str(e)}")
 
     def copy_curriculum(self, curriculum_id: int, new_data: Dict[str, Any]) -> Dict[str, Any]:
         """커리큘럼 복사"""
@@ -533,6 +547,61 @@ class PermissionError(APIError):
 class NotFoundError(APIError):
     """리소스 없음 오류"""
     pass
+
+
+# FastAPIClient 클래스에 추가 메소드들
+def add_missing_methods():
+    """FastAPIClient에 빠진 메소드들 추가"""
+    
+    def get_curriculum_tasks(self, curriculum_id: int) -> list:
+        """커리큘럼의 태스크 목록 조회"""
+        try:
+            url = f"{self.base_url}/curriculum/{curriculum_id}/tasks"
+            logger.info(f"커리큘럼 태스크 조회 요청: {url}")
+            response = self.session.get(url)
+            return self._handle_response(response)
+        except Exception as e:
+            logger.error(f"커리큘럼 태스크 조회 오류: {e}")
+            raise APIError(f"커리큘럼 태스크 조회 실패: {str(e)}")
+    
+    def create_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """태스크 생성"""
+        try:
+            url = f"{self.base_url}/tasks/"
+            logger.info(f"태스크 생성 요청: {url}")
+            response = self.session.post(url, json=task_data)
+            return self._handle_response(response)
+        except Exception as e:
+            logger.error(f"태스크 생성 오류: {e}")
+            raise APIError(f"태스크 생성 실패: {str(e)}")
+    
+    def get_mentorships_by_curriculum(self, curriculum_id: int) -> list:
+        """커리큘럼을 사용하는 멘토쉽 목록 조회"""
+        try:
+            url = f"{self.base_url}/mentorship/?curriculum_id={curriculum_id}"
+            logger.info(f"멘토쉽 조회 요청: {url}")
+            response = self.session.get(url)
+            result = self._handle_response(response)
+            logger.info(f"멘토쉽 조회 결과: {result}")
+            
+            # 결과가 리스트인지 확인하고, 아니면 빈 리스트 반환
+            if isinstance(result, list):
+                return result
+            elif isinstance(result, dict) and 'mentorships' in result:
+                return result['mentorships']
+            else:
+                return []
+        except Exception as e:
+            logger.error(f"멘토쉽 조회 오류: {e}")
+            raise APIError(f"멘토쉽 조회 실패: {str(e)}")
+    
+    # 메소드들을 FastAPIClient 클래스에 동적으로 추가
+    FastAPIClient.get_curriculum_tasks = get_curriculum_tasks
+    FastAPIClient.create_task = create_task
+    FastAPIClient.get_mentorships_by_curriculum = get_mentorships_by_curriculum
+
+# 메소드 추가 실행
+add_missing_methods()
 
 
 # 전역 클라이언트 인스턴스
