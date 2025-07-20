@@ -128,6 +128,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=50, help_text='성')
     first_name = models.CharField(max_length=50, help_text='이름')
     last_login = models.DateTimeField(auto_now=True, null=True, blank=True, help_text='마지막 로그인 시각')
+    profile_image = models.ImageField(upload_to='profile_img/', null=True, blank=True, help_text='프로필 이미지')
 
     is_active = models.BooleanField(default=True, help_text='활성화 여부')
     is_staff = models.BooleanField(default=False, help_text='스태프 여부')

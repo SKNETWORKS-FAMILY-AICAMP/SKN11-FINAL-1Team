@@ -32,24 +32,24 @@
             <div class="flex items-center gap-4 mb-4">
                 {% if request.user.role == 'mentee' %}
                     <!-- 유저 프로필 이미지 -->
-                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <img src="{% if request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
                     <div class="flex flex-col">
                         <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
                         <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">열정멘티</span>
                     </div>
                 {% elif request.user.role == 'mentor' %}
                     <!-- 유저 프로필 이미지 -->
-                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <img src="{% if request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
                     <div class="flex flex-col">
                         <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
                         <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">만렙멘토</span>
                     </div>
                 {% elif request.user.is_admin %}
                     <!-- 유저 프로필 이미지 -->
-                    <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <img src="{% if request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
                     <div class="flex flex-col">
-                <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
-                    <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">관리자</span>
+                        <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
+                        <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">관리자</span>
                     </div>
                 {% endif %}
             </div>
