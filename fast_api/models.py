@@ -53,6 +53,7 @@ class User(Base):
     last_name = Column(String(50), nullable=False, comment="성")
     first_name = Column(String(50), nullable=False, comment="이름")
     last_login = Column(DateTime, comment="마지막 로그인 시각")
+    profile_image = Column(String(255), comment="프로필 이미지")
     is_active = Column(Boolean, default=True, comment="활성화 여부")
     is_staff = Column(Boolean, default=False, comment="스태프 여부")
     
@@ -63,6 +64,21 @@ class User(Base):
     mentor_relationships = relationship("Mentorship", foreign_keys="[Mentorship.mentor_id]", back_populates="mentor")
     mentee_relationships = relationship("Mentorship", foreign_keys="[Mentorship.mentee_id]", back_populates="mentee")
     chat_sessions = relationship("ChatSession", back_populates="user")
+    alarms = relationship("Alarm", back_populates="user")
+
+
+class Alarm(Base):
+    """알림 테이블"""
+    __tablename__ = "core_alarm"
+    
+    id = Column(Integer, primary_key=True, index=True, comment="알림 고유 ID")
+    user_id = Column(Integer, ForeignKey("core_user.user_id"), nullable=False, comment="알림 대상 유저")
+    message = Column(Text, nullable=False, comment="알림 메시지")
+    created_at = Column(DateTime, default=func.now(), comment="생성일시")
+    is_active = Column(Boolean, default=True, comment="활성화 여부")
+    
+    # 관계 설정
+    user = relationship("User", back_populates="alarms")
 
 
 class Mentorship(Base):

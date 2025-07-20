@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 from config import settings
 from database import engine, Base
-from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, docs, chat, auth
+from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, docs, chat, auth, alarms
 import models  # 모델을 임포트하여 테이블 생성
 
 # 데이터베이스 테이블 생성
@@ -36,6 +36,7 @@ app.include_router(docs.router)
 app.include_router(chat.router)
 app.include_router(forms.router)
 app.include_router(chatbot.router)
+app.include_router(alarms.router)
 
 @app.get("/")
 async def root():
@@ -63,7 +64,8 @@ async def api_root():
             "docs": "/api/docs",
             "chat": "/api/chat",
             "forms": "/api/forms",
-            "chatbot": "/api/chatbot"
+            "chatbot": "/api/chatbot",
+            "alarms": "/api/alarms",
         }
     }
 
