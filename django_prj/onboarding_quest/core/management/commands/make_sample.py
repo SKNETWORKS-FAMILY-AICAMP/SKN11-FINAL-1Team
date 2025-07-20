@@ -4,9 +4,11 @@ from core.models import (
     TaskAssign, Memo, ChatSession, ChatMessage, Docs
 )
 from django.contrib.auth.hashers import make_password
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from django.utils import timezone
 from random import sample, randint
 import random
+from random import randint
 
 
 
@@ -591,16 +593,20 @@ class Command(BaseCommand):
                                 user = mentee
                                 comment = random.choice(memo_templates['mentee'])
                             
-                            # 댓글 생성일을 과제 시작일 이후로 설정
-                            memo_date = scheduled_start + timedelta(days=memo_idx)
-                            
+                            # 댓글 생성일을 과제 시작일 이후로 설정 (초단위까지, timezone-aware)
+                            naive_date = scheduled_start + timedelta(days=memo_idx)
+                            rand_hour = randint(8, 20)  # 근무시간대 랜덤
+                            rand_minute = randint(0, 59)
+                            rand_second = randint(0, 59)
+                            dt = datetime.combine(naive_date, datetime.min.time()).replace(hour=rand_hour, minute=rand_minute, second=rand_second)
+                            aware_datetime = timezone.make_aware(dt)
                             memo = Memo.objects.create(
                                 task_assign=task_assign,
                                 user=user,
                                 comment=comment
                             )
                             # 생성일을 수동으로 설정 (auto_now_add 때문에 직접 수정)
-                            memo.create_date = memo_date
+                            memo.create_date = aware_datetime
                             memo.save()
                     
                     mentee_idx += 1
@@ -619,3 +625,47 @@ class Command(BaseCommand):
             self.stdout.write(f'Memo(댓글) 총 {total_memos}개 생성 완료!')
 
         self.stdout.write(self.style.SUCCESS('샘플 데이터 생성 완료!'))
+
+        # 11. User별 Alarm 샘플 생성
+        from core.models import Alarm
+        self.stdout.write('11. User별 Alarm 샘플 생성...')
+        all_users = User.objects.all()
+        alarm_messages = [
+            '새로운 과제가 할당되었습니다.',
+            '멘토가 피드백을 남겼습니다.',
+            '과제 마감일이 다가옵니다.',
+            '멘토쉽이 곧 종료됩니다.',
+            '새로운 공지사항이 있습니다.'
+        ]
+        for idx, user in enumerate(all_users):
+            for i in range(3):
+                msg = random.choice(alarm_messages)
+                alarm = Alarm.objects.create(
+                    user=user,
+                    message=msg,
+                    is_active=True
+                )
+                # 생성일을 다르게(최신순) 설정 (초단위까지, timezone-aware)
+                naive_date = date.today() - timedelta(days=(idx + i))
+                rand_hour = randint(8, 20)
+                rand_minute = randint(0, 59)
+                rand_second = randint(0, 59)
+                dt = datetime.combine(naive_date, datetime.min.time()).replace(hour=rand_hour, minute=rand_minute, second=rand_second)
+                aware_datetime = timezone.make_aware(dt)
+                alarm.created_at = aware_datetime
+                alarm.save()
+        self.stdout.write(f'Alarm 샘플 {Alarm.objects.count()}개 생성 완료!')
+
+        # 12. 멘토쉽별 종합 리포트 샘플 생성
+        self.stdout.write('12. 멘토쉽별 종합 리포트 샘플 생성...')
+        report_samples = [
+            '멘티는 온보딩 기간 동안 적극적으로 참여하였으며, 과제 수행 능력이 우수합니다. 협업과 소통 능력이 뛰어나 향후 성장 가능성이 높습니다.',
+            '과제 제출 및 피드백 반영이 성실하며, 자기주도적으로 업무를 수행하였습니다. 추가적인 실무 경험이 쌓이면 더욱 발전할 것으로 기대됩니다.',
+            '업무 이해도가 높고, 새로운 환경에 빠르게 적응하였습니다. 다만, 일정 관리에 조금 더 신경 쓸 필요가 있습니다.',
+            '팀원과의 협업에서 긍정적인 태도를 보였으며, 주어진 과제를 성실히 수행하였습니다. 앞으로의 성장도 기대됩니다.'
+        ]
+        mentorships = Mentorship.objects.all()
+        for idx, mentorship in enumerate(mentorships):
+            mentorship.report = random.choice(report_samples)
+            mentorship.save()
+        self.stdout.write(f'Mentorship 리포트 샘플 {mentorships.count()}개 생성 완료!')
