@@ -473,12 +473,13 @@
                             </button>
                         </div>
                         <div class="chatbot-session-preview">
-                            {% if chat_session.messages %}
-                                {{ chat_session.messages.last.message_text|truncatechars:40 }}
+                            {% if chat_session.first_user_message %}
+                            {{ chat_session.first_user_message.message_text|truncatechars:40 }}
                             {% else %}
-                                메시지가 없습니다.
+                            메시지가 없습니다.
                             {% endif %}
                         </div>
+
                         
                         <!-- 메시지 데이터를 JSON으로 저장 -->
                         <script type="application/json" class="session-messages">
@@ -515,7 +516,7 @@
                         {% for message in chat_session.messages %}
                         <div class="chatbot-msg-row {% if message.message_type == 'user' %}user{% else %}bot{% endif %}">
                             <div class="chatbot-msg-{% if message.message_type == 'user' %}user{% else %}chabot{% endif %}">
-                                {{ message.message_text }}
+                                {{ message.message_text|linebreaksbr }}
                             </div>
                         </div>
                         {% endfor %}
@@ -525,7 +526,7 @@
                         {% for message in chat_session.messages %}
                             <div class="chatbot-msg-row {% if message.message_type == 'user' %}user{% else %}bot{% endif %}">
                                 <div class="chatbot-msg-{% if message.message_type == 'user' %}user{% else %}chabot{% endif %}">
-                                    {{ message.message_text }}
+                                    {{ message.message_text|linebreaksbr }}
                                 </div>
                             </div>
                         {% endfor %}
@@ -587,5 +588,6 @@
 </div>
 
 <!-- ✅ JS는 한 번만 로드됨 -->
+<script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
 <script src="{% static 'js/common/chatbot.js' %}"></script>
 {% endblock %}

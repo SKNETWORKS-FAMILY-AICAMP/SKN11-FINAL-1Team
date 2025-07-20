@@ -186,7 +186,4 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 
 
-RAG_API_URL = "http://localhost:8001"
-
-
 RAG_API_URL = os.getenv('RAG_API_URL', 'http://localhost:8001')

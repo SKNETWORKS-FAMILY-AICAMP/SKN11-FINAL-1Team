@@ -221,6 +221,24 @@ class ChatBot {
 
 
 
+    // addMessageToChat(type, text) {
+    //     const messageRow = document.createElement('div');
+    //     messageRow.className = `chatbot-msg-row ${type === 'user' ? 'user' : 'bot'}`;
+
+    //     const messageContent = document.createElement('div');
+    //     messageContent.className = `chatbot-msg-${type === 'user' ? 'user' : 'chabot'}`;
+
+    //     // ✅ 유일성 보장을 위해 random ID 또는 timestamp 적용 (디버깅 목적)
+    //     // messageContent.textContent = text;
+    //     messageContent.innerHTML = text.replace(/\n/g, "<br>");
+
+    //     // ✅ 반드시 새로운 노드로 append
+    //     messageRow.appendChild(messageContent);
+    //     this.chatArea.appendChild(messageRow);
+
+    //     // ✅ 항상 스크롤 아래로 유지
+    //     this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    // }
     addMessageToChat(type, text) {
         const messageRow = document.createElement('div');
         messageRow.className = `chatbot-msg-row ${type === 'user' ? 'user' : 'bot'}`;
@@ -228,16 +246,30 @@ class ChatBot {
         const messageContent = document.createElement('div');
         messageContent.className = `chatbot-msg-${type === 'user' ? 'user' : 'chabot'}`;
 
-        // ✅ 유일성 보장을 위해 random ID 또는 timestamp 적용 (디버깅 목적)
-        messageContent.textContent = text;
+        if (type === 'bot') {
+            const converter = new showdown.Converter({
+                simpleLineBreaks: true,
+                tables: true
+            });
 
-        // ✅ 반드시 새로운 노드로 append
+            // 📌 📄 참고 문서 앞에 두 줄 띄우기 (전처리)
+            // const patchedText = text.replace(/\n{1}(📄 참고 문서:)/g, "\n\n$1");
+            // const patchedText = text.replace(/(📄 참고 문서:)/g, "\n\n$1");
+            const patchedText = text.replace(/(📄 참고 문서:)/g, "<br>$1");
+
+
+            const html = converter.makeHtml(patchedText);
+            messageContent.innerHTML = html;
+        } else {
+            messageContent.textContent = text;
+        }
+
         messageRow.appendChild(messageContent);
         this.chatArea.appendChild(messageRow);
-
-        // ✅ 항상 스크롤 아래로 유지
         this.chatArea.scrollTop = this.chatArea.scrollHeight;
     }
+
+
 
 
     closeDeleteModal() {

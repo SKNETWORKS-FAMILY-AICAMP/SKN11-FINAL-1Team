@@ -392,6 +392,9 @@ body {
 {% endblock %}
 
 {% block content %}
+<script>
+  const CURRENT_DEPARTMENT_ID = {{ user.department.department_id }};
+</script>
 <div class="doc-container">
   <div class="doc-left">
     <!-- 문서 업로드 박스 -->

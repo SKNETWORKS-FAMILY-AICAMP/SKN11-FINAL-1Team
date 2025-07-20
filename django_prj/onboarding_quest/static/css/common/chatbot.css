@@ -711,3 +711,38 @@
 }
 
 
+/* 챗봇 대화내용 정렬 관련  */
+
+.chatbot-msg-chabot p {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.chatbot-msg-chabot h1,
+.chatbot-msg-chabot h2,
+.chatbot-msg-chabot h3 {
+  font-weight: bold;
+  margin: 16px 0 8px;
+  font-size: 1.1em;
+  color: #212529;
+}
+
+.chatbot-msg-chabot ul,
+.chatbot-msg-chabot ol {
+  margin: 8px 0 12px 20px;
+  padding-left: 10px;
+}
+
+.chatbot-msg-chabot li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.chatbot-msg-chabot strong {
+  font-weight: 600;
+  color: #000;
+}
+
+.chatbot-msg-chabot {
+  white-space: normal;
+}

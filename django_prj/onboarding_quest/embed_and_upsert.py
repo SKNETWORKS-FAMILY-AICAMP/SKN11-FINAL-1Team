@@ -29,7 +29,7 @@ COLLECTION_NAME = "rag_multiformat"
 VECTOR_SIZE = 1536
 
 # Qdrant 클라이언트 및 임베딩 모델 초기화
-client = QdrantClient(url=QDRANT_URL, check_compatibility=False)
+client = QdrantClient(url=QDRANT_URL)
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-small")
 
 # 조항 패턴 목록 (멀티 포맷 대응)
@@ -85,7 +85,7 @@ def get_existing_point_ids():
     return existing_ids
 
 # 문서 임베딩 및 Qdrant 업로드 (개선된 버전)
-def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, common_doc=False) -> int:
+def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, common_doc=False, original_file_name=None) -> int:
     """
     개선된 임베딩 및 업로드 함수
     Args:
@@ -135,10 +135,12 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
             doc.metadata["department_id"] = department_id  # 부서 ID 추가
             doc.metadata["common_doc"] = common_doc        # 공통 문서 여부 추가
             doc.metadata["file_name"] = os.path.basename(file_path)  # 파일명 추가
+            if original_file_name:
+                doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
             
             new_points.append(
                 PointStruct(
-                    id=f"{file_path}-{i}",  # 고유 ID 생성
+                    id=i,  # 고유 ID 생성
                     vector=vector,
                     payload={
                         "text": doc.page_content,

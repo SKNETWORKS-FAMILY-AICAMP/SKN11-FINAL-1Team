@@ -96,7 +96,7 @@ if (uploadBtn) {
         formData.append('tags', fileInfo.tags);
         formData.append('common_doc', fileInfo.common_doc ? 'true' : 'false');
 
-        const response = await fetch('/common/doc/upload/', {
+        const response = await fetch('http://localhost:8001/upload', {
           method: 'POST',
           body: formData,
           headers: {
@@ -154,8 +154,10 @@ document.getElementById('edit-form').addEventListener('submit', function (e) {
   formData.append('description', description);
   
   formData.append('common_doc', commonDocChecked ? 'true' : 'false');  // ← 문자열로 명확하게 전달
+  formData.append('docs_id', docId);
+  formData.append('department_id', CURRENT_DEPARTMENT_ID);
 
-  fetch(`/common/doc/${docId}/update/`, {
+  fetch(`http://localhost:8001/update`, {
     method: 'POST',
     body: formData,
     headers: {
@@ -196,11 +198,13 @@ function closeDeleteModal() {
 function confirmDelete() {
   if (!deleteDocId) return;
 
-  fetch(`/common/doc/${deleteDocId}/delete/`, {
+  const formData = new FormData();
+  formData.append('docs_id', deleteDocId);
+  formData.append('department_id', CURRENT_DEPARTMENT_ID);
+
+  fetch('http://localhost:8001/delete', {
     method: 'POST',
-    headers: {
-      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-    }
+    body: formData
   })
     .then(response => response.json())
     .then(data => {
@@ -218,6 +222,7 @@ function confirmDelete() {
 
   closeDeleteModal();
 }
+
 //#endregion
 
 // 모달 외부 클릭 시 닫기
