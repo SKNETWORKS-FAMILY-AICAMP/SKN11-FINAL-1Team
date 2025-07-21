@@ -182,7 +182,7 @@ class ChatSession(Base):
     __tablename__ = "core_chatsession"
     
     session_id = Column(Integer, primary_key=True, index=True, comment="채팅 세션 고유 ID")
-    user_id = Column(Integer, ForeignKey("core_user.user_id"), nullable=False, comment="사용자")
+    user_id = Column(Integer, ForeignKey("core_user.user_id", ondelete="CASCADE"), nullable=False, comment="사용자")
     summary = Column(String(255), comment="세션 요약")
     
     # 관계 설정
@@ -198,7 +198,12 @@ class ChatMessage(Base):
     message_type = Column(String(10), nullable=False, comment="메시지 타입(user/chatbot)")
     message_text = Column(String(1000), comment="메시지 내용")
     create_time = Column(Date, comment="메시지 생성일")
-    session_id = Column(Integer, ForeignKey("core_chatsession.session_id"), nullable=False, comment="채팅 세션")
+    session_id = Column(
+        Integer,
+        ForeignKey("core_chatsession.session_id", ondelete="CASCADE"),  # ← CASCADE 추가
+        nullable=False,
+        comment="채팅 세션"
+    )
     
     # 관계 설정
     session = relationship("ChatSession", back_populates="messages")
