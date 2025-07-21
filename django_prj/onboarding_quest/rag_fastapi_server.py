@@ -96,7 +96,7 @@ async def chat_with_rag(request: ChatRequest):
             session_id = request.session_id
         logger.warning(f"🔥 사용자 메시지 저장됨 - FastAPI: {request.question}")
         # 사용자 메시지 저장
-        # save_message(session_id, request.question, "user")
+        save_message(session_id, request.question, "user")
         
         # 사용자 히스토리 로드
         history = load_session_history(request.user_id, limit=5)
@@ -312,6 +312,24 @@ async def download_document(docs_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# @app.post("/chat/session/create")
+# async def create_chat_session(user_id: int = Form(...)):
+#     try:
+#         with get_db_connection() as conn:
+#             cursor = conn.cursor()
+#             cursor.execute(
+#                 "INSERT INTO core_chatsession (user_id, summary) VALUES (?, ?)",
+#                 (user_id, "새 대화")
+#             )
+#             conn.commit()
+#             session_id = cursor.lastrowid
+
+#         return {"success": True, "session_id": session_id}
+#     except Exception as e:
+#         return {"success": False, "error": str(e)}
+
+
+
 @app.post("/chat/session/create")
 async def create_chat_session(user_id: int = Form(...)):
     try:
@@ -324,7 +342,13 @@ async def create_chat_session(user_id: int = Form(...)):
             conn.commit()
             session_id = cursor.lastrowid
 
-        return {"success": True, "session_id": session_id}
+            # 🔥 바로 생성된 세션의 preview도 함께 응답
+            return {
+                "success": True,
+                "session_id": session_id,
+                "summary": "새 대화",
+                "preview": ""
+            }
     except Exception as e:
         return {"success": False, "error": str(e)}
 

@@ -46,12 +46,13 @@ class ChatBot {
 
 
     async loadSessionsFromAPI() {
-        console.log("세션 로드 시작"); // ✅ 이거 넣고
+        console.log("📥 세션 로드 시작");
+
         try {
             const res = await fetch(`http://127.0.0.1:8001/chat/sessions/${user_id}`);
             const data = await res.json();
 
-            console.log("세션 목록:", data.sessions); // ✅ 여기도 찍어봐
+            console.log("📥 세션 목록 응답 데이터:", data);
 
             if (!data.success) {
                 alert("세션 목록을 불러오는 데 실패했습니다.");
@@ -59,9 +60,16 @@ class ChatBot {
             }
 
             const listContainer = document.getElementById("chatbot-session-list");
-            listContainer.innerHTML = '';  // 기존 제거
+            if (!listContainer) {
+                console.warn("❗ #chatbot-session-list 요소가 없음");
+                return;
+            }
+
+            listContainer.innerHTML = '';
 
             data.sessions.forEach(session => {
+                console.log("📄 세션 추가됨:", session.session_id, session.summary);  // ✅ 개별 세션 확인용
+
                 const div = document.createElement("div");
                 div.className = "chatbot-session-item";
                 div.setAttribute("data-session-id", session.session_id);
@@ -82,21 +90,25 @@ class ChatBot {
                     this.handleSessionClick(e, item);
                 });
 
+                const chatbot = this;
                 const deleteBtn = item.querySelector('.delete-session-btn');
                 if (deleteBtn) {
                     deleteBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const sessionId = deleteBtn.getAttribute("data-session-id");
-                        this.openDeleteModal(sessionId);
+                        chatbot.openDeleteModal(sessionId);
                     });
                 }
             });
+
+            console.log("✅ 세션 목록 렌더링 완료");
 
         } catch (e) {
             console.error("세션 목록 로딩 오류:", e);
             alert("세션 목록을 불러오는 중 오류가 발생했습니다.");
         }
     }
+
 
 
     refreshSessionList() {
@@ -154,10 +166,14 @@ class ChatBot {
             const response = await fetch('http://127.0.0.1:8001/chat', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': this.getCsrfToken()
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ question: message, session_id: sessionId, user_id: user_id, department_id: department_id })
+                body: JSON.stringify({
+                    question: message,
+                    session_id: sessionId,
+                    user_id: user_id,
+                    department_id: department_id
+                })
             });
 
             const data = await response.json();
@@ -366,29 +382,46 @@ class ChatBot {
         this.deleteModalSessionId = null;
     }
 
-    async executeDelete(sessionId) {
+    openDeleteModal(sessionId) {
+        const modal = document.getElementById('deleteModal');
+        if (modal) modal.style.display = 'flex';
+        this.deleteModalSessionId = sessionId;
+    }
+
+    async executeDelete() {
         try {
             const response = await fetch('http://127.0.0.1:8001/chat/session/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    session_id: sessionId,
+                    session_id: this.deleteModalSessionId,
                     user_id: user_id
                 })
             });
 
-
             const data = await response.json();
             if (data.success) {
-                window.location.reload();
+                this.closeDeleteModal();
+
+                // ✅ 선택된 세션이 삭제된 세션이면 UI 초기화
+                if (this.selectedSessionInput.value === this.deleteModalSessionId) {
+                    this.selectedSessionInput.value = '';
+                    this.chatArea.innerHTML = '';
+                    document.getElementById("chatbot-input").value = '';
+                }
+
+                // ✅ 목록 다시 불러오고 이벤트 다시 붙이기
+                await this.loadSessionsFromAPI();
             } else {
-                alert('삭제 실패: ' + (data.error || '알 수 없는 오류'));
+                alert("삭제 실패: " + (data.error || ""));
             }
         } catch (error) {
-            console.error('삭제 요청 오류:', error);
-            alert('삭제 중 오류가 발생했습니다.');
+            console.error("삭제 오류:", error);
+            alert("삭제 중 오류 발생");
         }
     }
+
+
 
     getCsrfToken() {
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
@@ -433,26 +466,52 @@ async function createNewSession() {
             return;
         }
 
-        const chatbot = window.chatbot;
-        if (chatbot?.loadSessionsFromAPI) {
-            await chatbot.loadSessionsFromAPI();
+        const listContainer = document.getElementById("chatbot-session-list");
 
-            // ✅ 여기 수정
-            setTimeout(() => {
-                chatbot.sessionItems = document.querySelectorAll('.chatbot-session-item'); // ✅ 추가
-                const newItem = document.querySelector(`[data-session-id="${data.session_id}"]`);
-                if (newItem) chatbot.selectSession(newItem);
-            }, 100);
+        // ✅ 새 세션 DOM 직접 생성해서 추가
+        const div = document.createElement("div");
+        div.className = "chatbot-session-item selected"; // ✅ selected 추가
+        div.setAttribute("data-session-id", data.session_id);
+        div.innerHTML = `
+            <div class="chatbot-session-preview">...</div>
+            <div class="chatbot-session-summary">새 대화</div>
+            <button class="delete-session-btn" data-session-id="${data.session_id}">×</button>
+            <script type="application/json" class="session-messages">[]</script>
+        `;
 
+        // ✅ 기존 selected 제거
+        document.querySelectorAll('.chatbot-session-item.selected')
+            .forEach(el => el.classList.remove('selected'));
+
+        listContainer.prepend(div);  // 상단에 추가
+
+        // ✅ selectedSessionInput 값 설정
+        window.chatBot.selectedSessionInput.value = data.session_id;
+
+        // ✅ 메시지 초기화
+        window.chatBot.chatArea.innerHTML = '';
+        document.getElementById("chatbot-input").value = '';
+
+        // ✅ 클릭 이벤트 바인딩
+        div.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-session-btn')) return;
+            window.chatBot.selectSession(div);
+        });
+
+        const deleteBtn = div.querySelector('.delete-session-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.chatBot.openDeleteModal(data.session_id);
+            });
         }
-
-        document.getElementById("chatbot-input").value = "";
 
     } catch (e) {
         console.error("세션 생성 실패:", e);
         alert("세션 생성 중 오류가 발생했습니다.");
     }
 }
+
 
 
 
