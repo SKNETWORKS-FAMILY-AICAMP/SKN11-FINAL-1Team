@@ -278,7 +278,7 @@ class Memo(MemoBase):
     memo_id: int
     task_assign_id: int
     user_id: int
-    # 순환 참조를 피하기 위해 관계 필드 제거
+    user: Optional['User'] = None  # 사용자 정보 포함
     
     class Config:
         from_attributes = True

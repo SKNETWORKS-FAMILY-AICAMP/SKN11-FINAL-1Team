@@ -151,14 +151,15 @@
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
         <span class="task-detail-title" id="detail-title">첫 번째 프로젝트 참여하기</span>
-        <span class="task-detail-xp" id="detail-xp" style="color:#888; font-size:17px; display:flex; align-items:center; gap:4px; font-weight:bold;"><span class="icon-trophy" style="font-size:15px;">🏆</span> 100 XP</span>
       </div>
       <div id="detail-header-btns" style="display:flex; gap:10px; margin-left:auto;">
-        <button class="task-detail-edit-btn" id="task-edit-btn" style="background:#1976d2; color:#ffffff; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">편집</button>
+        <button class="task-detail-edit-btn" id="task-edit-btn" style="background:#1976d2; color:#ffffff; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">편집</button>        
         <button class="task-detail-subtask-btn" id="task-detail-subtask-btn" style="background:#e0e0e0; color:#222; font-weight:bold; border:none; border-radius:6px; padding:4px 12px; font-size:14px; cursor:pointer;">하위 테스크 생성</button>
       </div>
     </div>
-    <div class="task-detail-desc" id="detail-desc">간단한 프로젝트에 참여하여 워크플로우 이해하기</div>
+    <div id="guideline-content" style="background:none; padding:0; border:none; margin-bottom:16px; min-height:60px; line-height:1.6; white-space:pre-wrap;">
+          <!-- description 내용이 여기 표시됩니다 -->
+        </div>
     <form id="task-edit-form" style="display:none; margin-bottom:12px;">
       <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:8px;">
         <div style="flex:1;">
@@ -200,21 +201,16 @@
     </div>
     <div class="task-detail-divider"></div>
     <div class="task-detail-list" id="detail-list">
-      <div>
-        <label style="font-weight:bold; color:#222; margin-bottom:10px; display:block;">📋 가이드라인</label>
-        <div id="guideline-content" style="background:#f8f9fa; padding:12px; border-radius:8px; border:1px solid #e0e0e0; margin-bottom:16px; min-height:60px; line-height:1.6; white-space:pre-wrap;">
-          <!-- 가이드라인 내용이 여기 표시됩니다 -->
-        </div>
-      </div>
+        <div class="task-detail-desc" id="detail-desc" style="margin-bottom:16px;">가이드라인이 없습니다.</div>        
     </div>
     <div class="task-detail-chat">
-      <label style="font-weight:bold; color:#222; margin-bottom:10px; display:block;">💬 메모</label>
-      <div id="chat-messages" style="max-height:200px; overflow-y:auto; border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:12px; background:#fafafa;">
+        <label style="font-weight:bold; color:#222; margin-bottom:10px; display:block;">💬 댓글</label>
+      <div id="chat-messages" style="padding:12px; margin-bottom:12px; background:#fafafa; border:none; border-radius:8px;">
         <!-- 메모 목록이 여기 표시됩니다 -->
       </div>
-      <div class="chat-input-row">
-        <input type="text" class="chat-input" id="chat-input" placeholder="메모를 입력하세요..." style="flex:1; padding:10px; border:1px solid #ccc; border-radius:6px 0 0 6px; font-size:14px;">
-        <button class="chat-send-btn" id="chat-send-btn" style="background:#28a745; color:white; border:none; padding:10px 16px; border-radius:0 6px 6px 0; cursor:pointer;"><span style="font-size:15px;">등록</span></button>
+      <div class="chat-input-row" style="display:flex; align-items:center;">
+        <input type="text" class="chat-input" id="chat-input" placeholder="댓글을 입력하세요..." style="flex:1; padding:10px; border:1px solid #ccc; border-radius:6px 0 0 6px; font-size:14px;">
+        <button class="chat-send-btn" id="chat-send-btn" style="background:#1976d2; color:#ffffff; font-weight:bold; border:none; border-radius:8px; padding:5px 11px; font-size:15px; cursor:pointer;">등록</button>
       </div>
     </div>
   </div>
@@ -312,24 +308,30 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         // 태스크 카드 클릭 이벤트 설정
         initializeTaskCards();
-        
+
         // 우측 디테일 패널 버튼 설정
         initializeDetailPanelButtons();
-        
+
         // 메시지 전송 기능 설정
         initializeMessageSystem();
-        
+
         // 필터/정렬 기능 설정 (기존 기능 유지)
         initializeFilterAndSort();
-        
+
         // 🔧 하위 태스크 모달 초기화
         initSubtaskModal();
-        
-        // 첫 번째 태스크 자동 선택
-        selectFirstTask();
-        
+
+        // 첫 번째 태스크 자동 선택 및 상세 표시
+        setTimeout(() => {
+            const firstTaskCard = document.querySelector('.task-card');
+            if (firstTaskCard) {
+                const taskId = firstTaskCard.dataset.taskId || firstTaskCard.getAttribute('data-task-id');
+                firstTaskCard.classList.add('selected');
+                selectTask(firstTaskCard, taskId, false); // 애니메이션 없이 상세 표시
+            }
+        }, 100);
+
         console.log('✅ Task List 초기화 완료');
-        
     } catch (error) {
         console.error('❌ 초기화 중 오류:', error);
     }
@@ -621,21 +623,52 @@ function updateMemoList(memos) {
                 border-left: 3px solid #007bff;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             `;
-            
+            // 작성자, 생성시간, 내용 분리해서 표시
+            // core_memo DB에서 온 데이터 구조에 맞게 작성자 정보 추출
+            let displayUser = '익명';
+            let displayDate = '';
+            let displayComment = '';
+            // user가 객체일 때 last_name+first_name, string일 때는 그대로
+            if (memo.user && typeof memo.user === 'object') {
+                const lastName = memo.user.last_name || '';
+                const firstName = memo.user.first_name || '';
+                if (lastName || firstName) {
+                    displayUser = `${lastName}${firstName}`.trim();
+                }
+            } else if (typeof memo.user === 'string' && memo.user.trim() !== '') {
+                displayUser = memo.user;
+            }
+            // 'YYYY년 MM월 DD일 HH시 mm분 ss초' 형식으로 표시
+            if (memo.create_date) {
+                // ISO 포맷 파싱
+                const dateObj = new Date(memo.create_date);
+                if (!isNaN(dateObj.getTime())) {
+                    const y = dateObj.getFullYear();
+                    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const d = String(dateObj.getDate()).padStart(2, '0');
+                    const hh = String(dateObj.getHours()).padStart(2, '0'); // 24시간제
+                    const mm = String(dateObj.getMinutes()).padStart(2, '0');
+                    const ss = String(dateObj.getSeconds()).padStart(2, '0');
+                    displayDate = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+                } else {
+                    displayDate = memo.create_date;
+                }
+            } else {
+                displayDate = '';
+            }
+            displayComment = memo.comment || '';
+            console.log('🔍 메모 데이터:', { user: memo.user, create_date: memo.create_date, comment: memo.comment });
             memoElement.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-                    <strong style="color: #333; font-size: 14px;">${memo.user || '익명'}</strong>
-                    <small style="color: #666; font-size: 12px;">${memo.create_date || ''}</small>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: bold; color: #1976d2; font-size: 15px;">${displayUser}</span>
+                    <span style="color: #888; font-size: 13px;">${displayDate}</span>
                 </div>
-                <div style="color: #555; line-height: 1.4; font-size: 14px; white-space: pre-wrap;">${memo.comment || ''}</div>
+                <div style="color: #222; font-size: 15px; line-height: 1.6; margin-top: 2px; white-space: pre-wrap;">${displayComment}</div>
             `;
-            
             messagesContainer.appendChild(memoElement);
         });
-        
         // 스크롤을 최신 메모로 이동
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        
     } else {
         // 메모가 없을 때
         messagesContainer.innerHTML = `
@@ -644,7 +677,6 @@ function updateMemoList(memos) {
             </div>
         `;
     }
-    
     console.log(`✅ 메모 목록 업데이트 완료 (${memos.length}개)`);
 }
 
@@ -1103,7 +1135,7 @@ function displaySelectedTask() {
         // 메모는 별도로 로드해야 함 (selectedTaskData에 포함되지 않음)
         if (currentSelectedTaskId) {
             console.log(`🔍 태스크 ${currentSelectedTaskId}의 메모 로드 중...`);
-            fetch(`/mentee/task_detail/${currentSelectedTaskId}/`)
+            fetch(`/mentee/task_detail/${currentSelectedTaskId}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log(`🔍 태스크 ${currentSelectedTaskId} 메모 로드 응답:`, data);

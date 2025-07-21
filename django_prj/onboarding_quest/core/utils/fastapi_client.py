@@ -501,10 +501,10 @@ class FastAPIClient:
         
         print(f"DEBUG - 메모 조회 응답 상태: {response.status_code}")
         memos_list = self._handle_response(response)
-        print(f"DEBUG - 조회된 메모 개수: {len(memos_list) if isinstance(memos_list, list) else 'N/A'}")
+        print(f"DEBUG - 조회된 메모: {memos_list}")
         
-        # 리스트를 딕셔너리로 래핑
-        return {"memos": memos_list}
+        # FastAPI가 직접 리스트를 반환하므로, Django views.py와의 호환성을 위해 래핑하지 않고 직접 반환
+        return memos_list
     
     def create_memo(self, memo_data: Dict[str, Any]) -> Dict[str, Any]:
         """메모 생성"""

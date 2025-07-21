@@ -19,35 +19,23 @@ function toggleSubtaskList(toggleBtn) {
 
 // 🔧 가이드라인 표시 함수
 function displayGuideline(taskData) {
-  console.log('🔍 displayGuideline 호출:', taskData);
   const guidelineContent = document.getElementById('guideline-content');
-  console.log('🔍 guideline-content 요소:', guidelineContent);
-  
   if (guidelineContent && taskData) {
     const guideline = taskData.guideline || '가이드라인이 없습니다.';
-    console.log('🔍 표시할 가이드라인:', guideline);
     guidelineContent.textContent = guideline;
   } else {
-    console.log('❌ guidelineContent 또는 taskData가 없음');
+    console.error('❌ guidelineContent 또는 taskData가 없음');
   }
 }
 
-// 🔧 가이드라인 편집 기능 (제거됨)
-
 // 🔧 메모 로드 함수
 async function loadMemos(taskId) {
-  console.log('🔍 메모 로드 시작 - taskId:', taskId);
   try {
     const response = await fetch(`/mentee/task_detail/${taskId}/`);
-    console.log('🔍 응답 상태:', response.status);
     const data = await response.json();
-    console.log('🔍 받은 데이터:', data);
-    
     if (data.success && data.task && data.task.memos) {
-      console.log('🔍 메모 데이터 있음:', data.task.memos);
       displayMemos(data.task.memos);
     } else {
-      console.log('🔍 메모 데이터 없음 - 빈 배열 표시');
       displayMemos([]); // 빈 배열로 표시
     }
   } catch (error) {
@@ -58,39 +46,27 @@ async function loadMemos(taskId) {
 
 // 🔧 메모 표시 함수
 function displayMemos(memos) {
-  console.log('🔍 displayMemos 호출:', memos);
   const chatMessages = document.getElementById('chat-messages');
-  console.log('🔍 chat-messages 요소:', chatMessages);
-  
   if (!chatMessages) {
-    console.log('❌ chat-messages 요소를 찾을 수 없음');
+    console.error('❌ chat-messages 요소를 찾을 수 없음');
     return;
   }
-  
   chatMessages.innerHTML = '';
-  
   if (memos && memos.length > 0) {
-    console.log(`🔍 ${memos.length}개 메모 표시 중`);
-    memos.forEach((memo, index) => {
-      console.log(`🔍 메모 ${index}:`, memo);
+    memos.forEach((memo) => {
       const memoDiv = document.createElement('div');
       memoDiv.style.cssText = 'margin-bottom:12px; padding:8px; background:white; border-radius:6px; border-left:3px solid #28a745;';
-      
       memoDiv.innerHTML = `
         <div style="font-size:12px; color:#666; margin-bottom:4px;">
           ${memo.user || '사용자'} • ${new Date(memo.create_date).toLocaleString('ko-KR')}
         </div>
         <div style="color:#333;">${memo.comment}</div>
       `;
-      
       chatMessages.appendChild(memoDiv);
     });
   } else {
-    console.log('🔍 메모가 없음 - 기본 메시지 표시');
     chatMessages.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">등록된 메모가 없습니다.</div>';
   }
-  
-  // 스크롤을 맨 아래로
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 

@@ -1,7 +1,7 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from core.models import TaskAssign
 from collections import defaultdict
@@ -635,13 +635,24 @@ def mentee(request):
                 try:
                     print(f"DEBUG - FastAPI로 메모 조회 시도... task_assign_id={task.get('task_assign_id')}")
                     memos_response = fastapi_client.get_memos(task_assign_id=task.get('task_assign_id'))
-                    for memo in memos_response.get('memos', []):
-                        user_info = memo.get('user', {})
-                        memos.append({
-                            'user': f"{user_info.get('last_name', '')}{user_info.get('first_name', '')}",
-                            'comment': memo.get('comment'),
-                            'create_date': memo.get('create_date'),
-                        })
+                    
+                    # FastAPI 클라이언트가 직접 List[Memo] 반환
+                    if isinstance(memos_response, list):
+                        for memo in memos_response:
+                            user_info = memo.get('user', {})
+                            user_name = '익명'
+                            if user_info:
+                                last_name = user_info.get('last_name', '')
+                                first_name = user_info.get('first_name', '')
+                                if last_name or first_name:
+                                    user_name = f"{last_name}{first_name}".strip()
+                            
+                            memos.append({
+                                'user': user_name,
+                                'comment': memo.get('comment'),
+                                'create_date': memo.get('create_date'),
+                            })
+                    
                     print(f"DEBUG - 태스크 {task.get('task_assign_id')}의 메모 {len(memos)}개 로드")
                 except Exception as memo_error:
                     print(f"DEBUG - 메모 조회 실패: {memo_error}")
@@ -904,13 +915,22 @@ def task_detail(request, task_assign_id):
             logger.info(f"FastAPI로 메모 목록 조회 중... task_assign_id: {task_assign_id}")
             memos_response = fastapi_client.get_memos(task_assign_id=task_assign_id)
             
-            for memo in memos_response.get('memos', []):
-                user_info = memo.get('user', {})
-                memo_list.append({
-                    'user': f"{user_info.get('last_name', '')}{user_info.get('first_name', '')}",
-                    'comment': memo.get('comment'),
-                    'create_date': memo.get('create_date'),
-                })
+            # FastAPI 클라이언트가 직접 List[Memo] 반환
+            if isinstance(memos_response, list):
+                for memo in memos_response:
+                    user_info = memo.get('user', {})
+                    user_name = '익명'
+                    if user_info:
+                        last_name = user_info.get('last_name', '')
+                        first_name = user_info.get('first_name', '')
+                        if last_name or first_name:
+                            user_name = f"{last_name}{first_name}".strip()
+                    
+                    memo_list.append({
+                        'user': user_name,
+                        'comment': memo.get('comment'),
+                        'create_date': memo.get('create_date'),
+                    })
             
             logger.info(f"FastAPI로 메모 {len(memo_list)}개 조회 성공")
         except Exception as memo_error:
