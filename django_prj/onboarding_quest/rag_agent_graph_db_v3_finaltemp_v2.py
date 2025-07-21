@@ -116,14 +116,24 @@ def create_chat_session(user_id: str) -> str:
         
     return str(session_id)
 
+# def save_message(session_id: str, text: str, message_type: str):
+#     """Context Manager만 사용하는 메시지 저장"""
+#     with get_db_connection() as conn:
+#         cursor = conn.cursor()
+#         cursor.execute(
+#             "INSERT INTO core_chatmessage (session_id, create_time, message_text, message_type) VALUES (?, ?, ?, ?)",
+#             (int(session_id), datetime.now().isoformat(), text, message_type)
+#         )
+
 def save_message(session_id: str, text: str, message_type: str):
-    """Context Manager만 사용하는 메시지 저장"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO core_chatmessage (session_id, create_time, message_text, message_type) VALUES (?, ?, ?, ?)",
-            (int(session_id), datetime.now().isoformat(), text, message_type)
+            "INSERT INTO core_chatmessage (session_id, create_time, message_text, message_type, is_active) VALUES (?, ?, ?, ?, ?)",
+            (int(session_id), datetime.now().isoformat(), text, message_type, 1)
         )
+
+
     # Context Manager가 자동으로 commit()과 close() 처리
 
 def load_session_history(session_id: str, limit: int = 10) -> List[str]:

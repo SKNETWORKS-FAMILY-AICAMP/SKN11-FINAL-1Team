@@ -489,8 +489,8 @@ async def create_chat_session(user_id: int = Form(...)):
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO core_chatsession (user_id, summary) VALUES (?, ?)",
-                (user_id, "새 대화")
+                "INSERT INTO core_chatsession (user_id, summary, is_active) VALUES (?, ?, ?)",
+                (user_id, "새 대화", 1)
             )
             conn.commit()
             session_id = cursor.lastrowid
@@ -508,24 +508,44 @@ async def create_chat_session(user_id: int = Form(...)):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-
-
 @app.post("/chat/session/delete")
 async def delete_chat_session(session_id: int = Form(...), user_id: int = Form(...)):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            # 보안: 해당 유저가 소유한 세션인지 확인
+
+            # ✅ 보안: 해당 유저가 소유한 세션인지 확인
             cursor.execute("SELECT * FROM core_chatsession WHERE session_id = ? AND user_id = ?", (session_id, user_id))
             if not cursor.fetchone():
                 raise HTTPException(status_code=403, detail="권한이 없습니다.")
 
-            cursor.execute("DELETE FROM core_chatsession WHERE session_id = ? AND user_id = ?", (session_id, user_id))
+            # ✅ 실제 삭제 대신 비활성화 처리
+            cursor.execute("UPDATE core_chatsession SET is_active = 0 WHERE session_id = ? AND user_id = ?", (session_id, user_id))
+            cursor.execute("UPDATE core_chatmessage SET is_active = 0 WHERE session_id = ?", (session_id,))
+
             conn.commit()
 
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+# @app.post("/chat/session/delete")
+# async def delete_chat_session(session_id: int = Form(...), user_id: int = Form(...)):
+#     try:
+#         with get_db_connection() as conn:
+#             cursor = conn.cursor()
+#             # 보안: 해당 유저가 소유한 세션인지 확인
+#             cursor.execute("SELECT * FROM core_chatsession WHERE session_id = ? AND user_id = ?", (session_id, user_id))
+#             if not cursor.fetchone():
+#                 raise HTTPException(status_code=403, detail="권한이 없습니다.")
+
+#             cursor.execute("DELETE FROM core_chatsession WHERE session_id = ? AND user_id = ?", (session_id, user_id))
+#             conn.commit()
+
+#         return {"success": True}
+#     except Exception as e:
+#         return {"success": False, "error": str(e)}
 
 
 
@@ -589,9 +609,10 @@ async def get_chat_messages(session_id: int):
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT message_type, message_text
-                FROM core_chatmessage
-                WHERE session_id = ?
-                ORDER BY message_id
+FROM core_chatmessage
+WHERE session_id = ? AND is_active = 1
+ORDER BY message_id
+
             """, (session_id,))
             rows = cursor.fetchall()
             for row in rows:
@@ -612,8 +633,8 @@ async def get_user_sessions(user_id: int):
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT session_id, summary FROM core_chatsession
-                WHERE user_id = ?
-                ORDER BY session_id DESC
+WHERE user_id = ? AND is_active = 1
+ORDER BY session_id DESC
             """, (user_id,))
             sessions = cursor.fetchall()
 

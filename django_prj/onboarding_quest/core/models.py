@@ -117,6 +117,7 @@ class ChatSession(models.Model):
     session_id = models.AutoField(primary_key=True, help_text='채팅 세션 고유 ID')
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text='사용자')
     summary = models.CharField(max_length=255, null=True, blank=True, help_text='세션 요약')
+    is_active = models.BooleanField(default=True, help_text='세션 활성 여부')
 
 class ChatMessage(models.Model):
     message_id = models.AutoField(primary_key=True, help_text='메시지 고유 ID')
@@ -134,6 +135,7 @@ class ChatMessage(models.Model):
     message_text = models.CharField(max_length=1000, null=True, blank=True, help_text='메시지 내용')
     create_time = models.DateTimeField(auto_now_add=True, blank=True, help_text='메시지 생성일')
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, help_text='채팅 세션')
+    is_active = models.BooleanField(default=True, help_text='메시지 활성 여부')
 
 class Docs(models.Model):
     docs_id = models.AutoField(primary_key=True, help_text='문서 고유 ID')

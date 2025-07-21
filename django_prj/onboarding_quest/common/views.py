@@ -114,14 +114,14 @@ def chatbot(request):
     chat_sessions = []
 
     if request.user.is_authenticated:
-        sessions = ChatSession.objects.filter(user=request.user).order_by('-session_id')
+        sessions = ChatSession.objects.filter(user=request.user, is_active=True).order_by('-session_id')
 
         # ✅ 세션 ID가 없으면 가장 최근 세션으로 자동 리디렉션
         if not current_session_id and sessions.exists():
             return redirect(f'/common/chatbot/?session={sessions.first().session_id}')
 
         for session in sessions:
-            messages = ChatMessage.objects.filter(session=session).order_by('message_id')
+            messages = ChatMessage.objects.filter(session=session, is_active=True).order_by('message_id')
             # ✅ 첫 번째 user 메시지 추출
             first_user_message = next((m for m in messages if m.message_type == 'user'), None)
 
@@ -559,20 +559,32 @@ def new_chat_session(request):
 
     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
 
+# @csrf_exempt
+# def delete_chat_session(request, session_id):
+#     if request.method == 'POST' and request.user.is_authenticated:
+#         try:
+#             session = ChatSession.objects.get(session_id=session_id, user=request.user)
+#             session.delete()
+#             return JsonResponse({'success': True, 'message': '채팅 세션이 삭제되었습니다.'})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'error': str(e)})
+
+#     return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
+
+
 @csrf_exempt
 def delete_chat_session(request, session_id):
     if request.method == 'POST' and request.user.is_authenticated:
         try:
             session = ChatSession.objects.get(session_id=session_id, user=request.user)
-            session.delete()
-            return JsonResponse({'success': True, 'message': '채팅 세션이 삭제되었습니다.'})
+            session.is_active = False
+            session.save()
+
+            ChatMessage.objects.filter(session=session).update(is_active=False)
+
+            return JsonResponse({'success': True, 'message': '채팅 세션이 비활성화되었습니다.'})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': '권한 없음 또는 잘못된 요청'})
-
-
-
 
 
 
