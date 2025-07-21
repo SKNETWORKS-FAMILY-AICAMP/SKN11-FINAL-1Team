@@ -18,7 +18,7 @@ from fastapi import UploadFile, File, Form, Query, HTTPException
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 from fastapi.responses import FileResponse
-
+from urllib.parse import quote
 
 from rag_agent_graph_db_v3_finaltemp_v2 import (
     create_chat_session,
@@ -306,7 +306,6 @@ async def list_documents(department_id: int = Query(...)):
 
 
 
-
 @app.get("/download/{docs_id}")
 async def download_document(docs_id: int):
     try:
@@ -322,33 +321,83 @@ async def download_document(docs_id: int):
             if not row:
                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
 
-            relative_path = row["file_path"]
-            original_name = row["original_file_name"]
-            media_root = os.path.abspath("media")
-            abs_path = os.path.join(media_root, relative_path)
+            file_path = row["file_path"]
+            original_name = row["original_file_name"] or "downloaded_file"
 
-            if not os.path.exists(abs_path) and os.path.isabs(relative_path):
-                abs_path = relative_path
-
+            abs_path = os.path.abspath(file_path)
             if not os.path.exists(abs_path):
                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
 
-            # ✅ 확장자 보완
+            # 확장자 보완
             if not os.path.splitext(original_name)[1]:
                 ext = os.path.splitext(abs_path)[1]
                 if ext:
                     original_name += ext
 
+            # ✅ 한글 포함 대응
+            encoded_filename = quote(original_name)
+
             return FileResponse(
                 path=abs_path,
-                filename=original_name,
                 media_type='application/octet-stream',
                 headers={
-                    "Content-Disposition": f"attachment; filename*=UTF-8''{original_name}"
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
                 }
             )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# @app.get("/download/{docs_id}")
+# async def download_document(docs_id: int):
+#     try:
+#         with get_db_connection() as conn:
+#             cursor = conn.cursor()
+#             cursor.execute("""
+#                 SELECT file_path, original_file_name 
+#                 FROM core_docs 
+#                 WHERE docs_id = ?
+#             """, (docs_id,))
+#             row = cursor.fetchone()
+
+#             if not row:
+#                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+#             # relative_path = row["file_path"]
+#             # original_name = row["original_file_name"]
+#             # media_root = os.path.abspath("media")
+#             # abs_path = os.path.join(media_root, relative_path)
+
+#             # if not os.path.exists(abs_path) and os.path.isabs(relative_path):
+#             #     abs_path = relative_path
+
+#             file_path = row["file_path"]
+#             original_name = row["original_file_name"]
+#             abs_path = os.path.abspath(file_path)
+
+#             if not os.path.exists(abs_path):
+#                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
+
+
+#             if not os.path.exists(abs_path):
+#                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
+
+#             # ✅ 확장자 보완
+#             if not os.path.splitext(original_name)[1]:
+#                 ext = os.path.splitext(abs_path)[1]
+#                 if ext:
+#                     original_name += ext
+
+#             return FileResponse(
+#                 path=abs_path,
+#                 filename=original_name,
+#                 media_type='application/octet-stream',
+#                 headers={
+#                     "Content-Disposition": f"attachment; filename*=UTF-8''{original_name}"
+#                 }
+#             )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 # @app.get("/download/{docs_id}")
