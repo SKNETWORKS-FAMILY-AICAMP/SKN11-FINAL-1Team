@@ -359,23 +359,21 @@ def mentee(request):
                 print(f"🔍 DEBUG - 전체 조회된 멘토십들: {mentorships}")
                 
                 for idx, mentorship_data in enumerate(mentorships):
-                    print(f"🔍 DEBUG - 멘토십 {idx+1}: mentorship_id={mentorship_data.get('mentorship_id')}, mentee_id={mentorship_data.get('mentee_id')}, is_active={mentorship_data.get('is_active')}")
+                    print(f"🔍 DEBUG - 멘토십 {idx+1}: id={mentorship_data.get('id')}, mentee_id={mentorship_data.get('mentee_id')}, is_active={mentorship_data.get('is_active')}")
                 
                 if mentorships:
                     print(f"🔍 DEBUG - 조회된 멘토십 상세 분석:")
                     for i, mentorship_data in enumerate(mentorships):
                         print(f"🔍 DEBUG - 멘토십 [{i}]: 전체 데이터 = {mentorship_data}")
-                        mentorship_id_val = mentorship_data.get('mentorship_id')
-                        print(f"🔍 DEBUG - 멘토십 [{i}]: mentorship_id = {mentorship_id_val} (타입: {type(mentorship_id_val)})")
-                        
-                    found_mentorship_id = mentorships[0].get('mentorship_id')
-                    print(f"🔍 DEBUG - 선택된 멘토십: mentorship_id={found_mentorship_id} (타입: {type(found_mentorship_id)})")
-                    
+                        mentorship_id_val = mentorship_data.get('id')
+                        print(f"🔍 DEBUG - 멘토십 [{i}]: id = {mentorship_id_val} (타입: {type(mentorship_id_val)})")
+                    found_mentorship_id = mentorships[0].get('id')
+                    print(f"🔍 DEBUG - 선택된 멘토십: id={found_mentorship_id} (타입: {type(found_mentorship_id)})")
                     # 값이 1인지 확인
                     if found_mentorship_id == 1:
-                        print("⚠️  WARNING - mentorship_id가 1입니다! 이것이 예상되지 않은 값입니다.")
+                        print("⚠️  WARNING - id가 1입니다! 이것이 예상되지 않은 값입니다.")
                     else:
-                        print(f"✅ INFO - mentorship_id가 {found_mentorship_id}로 올바르게 설정됨")
+                        print(f"✅ INFO - id가 {found_mentorship_id}로 올바르게 설정됨")
                 else:
                     print("🔍 DEBUG - 사용자의 활성 멘토십이 없음")
                     
@@ -1027,7 +1025,7 @@ def update_task_status(request, task_id):
         mentorships = mentorships_result.get('mentorships', [])
         
         # 사용자의 멘토쉽 목록에서 요청된 mentorship_id가 있는지 확인
-        user_mentorship_ids = [m.get('mentorship_id') for m in mentorships]
+        user_mentorship_ids = [m.get('id') for m in mentorships]
         logger.info(f"🔍 사용자의 활성 멘토쉽 ID들: {user_mentorship_ids}")
         
         if client_mentorship_id not in user_mentorship_ids:
