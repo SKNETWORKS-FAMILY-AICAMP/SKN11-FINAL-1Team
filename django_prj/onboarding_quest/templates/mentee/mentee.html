@@ -7,7 +7,17 @@
 <link rel="stylesheet" href="{% static 'css/mentee/mentee.css' %}">
 
 <style>
-.kanban-board { display: flex; gap: 25px; min-height: 600px; }
+body, html {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.kanban-board { display: flex; gap: 5px; min-height: 600px; padding: 20px 15px 20px 15px; }
+.main-content {
+  flex: 1;
+}
 
 /* 기본 칸반 컬럼 스타일 */
 .kanban-column { 
