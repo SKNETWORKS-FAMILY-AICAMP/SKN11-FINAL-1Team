@@ -229,6 +229,7 @@ def supervisor(request):
         users = users_response.get('users', [])
         logger.info(f"Users type: {type(users)}")
         
+        
         # 선택된 부서 정보
         dept_detail = None
         if selected_department_id:
@@ -553,46 +554,75 @@ def user_edit(request, user_id):
         return redirect('account:supervisor')
 
 # 사용자 삭제
+from django.http import JsonResponse
+
 @login_required
 def user_delete(request, user_id):
     try:
-        # 현재 사용자가 관리자인지 확인 - 안전한 방식으로 처리
         current_user_data_raw = request.session.get('user_data', {})
         current_user_data = safe_get_user_data(current_user_data_raw)
+
+        # 관리자 권한 확인
         if not current_user_data.get('is_admin'):
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': '관리자만 사용자를 삭제할 수 있습니다.'})
             messages.error(request, '관리자만 사용자를 삭제할 수 있습니다.')
             return redirect('account:supervisor')
         
-        # 자기 자신은 삭제할 수 없음
+        # 자기 자신 삭제 방지
         if current_user_data.get('user_id') == user_id:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': '자기 자신은 삭제할 수 없습니다.'})
             messages.error(request, '자기 자신은 삭제할 수 없습니다.')
             return redirect('account:supervisor')
         
-        # FastAPI로 사용자 삭제
+        # FastAPI 호출
         result = fastapi_client.delete_user(user_id)
+
+        # AJAX 요청이면 JSON 응답
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+
+        # 기본 리다이렉트 (단일 삭제 버튼)
         messages.success(request, '사용자가 성공적으로 삭제되었습니다.')
-        
+        return redirect('account:supervisor')
+
     except AuthenticationError:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': '인증이 만료되었습니다. 다시 로그인해주세요.'})
         messages.error(request, '인증이 만료되었습니다. 다시 로그인해주세요.')
         return redirect('account:login')
-    except APIError as e:
-        messages.error(request, f'사용자 삭제 중 오류가 발생했습니다: {str(e)}')
-    except Exception as e:
-        messages.error(request, f'예상치 못한 오류가 발생했습니다: {str(e)}')
-    
-    return redirect('account:supervisor')
 
-# 사용자 수정
+    except APIError as e:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': str(e)})
+        messages.error(request, f'사용자 삭제 중 오류가 발생했습니다: {str(e)}')
+        return redirect('account:supervisor')
+
+    except Exception as e:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': str(e)})
+        messages.error(request, f'예상치 못한 오류가 발생했습니다: {str(e)}')
+        return redirect('account:supervisor')
+
+@login_required
 def user_update_view(request, pk):
-    user = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
-        form = UserForm(request.POST, instance=user, company=user.company)
+        form = UserForm(request.POST)
         if form.is_valid():
-            form.save()
+            user_data = form.cleaned_data
+            result = fastapi_client.update_user(pk, user_data)
+            if result.get('success'):
+                messages.success(request, '사용자 정보가 수정되었습니다.')
+            else:
+                messages.error(request, '수정 실패: ' + result.get('error', '알 수 없는 오류'))
             return redirect('account:supervisor')
     else:
-        form = UserForm(instance=user, company=user.company)
+        # FastAPI에서 사용자 상세 정보 가져오기
+        user_info = fastapi_client.get_user(pk)
+        form = UserForm(initial=user_info)
     return render(request, 'account/user_add_modify.html', {'form': form, 'edit_mode': True})
+
 
 # 사용자 삭제
 def user_delete_view(request, pk):
@@ -604,26 +634,25 @@ def user_delete_view(request, pk):
 
 # 사용자 비밀번호 초기화
 @login_required
-def password_reset(request, user_id):
-    """관리자가 사용자 비밀번호를 초기화하는 기능"""
-    if not request.user.is_admin:
-        return HttpResponseForbidden("접근 권한이 없습니다.")
-    
-    user = get_object_or_404(User, user_id=user_id)
-    
+def user_password_reset(request, user_id):
     if request.method == 'POST':
-        # 비밀번호를 '123'으로 초기화
-        user.set_password('123')
-        user.save()
-        
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': True, 'message': f'{user.get_full_name()}의 비밀번호가 초기화되었습니다.'})
-        else:
-            messages.success(request, f'{user.get_full_name()}의 비밀번호가 초기화되었습니다.')
-            return redirect('account:supervisor')
-    
-    return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
+        try:
+            current_user_data = safe_get_user_data(request.session.get('user_data', {}))
+            if not current_user_data.get('is_admin'):
+                return JsonResponse({'success': False, 'message': '관리자 권한이 필요합니다.'}, status=403)
 
+            result = fastapi_client.reset_password(user_id)
+            if result.get('success'):
+                return JsonResponse({'success': True, 'message': '비밀번호가 초기화되었습니다. (초기 비밀번호: 123)'})
+            else:
+                return JsonResponse({'success': False, 'message': result.get('error', '비밀번호 초기화 실패')}, status=400)
+
+        except AuthenticationError:
+            return JsonResponse({'success': False, 'message': '인증이 만료되었습니다.'}, status=401)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'}, status=405)
 #endregion > 직원 추가/수정/삭제
 
 #endregion 관리자

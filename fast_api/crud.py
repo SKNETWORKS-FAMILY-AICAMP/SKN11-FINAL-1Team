@@ -275,12 +275,27 @@ def delete_user_with_company_department(db: Session, user_id: int, company_id: s
 
 # 기존 delete 함수들은 유지 (하위 호환성)
 def delete_user(db: Session, user_id: int):
-    """사용자 삭제 (기존 함수 - 하위 호환성 유지)"""
+    """사용자 삭제 (관련 ChatSession/ChatMessage도 함께 삭제)"""
+    # 1. 사용자 조회
     db_user = get_user(db, user_id)
-    if db_user:
-        db.delete(db_user)
-        db.commit()
+    if not db_user:
+        return None
+
+    # 2. 관련 ChatMessage 삭제
+    db.query(models.ChatMessage).filter(
+        models.ChatMessage.session_id.in_(
+            db.query(models.ChatSession.session_id).filter(models.ChatSession.user_id == user_id)
+        )
+    ).delete(synchronize_session=False)
+
+    # 3. 관련 ChatSession 삭제
+    db.query(models.ChatSession).filter(models.ChatSession.user_id == user_id).delete(synchronize_session=False)
+
+    # 4. 사용자 삭제
+    db.delete(db_user)
+    db.commit()
     return db_user
+
 
 def delete_mentorship(db: Session, mentorship_id: int):
     """멘토쉽 삭제"""
