@@ -13,105 +13,38 @@ from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationEr
 from django.contrib import messages
 
 
-# 멘토링 생성 API
+# 멘토링 생성 API - FastAPI 프록시
 @login_required
 @require_POST
 @csrf_exempt
 def create_mentorship(request):
+    """멘토쉽 생성 - FastAPI로 프록시"""
     try:
         data = json.loads(request.body)
         
-        # 현재 사용자 정보 가져오기
-        user_data = request.session.get('user_data', {})
-        mentor_id = user_data.get('user_id')
+        # 현재 사용자의 user_id를 요청 데이터에 추가
+        data['mentor_id'] = request.user.user_id
         
-        if not mentor_id:
-            return JsonResponse({'success': False, 'message': '멘토 정보를 찾을 수 없습니다.'})
+        # Django의 프록시를 통해 FastAPI로 전달
+        from django.http import HttpRequest
         
-        mentee_id = int(data.get('mentee_id'))
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
-        curriculum_ids = data.get('curriculum_ids', [])
+        # 새로운 HttpRequest 객체 생성하여 프록시로 전달
+        proxy_request = HttpRequest()
+        proxy_request.method = 'POST'
+        proxy_request.META = request.META
+        proxy_request._body = json.dumps(data).encode('utf-8')
+        proxy_request.GET = request.GET
         
-        # 단일 커리큘럼도 지원 (기존 호환성)
-        if 'curriculum_id' in data and not curriculum_ids:
-            curriculum_ids = [int(data.get('curriculum_id'))]
-        elif isinstance(curriculum_ids, str):
-            curriculum_ids = [int(curriculum_ids)]
-        elif isinstance(curriculum_ids, list):
-            curriculum_ids = [int(cid) for cid in curriculum_ids]
+        from core.views import fastapi_proxy
+        response = fastapi_proxy(proxy_request, 'mentorship/create')
         
-        if not curriculum_ids:
-            return JsonResponse({'success': False, 'message': '커리큘럼을 선택해주세요.'})
+        return response
         
-        # FastAPI로 커리큘럼들 조회
-        curriculum_titles = []
-        max_weeks = 0
-        
-        for curriculum_id in curriculum_ids:
-            try:
-                curriculum = fastapi_client.get_curriculum(curriculum_id)
-                curriculum_titles.append(curriculum['curriculum_title'])
-                max_weeks = max(max_weeks, curriculum.get('total_weeks', 0))
-            except:
-                continue
-        
-        combined_title = ' + '.join(curriculum_titles)
-        
-        # FastAPI로 멘토쉽 생성
-        mentorship_data = {
-            'mentor_id': mentor_id,
-            'mentee_id': mentee_id,
-            'start_date': start_date,
-            'end_date': end_date,
-            'curriculum_title': combined_title,
-            'total_weeks': max_weeks,
-            'is_active': True
-        }
-        
-        result = fastapi_client.create_mentorship(mentorship_data)
-        mentorship_id = result.get('mentorship_id')
-        
-        # FastAPI로 TaskManage들 조회하고 TaskAssign 생성
-        for curriculum_id in curriculum_ids:
-            try:
-                task_manages = fastapi_client.get_task_manages(curriculum_id=curriculum_id)
-                
-                # TaskManage → TaskAssign 변환 로직
-                mentorship_start = datetime.strptime(start_date, '%Y-%m-%d')
-                
-                for task in task_manages.get('tasks', []):
-                    week = task.get('week', 1)
-                    task_start = mentorship_start + timedelta(days=(week-1)*7)
-                    period = task.get('period', 1)
-                    
-                    task_assign_data = {
-                        'title': task.get('title'),
-                        'description': task.get('description'),
-                        'guideline': task.get('guideline'),
-                        'week': week,
-                        'order': task.get('order'),
-                        'scheduled_start_date': task_start.date().isoformat(),
-                        'scheduled_end_date': (task_start.date() + timedelta(days=period)).isoformat(),
-                        'status': '진행전',
-                        'priority': task.get('priority'),
-                        'mentorship_id': mentorship_id
-                    }
-                    
-                    fastapi_client.create_task_assign(task_assign_data)
-                    
-            except Exception as e:
-                print(f"Task creation error for curriculum {curriculum_id}: {e}")
-                continue
-        
-        return JsonResponse({'success': True, 'message': '멘토십이 성공적으로 생성되었습니다.'})
-        
-    except AuthenticationError:
-        return JsonResponse({'success': False, 'message': '인증이 만료되었습니다.'})
-    except APIError as e:
-        return JsonResponse({'success': False, 'message': f'API 오류: {str(e)}'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': f'멘토십 생성 중 오류가 발생했습니다: {str(e)}'})
+        print(f"[ERROR] 멘토쉽 생성 중 오류: {e}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
 @login_required
@@ -238,74 +171,72 @@ def save_curriculum(request):
 
 @login_required
 def mentor(request):
-    try:
-        mentor_id = request.user.user_id
-        
-        # FastAPI에서 로그인한 유저가 멘토로 포함된 멘토쉽 목록 조회
-        mentorships_result = fastapi_client.get_mentorships(mentor_id=mentor_id)
-        mentorships = mentorships_result.get('mentorships', [])
-        
-        # 멘티 정보 조회
-        if mentorships:
-            mentee_ids = [m.get('mentee_id') for m in mentorships]
-            # 현재 회사의 모든 사용자 조회 (성능 최적화)
-            user_data = request.session.get('user_data', {})
-            company_id = user_data.get('company_id')
-            users_result = fastapi_client.get_users(company_id=company_id)
-            all_users = {user['user_id']: user for user in users_result.get('users', [])}
-        else:
-            mentee_ids = []
-            all_users = {}
-        
-        # 진척도, D-day 등 계산
-        mentee_cards = []
-        from datetime import date
-        
-        for ms in mentorships:
-            mentee_id = ms.get('mentee_id')
-            mentee = all_users.get(mentee_id)
-            if not mentee:
-                continue
-
-            # D-day 계산: 멘토쉽 종료일 기준
-            dday = ''
-            end_date_str = ms.get('end_date')
-            if end_date_str:
-                from datetime import datetime
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                dday_val = (end_date - date.today()).days
-                dday = f"D-{dday_val}" if dday_val > 0 else ("D-DAY" if dday_val == 0 else "종료")
-            else:
-                dday = ""
-            
-            # 진척도: 멘토쉽에 할당된 TaskAssign 중 완료된 개수/전체 개수
-            tasks_result = fastapi_client.get_task_assigns(mentorship_id=ms.get('mentorship_id'))
-            all_tasks = tasks_result.get('task_assigns', [])
-            total_tasks = len(all_tasks)
-            completed_tasks = len([t for t in all_tasks if t.get('status') == '완료'])
-            progress = int((completed_tasks / total_tasks) * 100) if total_tasks else 0
-            
-            mentee_cards.append({
-                'name': f'{mentee.get("last_name", "")}{mentee.get("first_name", "")}',
-                'tags': [mentee.get('tag')] if mentee.get('tag') else [],
-                'dday': dday,
-                'progress': progress,
-                'mentorship_id': ms.get('mentorship_id'),
-                'curriculum_title': ms.get('curriculum_title'),
-                'total_weeks': ms.get('total_weeks'),
-            })
-            
-        return render(request, 'mentor/mentor.html', {'mentee_cards': mentee_cards})
-        
-    except (AuthenticationError, APIError) as e:
-        messages.error(request, f'멘토 정보 조회 중 오류가 발생했습니다: {str(e)}')
-        return render(request, 'mentor/mentor.html', {'mentee_cards': []})
+    """멘토 대시보드 - FastAPI 전용"""
+    if not request.user.is_authenticated:
+        messages.error(request, '로그인이 필요합니다.')
+        from django.shortcuts import redirect
+        return redirect('account:login')
+    
+    # FastAPI를 통해서만 데이터를 가져오므로, 템플릿만 렌더링
+    context = {
+        'user': request.user,  # JavaScript에서 사용할 사용자 정보
+        'user_id': request.user.user_id,  # 명시적으로 user_id 전달
+    }
+    
+    return render(request, 'mentor/mentor.html', context)
 
 @login_required
-def add_template(request):
-    return render(request, 'mentor/add_template.html')
-
-@login_required
+def add_template(request, curriculum_id=None):
+    """커리큘럼 생성/편집 페이지"""
+    context = {}
+    
+    # 편집 모드인 경우
+    if curriculum_id:
+        try:
+            from core.models import Curriculum, TaskManage
+            import json
+            
+            curriculum = Curriculum.objects.get(pk=curriculum_id)
+            tasks = TaskManage.objects.filter(curriculum_id=curriculum).order_by('week', 'order')
+            
+            # Task 정보도 모두 넘김
+            task_list = [
+                {
+                    'week': t.week,
+                    'title': t.title,
+                    'guideline': t.guideline,
+                    'description': t.description,
+                    'period': str(t.period) if t.period is not None else '',
+                    'priority': t.priority
+                }
+                for t in tasks
+            ]
+            
+            curriculum_dict = {
+                'curriculum_id': curriculum.pk,
+                'curriculum_title': curriculum.curriculum_title,
+                'curriculum_description': curriculum.curriculum_description,
+                'week_schedule': curriculum.week_schedule,
+                'is_common': curriculum.common,
+            }
+            
+            context = {
+                'edit_mode': True,
+                'curriculum': json.dumps(curriculum_dict, ensure_ascii=False),
+                'tasks_json': json.dumps(task_list, ensure_ascii=False),
+            }
+        except Curriculum.DoesNotExist:
+            from django.contrib import messages
+            messages.error(request, '존재하지 않는 커리큘럼입니다.')
+            from django.shortcuts import redirect
+            return redirect('mentor:manage_template')
+        except Exception as e:
+            from django.contrib import messages
+            messages.error(request, f'커리큘럼 정보 조회 중 오류가 발생했습니다: {str(e)}')
+            from django.shortcuts import redirect
+            return redirect('mentor:manage_template')
+    
+    return render(request, 'mentor/add_template.html', context)
 
 @login_required
 def manage_mentee(request):
@@ -314,8 +245,12 @@ def manage_mentee(request):
         company_id = user_data.get('company_id')
         department_id = user_data.get('department_id')
         
-        # 같은 회사의 모든 멘티 목록
-        mentees_result = fastapi_client.get_users(company_id=company_id, role='mentee')
+        # 같은 부서의 멘티 중 is_active=True인 멘티만 필터링
+        mentees_result = fastapi_client.get_users(
+            department_id=department_id,  # 부서 필터링
+            role='mentee',                # 멘티만
+            is_active=True               # 활성 사용자만
+        )
         mentees = mentees_result.get('users', [])
         
         # 부서 커리큘럼 목록 (공용+부서)
@@ -335,35 +270,82 @@ def manage_mentee(request):
         
     except (AuthenticationError, APIError) as e:
         messages.error(request, f'멘티 관리 정보 조회 중 오류가 발생했습니다: {str(e)}')
-        return render(request, 'mentor/manage_mentee.html', {
-            'mentees': [],
-            'curriculums': [],
-        })
+        
+        # FastAPI 실패 시 Django ORM으로 폴백
+        try:
+            if department_id:
+                mentees = User.objects.filter(
+                    department_id=department_id,  # 멘토와 같은 부서
+                    role='mentee',                # 멘티만
+                    is_active=True               # 활성 사용자만
+                ).select_related('company', 'department')
+            else:
+                mentees = []
+                
+            return render(request, 'mentor/manage_mentee.html', {
+                'mentees': mentees,
+                'curriculums': [],
+            })
+        except Exception as fallback_error:
+            messages.error(request, f'데이터 조회 중 오류가 발생했습니다: {str(fallback_error)}')
+            return render(request, 'mentor/manage_mentee.html', {
+                'mentees': [],
+                'curriculums': [],
+            })
 
 @login_required
 def manage_template(request):
     user = request.user
-    curriculums = Curriculum.objects.filter(
-        models.Q(common=True) | models.Q(department=user.department)
-    ).order_by('-common', 'curriculum_title')
     curriculum_tasks = {}
-    for c in curriculums:
-        tasks = TaskManage.objects.filter(curriculum_id=c).order_by('week', 'order')
-        curriculum_tasks[c.pk] = [
-            {
-                'week': t.week,
-                'title': t.title,
-                'guideline': t.guideline,
-                'description': t.description,
-                'period': str(t.period) if t.period is not None else '',
-                'priority': t.priority
-            }
-            for t in tasks
-        ]
-    return render(request, 'mentor/manage_template.html', {
-        'curriculums': curriculums,
-        'curriculum_tasks_json': json.dumps(curriculum_tasks, ensure_ascii=False),
-    })
+    
+    try:
+        # FastAPI로 필터링된 커리큘럼 조회 (공통 커리큘럼 + 사용자 부서 커리큘럼)
+        result = fastapi_client.get_filtered_curriculums(department_id=user.department.department_id if user.department else None)
+        curriculums_data = result.get('curriculums', [])
+        
+        # 각 커리큘럼의 task 정보 가져오기
+        for curriculum in curriculums_data:
+            curriculum_id = curriculum['curriculum_id']
+            try:
+                tasks_result = fastapi_client.get_curriculum_tasks(curriculum_id)
+                curriculum_tasks[curriculum_id] = tasks_result
+            except Exception as e:
+                print(f"커리큘럼 {curriculum_id} 태스크 조회 오류: {e}")
+                curriculum_tasks[curriculum_id] = []
+        
+        # curriculums_data를 정렬 (공통 커리큘럼 우선, 그다음 제목순)
+        curriculums_data.sort(key=lambda x: (not x.get('common', False), x.get('curriculum_title', '')))
+        
+        return render(request, 'mentor/manage_template.html', {
+            'curriculums': curriculums_data,
+            'curriculum_tasks_json': json.dumps(curriculum_tasks, ensure_ascii=False),
+        })
+        
+    except Exception as e:
+        print(f"FastAPI 커리큘럼 조회 오류: {e}")
+        # Fallback to Django ORM
+        curriculums = Curriculum.objects.filter(
+            models.Q(common=True) | models.Q(department=user.department)
+        ).order_by('-common', 'curriculum_title')
+        
+        for c in curriculums:
+            tasks = TaskManage.objects.filter(curriculum_id=c).order_by('week', 'order')
+            curriculum_tasks[c.pk] = [
+                {
+                    'week': t.week,
+                    'title': t.title,
+                    'guideline': t.guideline,
+                    'description': t.description,
+                    'period': str(t.period) if t.period is not None else '',
+                    'priority': t.priority
+                }
+                for t in tasks
+            ]
+            
+        return render(request, 'mentor/manage_template.html', {
+            'curriculums': curriculums,
+            'curriculum_tasks_json': json.dumps(curriculum_tasks, ensure_ascii=False),
+        })
 
 @require_POST
 @login_required
@@ -443,3 +425,166 @@ def edit_template(request, curriculum_id):
         'curriculum': json.dumps(curriculum_dict, ensure_ascii=False),
         'tasks_json': json.dumps(task_list, ensure_ascii=False),
     })
+
+
+@login_required
+@require_POST
+@csrf_exempt
+def clone_curriculum(request, curriculum_id):
+    """커리큘럼 복제"""
+    try:
+        user = request.user
+        
+        # 원본 커리큘럼 조회
+        try:
+            original = fastapi_client.get_curriculum(curriculum_id)
+        except Exception as e:
+            print(f"FastAPI에서 커리큘럼 조회 실패: {e}")
+            # 백업으로 Django에서 조회
+            original = Curriculum.objects.get(pk=curriculum_id)
+            original = {
+                'curriculum_id': original.pk,
+                'curriculum_title': original.curriculum_title,
+                'curriculum_description': original.curriculum_description,
+                'week_schedule': original.week_schedule,
+                'common': original.common,
+                'department_id': original.department_id,
+            }
+        
+        # 복제본 생성 데이터 준비
+        clone_data = {
+            'curriculum_title': f"{original['curriculum_title']} (복사본)",
+            'curriculum_description': original.get('curriculum_description', ''),
+            'week_schedule': original.get('week_schedule', ''),
+            'common': False,  # 복제본은 일반 커리큘럼으로 설정
+            'department_id': user.department_id
+        }
+        
+        # FastAPI로 커리큘럼 생성
+        try:
+            new_curriculum = fastapi_client.create_curriculum(clone_data)
+            new_curriculum_id = new_curriculum.get('curriculum_id')
+        except Exception as e:
+            print(f"FastAPI에서 커리큘럼 생성 실패: {e}")
+            # Django 백업으로 생성
+            with transaction.atomic():
+                new_curriculum = Curriculum.objects.create(
+                    curriculum_title=clone_data['curriculum_title'],
+                    curriculum_description=clone_data['curriculum_description'],
+                    week_schedule=clone_data['week_schedule'],
+                    common=clone_data['common'],
+                    department_id=clone_data['department_id']
+                )
+                new_curriculum_id = new_curriculum.pk
+        
+        # 원본의 태스크들도 복제
+        try:
+            original_tasks = fastapi_client.get_curriculum_tasks(curriculum_id)
+            if original_tasks:
+                for task in original_tasks:
+                    task_data = {
+                        'curriculum_id': new_curriculum_id,
+                        'week': task.get('week', 1),
+                        'title': task.get('title', ''),
+                        'guideline': task.get('guideline', ''),
+                        'description': task.get('description', ''),
+                        'period': task.get('period', 7),
+                        'priority': task.get('priority', 'medium')
+                    }
+                    try:
+                        fastapi_client.create_task(task_data)
+                    except Exception as task_error:
+                        print(f"태스크 복제 실패: {task_error}")
+                        # Django 백업
+                        TaskManage.objects.create(
+                            curriculum_id=new_curriculum_id,
+                            week=task_data['week'],
+                            title=task_data['title'],
+                            guideline=task_data['guideline'],
+                            description=task_data['description'],
+                            period=task_data['period'],
+                            priority=task_data['priority']
+                        )
+        except Exception as e:
+            print(f"태스크 복제 중 오류: {e}")
+        
+        return JsonResponse({'success': True, 'message': '커리큘럼이 성공적으로 복제되었습니다.'})
+        
+    except Exception as e:
+        print(f"커리큘럼 복제 오류: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@csrf_exempt
+def delete_curriculum(request, curriculum_id):
+    """커리큘럼 삭제 - DELETE 메소드만 허용"""
+    print(f"[DEBUG] 삭제 요청 - 커리큘럼 ID: {curriculum_id}, 메소드: {request.method}")
+    
+    if request.method != 'DELETE':
+        print(f"[ERROR] 잘못된 메소드: {request.method}")
+        return JsonResponse({'success': False, 'error': 'DELETE 메소드만 허용됩니다.'}, status=405)
+        
+    try:
+        print(f"[INFO] 커리큘럼 삭제 시작: {curriculum_id}")
+        
+        # 먼저 해당 커리큘럼이 사용 중인 멘토쉽이 있는지 확인
+        try:
+            print("[INFO] 멘토쉽 사용 여부 확인 중...")
+            mentorships = fastapi_client.get_mentorships_by_curriculum(curriculum_id)
+            print(f"[DEBUG] 멘토쉽 조회 결과: {mentorships}")
+            
+            if mentorships and len(mentorships) > 0:
+                print(f"[WARNING] 사용 중인 멘토쉽이 있음: {len(mentorships)}개")
+                return JsonResponse({
+                    'success': False, 
+                    'error': '이 커리큘럼을 사용 중인 멘토쉽이 있어 삭제할 수 없습니다.'
+                }, status=400)
+        except Exception as e:
+            print(f"[ERROR] FastAPI 멘토쉽 확인 실패: {e}")
+            # Django 백업으로 확인
+            try:
+                django_mentorships = Mentorship.objects.filter(curriculum_id=curriculum_id)
+                print(f"[DEBUG] Django 멘토쉽 조회: {django_mentorships.count()}개")
+                
+                if django_mentorships.exists():
+                    print("[WARNING] Django에서 사용 중인 멘토쉽 발견")
+                    return JsonResponse({
+                        'success': False, 
+                        'error': '이 커리큘럼을 사용 중인 멘토쉽이 있어 삭제할 수 없습니다.'
+                    }, status=400)
+            except Exception as django_error:
+                print(f"[ERROR] Django 멘토쉽 확인도 실패: {django_error}")
+        
+        print("[INFO] 멘토쉽 사용 확인 완료 - 삭제 가능")
+        
+        # 커리큘럼 삭제
+        try:
+            print("[INFO] FastAPI로 커리큘럼 삭제 시도...")
+            result = fastapi_client.delete_curriculum(curriculum_id)
+            print(f"[SUCCESS] FastAPI 삭제 성공: {result}")
+        except Exception as e:
+            print(f"[ERROR] FastAPI에서 커리큘럼 삭제 실패: {e}")
+            print("[INFO] Django 백업으로 삭제 시도...")
+            
+            # Django 백업으로 삭제
+            with transaction.atomic():
+                # 먼저 관련 태스크들 삭제
+                deleted_tasks = TaskManage.objects.filter(curriculum_id=curriculum_id).delete()
+                print(f"[INFO] 삭제된 태스크 수: {deleted_tasks[0] if deleted_tasks[0] else 0}")
+                
+                # 커리큘럼 삭제
+                deleted_curriculum = Curriculum.objects.filter(pk=curriculum_id).delete()
+                print(f"[INFO] 삭제된 커리큘럼 수: {deleted_curriculum[0] if deleted_curriculum[0] else 0}")
+                
+                if deleted_curriculum[0] == 0:
+                    raise Exception(f"커리큘럼 ID {curriculum_id}를 찾을 수 없습니다.")
+        
+        print(f"[SUCCESS] 커리큘럼 {curriculum_id} 삭제 완료")
+        return JsonResponse({'success': True, 'message': '커리큘럼이 성공적으로 삭제되었습니다.'})
+        
+    except Exception as e:
+        print(f"[ERROR] 커리큘럼 삭제 중 예외 발생: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
+        return JsonResponse({'success': False, 'error': f'삭제 중 오류가 발생했습니다: {str(e)}'}, status=500)

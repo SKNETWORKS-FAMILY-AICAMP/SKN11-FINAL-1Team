@@ -34,14 +34,18 @@ app.include_router(tasks.router)
 app.include_router(memo.router)
 app.include_router(docs.router)
 app.include_router(chat.router)
-app.include_router(forms.router)
+# app.include_router(forms.router)  # 템플릿이 없어서 비활성화
 app.include_router(chatbot.router)
 
 @app.get("/")
 async def root():
-    """루트 엔드포인트 - 폼 관리 홈으로 리다이렉트"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/forms/")
+    """루트 엔드포인트"""
+    return {
+        "message": "FastAPI Backend Server",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
 
 
 @app.get("/api/")

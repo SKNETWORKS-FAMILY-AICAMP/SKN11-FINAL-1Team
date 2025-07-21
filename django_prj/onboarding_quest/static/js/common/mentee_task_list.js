@@ -351,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const end_date = document.getElementById('subtask-end-date').value;
     const parent_id = document.getElementById('subtask-parent-id').value;
     // 상위 Task의 mentorship_id, week, order도 전달
-    const mentorship_id = currentTask.mentorship_id || (currentTask.mentorship_id_id || null);
+    const mentorship_id = currentTask.mentorship_id || (currentTask.mentorship_id || null);
     const week = currentTask.week;
     const order = null;
     if (!title) return alert('제목을 입력하세요.');

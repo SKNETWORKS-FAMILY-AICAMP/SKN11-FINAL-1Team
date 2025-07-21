@@ -159,7 +159,13 @@ class Curriculum(models.Model):
 
 class TaskManage(models.Model):
     task_manage_id = models.AutoField(primary_key=True, help_text='과제 관리 고유 ID')
-    curriculum_id = models.ForeignKey(Curriculum, on_delete=models.CASCADE, related_name='tasks', help_text='소속 커리큘럼')
+    curriculum_id = models.ForeignKey(
+        Curriculum, 
+        on_delete=models.CASCADE, 
+        related_name='tasks', 
+        help_text='소속 커리큘럼',
+        db_column='curriculum_id'  # 명시적으로 컬럼명 지정
+    )
     title = models.CharField(max_length=255, help_text='과제 제목')
     description = models.CharField(max_length=255, null=True, blank=True, help_text='과제 설명')
     guideline = models.CharField(max_length=255, null=True, blank=True, help_text='과제 가이드라인')

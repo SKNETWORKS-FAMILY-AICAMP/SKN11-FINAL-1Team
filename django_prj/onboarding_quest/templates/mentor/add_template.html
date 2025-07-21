@@ -461,14 +461,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (Array.isArray(window.tasks_json) && window.tasks_json.length > 0) {
       maxWeek = Math.max(...window.tasks_json.map(t => Number(t.week) || 0));
     }
-    const newWeek = maxWeek + 1;
-    // 이미 해당 주차가 있으면 추가하지 않음
-    const weekExists = window.tasks_json.some(t => Number(t.week) === newWeek);
-    if (!weekExists) {
-      // 빈 Task를 추가해서 주차 섹션을 생성 (title 등은 빈 값)
-      window.tasks_json.push({ week: newWeek, title: '', description: '', guideline: '', order: 1, period: '', priority: '하' });
-      renderTasksByWeek(window.tasks_json);
+    
+    // 이미 렌더된 주차 중 가장 큰 값도 고려
+    if (window.persistedWeeks && window.persistedWeeks.length > 0) {
+      const maxPersistedWeek = Math.max(...window.persistedWeeks);
+      maxWeek = Math.max(maxWeek, maxPersistedWeek);
     }
+    
+    const newWeek = Math.max(maxWeek + 1, 1); // 최소 1주차
+    
+    // window.persistedWeeks에 새 주차 추가
+    if (!window.persistedWeeks) {
+      window.persistedWeeks = [];
+    }
+    if (!window.persistedWeeks.includes(newWeek)) {
+      window.persistedWeeks.push(newWeek);
+    }
+    
+    // 다시 렌더링
+    renderTasksByWeek(window.tasks_json);
   });
   
   if (window.edit_mode && window.curriculum && window.curriculum.is_common) {
@@ -674,6 +685,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // 3. 주차 추가 버튼으로 추가된 빈 주차도 유지
     // (tasks_json에 빈 Task로 추가되므로 위에서 이미 포함됨)
+    
+    // 4. 편집 모드에서 주차가 없으면 최소 1주차는 표시
+    if (weekSet.size === 0) {
+      weekSet.add(1);
+    }
 
     // 주차 오름차순 정렬
     const sortedWeeks = Array.from(weekSet).sort((a, b) => a - b);
@@ -957,8 +973,12 @@ document.getElementById('save-curriculum-btn').onclick = async function() {
 
     if (Array.isArray(window.tasks_json) && window.tasks_json.length > 0) {
       renderTasksByWeek(window.tasks_json);
+      toggleTaskSection(); // Task 섹션 보이기
     } else {
-      taskList.style.display = 'none';
+      // Task가 없어도 기본 1주차는 표시하고 Task 섹션도 보이게
+      window.tasks_json = [];
+      renderTasksByWeek(window.tasks_json);
+      toggleTaskSection(); // Task 섹션 보이기
     }
     initTaskListDnD();
   } else {

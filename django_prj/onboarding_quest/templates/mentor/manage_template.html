@@ -237,8 +237,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
                 
+                console.log('삭제 응답 상태:', response.status);
+                
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('삭제 응답 데이터:', result);
                     if (result.success) {
                         showMessage('커리큘럼이 성공적으로 삭제되었습니다!');
                         setTimeout(() => {
@@ -248,7 +251,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         throw new Error(result.error || '커리큘럼 삭제에 실패했습니다.');
                     }
                 } else {
-                    throw new Error('서버 오류가 발생했습니다.');
+                    // 서버 오류 응답의 내용을 자세히 확인
+                    let errorMessage = `서버 오류 (${response.status})`;
+                    try {
+                        const errorData = await response.json();
+                        console.log('오류 응답 데이터:', errorData);
+                        errorMessage = errorData.error || errorData.detail || errorMessage;
+                    } catch (parseError) {
+                        console.log('JSON 파싱 실패, 텍스트 응답 확인');
+                        try {
+                            const errorText = await response.text();
+                            console.log('오류 응답 텍스트:', errorText);
+                            errorMessage = errorText || errorMessage;
+                        } catch (textError) {
+                            console.log('텍스트 응답도 읽기 실패:', textError);
+                        }
+                    }
+                    throw new Error(errorMessage);
                 }
             } catch (error) {
                 console.error('커리큘럼 삭제 오류:', error);
