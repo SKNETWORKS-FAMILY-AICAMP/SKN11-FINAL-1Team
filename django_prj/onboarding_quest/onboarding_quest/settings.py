@@ -202,7 +202,7 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# FastAPI 설정
+# FastAPI 설정 - FastAPI는 8001, Django는 8000
 FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')
 
 

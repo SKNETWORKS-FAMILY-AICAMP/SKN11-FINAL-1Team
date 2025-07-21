@@ -1,4 +1,9 @@
 // mentee_task_list.js
+
+// 현재 선택된 태스크 정보
+let currentTaskId = null;
+let currentTaskData = null;
+
 // 하위 테스크 토글 함수 (전역)
 function toggleSubtaskList(toggleBtn) {
   var subtaskList = toggleBtn.closest('.task-card').querySelector('.subtask-list');
@@ -9,6 +14,169 @@ function toggleSubtaskList(toggleBtn) {
     } else {
       toggleBtn.textContent = '▼ 하위 ' + subtaskList.children.length + '개';
     }
+  }
+}
+
+// 🔧 가이드라인 표시 함수
+function displayGuideline(taskData) {
+  console.log('🔍 displayGuideline 호출:', taskData);
+  const guidelineContent = document.getElementById('guideline-content');
+  console.log('🔍 guideline-content 요소:', guidelineContent);
+  
+  if (guidelineContent && taskData) {
+    const guideline = taskData.guideline || '가이드라인이 없습니다.';
+    console.log('🔍 표시할 가이드라인:', guideline);
+    guidelineContent.textContent = guideline;
+  } else {
+    console.log('❌ guidelineContent 또는 taskData가 없음');
+  }
+}
+
+// 🔧 가이드라인 편집 기능 (제거됨)
+
+// 🔧 메모 로드 함수
+async function loadMemos(taskId) {
+  console.log('🔍 메모 로드 시작 - taskId:', taskId);
+  try {
+    const response = await fetch(`/mentee/task_detail/${taskId}/`);
+    console.log('🔍 응답 상태:', response.status);
+    const data = await response.json();
+    console.log('🔍 받은 데이터:', data);
+    
+    if (data.success && data.task && data.task.memos) {
+      console.log('🔍 메모 데이터 있음:', data.task.memos);
+      displayMemos(data.task.memos);
+    } else {
+      console.log('🔍 메모 데이터 없음 - 빈 배열 표시');
+      displayMemos([]); // 빈 배열로 표시
+    }
+  } catch (error) {
+    console.error('❌ 메모 로드 실패:', error);
+    displayMemos([]); // 오류 시 빈 배열로 표시
+  }
+}
+
+// 🔧 메모 표시 함수
+function displayMemos(memos) {
+  console.log('🔍 displayMemos 호출:', memos);
+  const chatMessages = document.getElementById('chat-messages');
+  console.log('🔍 chat-messages 요소:', chatMessages);
+  
+  if (!chatMessages) {
+    console.log('❌ chat-messages 요소를 찾을 수 없음');
+    return;
+  }
+  
+  chatMessages.innerHTML = '';
+  
+  if (memos && memos.length > 0) {
+    console.log(`🔍 ${memos.length}개 메모 표시 중`);
+    memos.forEach((memo, index) => {
+      console.log(`🔍 메모 ${index}:`, memo);
+      const memoDiv = document.createElement('div');
+      memoDiv.style.cssText = 'margin-bottom:12px; padding:8px; background:white; border-radius:6px; border-left:3px solid #28a745;';
+      
+      memoDiv.innerHTML = `
+        <div style="font-size:12px; color:#666; margin-bottom:4px;">
+          ${memo.user || '사용자'} • ${new Date(memo.create_date).toLocaleString('ko-KR')}
+        </div>
+        <div style="color:#333;">${memo.comment}</div>
+      `;
+      
+      chatMessages.appendChild(memoDiv);
+    });
+  } else {
+    console.log('🔍 메모가 없음 - 기본 메시지 표시');
+    chatMessages.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">등록된 메모가 없습니다.</div>';
+  }
+  
+  // 스크롤을 맨 아래로
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// 🔧 메모 저장 함수
+async function saveMemo(taskId, comment) {
+  try {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                     document.querySelector('input[name="csrftoken"]')?.value ||
+                     getCookie('csrftoken');
+    
+    const response = await fetch(`/mentee/task_comment/${taskId}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ comment: comment })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // 메모 저장 성공 시 메모 목록 새로고침
+      await loadMemos(taskId);
+      return true;
+    } else {
+      console.error('메모 저장 실패:', data.error);
+      alert('메모 저장에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+      return false;
+    }
+  } catch (error) {
+    console.error('메모 저장 오류:', error);
+    alert('메모 저장 중 오류가 발생했습니다.');
+    return false;
+  }
+}
+
+// CSRF 토큰 가져오기 함수
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// 🔧 메모 입력 기능 초기화
+function initMemoInput() {
+  const chatInput = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send-btn');
+  
+  if (sendBtn) {
+    sendBtn.addEventListener('click', async function() {
+      const comment = chatInput.value.trim();
+      if (comment && currentTaskId) {
+        if (await saveMemo(currentTaskId, comment)) {
+          chatInput.value = '';
+        }
+      } else if (!comment) {
+        alert('메모를 입력해주세요.');
+      } else if (!currentTaskId) {
+        alert('태스크를 선택해주세요.');
+      }
+    });
+  }
+  
+  if (chatInput) {
+    chatInput.addEventListener('keypress', async function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const comment = chatInput.value.trim();
+        if (comment && currentTaskId) {
+          if (await saveMemo(currentTaskId, comment)) {
+            chatInput.value = '';
+          }
+        }
+      }
+    });
   }
 }
 
@@ -169,17 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
     attachTaskCardEvents();
     attachSubtaskClickEvents();
     
-    // 첫 번째 태스크 자동 선택
-    const firstCard = tasklist.querySelector('.task-card');
-    if (firstCard) {
-      firstCard.classList.add('selected');
-      const taskId = firstCard.getAttribute('data-task-id');
-      if (taskId) {
-        fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
-          if (data.success && data.task) updateDetailFromData(data.task, false);
-        });
-      }
-    }
+    // 첫 번째 태스크 자동 선택 (별도 로직으로 이동됨)
   }
   
   // 태스크 카드 이벤트 재연결
@@ -190,30 +348,15 @@ document.addEventListener('DOMContentLoaded', function() {
       const newCard = card.cloneNode(true);
       card.parentNode.replaceChild(newCard, card);
       
-      newCard.addEventListener('click', async function() {
+      newCard.addEventListener('click', function() {
         // 편집 중일 때는 클릭 차단
-        if (isEditing) {
+        if (typeof isEditing !== 'undefined' && isEditing) {
           alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
           return;
         }
         
-        const taskId = this.dataset.taskId || this.getAttribute('data-task-id');
-        if (!taskId) return;
-        
-        // 선택 상태 업데이트
-        document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
-        document.querySelectorAll('.subtask-item').forEach(s => s.classList.remove('selected'));
-        this.classList.add('selected');
-        
-        try {
-          const resp = await fetch(`/mentee/task_detail/${taskId}/`);
-          const data = await resp.json();
-          if (data.success && data.task) {
-            updateDetailFromData(data.task, false); // 상위 태스크이므로 false
-          }
-        } catch (e) {
-          alert('상세정보 불러오기 실패');
-        }
+        // 🔧 selectTask 함수 사용으로 통합
+        selectTask(this);
       });
     });
     
@@ -255,6 +398,43 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // 페이지 로드 시 원본 데이터 수집
   collectOriginalTaskData();
+  
+  // 🔧 메모 입력 기능 초기화
+  initMemoInput();
+  
+  // 🔧 선택된 태스크 표시 (URL 파라미터 기반)
+  setTimeout(() => {
+    if (window.selectedTaskId || window.selectedTaskData) {
+      console.log('🔍 페이지 로드 시 선택된 태스크 있음');
+      displaySelectedTask();
+    } else {
+      console.log('🔍 페이지 로드 시 선택된 태스크 없음 - 첫 번째 태스크 선택');
+      const firstTaskCard = document.querySelector('.task-card');
+      if (firstTaskCard) {
+        // URL 이동 없이 직접 표시만 (기본 동작)
+        const taskId = firstTaskCard.dataset.taskId;
+        if (taskId) {
+          currentTaskId = taskId;
+          
+          // 선택 표시
+          document.querySelectorAll('.task-card').forEach(card => card.classList.remove('selected'));
+          firstTaskCard.classList.add('selected');
+          
+          // API로 상세 정보 로드
+          fetch(`/mentee/task_detail/${taskId}/`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.success && data.task) {
+                updateDetailFromData(data.task, false);
+              }
+            })
+            .catch(error => {
+              console.error('❌ 첫 번째 태스크 API 호출 실패:', error);
+            });
+        }
+      }
+    }
+  }, 100);
 
   // 하위 테스크(서브태스크) 클릭 시 상세 정보 표시
   function attachSubtaskClickEvents() {
@@ -267,22 +447,18 @@ document.addEventListener('DOMContentLoaded', function() {
         e.stopPropagation(); // 상위 카드 클릭 방지
         
         // 편집 중일 때는 클릭 차단
-        if (isEditing) {
+        if (typeof isEditing !== 'undefined' && isEditing) {
           alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
           return;
         }
         
         const taskId = this.getAttribute('data-task-id');
-        if (!taskId) return;
-        fetch(`/mentee/task_detail/${taskId}/`).then(resp => resp.json()).then(data => {
-          if (data.success && data.task) {
-            updateDetailFromData(data.task, true); // 두 번째 인자로 하위 태스크임을 표시
-            // 좌측 카드 선택 해제, 해당 subtask 강조(선택 효과)
-            document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
-            document.querySelectorAll('.subtask-item').forEach(s => s.classList.remove('selected'));
-            this.classList.add('selected');
-          }
-        });
+        console.log(`📌 서브태스크 클릭: ${taskId}`);
+        
+        // 🔧 서브태스크도 새 URL로 이동
+        if (taskId) {
+          navigateToTask(taskId);
+        }
       });
     });
   }
@@ -445,6 +621,11 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentTask = null; // 현재 선택된 task 정보 저장
   function updateDetailFromData(task, isSubtask = false) {
     currentTask = task;
+    
+    // 🔧 현재 선택된 태스크 정보 업데이트
+    currentTaskId = task.task_assign_id || task.id;
+    currentTaskData = task;
+    
     // 상태 뱃지 색상
     let statusClass = '';
     if (task.status === '진행전') statusClass = 'not-started';
@@ -467,15 +648,21 @@ document.addEventListener('DOMContentLoaded', function() {
     titleEl.innerHTML = `<span class="status-badge ${statusClass}">${task.status}</span> <span class="${statusClass === 'done' ? 'done' : ''}">${task.title}</span>`;
     const xpEl = document.getElementById('detail-xp');
     if (xpEl) xpEl.innerHTML = '';
-    // guideline이 null/빈값이면 표시하지 않음
-    const descEl = document.getElementById('detail-desc');
-    if (task.guideline && String(task.guideline).trim() !== '') {
-      descEl.textContent = task.guideline;
-      descEl.style.display = '';
-    } else {  
-      descEl.textContent = '';
-      descEl.style.display = 'none';
+    
+    // 🔧 가이드라인 표시 (새로운 구조)
+    displayGuideline(task);
+    
+    // 🔧 메모 로드
+    if (currentTaskId) {
+      loadMemos(currentTaskId);
     }
+    
+    // guideline이 null/빈값이면 표시하지 않음 (기존 desc 영역 - 사용 안 함)
+    const descEl = document.getElementById('detail-desc');
+    if (descEl) {
+      descEl.style.display = 'none'; // 새 구조에서는 사용하지 않음
+    }
+    
     // 난이도/마감일 메타
     const metaRow = document.querySelector('.task-detail-meta-row');
     let badgeClass = 'yellow';
@@ -486,25 +673,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let deadlineText = task.scheduled_end_date || '';
     
     metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${deadlineText}</span>`;
-    // description을 리스트로 표시
-    const listDiv = document.getElementById('detail-list');
-    listDiv.innerHTML = '';
-    if (task.description) {
-      const items = String(task.description).split('\n').filter(x => x.trim() !== '');
-      const ul = document.createElement('ul');
-      items.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = item;
-        ul.appendChild(li);
-      });
-      listDiv.appendChild(ul);
-    } else if (task.desc) {
-      const ul = document.createElement('ul');
-      const li = document.createElement('li');
-      li.textContent = task.desc;
-      ul.appendChild(li);
-      listDiv.appendChild(ul);
-    }
+    
+    // description을 리스트로 표시 (기존 코드 유지)
+    // 하지만 새로운 구조에서는 가이드라인이 별도 영역에 표시됨
+    
     // 댓글 목록 표시
     const chatMsgDiv = document.getElementById('chat-messages');
     if (chatMsgDiv) {
@@ -789,4 +961,243 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  // 🚀 Phase 2: 태스크 상세정보 패널 활성화 + 실시간 메시지 시스템
+  let currentSelectedTaskId = null; // 전역 변수
+
+  // ✅ 미션 4: 태스크 카드 클릭 핸들러 (기존 이벤트에 추가)
+  document.addEventListener('click', function(e) {
+    const taskCard = e.target.closest('.task-card');
+    const subtaskItem = e.target.closest('.subtask-item');
+    
+    if (taskCard && !taskCard.classList.contains('selected') && !e.target.closest('.task-controls')) {
+      selectTask(taskCard);
+    } else if (subtaskItem) {
+      selectSubtask(subtaskItem);
+    }
+  });
+
+  // 🔧 태스크 클릭 시 새 URL로 이동하는 함수
+  function navigateToTask(taskId) {
+    const currentUrl = new URL(window.location);
+    const mentorshipId = currentUrl.searchParams.get('mentorship_id') || window.mentorshipId;
+    
+    if (mentorshipId && taskId) {
+      const newUrl = `/mentee/task_list/?mentorship_id=${mentorshipId}&task_assign_id=${taskId}`;
+      console.log(`🔄 새 URL로 이동: ${newUrl}`);
+      window.location.href = newUrl;
+    }
+  }
+  
+  // 🔧 태스크 선택 함수 (URL 이동 방식으로 변경)
+  function selectTask(taskCard) {
+    console.log('🔍 selectTask 호출:', taskCard);
+    
+    const taskId = taskCard.dataset.taskId;
+    console.log(`📋 태스크 선택: ${taskId}`);
+    
+    // 🔧 새로운 방식: 새 URL로 이동
+    if (taskId) {
+      navigateToTask(taskId);
+    }
+  }
+  
+  // 🔧 페이지 로드 시 선택된 태스크 표시 함수
+  function displaySelectedTask() {
+    console.log('🔍 displaySelectedTask 호출');
+    console.log('🔍 selectedTaskData:', window.selectedTaskData);
+    console.log('🔍 selectedTaskId:', window.selectedTaskId);
+    
+    if (window.selectedTaskData) {
+      // 현재 선택된 태스크 정보 업데이트
+      currentTaskId = window.selectedTaskData.task_assign_id || window.selectedTaskData.id;
+      currentTaskData = window.selectedTaskData;
+      
+      console.log('🔍 선택된 태스크로 상세 정보 업데이트:', currentTaskId);
+      
+      // 해당 태스크 카드에 선택 표시
+      const taskCard = document.querySelector(`[data-task-id="${currentTaskId}"]`);
+      if (taskCard) {
+        document.querySelectorAll('.task-card').forEach(card => card.classList.remove('selected'));
+        document.querySelectorAll('.subtask-item').forEach(item => item.classList.remove('selected'));
+        taskCard.classList.add('selected');
+        console.log('🔍 태스크 카드에 선택 표시 적용');
+      }
+      
+      // 상세 정보 업데이트
+      updateDetailFromData(window.selectedTaskData, false);
+    } else if (window.selectedTaskId) {
+      // selectedTaskData가 없으면 API로 조회
+      console.log('🔍 selectedTaskData가 없어서 API로 조회');
+      fetch(`/mentee/task_detail/${window.selectedTaskId}/`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success && data.task) {
+            currentTaskId = window.selectedTaskId;
+            currentTaskData = data.task;
+            
+            // 해당 태스크 카드에 선택 표시
+            const taskCard = document.querySelector(`[data-task-id="${window.selectedTaskId}"]`);
+            if (taskCard) {
+              document.querySelectorAll('.task-card').forEach(card => card.classList.remove('selected'));
+              document.querySelectorAll('.subtask-item').forEach(item => item.classList.remove('selected'));
+              taskCard.classList.add('selected');
+            }
+            
+            updateDetailFromData(data.task, false);
+          }
+        })
+        .catch(error => {
+          console.error('❌ selectedTask API 호출 실패:', error);
+        });
+    }
+  }
+
+  // 🔧 서브태스크 선택 함수 (더 이상 사용하지 않음 - URL 이동 방식으로 변경)
+  // function selectSubtask(subtaskItem) {
+  //   // 서브태스크도 navigateToTask() 함수를 통해 새 URL로 이동
+  // }
+
+  // ✅ 미션 5: 메시지 전송 버튼 연결
+  const messageSendBtn = document.getElementById('chat-send-btn');
+  const messageInput = document.getElementById('chat-input');
+  
+  if (messageSendBtn) {
+    messageSendBtn.addEventListener('click', sendMessage);
+  }
+  
+  if (messageInput) {
+    messageInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+
+  // 🌐 메시지 전송 함수
+  async function sendMessage() {
+    if (!currentSelectedTaskId) {
+      alert('태스크를 먼저 선택해주세요.');
+      return;
+    }
+    
+    const chatInput = document.getElementById('chat-input');
+    const message = chatInput.value.trim();
+    
+    if (!message) {
+      alert('메시지를 입력해주세요.');
+      return;
+    }
+    
+    console.log(`💬 메시지 전송: ${currentSelectedTaskId} -> "${message}"`);
+    
+    try {
+      const response = await fetch(`/mentee/task_comment/${currentSelectedTaskId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'), // 기존 함수 활용
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ comment: message })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          chatInput.value = '';
+          console.log('✅ 메시지 전송 성공');
+          loadTaskMessages(currentSelectedTaskId); // 메시지 목록 새로고침
+        } else {
+          alert('메시지 전송 실패: ' + (data.error || '알 수 없는 오류'));
+        }
+      } else {
+        alert('메시지 전송에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('메시지 전송 오류:', error);
+      alert('네트워크 오류가 발생했습니다.');
+    }
+  }
+
+  // 📋 메시지 목록 로드 함수
+  async function loadTaskMessages(taskId) {
+    console.log(`📨 메시지 로드: ${taskId}`);
+    
+    try {
+      const response = await fetch(`/mentee/task_detail/${taskId}/`, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success) {
+          const messagesContainer = document.getElementById('chat-messages');
+          if (!messagesContainer) return;
+          
+          messagesContainer.innerHTML = '';
+          
+          const memos = data.task.memos || [];
+          console.log(`💬 메시지 개수: ${memos.length}`);
+          
+          if (memos.length === 0) {
+            messagesContainer.innerHTML = '<div style="color: #999; text-align: center; padding: 20px; font-style: italic;">아직 댓글이 없습니다.</div>';
+          } else {
+            memos.forEach(memo => {
+              const messageDiv = document.createElement('div');
+              messageDiv.className = 'message';
+              messageDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; background: #f5f5f5; border-radius: 6px; font-size: 14px;';
+              
+              messageDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <div>
+                    <strong style="color: #333;">${memo.user || '익명'}</strong>: ${memo.comment || ''}
+                  </div>
+                  <small style="color: #666; font-size: 12px; white-space: nowrap; margin-left: 10px;">
+                    ${memo.create_date || ''}
+                  </small>
+                </div>
+              `;
+              
+              messagesContainer.appendChild(messageDiv);
+            });
+          }
+          
+          // 자동 스크롤 (최신 메시지로)
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          
+        } else {
+          console.error('메시지 로드 실패:', data.error);
+        }
+      } else {
+        console.error('메시지 로드 HTTP 오류:', response.status);
+      }
+    } catch (error) {
+      console.error('메시지 로드 예외:', error);
+    }
+  }
+
+  // 🛠️ CSRF 토큰 가져오기 함수 (기존 로직 재사용)
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // 🚀 초기 선택: 선택된 태스크 처리 (위에서 처리됨)
+  
 });

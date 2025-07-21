@@ -10,7 +10,7 @@ class FastAPIClient:
     """FastAPI 서버와 통신하기 위한 클라이언트"""
     
     def __init__(self):
-        self.base_url = getattr(settings, 'FASTAPI_BASE_URL', 'http://localhost:8000')
+        self.base_url = getattr(settings, 'FASTAPI_BASE_URL', 'http://localhost:8001')
         self.session = requests.Session()
         self.session.headers.update({
             'Content-Type': 'application/json',
@@ -289,9 +289,13 @@ class FastAPIClient:
     
     def get_task_assign(self, task_assign_id: int) -> Dict[str, Any]:
         """태스크 할당 상세 조회"""
-        url = f"{self.base_url}/api/tasks/assigns/{task_assign_id}"
+        url = f"{self.base_url}/api/tasks/assign/{task_assign_id}"
+        print(f"DEBUG - FastAPI 태스크 조회 URL: {url}")
         response = self.session.get(url)
-        return self._handle_response(response)
+        print(f"DEBUG - FastAPI 태스크 조회 응답 상태: {response.status_code}")
+        result = self._handle_response(response)
+        print(f"DEBUG - FastAPI 태스크 조회 결과: {result}")
+        return result
     
     def create_task_assign(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
         """태스크 할당 생성"""
@@ -301,8 +305,11 @@ class FastAPIClient:
     
     def update_task_assign(self, task_assign_id: int, task_data: Dict[str, Any]) -> Dict[str, Any]:
         """태스크 할당 수정"""
-        url = f"{self.base_url}/api/tasks/assigns/{task_assign_id}"
+        url = f"{self.base_url}/api/tasks/assign/{task_assign_id}"
+        print(f"DEBUG - FastAPI 태스크 업데이트 URL: {url}")
+        print(f"DEBUG - 업데이트 데이터: {task_data}")
         response = self.session.put(url, json=task_data)
+        print(f"DEBUG - FastAPI 응답 상태: {response.status_code}")
         return self._handle_response(response)
     
     def delete_task_assign(self, task_assign_id: int) -> Dict[str, Any]:
@@ -326,11 +333,20 @@ class FastAPIClient:
         if is_active is not None:
             params["is_active"] = is_active
         
+        print(f"🔍 FASTAPI_CLIENT - 멘토십 조회 요청:")
+        print(f"🔍 FASTAPI_CLIENT - URL: {url}")
+        print(f"🔍 FASTAPI_CLIENT - params: {params}")
+        
         response = self.session.get(url, params=params)
+        print(f"🔍 FASTAPI_CLIENT - 응답 상태: {response.status_code}")
+        
         mentorships_list = self._handle_response(response)
+        print(f"🔍 FASTAPI_CLIENT - 응답 데이터: {mentorships_list}")
         
         # 리스트를 딕셔너리로 래핑
-        return {"mentorships": mentorships_list}
+        result = {"mentorships": mentorships_list}
+        print(f"🔍 FASTAPI_CLIENT - 최종 반환 데이터: {result}")
+        return result
     
     def get_mentorship(self, mentorship_id: int) -> Dict[str, Any]:
         """멘토쉽 상세 조회"""
@@ -467,15 +483,25 @@ class FastAPIClient:
     # 메모 관리
     def get_memos(self, task_assign_id: Optional[int] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
         """메모 목록 조회"""
-        url = f"{self.base_url}/api/memo/"
-        params = {}
         if task_assign_id:
-            params["task_assign_id"] = task_assign_id
-        if user_id:
-            params["user_id"] = user_id
+            # 특정 태스크의 메모 조회
+            url = f"{self.base_url}/api/memo/task/{task_assign_id}"
+            print(f"DEBUG - 태스크별 메모 조회 URL: {url}")
+            response = self.session.get(url)
+        elif user_id:
+            # 특정 사용자의 메모 조회
+            url = f"{self.base_url}/api/memo/user/{user_id}"
+            print(f"DEBUG - 사용자별 메모 조회 URL: {url}")
+            response = self.session.get(url)
+        else:
+            # 전체 메모 조회
+            url = f"{self.base_url}/api/memo/"
+            print(f"DEBUG - 전체 메모 조회 URL: {url}")
+            response = self.session.get(url)
         
-        response = self.session.get(url, params=params)
+        print(f"DEBUG - 메모 조회 응답 상태: {response.status_code}")
         memos_list = self._handle_response(response)
+        print(f"DEBUG - 조회된 메모 개수: {len(memos_list) if isinstance(memos_list, list) else 'N/A'}")
         
         # 리스트를 딕셔너리로 래핑
         return {"memos": memos_list}

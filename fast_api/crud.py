@@ -390,6 +390,12 @@ def get_task_assigns_by_user(db: Session, user_id: int, skip: int = 0, limit: in
         )
     ).offset(skip).limit(limit).all()
 
+def get_task_assigns_by_mentorship(db: Session, mentorship_id: int, skip: int = 0, limit: int = 100):
+    """멘토십별 태스크 할당 목록 조회"""
+    return db.query(models.TaskAssign).filter(
+        models.TaskAssign.mentorship_id == mentorship_id
+    ).offset(skip).limit(limit).all()
+
 def update_task_assign(db: Session, task_id: int, task_update: schemas.TaskAssignCreate):
     """태스크 할당 정보 업데이트"""
     db_task = get_task_assign(db, task_id)
@@ -572,45 +578,69 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
 # Memo CRUD
 def create_memo(db: Session, memo: schemas.MemoCreate):
     """메모 생성"""
-    db_memo = models.Memo(**memo.dict())
-    db.add(db_memo)
-    db.commit()
-    db.refresh(db_memo)
-    return db_memo
+    try:
+        db_memo = models.Memo(**memo.dict())
+        db.add(db_memo)
+        db.commit()
+        db.refresh(db_memo)
+        return db_memo
+    except Exception as e:
+        db.rollback()
+        raise e
 
 def get_memo(db: Session, memo_id: int):
     """메모 단일 조회"""
-    return db.query(models.Memo).filter(models.Memo.memo_id == memo_id).first()
+    try:
+        return db.query(models.Memo).filter(models.Memo.memo_id == memo_id).first()
+    except Exception as e:
+        raise e
 
 def get_memos(db: Session, skip: int = 0, limit: int = 100):
     """메모 목록 조회"""
-    return db.query(models.Memo).offset(skip).limit(limit).all()
+    try:
+        return db.query(models.Memo).offset(skip).limit(limit).all()
+    except Exception as e:
+        raise e
 
 def get_memos_by_task(db: Session, task_assign_id: int):
     """과제별 메모 조회"""
-    return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
+    try:
+        return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
+    except Exception as e:
+        raise e
 
 def get_memos_by_user(db: Session, user_id: int):
     """사용자별 메모 조회"""
-    return db.query(models.Memo).filter(models.Memo.user_id == user_id).all()
+    try:
+        return db.query(models.Memo).filter(models.Memo.user_id == user_id).all()
+    except Exception as e:
+        raise e
 
 def update_memo(db: Session, memo_id: int, memo_update: schemas.MemoCreate):
     """메모 정보 업데이트"""
-    db_memo = get_memo(db, memo_id)
-    if db_memo:
-        for key, value in memo_update.dict().items():
-            setattr(db_memo, key, value)
-        db.commit()
-        db.refresh(db_memo)
-    return db_memo
+    try:
+        db_memo = get_memo(db, memo_id)
+        if db_memo:
+            for key, value in memo_update.dict().items():
+                setattr(db_memo, key, value)
+            db.commit()
+            db.refresh(db_memo)
+        return db_memo
+    except Exception as e:
+        db.rollback()
+        raise e
 
 def delete_memo(db: Session, memo_id: int):
     """메모 삭제"""
-    db_memo = get_memo(db, memo_id)
-    if db_memo:
-        db.delete(db_memo)
-        db.commit()
-    return db_memo
+    try:
+        db_memo = get_memo(db, memo_id)
+        if db_memo:
+            db.delete(db_memo)
+            db.commit()
+        return db_memo
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 # Docs CRUD

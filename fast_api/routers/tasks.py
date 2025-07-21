@@ -53,7 +53,7 @@ async def delete_task_manage(task_id: int, db: Session = Depends(get_db)):
 
 
 # 태스크 할당 (사용자에게 할당된 태스크들)
-@router.post("/assign/", response_model=schemas.TaskAssign)
+@router.post("/assign/", response_model=schemas.TaskAssignResponse)
 async def create_task_assign(task: schemas.TaskAssignCreate, db: Session = Depends(get_db)):
     """새 태스크 할당 생성"""
     # 사용자 존재 확인
@@ -98,8 +98,24 @@ async def get_task_assigns(skip: int = 0, limit: int = 100, db: Session = Depend
     tasks = crud.get_task_assigns(db, skip=skip, limit=limit)
     return tasks
 
+# Django 클라이언트 호환성을 위한 추가 엔드포인트
+@router.get("/assigns", response_model=List[schemas.TaskAssignResponse])
+async def get_task_assigns_plural(
+    skip: int = 0, 
+    limit: int = 100, 
+    mentorship_id: int = None,
+    db: Session = Depends(get_db)
+):
+    """태스크 할당 목록 조회 (Django 클라이언트용)"""
+    if mentorship_id:
+        # mentorship_id로 필터링된 태스크 할당 조회
+        tasks = crud.get_task_assigns_by_mentorship(db, mentorship_id=mentorship_id, skip=skip, limit=limit)
+    else:
+        tasks = crud.get_task_assigns(db, skip=skip, limit=limit)
+    return tasks
 
-@router.get("/assign/{task_id}", response_model=schemas.TaskAssign)
+
+@router.get("/assign/{task_id}", response_model=schemas.TaskAssignResponse)
 async def get_task_assign(task_id: int, db: Session = Depends(get_db)):
     """특정 태스크 할당 조회"""
     db_task = crud.get_task_assign(db, task_id=task_id)
@@ -108,7 +124,7 @@ async def get_task_assign(task_id: int, db: Session = Depends(get_db)):
     return db_task
 
 
-@router.put("/assign/{task_id}", response_model=schemas.TaskAssign)
+@router.put("/assign/{task_id}", response_model=schemas.TaskAssignResponse)
 async def update_task_assign(task_id: int, task: schemas.TaskAssignCreate, db: Session = Depends(get_db)):
     """태스크 할당 수정"""
     db_task = crud.get_task_assign(db, task_id=task_id)
@@ -128,7 +144,7 @@ async def delete_task_assign(task_id: int, db: Session = Depends(get_db)):
     return {"message": "할당된 태스크가 성공적으로 삭제되었습니다"}
 
 
-@router.get("/assign/user/{user_id}", response_model=List[schemas.TaskAssign])
+@router.get("/assign/user/{user_id}", response_model=List[schemas.TaskAssignResponse])
 async def get_user_tasks(user_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """특정 사용자의 할당된 태스크 목록 조회"""
     # 사용자 존재 확인
@@ -161,7 +177,7 @@ async def update_task_status(task_id: int, status: int, db: Session = Depends(ge
 
 
 # 하위 태스크 (TaskAssign의 서브태스크)
-@router.post("/subtask/", response_model=schemas.TaskAssign)
+@router.post("/subtask/", response_model=schemas.TaskAssignResponse)
 async def create_subtask(subtask: schemas.TaskAssignCreate, db: Session = Depends(get_db)):
     """새 하위 태스크 생성 (TaskAssign의 서브태스크)"""
     # 부모 태스크 할당 존재 확인

@@ -5,6 +5,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/mentee/mentee.css' %}">
+
 <style>
 .kanban-board { display: flex; gap: 25px; min-height: 600px; }
 
@@ -100,6 +101,77 @@
   transition: all 0.2s ease;
 }
 
+/* 🎨 상태별 뱃지 스타일 */
+.kanban-status-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.processing-badge {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fbbf24;
+}
+
+.review-badge {
+  background: #fecaca;
+  color: #dc2626;
+  border: 1px solid #f87171;
+}
+
+.success-badge {
+  background: #d1fae5;
+  color: #059669;
+  border: 1px solid #34d399;
+}
+
+/* 완료된 태스크 추가 스타일 */
+.success-task {
+  opacity: 0.8;
+  position: relative;
+}
+
+.success-task::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: #10b981;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.success-task .d-day-badge.completed {
+  background: #d1fae5;
+  color: #059669;
+  text-decoration: line-through;
+}
+
+/* 진행중, 검토요청 상태 특별 스타일 */
+.processing-task {
+  border-left: 3px solid #f59e0b !important;
+}
+
+.review-task {
+  border-left: 3px solid #dc2626 !important;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.9; }
+}
+
 .kanban-card-row { 
   display: flex; 
   align-items: center; 
@@ -141,6 +213,29 @@
 .diff-mid { background: #10b981; color: #ffffff; }
 .diff-low { background: #f59e0b; color: #ffffff; }
 
+/* 🎯 task_list.html과 동일한 D-day 스타일 */
+.task-dday {
+  margin-left: auto;
+  background: #fce4ec;
+  color: #d32f2f;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 10px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.task-dday.urgent {
+  background: #fce4ec;
+  color: #d32f2f;
+}
+
+.task-dday.warning {
+  background: #fce4ec;
+  color: #d32f2f;
+}
+
 .kanban-desc { 
   color: #6b7280; 
   font-size: 13px; 
@@ -160,11 +255,108 @@
   color: #9ca3af;
   opacity: 0.7;
 }
+.task-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.task-modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modal-header button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-body p {
+  margin-bottom: 16px;
+}
+
+.task-comments {
+  margin-top: 24px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+
+.task-comments h3 {
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.comment {
+  background: #f9fafb;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.comment strong {
+  color: #374151;
+}
+
+.comment small {
+  color: #6b7280;
+  float: right;
+}
+
+.loading-message {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.error-card {
+  border-left-color: #dc2626 !important;
+  background-color: #fef2f2 !important;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-  <div class="main-content bg-gray-50 p-8 rounded-lg">
+  <div class="main-content bg-gray-50 p-6 rounded-lg">
     <div class="welcome-section bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8 flex items-center gap-6">
       <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-200 bg-white shadow-sm" />
       <div class="flex flex-col flex-1">
@@ -178,98 +370,170 @@
       </div>      
     </div>
 
-    <div class="kanban-section bg-white rounded-xl shadow-md border border-gray-200 p-3 mb-8" style="display: flex;">
-      <div class="kanban-column todo-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
-        <div class="kanban-header">진행 전</div>
-        {% for task in status_tasks.진행전 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              {% if task.dday_text %}
-                <span class="d-day-badge">{{ task.dday_text }}</span>
-              {% endif %}
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
-            </div>
+      <div class="kanban-board" style="display: flex;">        
+        <!-- 진행전 컬럼 -->
+        <div class="kanban-column todo-column" data-status="진행전" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-header">진행전</div>
+          <div class="task-container" id="todo-container">
+            {% for task in status_tasks.진행전 %}
+              <div class="kanban-card" 
+                   data-date="{{ task.scheduled_end_date|default:'' }}" 
+                   data-task-id="{{ task.task_assign_id }}"
+                   data-title="{{ task.title|escapejs }}"
+                   data-desc="{{ task.description|default_if_none:''|escapejs }}"
+                   data-priority="{{ task.priority|default:'중'|escapejs }}"
+                   data-status="{{ task.status|escapejs }}"
+                   data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
+                   data-memos="{{ task.memos|safe }}"
+                   draggable="true" 
+                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   id="task{{ task.task_assign_id }}">
+                <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+                  <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                    {% if task.dday is not None %}
+                      <span class="task-dday {% if task.dday <= 1 %}urgent{% elif task.dday <= 3 %}warning{% endif %}">
+                        {% if task.dday >= 0 %}D-{{ task.dday }}{% else %}D+{% widthratio task.dday -1 1 %}{% endif %}
+                      </span>
+                    {% endif %}
+                    <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '하' %}diff-low{% else %}diff-mid{% endif %}">{{ task.priority|default:'중' }}</span>
+                  </div>
+                </div>
+                <div class="kanban-card-row">
+                  <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
+                </div>
+                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+              </div>
+            {% empty %}
+              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+                태스크가 없습니다.
+              </div>
+            {% endfor %}
           </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
+        </div>
+        
+        <!-- 진행중 컬럼 -->
+        <div class="kanban-column processing-column" data-status="진행중" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-header">진행 중</div>
+          <div class="task-container" id="processing-container">
+            {% for task in status_tasks.진행중 %}
+              <div class="kanban-card processing-task" 
+                   data-date="{{ task.scheduled_end_date|default:'' }}" 
+                   data-task-id="{{ task.task_assign_id }}"
+                   data-title="{{ task.title|escapejs }}"
+                   data-desc="{{ task.description|default_if_none:''|escapejs }}"
+                   data-priority="{{ task.priority|default:'중'|escapejs }}"
+                   data-status="{{ task.status|escapejs }}"
+                   data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
+                   data-memos="{{ task.memos|safe }}"
+                   draggable="true" 
+                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   id="task{{ task.task_assign_id }}">
+                <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+                  <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                    {% if task.dday is not None %}
+                      <span class="task-dday {% if task.dday <= 1 %}urgent{% elif task.dday <= 3 %}warning{% endif %}">
+                        {% if task.dday >= 0 %}D-{{ task.dday }}{% else %}D+{% widthratio task.dday -1 1 %}{% endif %}
+                      </span>
+                    {% endif %}
+                    <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '하' %}diff-low{% else %}diff-mid{% endif %}">{{ task.priority|default:'중' }}</span>
+                  </div>
+                  <div class="kanban-status-badge processing-badge">진행중</div>
+                </div>
+                <div class="kanban-card-row">
+                  <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
+                </div>
+                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+              </div>
+            {% empty %}
+              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+                태스크가 없습니다.
+              </div>
+            {% endfor %}
           </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
         </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          진행 전인 태스크가 없습니다.
-        </div>
-        {% endfor %}
-      </div>
-      
-      <div class="kanban-column processing-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
-        <div class="kanban-header">진행 중</div>
-        {% for task in status_tasks.진행중 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              {% if task.dday_text %}
-                <span class="d-day-badge">{{ task.dday_text }}</span>
-              {% endif %}
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
-            </div>
+        
+        <!-- 검토요청 컬럼 -->
+        <div class="kanban-column review-request-column" data-status="검토요청" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-header">검토요청</div>
+          <div class="task-container" id="review-container">
+            {% for task in status_tasks.검토요청 %}
+              <div class="kanban-card review-task" 
+                   data-date="{{ task.scheduled_end_date|default:'' }}" 
+                   data-task-id="{{ task.task_assign_id }}"
+                   data-title="{{ task.title|escapejs }}"
+                   data-desc="{{ task.description|default_if_none:''|escapejs }}"
+                   data-priority="{{ task.priority|default:'중'|escapejs }}"
+                   data-status="{{ task.status|escapejs }}"
+                   data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
+                   data-memos="{{ task.memos|safe }}"
+                   draggable="true" 
+                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   id="task{{ task.task_assign_id }}">
+                <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+                  <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                    {% if task.dday is not None %}
+                      <span class="task-dday {% if task.dday <= 1 %}urgent{% elif task.dday <= 3 %}warning{% endif %}">
+                        {% if task.dday >= 0 %}D-{{ task.dday }}{% else %}D+{% widthratio task.dday -1 1 %}{% endif %}
+                      </span>
+                    {% endif %}
+                    <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '하' %}diff-low{% else %}diff-mid{% endif %}">{{ task.priority|default:'중' }}</span>
+                  </div>
+                  <div class="kanban-status-badge review-badge">검토요청</div>
+                </div>
+                <div class="kanban-card-row">
+                  <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
+                </div>
+                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+              </div>
+            {% empty %}
+              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+                태스크가 없습니다.
+              </div>
+            {% endfor %}
           </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
+        </div>
+        
+        <!-- 완료 컬럼 -->
+        <div class="kanban-column success-column" data-status="완료" style="flex:1; min-width:280px;">
+          <div class="kanban-header">완료</div>
+          <div class="task-container" id="success-container">
+            {% for task in status_tasks.완료 %}
+              <div class="kanban-card success-task" 
+                   data-date="{{ task.scheduled_end_date|default:'' }}" 
+                   data-task-id="{{ task.task_assign_id }}"
+                   data-title="{{ task.title|escapejs }}"
+                   data-desc="{{ task.description|default_if_none:''|escapejs }}"
+                   data-priority="{{ task.priority|default:'중'|escapejs }}"
+                   data-status="{{ task.status|escapejs }}"
+                   data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
+                   data-memos="{{ task.memos|safe }}"
+                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   id="task{{ task.task_assign_id }}"
+                   style="cursor: pointer;">
+                <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
+                  <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
+                    {% if task.dday is not None %}
+                      <span class="task-dday {% if task.dday <= 1 %}urgent{% elif task.dday <= 3 %}warning{% endif %}">
+                        {% if task.dday >= 0 %}D-{{ task.dday }}{% else %}D+{% widthratio task.dday -1 1 %}{% endif %}
+                      </span>
+                    {% endif %}
+                    <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '하' %}diff-low{% else %}diff-mid{% endif %}">{{ task.priority|default:'중' }}</span>
+                  </div>
+                  <div class="kanban-status-badge success-badge">완료</div>
+                </div>
+                <div class="kanban-card-row">
+                  <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
+                </div>
+                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+              </div>
+            {% empty %}
+              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
+                태스크가 없습니다.
+              </div>
+            {% endfor %}
           </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
         </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          진행 중인 태스크가 없습니다.
-        </div>
-        {% endfor %}
-      </div>
-      
-      <div class="kanban-column review-request-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
-        <div class="kanban-header">검토요청</div>
-        {% for task in status_tasks.검토요청 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              {% if task.dday_text %}
-                <span class="d-day-badge">{{ task.dday_text }}</span>
-              {% endif %}
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
-            </div>
-          </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
-          </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
-        </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          검토 요청한 태스크가 없습니다.
-        </div>
-        {% endfor %}
-      </div>
-      
-      <div class="kanban-column success-column" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
-        <div class="kanban-header">완료</div>
-        {% for task in status_tasks.완료 %}
-        <div class="kanban-card" data-date="{{ task.scheduled_end_date|date:'Y-m-d' }}" draggable="true" id="task{{ task.task_id }}">
-          <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
-            <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
-              <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '중' %}diff-mid{% else %}diff-low{% endif %}">{{ task.priority }}</span>
-            </div>
-          </div>
-          <div class="kanban-card-row">
-            <span class="kanban-title">{{ task.title }}</span>
-          </div>
-          <div class="kanban-desc">{{ task.description|default:"설명이 없습니다." }}</div>
-        </div>
-        {% empty %}
-        <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-          완료한 태스크가 없습니다.
-        </div>
-        {% endfor %}
+        
       </div>
     </div>
   </div>
@@ -277,107 +541,254 @@
 
 {% block extra_js %}
 <script src="{% static 'js/mentee/mentee.js' %}"></script>
-<script>
-function allowDrop(ev) {
-  ev.preventDefault();
-}
-let dragged = null;
-document.querySelectorAll('.kanban-card').forEach(card => {
-  card.addEventListener('dragstart', function(e) {
-    dragged = card;
-    console.log('드래그 시작:', {
-      cardId: card.id,
-      cardElement: card
-    });
-    setTimeout(() => card.classList.add('dragging'), 0);
-    
-    // 드래그할 때 클릭 이벤트 방지
-    e.stopPropagation();
-  });
-  card.addEventListener('dragend', function(e) {
-    card.classList.remove('dragging');
-    console.log('드래그 종료:', card.id);
-    dragged = null;
-    document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drop-hover'));
-  });
-  // 카드 클릭 시 해당 태스크 페이지로 이동 (드래그가 아닐 때만)
-  card.addEventListener('click', function(e) {
-    // 드래그 중이 아닐 때만 페이지 이동
-    if (!dragged) {
-      // window.location.href = 
-    }
-  });
-});
-document.querySelectorAll('.kanban-column').forEach(col => {
-  col.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    col.classList.add('drop-hover');
-  });
-  col.addEventListener('dragleave', function(e) {
-    col.classList.remove('drop-hover');
-  });
-  col.addEventListener('drop', function(e) {
-    col.classList.remove('drop-hover');
-  });
-});
-function drop(ev) {
-  ev.preventDefault();
-  if (dragged) {
-    const col = ev.currentTarget;
-    const taskId = dragged.id.replace('task', '');
-    
-    console.log('드롭 이벤트 시작:', {
-      draggedElement: dragged,
-      draggedId: dragged.id,
-      taskId: taskId,
-      targetColumn: col.className
-    });
-    
-    // 컬럼별 상태 매핑
-    let newStatus = '';
-    if (col.classList.contains('todo-column')) {
-      newStatus = '진행전';
-    } else if (col.classList.contains('processing-column')) {
-      newStatus = '진행중';
-    } else if (col.classList.contains('review-request-column')) {
-      newStatus = '검토요청';
-    } else if (col.classList.contains('success-column')) {
-      newStatus = '완료';
-    }
-    
-    console.log('상태 매핑 완료:', { newStatus });
-    
-    // 이미 같은 컬럼에 있으면 이동하지 않음
-    if (col.contains(dragged)) {
-      console.log('이미 같은 컬럼에 있음. 이동하지 않음.');
-      col.classList.remove('drop-hover');
-      return;
-    }
-    
-    // 태스크 상태 업데이트 (개선된 AJAX)
-    updateTaskStatusAsync(taskId, newStatus, dragged, col);
-    
-    col.classList.remove('drop-hover');
+<script id="task-data" type="application/json">
+  {
+      "mentorship_id": {{ mentorship.mentorship_id|default:'null' }},
+      "task_ids": [
+          {% if tasks_all %}
+              {% for task in tasks_all %}
+                  {
+                      "id": {{ task.task_assign_id }},
+                      "status": "{{ task.status }}"
+                  }{% if not forloop.last %},{% endif %}
+              {% endfor %}
+          {% endif %}
+      ]
   }
+  </script>
+<script>
+// 전역 변수
+let dragged = null;
+
+function initializeKanban() {
+    // 기존 카드들에 이벤트 리스너만 추가
+    document.querySelectorAll('.kanban-card').forEach(card => {
+        addCardEventListeners(card);
+    });
+    
+    // 드래그앤드롭 컬럼 이벤트는 그대로 유지
+    setupColumnEventListeners();
 }
 
-// 개선된 비동기 태스크 상태 업데이트
-async function updateTaskStatusAsync(taskId, newStatus, draggedElement, targetColumn) {
-    const originalParent = draggedElement.parentNode;
+// 페이지 로드 시 모든 태스크 데이터를 개별적으로 불러오기
+document.addEventListener('DOMContentLoaded', function() {
+    // 🚨 로딩 로직 완전 제거 - 이미 HTML에 모든 데이터가 있음
+    initializeKanban();
+    updateTaskProgress(); // 진행률 계산
+});
+
+// 모든 태스크를 개별적으로 로드
+
+
+// 개별 태스크 데이터 로드 함수
+
+
+// 빈 상태 표시 함수
+
+
+
+
+// 상태에 따른 컨테이너 반환
+function getContainerByStatus(status) {
+    const containers = {
+        '진행전': document.getElementById('todo-container'),
+        '진행중': document.getElementById('processing-container'),
+        '검토요청': document.getElementById('review-container'),
+        '완료': document.getElementById('success-container')
+    };
     
-    // UI 먼저 업데이트 (낙관적 업데이트)
-    targetColumn.appendChild(draggedElement);
-    
-    // 로딩 상태 표시
-    draggedElement.style.opacity = '0.7';
-    draggedElement.classList.add('updating');
+    return containers[status];
+}
+
+// D-day 계산 함수
+function calculateDday(scheduledEndDate) {
+    if (!scheduledEndDate) return null;
     
     try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const endDate = new Date(scheduledEndDate);
+        endDate.setHours(0, 0, 0, 0);
+        const diffTime = endDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+            return `D+${Math.abs(diffDays)}`;
+        } else if (diffDays === 0) {
+            return 'D-Day';
+        } else {
+            return `D-${diffDays}`;
+        }
+    } catch (error) {
+        console.error('D-day 계산 오류:', error);
+        return null;
+    }
+}
+
+// 우선순위 클래스 반환
+function getPriorityClass(priority) {
+    const priorityClasses = {
+        '상': 'diff-high',
+        '중': 'diff-mid',
+        '하': 'diff-low'
+    };
+    
+    return priorityClasses[priority] || 'diff-mid';
+}
+
+// 카드에 이벤트 리스너 추가
+function addCardEventListeners(card) {
+    // 드래그 이벤트
+    card.addEventListener('dragstart', function(e) {
+        dragged = card;
+        console.log('드래그 시작:', {
+            cardId: card.id,
+            cardElement: card
+        });
+        setTimeout(() => card.classList.add('dragging'), 0);
+        e.stopPropagation();
+    });
+    
+    card.addEventListener('dragend', function(e) {
+        card.classList.remove('dragging');
+        console.log('드래그 종료:', card.id);
+        dragged = null;
+        document.querySelectorAll('.kanban-column').forEach(col => 
+            col.classList.remove('drop-hover')
+        );
+    });
+    
+    // 클릭 이벤트 (상세보기)
+    card.addEventListener('click', function(e) {
+        if (!dragged) {
+            showTaskDetail(card.dataset.taskId);
+        }
+    });
+}
+
+// 오류 카드 렌더링
+
+
+// 태스크 재로드
+async function retryLoadTask(taskId, status) {
+    const errorCard = document.getElementById(`task${taskId}`);
+    if (errorCard) {
+        errorCard.remove();
+    }
+    
+    await loadTaskById(taskId, status);
+}
+
+// 드래그 앤 드롭 함수들
+function allowDrop(ev) {
+    ev.preventDefault();
+}
+
+// 🔧 컬럼 이벤트 리스너 (Null 체크 강화)
+function setupColumnEventListeners() {
+    document.querySelectorAll('.kanban-column').forEach(col => {
+        if (!col) return; // null 체크 추가
+        
+        col.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (col && col.classList) { // null 체크 강화
+                col.classList.add('drop-hover');
+            }
+        });
+        
+        col.addEventListener('dragleave', function(e) {
+            if (col && col.classList) { // null 체크 강화
+                col.classList.remove('drop-hover');
+            }
+        });
+        
+        col.addEventListener('drop', function(e) {
+            if (col && col.classList) { // null 체크 강화
+                col.classList.remove('drop-hover');
+            }
+        });
+    });
+}
+
+// 초기화 시 컬럼 이벤트 설정
+setupColumnEventListeners();
+
+function drop(ev) {
+    ev.preventDefault();
+    if (dragged) {
+        const col = ev.currentTarget;
+        const taskId = dragged.id.replace('task', '');
+        
+        console.log('드롭 이벤트 시작:', {
+            draggedElement: dragged,
+            draggedId: dragged.id,
+            taskId: taskId,
+            targetColumn: col.className
+        });
+        
+        // 컬럼별 상태 매핑
+        let newStatus = '';
+        if (col.classList.contains('todo-column')) {
+            newStatus = '진행전';
+        } else if (col.classList.contains('processing-column')) {
+            newStatus = '진행중';
+        } else if (col.classList.contains('review-request-column')) {
+            newStatus = '검토요청';
+        } else if (col.classList.contains('success-column')) {
+            newStatus = '완료';
+        }
+        
+        console.log('상태 매핑 완료:', { newStatus });
+        
+        // 이미 같은 컬럼에 있으면 이동하지 않음
+        if (col.contains(dragged)) {
+            console.log('이미 같은 컬럼에 있음. 이동하지 않음.');
+            col.classList.remove('drop-hover');
+            return;
+        }
+        
+        // 태스크 상태 업데이트
+        updateTaskStatusAsync(taskId, newStatus, dragged, col);
+        
+        col.classList.remove('drop-hover');
+    }
+}
+
+// 🔧 트랜잭션 방식 드래그앤드롭 + 자동 롤백 (완벽한 안정성)
+async function updateTaskStatusAsync(taskId, newStatus, draggedElement, targetColumn) {
+    const originalParent = draggedElement.parentNode;
+    const originalPosition = Array.from(originalParent.children).indexOf(draggedElement);
+    const targetContainer = targetColumn.querySelector('.task-container');
+    
+    console.log(`🔄 상태 업데이트 시작: ${taskId} -> ${newStatus}`);
+    
+    try {
+        // ⚡ Step 1: 낙관적 UI 업데이트 (즉시 반영)
+        targetContainer.appendChild(draggedElement);
+        updateTaskProgress(); // 🚨 즉시 진행률 업데이트
+        updateSuccessLine(); // 🚨 즉시 스타일 업데이트
+        
+        // 🔄 Step 2: 로딩 상태 표시
+        draggedElement.style.opacity = '0.7';
+        draggedElement.classList.add('updating');
+        
+        // 🌐 Step 3: API 호출 (현재 mentorship_id 포함)
         const requestUrl = `/mentee/update_task_status/${taskId}/`;
         const csrfToken = getCookie('csrftoken');
         
+        // 🔧 현재 페이지의 mentorship_id 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentMentorshipId = urlParams.get('mentorship_id');
+        
+        console.log(`📞 API 호출 URL: ${requestUrl}`);
+        console.log(`🔍 현재 mentorship_id: ${currentMentorshipId}`);
+        
         if (!csrfToken) {
             throw new Error('CSRF 토큰을 찾을 수 없습니다.');
+        }
+        
+        if (!currentMentorshipId) {
+            throw new Error('mentorship_id를 찾을 수 없습니다. URL을 확인해주세요.');
         }
         
         const response = await fetch(requestUrl, {
@@ -388,57 +799,139 @@ async function updateTaskStatusAsync(taskId, newStatus, draggedElement, targetCo
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: JSON.stringify({
-                status: newStatus
-            })
+            body: JSON.stringify({ 
+                status: newStatus,
+                mentorship_id: parseInt(currentMentorshipId)  // 🔧 현재 mentorship_id 전달
+            }),
+            credentials: 'same-origin'  // 🔧 세션 쿠키 포함
         });
+        
+        console.log(`📡 응답 상태: ${response.status} ${response.statusText}`);
         
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${response.statusText}\n응답: ${errorText}`);
+            console.error(`❌ HTTP 오류 응답:`, errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}\n서버 응답: ${errorText}`);
         }
         
         const data = await response.json();
         
         if (data.success) {
-            // 성공 시 UI 완료 처리
-            console.log('태스크 상태가 업데이트되었습니다:', data);
-            
-            updateSuccessLine();
-            updateTaskProgress();
-            
-            // 성공 알림 표시
+            // ✅ Step 4: 성공 처리
+            console.log('✅ 태스크 상태 업데이트 성공:', data);
             showTaskUpdateMessage(`태스크 상태가 "${newStatus}"로 변경되었습니다.`, 'success');
             
             // 애니메이션 효과
             draggedElement.style.transform = 'scale(1.05)';
             setTimeout(() => {
-                draggedElement.style.transform = 'scale(1)';
+                if (draggedElement.parentNode) {
+                    draggedElement.style.transform = 'scale(1)';
+                }
             }, 200);
             
         } else {
             throw new Error(data.error || '태스크 상태 업데이트 실패');
         }
-    } catch (error) {
-        console.error('태스크 상태 업데이트 오류:', error);
         
-        // 실패시 원래 위치로 되돌리기
-        if (originalParent && originalParent !== targetColumn) {
-            try {
+    } catch (error) {
+        // 💥 Step 5: 자동 롤백 (완벽한 복구)
+        console.error('❌ 상태 업데이트 실패, 롤백 실행:', error);
+        
+        try {
+            // 원래 위치로 정확히 복구
+            if (originalPosition >= originalParent.children.length) {
                 originalParent.appendChild(draggedElement);
-                showTaskUpdateMessage(`상태 업데이트 실패: ${error.message}`, 'error');
-            } catch (rollbackError) {
-                console.error('롤백 실패:', rollbackError);
-                window.location.reload();
+            } else {
+                originalParent.insertBefore(draggedElement, originalParent.children[originalPosition]);
             }
-        } else {
-            showTaskUpdateMessage('오류가 발생했습니다. 페이지를 새로고침합니다.', 'error');
-            setTimeout(() => window.location.reload(), 2000);
+            
+            // UI 상태도 원복
+            updateTaskProgress(); // 🚨 롤백 후 진행률 복구
+            updateSuccessLine(); // 🚨 롤백 후 스타일 복구
+            
+            showTaskUpdateMessage('업데이트에 실패했습니다. 다시 시도해주세요.', 'error');
+            
+        } catch (rollbackError) {
+            console.error('💥 치명적 오류: 롤백 실패', rollbackError);
+            showTaskUpdateMessage('심각한 오류가 발생했습니다. 페이지를 새로고침합니다.', 'error');
+            setTimeout(() => window.location.reload(), 1500);
         }
     } finally {
-        // 로딩 상태 해제
-        draggedElement.style.opacity = '1';
-        draggedElement.classList.remove('updating');
+        // 🧹 정리 작업
+        if (draggedElement && draggedElement.parentNode) {
+            draggedElement.style.opacity = '1';
+            draggedElement.classList.remove('updating');
+        }
+    }
+}
+
+// 태스크 클릭 시 상세 정보 표시
+function showTaskDetail(taskId) {
+    const card = document.getElementById(`task${taskId}`);
+    if (!card) return;
+    
+    // data 속성에서 직접 정보 추출 (API 호출 불필요!)
+    const task = {
+        id: card.dataset.taskId,
+        title: card.dataset.title,
+        description: card.dataset.desc,
+        status: card.dataset.status,
+        priority: card.dataset.priority,
+        scheduled_end_date: card.dataset.date,
+        guideline: card.dataset.guideline,
+        memos: JSON.parse(card.dataset.memos || '[]')
+    };
+    
+    showTaskModal(task);
+}
+
+// 태스크 상세 모달 표시
+function showTaskModal(task) {
+    // 기존 모달이 있으면 제거
+    const existingModal = document.querySelector('.task-modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 모달 HTML 생성 및 표시
+    const modalHTML = `
+        <div class="task-modal-overlay" onclick="closeTaskModal()">
+            <div class="task-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2>${task.title}</h2>
+                    <button onclick="closeTaskModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>설명:</strong> ${task.desc || task.description || '설명이 없습니다.'}</p>
+                    <p><strong>상태:</strong> ${task.status}</p>
+                    <p><strong>우선순위:</strong> ${task.priority || '중'}</p>
+                    <p><strong>예정 완료일:</strong> ${task.scheduled_end_date || '미정'}</p>
+                    ${task.guideline ? `<p><strong>가이드라인:</strong> ${task.guideline}</p>` : ''}
+                    
+                    <div class="task-comments">
+                        <h3>댓글</h3>
+                        ${task.memos && task.memos.length > 0 ? 
+                            task.memos.map(memo => `
+                                <div class="comment">
+                                    <strong>${memo.user}</strong>: ${memo.comment}
+                                    <small>(${memo.create_date})</small>
+                                </div>
+                            `).join('') :
+                            '<p style="color: #9ca3af; font-style: italic;">댓글이 없습니다.</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeTaskModal() {
+    const modal = document.querySelector('.task-modal-overlay');
+    if (modal) {
+        modal.remove();
     }
 }
 
@@ -474,87 +967,66 @@ function showTaskUpdateMessage(message, type = 'info') {
 
 // CSRF 토큰 가져오기 함수
 function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
     }
-  }
-  
-  // CSRF 토큰이 없으면 meta 태그에서 가져오기 시도
-  if (!cookieValue) {
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    if (csrfMeta) {
-      cookieValue = csrfMeta.getAttribute('content');
+    
+    // CSRF 토큰이 없으면 meta 태그에서 가져오기 시도
+    if (!cookieValue) {
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMeta) {
+            cookieValue = csrfMeta.getAttribute('content');
+        }
     }
-  }
-  
-  // 여전히 없으면 hidden input에서 가져오기 시도
-  if (!cookieValue) {
-    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
-    if (csrfInput) {
-      cookieValue = csrfInput.value;
+    
+    // 여전히 없으면 hidden input에서 가져오기 시도
+    if (!cookieValue) {
+        const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (csrfInput) {
+            cookieValue = csrfInput.value;
+        }
     }
-  }
-  
-  console.log('CSRF 토큰:', cookieValue ? '찾음' : '없음');
-  return cookieValue;
-}
-// Success 컬럼에 있는 카드에 취소선 적용
-function updateSuccessLine() {
-  document.querySelectorAll('.success-column .kanban-card').forEach(card => {
-    card.classList.add('success-task');
-  });
-  document.querySelectorAll('.kanban-column:not(.success-column) .kanban-card').forEach(card => {
-    card.classList.remove('success-task');
-  });
+    
+    console.log('CSRF 토큰:', cookieValue ? '찾음' : '없음');
+    return cookieValue;
 }
 
-// 완료 컬럼 태스크 개수 기반 진행률 계산 및 welcome-section 동기화
-function updateTaskProgress() {
-  const completedCount = document.querySelectorAll('.success-column .kanban-card').length;
-  const totalTasks = {{ total_tasks|default:0 }};
-  const completionPercentage = totalTasks > 0 ? (completedCount / totalTasks * 100) : 0;
-  
-  // 상단 완료율/진행률/Bar 동기화
-  const userLevelTop = document.getElementById('userLevelTop');
-  const userExpTop = document.getElementById('userExpTop');
-  const userExpMaxTop = document.getElementById('userExpMaxTop');
-  const expBarTop = document.getElementById('expBarTop');
-  
-  if (userLevelTop) userLevelTop.textContent = `${Math.round(completionPercentage)}%`;
-  if (userExpTop) userExpTop.textContent = completedCount;
-  if (userExpMaxTop) userExpMaxTop.textContent = totalTasks;
-  if (expBarTop) expBarTop.style.width = Math.min(100, completionPercentage) + '%';
-}
-// 드래그/드롭, DOM 변경 시 진행률/취소선 동기화
-let observer = null;
-window.addEventListener('DOMContentLoaded', () => {
-  updateSuccessLine();
-  updateTaskProgress();
-  const successCol = document.querySelector('.success-column');
-  if (successCol && !observer) {
-    try {
-      observer = new MutationObserver(() => {
-        updateSuccessLine();
-        updateTaskProgress();
-      });
-      observer.observe(successCol, { childList: true, subtree: true });
-    } catch (e) {
-      // observer 오류 무시
-    }
-  }
-  document.querySelectorAll('.kanban-card').forEach(card => {
-    card.addEventListener('dragend', () => {
-      updateSuccessLine();
-      updateTaskProgress();
+// Success 컬럼에 있는 카드에 취소선 적용
+function updateSuccessLine() {
+    document.querySelectorAll('.success-column .kanban-card').forEach(card => {
+        card.classList.add('success-task');
     });
-  });
-});
+    document.querySelectorAll('.kanban-column:not(.success-column) .kanban-card').forEach(card => {
+        card.classList.remove('success-task');
+    });
+}
+
+// 🔧 완료율 실시간 계산 및 동기화 (하드코딩 제거)
+function updateTaskProgress() {
+    const totalCards = document.querySelectorAll('.kanban-card').length;
+    const completedCards = document.querySelectorAll('.success-column .kanban-card').length;
+    const percentage = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
+    
+    console.log(`진행률 업데이트: ${completedCards}/${totalCards} = ${percentage}%`);
+    
+    // 기존 DOM 업데이트 (절대 변경 금지)
+    const userLevelTop = document.getElementById('userLevelTop');
+    const userExpTop = document.getElementById('userExpTop');
+    const userExpMaxTop = document.getElementById('userExpMaxTop');
+    const expBarTop = document.getElementById('expBarTop');
+    
+    if (userLevelTop) userLevelTop.textContent = `${percentage}%`;
+    if (userExpTop) userExpTop.textContent = completedCards;
+    if (userExpMaxTop) userExpMaxTop.textContent = totalCards;
+    if (expBarTop) expBarTop.style.width = `${Math.min(100, percentage)}%`;
+}
 </script>
 {% endblock %}

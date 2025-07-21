@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, validator, Field
 from typing import Optional, List
 from datetime import date, datetime
 from fastapi import Form, UploadFile, File
@@ -52,6 +52,11 @@ class DepartmentBase(BaseModel):
 
 class DepartmentCreate(DepartmentBase):
     company_id: str
+
+class DepartmentUpdate(BaseModel):
+    department_name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class Department(DepartmentBase):
     department_id: int  # Integer로 다시 변경
@@ -177,9 +182,15 @@ class TaskAssign(TaskAssignBase):
     task_assign_id: int
     parent_id: Optional[int] = None
     mentorship_id: int
-    parent: Optional['TaskAssign'] = None
-    subtasks: Optional[List['TaskAssign']] = None
-    mentorship: Optional['Mentorship'] = None
+    
+    class Config:
+        from_attributes = True
+
+# 순환 참조를 피하기 위한 응답용 스키마
+class TaskAssignResponse(TaskAssignBase):
+    task_assign_id: int
+    parent_id: Optional[int] = None
+    mentorship_id: int
     
     class Config:
         from_attributes = True
@@ -242,8 +253,7 @@ class Memo(MemoBase):
     memo_id: int
     task_assign_id: int
     user_id: int
-    task_assign: Optional[TaskAssign] = None
-    user: Optional[User] = None
+    # 순환 참조를 피하기 위해 관계 필드 제거
     
     class Config:
         from_attributes = True
