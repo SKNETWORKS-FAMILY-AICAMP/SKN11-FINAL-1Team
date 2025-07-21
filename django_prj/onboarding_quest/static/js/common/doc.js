@@ -89,7 +89,7 @@ uploadBtn?.addEventListener('click', async () => {
       formData.append('department_id', CURRENT_DEPARTMENT_ID);
       formData.append('original_file_name', fileInfo.name);
 
-      const response = await fetch('/common/doc/upload/', {
+      const response = await fetch('http://localhost:8001/upload', {
         method: 'POST',
         body: formData
       });
@@ -172,6 +172,35 @@ function closeDeleteModal() {
   deleteDocId = null;
 }
 
+// function confirmDelete() {
+//   if (!deleteDocId) return;
+
+//   const formData = new FormData();
+//   formData.append('docs_id', deleteDocId);
+//   formData.append('department_id', CURRENT_DEPARTMENT_ID);
+
+//   fetch(`/common/doc/${deleteDocId}/delete/`, {
+//     method: 'POST',
+//     body: formData
+//   })
+//     .then(res => res.json())
+//     .then(data => {
+//       if (data.success) {
+//         alert('삭제되었습니다.');
+//         location.reload();
+//       } else {
+//         alert('삭제 실패: ' + data.error);
+//       }
+//     })
+//     .catch(err => {
+//       console.error('삭제 오류:', err);
+//       alert('삭제 중 오류가 발생했습니다.');
+//     });
+
+//   closeDeleteModal();
+// }
+
+
 function confirmDelete() {
   if (!deleteDocId) return;
 
@@ -179,7 +208,7 @@ function confirmDelete() {
   formData.append('docs_id', deleteDocId);
   formData.append('department_id', CURRENT_DEPARTMENT_ID);
 
-  fetch(`/common/doc/${deleteDocId}/delete/`, {
+  fetch('http://localhost:8001/delete', {
     method: 'POST',
     body: formData
   })
@@ -199,6 +228,9 @@ function confirmDelete() {
 
   closeDeleteModal();
 }
+
+
+
 //#endregion
 
 // 외부 클릭 시 모달 닫기
@@ -206,3 +238,86 @@ window.addEventListener('click', function (e) {
   if (e.target === document.getElementById('edit-modal')) closeEditModal();
   if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
 });
+
+async function loadDocumentList(departmentId) {
+  const response = await fetch(`http://localhost:8001/list?department_id=${departmentId}`);
+  const data = await response.json();
+  console.log("DOC LIST RESULT:", data);
+
+  const container = document.getElementById("doc-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!data.success) {
+    container.innerHTML = `<tr><td colspan="4">문서 불러오기 실패: ${data.error}</td></tr>`;
+    return;
+  }
+
+  data.docs.forEach(doc => {
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-doc-id", doc.docs_id);
+
+    const canEdit = doc.department_id === CURRENT_DEPARTMENT_ID;
+
+    tr.innerHTML = `
+    <td>
+      <a href="http://localhost:8001/download/${doc.docs_id}" target="_blank">
+        📄 ${doc.title || "이름없음"}
+
+      </a>
+    </td>
+    <td>${doc.description || "-"}</td>
+    <td>${doc.department_name || "-"}</td>
+    <td>
+      ${canEdit
+        ? `
+          <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
+          <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>
+        `
+        : `<span style="color:#999;">-</span>`
+      }
+    </td>
+  `;
+    container.appendChild(tr);
+  });
+}
+
+
+
+function downloadDocument(docsId) {
+  window.location.href = `http://localhost:8001/download/${docsId}`;
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadDocumentList(CURRENT_DEPARTMENT_ID);
+
+  // 업로드 이벤트 등록
+  document.body.addEventListener("dragover", preventDefaults, false);
+  document.body.addEventListener("drop", handleDrop, false);
+});
+
+
+function preventDefaults(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function handleDrop(e) {
+  preventDefaults(e);
+  const dt = e.dataTransfer;
+  const files = dt.files;
+  handleUpload(files);
+}
+
+function handleUpload(files) {
+  if (!files || files.length === 0) return;
+  Array.from(files).forEach(file => {
+    if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+      addedFiles.push({ file, name: file.name, description: '', common_doc: false });
+    }
+  });
+  renderUploadList();
+}
+

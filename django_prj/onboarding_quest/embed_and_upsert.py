@@ -9,6 +9,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from loaders import load_documents
+import uuid
 
 # 로깅 설정
 os.makedirs("log", exist_ok=True)
@@ -69,6 +70,27 @@ def create_collection_if_not_exists():
             vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
         )
 
+def get_flexible_sections(text, fallback_chunk_size=700):
+    # 1. 조항 패턴 시도
+    sections = extract_sections_with_titles(text)
+    if sections and len(sections) >= 3 and sections[0][0] != "전체본문":
+        return sections
+
+    logging.warning("⚠ 조항 패턴 실패 → 문단 기반으로 재시도")
+
+    # 2. 문단 기반 시도
+    paragraphs = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 50]
+    if len(paragraphs) >= 3:
+        return [(f"문단 {i+1}", para) for i, para in enumerate(paragraphs)]
+
+    logging.warning("⚠ 문단 패턴 실패 → 고정 길이 청크로 재시도")
+
+    # 3. 고정 길이 fallback
+    chunks = [text[i:i+fallback_chunk_size] for i in range(0, len(text), fallback_chunk_size)]
+    return [(f"청크 {i+1}", chunk) for i, chunk in enumerate(chunks)]
+
+
+
 # 기존에 저장된 point ID 조회
 def get_existing_point_ids():
     create_collection_if_not_exists()
@@ -80,7 +102,8 @@ def get_existing_point_ids():
         file = metadata.get("source")
         chunk_id = metadata.get("chunk_id")
         if file is not None and chunk_id is not None:
-            file = os.path.abspath(file)
+            # file = os.path.abspath(file)
+            file = os.path.normpath(os.path.abspath(file))
             existing_ids.add(f"{file}-{chunk_id}")
     return existing_ids
 
@@ -100,7 +123,9 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
         file_path = os.path.abspath(file_path)
         docs = load_documents(file_path)
         joined_text = "\n".join([doc.page_content for doc in docs])
-        sections = extract_sections_with_titles(joined_text)
+        # sections = extract_sections_with_titles(joined_text)
+        sections = get_flexible_sections(joined_text)
+
         
         logging.info(f"문서 로드 개수: {len(docs)}")
         logging.info(f"조항 추출 개수: {len(sections)}")
@@ -130,7 +155,9 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
                 continue
             
             # 메타데이터 확장 (부서 ID, 공통 문서 여부, 파일명 추가)
-            doc.metadata["source"] = file_path
+            # doc.metadata["source"] = file_path
+            doc.metadata["source"] = os.path.normpath(os.path.abspath(file_path))
+
             doc.metadata["chunk_id"] = i
             doc.metadata["department_id"] = department_id  # 부서 ID 추가
             doc.metadata["common_doc"] = common_doc        # 공통 문서 여부 추가
@@ -139,22 +166,29 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
                 doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
             
             new_points.append(
-                PointStruct(
-                    id=i,  # 고유 ID 생성
-                    vector=vector,
-                    payload={
-                        "text": doc.page_content,
-                        "metadata": doc.metadata
-                    }
-                )
-            )
+    PointStruct(
+        id=uuid.uuid4().int >> 64,  # ✅ 고유한 정수 ID 생성
+        vector=vector,
+        payload={
+            "text": doc.page_content,
+            "metadata": doc.metadata
+        }
+    )
+)
         
         if new_points:
+            
+            for point in new_points:
+                logging.debug(
+                    f"📌 업로드 청크: ID={point.id}, 벡터 길이={len(point.vector)}, 제목={point.payload['metadata'].get('title')}"
+                )
+
             client.upsert(collection_name=COLLECTION_NAME, points=new_points)
             logging.info(f"{file_path} → 신규 청크 {len(new_points)}개 업로드 완료")
             return len(new_points)
         else:
             logging.info(f"{file_path} → 이미 저장된 청크만 존재 (업로드 생략)")
+            logging.info(f"{file_path} → 중복 청크 {len(split_docs)}개, 업로드 생략됨")
             return 0
             
     except Exception as e:

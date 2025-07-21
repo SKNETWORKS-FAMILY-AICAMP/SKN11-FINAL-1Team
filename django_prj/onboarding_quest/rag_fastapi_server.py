@@ -26,7 +26,7 @@ from rag_agent_graph_db_v3_finaltemp_v2 import (
     load_session_history,
     graph, AgentState
 )
-
+from datetime import datetime
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -162,10 +162,11 @@ async def upload_document(
     file: UploadFile = File(...),
     department_id: int = Form(...),
     common_doc: bool = Form(False),
-    original_file_name: str = Form("")
+    original_file_name: str = Form(""),
+    description: str = Form(""),
 ):
     try:
-        # 저장 디렉토리 생성
+        # 1. 파일 저장
         os.makedirs(UPLOAD_BASE, exist_ok=True)
         file_ext = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_ext}"
@@ -176,10 +177,8 @@ async def upload_document(
 
         logger.info(f"📄 업로드 파일 저장 완료: {save_path}")
 
-        # 기존 임베딩된 문서 목록 가져오기
+        # 2. 임베딩 처리
         existing_ids = get_existing_point_ids()
-
-        # 문서 임베딩 및 Qdrant 저장
         chunk_count = advanced_embed_and_upsert(
             save_path,
             existing_ids,
@@ -188,16 +187,35 @@ async def upload_document(
             original_file_name=original_file_name or file.filename
         )
 
+        # 3. ✅ DB에 삽입 (FastAPI에서도 core_docs에 저장!)
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+    INSERT INTO core_docs 
+    (department_id, title, description, file_path, common_doc, original_file_name, create_time) 
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+""", (
+    department_id,
+    original_file_name or file.filename,
+    description,  # description
+    save_path,
+    int(common_doc),
+    original_file_name or file.filename,
+    datetime.now().isoformat()  # ✅ 생성 시각
+))
+            docs_id = cursor.lastrowid
+
         return JSONResponse({
             "success": True,
             "chunks_uploaded": chunk_count,
             "original_file": file.filename,
-            "saved_path": save_path
+            "saved_path": save_path,
+            "docs_id": docs_id
         })
+
     except Exception as e:
         logger.error(f"📄 문서 업로드 처리 중 오류: {e}")
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
-    
 
 
 # 문서 삭제 API
@@ -274,9 +292,11 @@ async def list_documents(department_id: int = Query(...)):
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM core_docs
-                WHERE department_id = ? OR common_doc = 1
-            """, (department_id,))
+    SELECT d.*, dept.department_name as department_name
+    FROM core_docs d
+    LEFT JOIN core_department dept ON d.department_id = dept.department_id
+    WHERE d.department_id = ? OR d.common_doc = 1
+""", (department_id,))
             rows = cursor.fetchall()
             docs = [dict(row) for row in rows]
 
@@ -292,24 +312,108 @@ async def download_document(docs_id: int):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT file_path, original_file_name FROM core_docs WHERE docs_id = ?", (docs_id,))
+            cursor.execute("""
+                SELECT file_path, original_file_name 
+                FROM core_docs 
+                WHERE docs_id = ?
+            """, (docs_id,))
             row = cursor.fetchone()
+
             if not row:
                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
 
-            file_path = os.path.abspath(row["file_path"])
+            relative_path = row["file_path"]
             original_name = row["original_file_name"]
+            media_root = os.path.abspath("media")
+            abs_path = os.path.join(media_root, relative_path)
 
-            if not os.path.exists(file_path):
+            if not os.path.exists(abs_path) and os.path.isabs(relative_path):
+                abs_path = relative_path
+
+            if not os.path.exists(abs_path):
                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
 
+            # ✅ 확장자 보완
+            if not os.path.splitext(original_name)[1]:
+                ext = os.path.splitext(abs_path)[1]
+                if ext:
+                    original_name += ext
+
             return FileResponse(
-                path=file_path,
+                path=abs_path,
                 filename=original_name,
-                media_type='application/octet-stream'
+                media_type='application/octet-stream',
+                headers={
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{original_name}"
+                }
             )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# @app.get("/download/{docs_id}")
+# async def download_document(docs_id: int):
+#     try:
+#         with get_db_connection() as conn:
+#             cursor = conn.cursor()
+#             cursor.execute("""
+#                 SELECT file_path, original_file_name 
+#                 FROM core_docs 
+#                 WHERE docs_id = ?
+#             """, (docs_id,))
+#             row = cursor.fetchone()
+
+#             if not row:
+#                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+#             relative_path = row["file_path"]
+#             original_name = row["original_file_name"]
+
+#             # ✅ 1차 시도: media 디렉토리 기준 (Django 경로)
+#             media_root = os.path.abspath("media")
+#             abs_path = os.path.join(media_root, relative_path)
+
+#             # ✅ 2차 시도: 절대경로 그대로 저장한 경우 (FastAPI 업로드)
+#             if not os.path.exists(abs_path) and os.path.isabs(relative_path):
+#                 abs_path = relative_path
+
+#             if not os.path.exists(abs_path):
+#                 raise HTTPException(status_code=404, detail=f"파일이 존재하지 않습니다. 경로: {abs_path}")
+
+#             return FileResponse(
+#                 path=abs_path,
+#                 filename=original_name,
+#                 media_type='application/octet-stream'
+#             )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+# @app.get("/download/{docs_id}")
+# async def download_document(docs_id: int):
+#     try:
+#         with get_db_connection() as conn:
+#             cursor = conn.cursor()
+#             cursor.execute("SELECT file_path, original_file_name FROM core_docs WHERE docs_id = ?", (docs_id,))
+#             row = cursor.fetchone()
+#             if not row:
+#                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+#             file_path = os.path.abspath(row["file_path"])
+#             original_name = row["original_file_name"]
+
+#             if not os.path.exists(file_path):
+#                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
+
+#             return FileResponse(
+#                 path=file_path,
+#                 filename=original_name,
+#                 media_type='application/octet-stream'
+#             )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 # @app.post("/chat/session/create")

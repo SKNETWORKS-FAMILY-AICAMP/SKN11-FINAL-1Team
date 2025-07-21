@@ -395,6 +395,11 @@ body {
 <script>
   const CURRENT_DEPARTMENT_ID = {{ user.department.department_id }};
 </script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    loadDocumentList(CURRENT_DEPARTMENT_ID);
+  });
+</script>
 <div class="doc-container">
   <div class="doc-left">
     <!-- 문서 업로드 박스 -->
@@ -442,33 +447,10 @@ body {
             <th style="width:20%;">관리</th>
           </tr>
         </thead>
-        <tbody>
-          {% for doc in core_docs %}
-          <tr data-doc-id="{{ doc.docs_id }}">
-            <td>
-              <!-- 파일명을 다운로드 링크로 변경 -->
-              <a href="/common/doc/{{ doc.docs_id }}/download/" class="doc-download-link" title="클릭하여 다운로드"
-                target="_blank">
-                📄 {{ doc.title }}
-              </a>
-            </td>
-            <td>{{ doc.description|default:"-" }}</td>
-            <td>
-              {% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}
-            </td>
-            <td>
-              {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-              <button class="doc-edit-btn" onclick="openEditModal({{ doc.docs_id }}, '{{ doc.description|default:'' }}', '{{ doc.common_doc }}')">수정</button>
-              <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray-500);">등록된 문서가 없습니다.</td>
-          </tr>
-          {% endfor %}
+        <tbody id="doc-list">
+          <!-- JS로 동적 문서 리스트 삽입됨 -->
         </tbody>
+
       </table>
     </div>
   </div>
