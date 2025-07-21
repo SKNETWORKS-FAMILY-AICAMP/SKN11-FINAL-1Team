@@ -159,6 +159,7 @@ class ChatSession(models.Model):
     session_id = models.AutoField(primary_key=True, help_text='채팅 세션 고유 ID')
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text='사용자')
     summary = models.CharField(max_length=255, null=True, blank=True, help_text='세션 요약')
+    is_active = models.BooleanField(default=True, help_text='세션 활성 여부')
 
 class ChatMessage(models.Model):
     message_id = models.AutoField(primary_key=True, help_text='메시지 고유 ID')
@@ -176,6 +177,7 @@ class ChatMessage(models.Model):
     message_text = models.TextField(null=True, blank=True, help_text='메시지 내용')
     create_time = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='메시지 생성일시')
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, help_text='채팅 세션')
+    is_active = models.BooleanField(default=True, help_text='메시지 활성 여부')
 
 class Docs(models.Model):
     docs_id = models.AutoField(primary_key=True, help_text='문서 고유 ID')
@@ -185,6 +187,8 @@ class Docs(models.Model):
     file_path = models.CharField(max_length=255, help_text='파일 경로')
     create_time = models.DateTimeField(auto_now_add=True, help_text='생성일')
     common_doc = models.BooleanField(default=False, help_text='공용 문서 여부')
+    original_file_name = models.CharField(max_length=255, null=True, blank=True, help_text='업로드 시 원래 파일명')
+
 
 class Curriculum(models.Model):
     curriculum_id = models.AutoField(primary_key=True, help_text='커리큘럼 고유 ID')
