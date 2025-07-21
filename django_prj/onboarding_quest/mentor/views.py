@@ -253,19 +253,13 @@ def manage_mentee(request):
         )
         mentees = mentees_result.get('users', [])
         
-        # 부서 커리큘럼 목록 (공용+부서)
+        # 부서 커리큘럼 목록 (공용+부서별 커리큘럼 한 번에 조회)
         curriculums_result = fastapi_client.get_curriculums(department_id=department_id)
         curriculums = curriculums_result.get('curriculums', [])
         
-        # 공통 커리큘럼도 포함
-        common_curriculums_result = fastapi_client.get_curriculums(common=True)
-        common_curriculums = common_curriculums_result.get('curriculums', [])
-        
-        all_curriculums = common_curriculums + curriculums
-        
         return render(request, 'mentor/manage_mentee.html', {
             'mentees': mentees,
-            'curriculums': all_curriculums,
+            'curriculums': curriculums,
         })
         
     except (AuthenticationError, APIError) as e:
@@ -279,12 +273,19 @@ def manage_mentee(request):
                     role='mentee',                # 멘티만
                     is_active=True               # 활성 사용자만
                 ).select_related('company', 'department')
+                
+                # 폴백 시에도 커리큘럼 조회 (부서별 + 공용)
+                from core.models import Curriculum
+                dept_curriculums = Curriculum.objects.filter(department_id=department_id)
+                common_curriculums = Curriculum.objects.filter(common=True)
+                all_curriculums = list(common_curriculums) + list(dept_curriculums)
             else:
                 mentees = []
+                all_curriculums = []
                 
             return render(request, 'mentor/manage_mentee.html', {
                 'mentees': mentees,
-                'curriculums': [],
+                'curriculums': all_curriculums,
             })
         except Exception as fallback_error:
             messages.error(request, f'데이터 조회 중 오류가 발생했습니다: {str(fallback_error)}')

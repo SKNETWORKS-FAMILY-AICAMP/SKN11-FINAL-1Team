@@ -380,16 +380,20 @@ class FastAPIClient:
         url = f"{self.base_url}/api/curriculum/"
         params = {}
         
-        # 새로운 필터링 방식: department_id가 있으면 공통 + 해당 부서 커리큘럼
-        if department_id:
+        # common=True가 명시적으로 요청된 경우 모든 공용 커리큘럼 반환
+        if common is True and department_id is None:
+            # 공용 커리큘럼만 요청하는 경우, department_id를 None으로 설정
+            pass
+        elif department_id:
+            # department_id가 있으면 공통 + 해당 부서 커리큘럼
             params["department_id"] = department_id
-        
-        # 기존 common 파라미터는 하위 호환성을 위해 유지 (사용하지 않음)
-        # if common is not None:
-        #     params["common"] = common
         
         response = self.session.get(url, params=params)
         curriculums_list = self._handle_response(response)
+        
+        # common=True가 요청되고 department_id가 없는 경우 공용 커리큘럼만 필터링
+        if common is True and department_id is None and isinstance(curriculums_list, list):
+            curriculums_list = [c for c in curriculums_list if c.get('common', False)]
         
         # 리스트를 딕셔너리로 래핑
         return {"curriculums": curriculums_list}

@@ -84,7 +84,6 @@
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
-  text-decoration: none;
 }
 
 .mentee-list-ul a.selected {
@@ -341,14 +340,39 @@
   accent-color: #007bff;
 }
 
+/* curriculum icons and labels */
+.curriculum-icon {
+  margin-left: 8px;
+  font-size: 1.2em;
+  vertical-align: middle;
+}
+.curriculum-label {
+  margin-left: 4px;
+  font-size: 0.9em;
+  color: #495057;
+  vertical-align: middle;
+}
+
 .tag {
   background: #e9ecef;
   color: #495057;
   border: 1px solid #ced4da;
   font-weight: 500;
-  padding: 4px 8px;
+  padding: 4px 4px;
   border-radius: 4px;
   font-size: 0.8em;
+}
+
+.common-tag {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.dept-tag {
+  background: #cce7ff;
+  color: #004085;
+  border: 1px solid #b8daff;
 }
 
 /* 반응형 디자인 */
@@ -478,6 +502,12 @@
         <div>
           <label>
             <input type="checkbox" name="curriculum" value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}">
+            {% if curriculum.common %}
+              <span class="tag common-tag">공통</span>
+            {% else %}
+              <span class="tag dept-tag">{{ curriculum.department.department_name }}</span>
+            {% endif %}
+
             <span>{{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)</span>
           </label>
         </div>
