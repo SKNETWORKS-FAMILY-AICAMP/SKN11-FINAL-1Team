@@ -318,8 +318,8 @@ async def create_chat_session(user_id: int = Form(...)):
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO core_chatsession (user_id, created_at) VALUES (?, CURRENT_TIMESTAMP)",
-                (user_id,)
+                "INSERT INTO core_chatsession (user_id, summary) VALUES (?, ?)",
+                (user_id, "새 대화")
             )
             conn.commit()
             session_id = cursor.lastrowid
@@ -327,6 +327,7 @@ async def create_chat_session(user_id: int = Form(...)):
         return {"success": True, "session_id": session_id}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 
 @app.post("/chat/session/delete")

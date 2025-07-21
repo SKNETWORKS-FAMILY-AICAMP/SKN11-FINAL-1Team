@@ -9,95 +9,8 @@ class ChatBot {
         this.isSubmitting = false;
         this.loadingMessageElement = null;
         this.renderLock = false;  // ✅ 메시지 중복 렌더링 방지
-        this.loadSessionsFromAPI();  // ✅ 기존 refreshSessionList() 대신
+        this.refreshSessionList();
     }
-
-    async loadMessagesFromAPI(sessionId) {
-        try {
-            const res = await fetch(`http://127.0.0.1:8001/chat/messages/${sessionId}`);
-            const data = await res.json();
-
-            if (!data.success) {
-                alert("메시지를 불러오는 데 실패했습니다.");
-                return;
-            }
-
-            this.selectedSessionInput.value = sessionId;
-            this.chatArea.innerHTML = '';
-
-            data.messages.forEach(msg => {
-                const msgDiv = document.createElement("div");
-                msgDiv.classList.add("chatbot-message", msg.type === "user" ? "user" : "bot");
-
-                const textDiv = document.createElement("div");
-                textDiv.className = "chatbot-message-text";
-                textDiv.innerText = msg.text;
-
-                msgDiv.appendChild(textDiv);
-                this.chatArea.appendChild(msgDiv);
-            });
-
-            this.scrollToBottom();
-        } catch (e) {
-            console.error("메시지 로딩 오류:", e);
-            alert("메시지 로딩 중 오류 발생");
-        }
-    }
-
-
-    async loadSessionsFromAPI() {
-        console.log("세션 로드 시작"); // ✅ 이거 넣고
-        try {
-            const res = await fetch(`http://127.0.0.1:8001/chat/sessions/${user_id}`);
-            const data = await res.json();
-
-            console.log("세션 목록:", data.sessions); // ✅ 여기도 찍어봐
-
-            if (!data.success) {
-                alert("세션 목록을 불러오는 데 실패했습니다.");
-                return;
-            }
-
-            const listContainer = document.getElementById("chatbot-session-list");
-            listContainer.innerHTML = '';  // 기존 제거
-
-            data.sessions.forEach(session => {
-                const div = document.createElement("div");
-                div.className = "chatbot-session-item";
-                div.setAttribute("data-session-id", session.session_id);
-                div.innerHTML = `
-                <div class="chatbot-session-preview">${session.preview || "..."}</div>
-                <div class="chatbot-session-summary">${session.summary || "새 채팅"}</div>
-                <button class="delete-session-btn" data-session-id="${session.session_id}">×</button>
-                <script type="application/json" class="session-messages">[]</script>
-            `;
-                listContainer.appendChild(div);
-            });
-
-            this.refreshSessionList();
-            this.sessionItems = document.querySelectorAll('.chatbot-session-item');
-            this.sessionItems.forEach((item) => {
-                item.addEventListener('click', (e) => {
-                    if (e.target.closest('.delete-session-btn')) return;
-                    this.handleSessionClick(e, item);
-                });
-
-                const deleteBtn = item.querySelector('.delete-session-btn');
-                if (deleteBtn) {
-                    deleteBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const sessionId = deleteBtn.getAttribute("data-session-id");
-                        this.openDeleteModal(sessionId);
-                    });
-                }
-            });
-
-        } catch (e) {
-            console.error("세션 목록 로딩 오류:", e);
-            alert("세션 목록을 불러오는 중 오류가 발생했습니다.");
-        }
-    }
-
 
     refreshSessionList() {
         this.sessionItems = document.querySelectorAll('.chatbot-session-item');
@@ -257,21 +170,23 @@ class ChatBot {
         this.loadSessionMessages(sessionId);
     }
 
-    async loadSessionMessages(sessionId) {
-        try {
-            const res = await fetch(`http://127.0.0.1:8001/chat/messages/${sessionId}`);
-            const data = await res.json();
+    loadSessionMessages(sessionId) {
+        const sessionItem = document.querySelector(`[data-session-id="${sessionId}"]`);
+        if (!sessionItem) return;
 
-            if (!data.success) {
-                alert("메시지를 불러오는 데 실패했습니다.");
+        const messageScript = sessionItem.querySelector('.session-messages');
+        let messages = [];
+
+        if (messageScript) {
+            try {
+                messages = JSON.parse(messageScript.textContent);
+            } catch (e) {
+                console.error('메시지 파싱 오류:', e);
                 return;
             }
-
-            this.renderMessages(data.messages);
-        } catch (err) {
-            console.error("메시지 불러오기 실패:", err);
-            alert("메시지 로딩 중 오류 발생");
         }
+
+        this.renderMessages(messages);
     }
 
     renderMessages(messages) {
@@ -368,15 +283,13 @@ class ChatBot {
 
     async executeDelete(sessionId) {
         try {
-            const response = await fetch('http://127.0.0.1:8001/chat/session/delete', {
+            const response = await fetch(`/common/chatbot/session/${sessionId}/delete/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    session_id: sessionId,
-                    user_id: user_id
-                })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCsrfToken()
+                }
             });
-
 
             const data = await response.json();
             if (data.success) {
@@ -397,64 +310,27 @@ class ChatBot {
 }
 
 // 전역 함수들
-// function createNewSession() {
-//     fetch('/common/chatbot/new-session/', {
-//         method: 'POST',
-//         headers: {
-//             'Content-Type': 'application/json',
-//             'X-CSRFToken': getCsrfToken()
-//         }
-//     })
-//         .then(response => response.json())
-//         .then(data => {
-//             if (data.success) {
-//                 window.location.href = `/common/chatbot/?session=${data.session_id}`;
-//             } else {
-//                 alert('새 채팅 생성 실패: ' + (data.error || '알 수 없는 오류'));
-//             }
-//         })
-//         .catch(error => {
-//             console.error('새 채팅 생성 오류:', error);
-//             alert('새 채팅 생성 중 오류가 발생했습니다.');
-//         });
-// }
-
-async function createNewSession() {
-    try {
-        const res = await fetch('http://127.0.0.1:8001/chat/session/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ user_id: user_id })
+function createNewSession() {
+    fetch('/common/chatbot/new-session/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = `/common/chatbot/?session=${data.session_id}`;
+            } else {
+                alert('새 채팅 생성 실패: ' + (data.error || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('새 채팅 생성 오류:', error);
+            alert('새 채팅 생성 중 오류가 발생했습니다.');
         });
-
-        const data = await res.json();
-        if (!data.success) {
-            alert("세션 생성 실패: " + (data.error || ""));
-            return;
-        }
-
-        const chatbot = window.chatbot;
-        if (chatbot?.loadSessionsFromAPI) {
-            await chatbot.loadSessionsFromAPI();
-
-            // ✅ 여기 수정
-            setTimeout(() => {
-                chatbot.sessionItems = document.querySelectorAll('.chatbot-session-item'); // ✅ 추가
-                const newItem = document.querySelector(`[data-session-id="${data.session_id}"]`);
-                if (newItem) chatbot.selectSession(newItem);
-            }, 100);
-
-        }
-
-        document.getElementById("chatbot-input").value = "";
-
-    } catch (e) {
-        console.error("세션 생성 실패:", e);
-        alert("세션 생성 중 오류가 발생했습니다.");
-    }
 }
-
-
 
 function deleteSession(element, event) {
     event.stopPropagation();
