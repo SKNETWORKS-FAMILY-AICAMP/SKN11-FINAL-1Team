@@ -667,7 +667,16 @@ def delete_memo(db: Session, memo_id: int):
 # Docs CRUD
 def create_docs(db: Session, docs: schemas.DocsCreate):
     """문서 생성"""
-    db_docs = models.Docs(**docs.dict())
+    from datetime import datetime
+    db_docs = models.Docs(
+        department_id=docs.department_id,
+        title=docs.title,
+        description=docs.description,
+        file_path=docs.file_path,
+        common_doc=docs.common_doc,
+        create_time=datetime.now(),
+        original_file_name=getattr(docs, 'original_file_name', None)
+    )
     db.add(db_docs)
     db.commit()
     db.refresh(db_docs)
@@ -711,7 +720,11 @@ def delete_docs(db: Session, docs_id: int):
 # ChatSession CRUD
 def create_chat_session(db: Session, chat_session: schemas.ChatSessionCreate):
     """채팅 세션 생성"""
-    db_session = models.ChatSession(**chat_session.dict())
+    db_session = models.ChatSession(
+        user_id=chat_session.user_id,
+        summary=chat_session.summary,
+        is_active=True
+    )
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
@@ -747,7 +760,14 @@ def delete_chat_session(db: Session, session_id: int):
 # ChatMessage CRUD
 def create_chat_message(db: Session, chat_message: schemas.ChatMessageCreate):
     """채팅 메시지 생성"""
-    db_message = models.ChatMessage(**chat_message.dict())
+    from datetime import datetime
+    db_message = models.ChatMessage(
+        session_id=chat_message.session_id,
+        message_text=chat_message.message_text,
+        message_type=chat_message.message_type,
+        create_time=datetime.now().date(),
+        is_active=True
+    )
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
@@ -837,3 +857,86 @@ def mark_all_alarms_read(db: Session, user_id: int):
     ).update({"is_active": False})
     db.commit()
     return True
+
+
+# RAG/Chat 추가 CRUD Functions
+def get_user_by_id(db: Session, user_id: int):
+    """사용자 ID로 사용자 조회"""
+    return db.query(models.User).filter(models.User.user_id == user_id).first()
+
+def get_department_by_id(db: Session, department_id: int):
+    """부서 ID로 부서 조회"""
+    return db.query(models.Department).filter(models.Department.department_id == department_id).first()
+
+def get_user_chat_sessions(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    """사용자의 채팅 세션 목록 조회 (활성 세션만)"""
+    return db.query(models.ChatSession).filter(
+        and_(
+            models.ChatSession.user_id == user_id,
+            models.ChatSession.is_active == True
+        )
+    ).order_by(models.ChatSession.session_id.desc()).offset(skip).limit(limit).all()
+
+def get_chat_messages(db: Session, session_id: int, skip: int = 0, limit: int = 100):
+    """채팅 세션의 메시지 목록 조회 (활성 메시지만)"""
+    return db.query(models.ChatMessage).filter(
+        and_(
+            models.ChatMessage.session_id == session_id,
+            models.ChatMessage.is_active == True
+        )
+    ).order_by(models.ChatMessage.create_time.asc()).offset(skip).limit(limit).all()
+
+def create_document(db: Session, department_id: int, title: str, description: str, file_path: str, common_doc: bool = False, original_file_name: str = None):
+    """문서 생성"""
+    from datetime import datetime
+    db_doc = models.Docs(
+        department_id=department_id,
+        title=title,
+        description=description,
+        file_path=file_path,
+        common_doc=common_doc,
+        create_time=datetime.now(),
+        original_file_name=original_file_name
+    )
+    db.add(db_doc)
+    db.commit()
+    db.refresh(db_doc)
+    return db_doc
+
+def get_document(db: Session, docs_id: int):
+    """문서 조회"""
+    return db.query(models.Docs).filter(models.Docs.docs_id == docs_id).first()
+
+def get_department_documents(db: Session, department_id: int, include_common: bool = True):
+    """부서별 문서 목록 조회"""
+    query = db.query(models.Docs)
+    if include_common:
+        query = query.filter(
+            or_(
+                models.Docs.department_id == department_id,
+                models.Docs.common_doc == True
+            )
+        )
+    else:
+        query = query.filter(models.Docs.department_id == department_id)
+    
+    return query.all()
+
+def update_document(db: Session, docs_id: int, **kwargs):
+    """문서 정보 업데이트"""
+    db_doc = get_document(db, docs_id)
+    if db_doc:
+        for key, value in kwargs.items():
+            if hasattr(db_doc, key):
+                setattr(db_doc, key, value)
+        db.commit()
+        db.refresh(db_doc)
+    return db_doc
+
+def delete_document(db: Session, docs_id: int):
+    """문서 삭제"""
+    db_doc = get_document(db, docs_id)
+    if db_doc:
+        db.delete(db_doc)
+        db.commit()
+    return db_doc

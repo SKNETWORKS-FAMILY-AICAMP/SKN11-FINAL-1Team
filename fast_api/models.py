@@ -184,6 +184,7 @@ class ChatSession(Base):
     session_id = Column(Integer, primary_key=True, index=True, comment="채팅 세션 고유 ID")
     user_id = Column(Integer, ForeignKey("core_user.user_id", ondelete="CASCADE"), nullable=False, comment="사용자")
     summary = Column(String(255), comment="세션 요약")
+    is_active = Column(Boolean, default=True, comment="세션 활성화 여부")
     
     # 관계 설정
     user = relationship("User", back_populates="chat_sessions")
@@ -198,6 +199,7 @@ class ChatMessage(Base):
     message_type = Column(String(10), nullable=False, comment="메시지 타입(user/chatbot)")
     message_text = Column(String(1000), comment="메시지 내용")
     create_time = Column(Date, comment="메시지 생성일")
+    is_active = Column(Boolean, default=True, comment="메시지 활성화 여부")
     session_id = Column(
         Integer,
         ForeignKey("core_chatsession.session_id", ondelete="CASCADE"),  # ← CASCADE 추가
@@ -220,6 +222,7 @@ class Docs(Base):
     create_time = Column(DateTime, default=func.now(), comment="생성일")
     common_doc = Column(Boolean, default=False, comment="공용 문서 여부")
     department_id = Column(Integer, ForeignKey("core_department.department_id"), nullable=False, comment="소속 부서")
+    original_file_name = Column(String(255), comment="원본 파일명")
     
     # 관계 설정
     department = relationship("Department", back_populates="docs") 

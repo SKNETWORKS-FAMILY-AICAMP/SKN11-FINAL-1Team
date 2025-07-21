@@ -8,18 +8,12 @@ import logging
 import time
 import uuid
 from rag_agent_graph_db_v3_finaltemp_v2 import get_db_connection, client, COLLECTION_NAME
-
-
 from fastapi.responses import JSONResponse
 from embed_and_upsert import advanced_embed_and_upsert, get_existing_point_ids
-
-
 from fastapi import UploadFile, File, Form, Query, HTTPException
 from qdrant_client.models import Filter, FieldCondition, MatchValue
-
 from fastapi.responses import FileResponse
 from urllib.parse import quote
-
 from rag_agent_graph_db_v3_finaltemp_v2 import (
     create_chat_session,
     save_message,
@@ -27,7 +21,6 @@ from rag_agent_graph_db_v3_finaltemp_v2 import (
     graph, AgentState
 )
 from datetime import datetime
-
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -348,139 +341,6 @@ async def download_document(docs_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @app.get("/download/{docs_id}")
-# async def download_document(docs_id: int):
-#     try:
-#         with get_db_connection() as conn:
-#             cursor = conn.cursor()
-#             cursor.execute("""
-#                 SELECT file_path, original_file_name 
-#                 FROM core_docs 
-#                 WHERE docs_id = ?
-#             """, (docs_id,))
-#             row = cursor.fetchone()
-
-#             if not row:
-#                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
-
-#             # relative_path = row["file_path"]
-#             # original_name = row["original_file_name"]
-#             # media_root = os.path.abspath("media")
-#             # abs_path = os.path.join(media_root, relative_path)
-
-#             # if not os.path.exists(abs_path) and os.path.isabs(relative_path):
-#             #     abs_path = relative_path
-
-#             file_path = row["file_path"]
-#             original_name = row["original_file_name"]
-#             abs_path = os.path.abspath(file_path)
-
-#             if not os.path.exists(abs_path):
-#                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
-
-
-#             if not os.path.exists(abs_path):
-#                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
-
-#             # ✅ 확장자 보완
-#             if not os.path.splitext(original_name)[1]:
-#                 ext = os.path.splitext(abs_path)[1]
-#                 if ext:
-#                     original_name += ext
-
-#             return FileResponse(
-#                 path=abs_path,
-#                 filename=original_name,
-#                 media_type='application/octet-stream',
-#                 headers={
-#                     "Content-Disposition": f"attachment; filename*=UTF-8''{original_name}"
-#                 }
-#             )
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-# @app.get("/download/{docs_id}")
-# async def download_document(docs_id: int):
-#     try:
-#         with get_db_connection() as conn:
-#             cursor = conn.cursor()
-#             cursor.execute("""
-#                 SELECT file_path, original_file_name 
-#                 FROM core_docs 
-#                 WHERE docs_id = ?
-#             """, (docs_id,))
-#             row = cursor.fetchone()
-
-#             if not row:
-#                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
-
-#             relative_path = row["file_path"]
-#             original_name = row["original_file_name"]
-
-#             # ✅ 1차 시도: media 디렉토리 기준 (Django 경로)
-#             media_root = os.path.abspath("media")
-#             abs_path = os.path.join(media_root, relative_path)
-
-#             # ✅ 2차 시도: 절대경로 그대로 저장한 경우 (FastAPI 업로드)
-#             if not os.path.exists(abs_path) and os.path.isabs(relative_path):
-#                 abs_path = relative_path
-
-#             if not os.path.exists(abs_path):
-#                 raise HTTPException(status_code=404, detail=f"파일이 존재하지 않습니다. 경로: {abs_path}")
-
-#             return FileResponse(
-#                 path=abs_path,
-#                 filename=original_name,
-#                 media_type='application/octet-stream'
-#             )
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
-# @app.get("/download/{docs_id}")
-# async def download_document(docs_id: int):
-#     try:
-#         with get_db_connection() as conn:
-#             cursor = conn.cursor()
-#             cursor.execute("SELECT file_path, original_file_name FROM core_docs WHERE docs_id = ?", (docs_id,))
-#             row = cursor.fetchone()
-#             if not row:
-#                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
-
-#             file_path = os.path.abspath(row["file_path"])
-#             original_name = row["original_file_name"]
-
-#             if not os.path.exists(file_path):
-#                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
-
-#             return FileResponse(
-#                 path=file_path,
-#                 filename=original_name,
-#                 media_type='application/octet-stream'
-#             )
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-# @app.post("/chat/session/create")
-# async def create_chat_session(user_id: int = Form(...)):
-#     try:
-#         with get_db_connection() as conn:
-#             cursor = conn.cursor()
-#             cursor.execute(
-#                 "INSERT INTO core_chatsession (user_id, summary) VALUES (?, ?)",
-#                 (user_id, "새 대화")
-#             )
-#             conn.commit()
-#             session_id = cursor.lastrowid
-
-#         return {"success": True, "session_id": session_id}
-#     except Exception as e:
-#         return {"success": False, "error": str(e)}
-
 
 
 @app.post("/chat/session/create")
@@ -528,25 +388,6 @@ async def delete_chat_session(session_id: int = Form(...), user_id: int = Form(.
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
-
-
-# @app.post("/chat/session/delete")
-# async def delete_chat_session(session_id: int = Form(...), user_id: int = Form(...)):
-#     try:
-#         with get_db_connection() as conn:
-#             cursor = conn.cursor()
-#             # 보안: 해당 유저가 소유한 세션인지 확인
-#             cursor.execute("SELECT * FROM core_chatsession WHERE session_id = ? AND user_id = ?", (session_id, user_id))
-#             if not cursor.fetchone():
-#                 raise HTTPException(status_code=403, detail="권한이 없습니다.")
-
-#             cursor.execute("DELETE FROM core_chatsession WHERE session_id = ? AND user_id = ?", (session_id, user_id))
-#             conn.commit()
-
-#         return {"success": True}
-#     except Exception as e:
-#         return {"success": False, "error": str(e)}
-
 
 
 

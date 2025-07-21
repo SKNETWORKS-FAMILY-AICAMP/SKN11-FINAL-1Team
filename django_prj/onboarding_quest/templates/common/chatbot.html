@@ -591,6 +591,12 @@
 <script>
     window.user_id = "{{ request.user.user_id }}";
     window.department_id = "{{ request.user.department.department_id }}";
+    window.fastapi_token = "{{ fastapi_token|default:'' }}";
+    
+    // 토큰이 있으면 localStorage에 저장
+    if (window.fastapi_token) {
+        localStorage.setItem('access_token', window.fastapi_token);
+    }
 </script>
 <!-- ✅ JS는 한 번만 로드됨 -->
 <script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>

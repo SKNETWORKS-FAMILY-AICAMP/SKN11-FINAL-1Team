@@ -501,7 +501,7 @@ body {
   </div>
 </div>
 
-<script src="{% static 'js/common/doc.js' %}"></script>
+<script src="{% static 'js/common/doc.js' %}?v={{ now|date:'U' }}"></script>
 
 <script>
 // CSRF 토큰 가져오기

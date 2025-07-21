@@ -133,9 +133,19 @@ def chatbot(request):
                 'first_user_message': first_user_message
             })
 
+    # FastAPI 토큰 생성
+    fastapi_token = None
+    if request.user.is_authenticated:
+        try:
+            # FastAPI 토큰 생성을 위한 유틸리티 함수 호출
+            fastapi_token = fastapi_client.generate_token_for_user(request.user)
+        except Exception as e:
+            logger.warning(f"FastAPI 토큰 생성 실패: {e}")
+
     return render(request, 'common/chatbot.html', {
         'chat_sessions': chat_sessions,
         'current_session_id': current_session_id,
+        'fastapi_token': fastapi_token,
     })
 
 

@@ -3,8 +3,18 @@ const department_id = window.department_id;
 
 class ChatBot {
     constructor() {
+        // DOM 요소들이 존재하는지 확인 후 초기화
         this.chatArea = document.getElementById('chatbot-chat-area');
         this.selectedSessionInput = document.getElementById('selected-session-id');
+        
+        if (!this.chatArea || !this.selectedSessionInput) {
+            console.error('필수 DOM 요소를 찾을 수 없습니다:', {
+                chatArea: !!this.chatArea,
+                selectedSessionInput: !!this.selectedSessionInput
+            });
+            return;
+        }
+        
         this.deleteModalSessionId = null;
         this.isSubmitting = false;
         this.loadingMessageElement = null;
@@ -14,7 +24,7 @@ class ChatBot {
 
     async loadMessagesFromAPI(sessionId) {
         try {
-            const res = await fetch(`http://127.0.0.1:8001/chat/messages/${sessionId}`);
+            const res = await fetch(`http://127.0.0.1:8001/api/chat/messages/${sessionId}`);
             const data = await res.json();
 
             if (!data.success) {
@@ -49,7 +59,7 @@ class ChatBot {
         console.log("📥 세션 로드 시작");
 
         try {
-            const res = await fetch(`http://127.0.0.1:8001/chat/sessions/${user_id}`);
+            const res = await fetch(`http://127.0.0.1:8001/api/chat/sessions/${user_id}`);
             const data = await res.json();
 
             console.log("📥 세션 목록 응답 데이터:", data);
@@ -121,12 +131,14 @@ class ChatBot {
         const selectedSession = document.querySelector('.chatbot-session-item.selected');
         if (selectedSession) {
             this.selectSession(selectedSession);
-        } else if (this.sessionItems.length > 0) {
+        } else if (this.sessionItems && this.sessionItems.length > 0) {
             this.selectSession(this.sessionItems[0]);
         }
     }
 
     bindEvents() {
+        if (!this.sessionItems) return;
+        
         this.sessionItems.forEach((item) => {
             item.addEventListener('click', (e) => {
                 if (e.target.closest('.delete-session-btn')) return;
@@ -166,16 +178,16 @@ class ChatBot {
         const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
 
         try {
-            const response = await fetch('http://127.0.0.1:8001/chat', {
+            const response = await fetch('http://127.0.0.1:8001/api/chat/rag', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     question: message,
-                    session_id: sessionId,
-                    user_id: user_id,
-                    department_id: department_id
+                    session_id: sessionId ? parseInt(sessionId) : null,
+                    user_id: parseInt(user_id),
+                    department_id: parseInt(department_id)
                 })
             });
 
@@ -188,6 +200,16 @@ class ChatBot {
                     await this.typeText(this.loadingMessageElement, data.answer);
                     this.loadingMessageElement.parentElement.classList.remove('loading');
                     this.loadingMessageElement = null;
+                }
+
+                // ✅ 소스 정보 표시 (선택사항)
+                if (data.contexts && data.contexts.length > 0) {
+                    const sourcesText = `\n\n📚 참고 문서: ${data.contexts.length}개 문서 참조`;
+                    const sourcesSpan = document.createElement('span');
+                    sourcesSpan.style.fontSize = '12px';
+                    sourcesSpan.style.color = '#666';
+                    sourcesSpan.textContent = sourcesText;
+                    this.loadingMessageElement?.parentElement.appendChild(sourcesSpan);
                 }
 
                 // ✅ session-messages에 챗봇 메시지만 동기화
@@ -278,7 +300,7 @@ class ChatBot {
 
     async loadSessionMessages(sessionId) {
         try {
-            const res = await fetch(`http://127.0.0.1:8001/chat/messages/${sessionId}`);
+            const res = await fetch(`http://127.0.0.1:8001/api/chat/messages/${sessionId}`);
             const data = await res.json();
 
             if (!data.success) {
@@ -327,25 +349,6 @@ class ChatBot {
     }
 
 
-
-    // addMessageToChat(type, text) {
-    //     const messageRow = document.createElement('div');
-    //     messageRow.className = `chatbot-msg-row ${type === 'user' ? 'user' : 'bot'}`;
-
-    //     const messageContent = document.createElement('div');
-    //     messageContent.className = `chatbot-msg-${type === 'user' ? 'user' : 'chabot'}`;
-
-    //     // ✅ 유일성 보장을 위해 random ID 또는 timestamp 적용 (디버깅 목적)
-    //     // messageContent.textContent = text;
-    //     messageContent.innerHTML = text.replace(/\n/g, "<br>");
-
-    //     // ✅ 반드시 새로운 노드로 append
-    //     messageRow.appendChild(messageContent);
-    //     this.chatArea.appendChild(messageRow);
-
-    //     // ✅ 항상 스크롤 아래로 유지
-    //     this.chatArea.scrollTop = this.chatArea.scrollHeight;
-    // }
     addMessageToChat(type, text) {
         const messageRow = document.createElement('div');
         messageRow.className = `chatbot-msg-row ${type === 'user' ? 'user' : 'bot'}`;
@@ -393,7 +396,7 @@ class ChatBot {
 
     async executeDelete() {
         try {
-            const response = await fetch('http://127.0.0.1:8001/chat/session/delete', {
+            const response = await fetch('http://127.0.0.1:8001/api/chat/session/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
@@ -432,72 +435,9 @@ class ChatBot {
     }
 }
 
-
-
-// async function createNewSession() {
-//     try {
-//         const res = await fetch('http://127.0.0.1:8001/chat/session/create', {
-//             method: 'POST',
-//             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-//             body: new URLSearchParams({ user_id: user_id })
-//         });
-
-//         const data = await res.json();
-//         if (!data.success) {
-//             alert("세션 생성 실패: " + (data.error || ""));
-//             return;
-//         }
-
-//         const listContainer = document.getElementById("chatbot-session-list");
-
-//         // ✅ 새 세션 DOM 직접 생성해서 추가
-//         const div = document.createElement("div");
-//         div.className = "chatbot-session-item selected"; // ✅ selected 추가
-//         div.setAttribute("data-session-id", data.session_id);
-//         div.innerHTML = `
-//             <div class="chatbot-session-preview">...</div>
-//             <div class="chatbot-session-summary">새 대화</div>
-//             <button class="delete-session-btn" data-session-id="${data.session_id}">×</button>
-//             <script type="application/json" class="session-messages">[]</script>
-//         `;
-
-//         // ✅ 기존 selected 제거
-//         document.querySelectorAll('.chatbot-session-item.selected')
-//             .forEach(el => el.classList.remove('selected'));
-
-//         listContainer.prepend(div);  // 상단에 추가
-
-//         // ✅ selectedSessionInput 값 설정
-//         window.chatBot.selectedSessionInput.value = data.session_id;
-
-//         // ✅ 메시지 초기화
-//         window.chatBot.chatArea.innerHTML = '';
-//         document.getElementById("chatbot-input").value = '';
-
-//         // ✅ 클릭 이벤트 바인딩
-//         div.addEventListener('click', (e) => {
-//             if (e.target.closest('.delete-session-btn')) return;
-//             window.chatBot.selectSession(div);
-//         });
-
-//         const deleteBtn = div.querySelector('.delete-session-btn');
-//         if (deleteBtn) {
-//             deleteBtn.addEventListener('click', (e) => {
-//                 e.stopPropagation();
-//                 window.chatBot.openDeleteModal(data.session_id);
-//             });
-//         }
-
-//     } catch (e) {
-//         console.error("세션 생성 실패:", e);
-//         alert("세션 생성 중 오류가 발생했습니다.");
-//     }
-// }
-
-
 async function createNewSession() {
     try {
-        const res = await fetch('http://127.0.0.1:8001/chat/session/create', {
+        const res = await fetch('http://127.0.0.1:8001/api/chat/session/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ user_id: user_id })

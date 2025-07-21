@@ -89,13 +89,13 @@ uploadBtn?.addEventListener('click', async () => {
       formData.append('department_id', CURRENT_DEPARTMENT_ID);
       formData.append('original_file_name', fileInfo.name);
 
-      const response = await fetch('http://localhost:8001/upload', {
+      const response = await fetch('http://localhost:8001/api/docs/rag/upload', {
         method: 'POST',
         body: formData
       });
 
       const result = await response.json();
-      if (!result.success) throw new Error(result.error || '업로드 실패');
+      if (!result.success) throw new Error(result.message || '업로드 실패');
     }
 
     alert('모든 파일이 성공적으로 업로드되었습니다.');
@@ -208,9 +208,8 @@ function confirmDelete() {
   formData.append('docs_id', deleteDocId);
   formData.append('department_id', CURRENT_DEPARTMENT_ID);
 
-  fetch('http://localhost:8001/delete', {
-    method: 'POST',
-    body: formData
+  fetch(`http://localhost:8001/api/docs/rag/${deleteDocId}`, {
+    method: 'DELETE'
   })
     .then(res => res.json())
     .then(data => {
@@ -240,57 +239,72 @@ window.addEventListener('click', function (e) {
 });
 
 async function loadDocumentList(departmentId) {
-  const response = await fetch(`http://localhost:8001/list?department_id=${departmentId}`);
-  const data = await response.json();
-  console.log("DOC LIST RESULT:", data);
+  try {
+    const url = `http://localhost:8001/api/docs/department/${departmentId}`;
+    console.log("📡 요청 URL:", url);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    console.log("DOC LIST RESULT:", data);
 
-  const container = document.getElementById("doc-list");
-  if (!container) return;
+    const container = document.getElementById("doc-list");
+    if (!container) return;
 
-  container.innerHTML = "";
+    container.innerHTML = "";
 
-  if (!data.success) {
-    container.innerHTML = `<tr><td colspan="4">문서 불러오기 실패: ${data.error}</td></tr>`;
-    return;
+    // FastAPI는 배열을 직접 반환
+    if (!Array.isArray(data)) {
+      container.innerHTML = `<tr><td colspan="4">문서 불러오기 실패: ${data.detail || '알 수 없는 오류'}</td></tr>`;
+      return;
+    }
+
+    if (data.length === 0) {
+      container.innerHTML = `<tr><td colspan="4">해당 부서의 문서가 없습니다.</td></tr>`;
+      return;
+    }
+
+    data.forEach(doc => {
+      const tr = document.createElement("tr");
+      tr.setAttribute("data-doc-id", doc.docs_id);
+
+      const canEdit = doc.department_id === CURRENT_DEPARTMENT_ID;
+
+      tr.innerHTML = `
+      <td>
+        <a href="http://localhost:8001/api/documents/download/${doc.docs_id}" target="_blank">
+          📄 ${doc.title || "이름없음"}
+        </a>
+      </td>
+      <td>${doc.description || "-"}</td>
+      <td>${doc.department ? doc.department.department_name : "-"}</td>
+      <td>
+        ${canEdit
+          ? `
+            <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
+            <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>
+          `
+          : `<span style="color:#999;">-</span>`
+        }
+      </td>
+    `;
+      container.appendChild(tr);
+    });
+  } catch (error) {
+    console.error("문서 목록 로드 오류:", error);
+    const container = document.getElementById("doc-list");
+    if (container) {
+      container.innerHTML = `<tr><td colspan="4">문서 목록을 불러오는 중 오류가 발생했습니다.</td></tr>`;
+    }
   }
-
-  data.docs.forEach(doc => {
-    const tr = document.createElement("tr");
-    tr.setAttribute("data-doc-id", doc.docs_id);
-
-    const canEdit = doc.department_id === CURRENT_DEPARTMENT_ID;
-
-    tr.innerHTML = `
-    <td>
-      <a href="http://localhost:8001/download/${doc.docs_id}" target="_blank">
-        📄 ${doc.title || "이름없음"}
-
-      </a>
-    </td>
-    <td>${doc.description || "-"}</td>
-    <td>${doc.department_name || "-"}</td>
-    <td>
-      ${canEdit
-        ? `
-          <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
-          <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>
-        `
-        : `<span style="color:#999;">-</span>`
-      }
-    </td>
-  `;
-    container.appendChild(tr);
-  });
 }
 
-
-
 function downloadDocument(docsId) {
-  window.location.href = `http://localhost:8001/download/${docsId}`;
+  window.location.href = `http://localhost:8001/api/documents/download/${docsId}`;
 }
 
 
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 DOM 로드 완료, CURRENT_DEPARTMENT_ID:", CURRENT_DEPARTMENT_ID);
   loadDocumentList(CURRENT_DEPARTMENT_ID);
 
   // 업로드 이벤트 등록

@@ -286,6 +286,7 @@ class Memo(MemoBase):
 
 class ChatSessionBase(BaseModel):
     summary: Optional[str] = None
+    is_active: Optional[bool] = True
 
 class ChatSessionCreate(ChatSessionBase):
     user_id: int
@@ -303,6 +304,7 @@ class ChatMessageBase(BaseModel):
     message_type: str
     message_text: Optional[str] = None
     create_time: Optional[date] = None
+    is_active: Optional[bool] = True
 
 class ChatMessageCreate(ChatMessageBase):
     session_id: int
@@ -324,11 +326,13 @@ class DocsBase(BaseModel):
 
 class DocsCreate(DocsBase):
     department_id: int  # Integer로 다시 변경
+    original_file_name: Optional[str] = None
 
 class Docs(DocsBase):
     docs_id: int
     create_time: datetime
     department_id: int  # Integer로 다시 변경
+    original_file_name: Optional[str] = None
     department: Optional[Department] = None
     
     class Config:
@@ -423,3 +427,48 @@ class FileUploadResponse(BaseModel):
     file_size: int
     content_type: str
     upload_time: datetime
+
+
+# RAG 관련 스키마
+class RagChatRequest(BaseModel):
+    question: str
+    session_id: Optional[int] = None
+    user_id: int
+    department_id: int
+
+class RagChatResponse(BaseModel):
+    answer: str
+    session_id: int
+    contexts: List[str] = []
+    summary: Optional[str] = None
+    used_rag: bool = False
+    success: bool = True
+
+class DocumentUploadRequest(BaseModel):
+    department_id: int
+    common_doc: bool = False
+    original_file_name: str = ""
+    description: str = ""
+
+class DocumentUploadResponse(BaseModel):
+    success: bool
+    chunks_uploaded: Optional[int] = None
+    original_file: Optional[str] = None
+    saved_path: Optional[str] = None
+    docs_id: Optional[int] = None
+    error: Optional[str] = None
+
+class SessionListResponse(BaseModel):
+    success: bool
+    sessions: List[dict] = []
+    error: Optional[str] = None
+
+class MessageListResponse(BaseModel):
+    success: bool
+    messages: List[dict] = []
+    error: Optional[str] = None
+
+class DocumentListResponse(BaseModel):
+    success: bool
+    docs: List[dict] = []
+    error: Optional[str] = None
