@@ -342,6 +342,9 @@ async def create_chat_session(user_id: int = Form(...)):
             conn.commit()
             session_id = cursor.lastrowid
 
+            # ✅ 환영 메시지 자동 저장
+            save_message(session_id, "어서오세요. 무엇을 도와드릴까요?", "bot")
+
             # 🔥 바로 생성된 세션의 preview도 함께 응답
             return {
                 "success": True,

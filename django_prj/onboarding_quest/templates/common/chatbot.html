@@ -151,7 +151,7 @@
     }
 
     .chatbot-session-title {
-        font-weight: 600;
+        font-weight: 800;
         color: #343a40;
         font-size: 14px;
         flex: 1;
@@ -469,12 +469,13 @@
                             <button class="delete-session-btn" 
                                     data-session-id="{{ chat_session.session.session_id }}"
                                     onclick="deleteSession(this, event)">
-                                <span class="delete-icon">×</span>
+                                <!-- <span class="delete-icon">×</span> -->
+                                x
                             </button>
                         </div>
                         <div class="chatbot-session-preview">
                             {% if chat_session.first_user_message %}
-                            {{ chat_session.first_user_message.message_text|truncatechars:40 }}
+                            {{ chat_session.first_user_message.message_text|truncatechars:10 }}
                             {% else %}
                             메시지가 없습니다.
                             {% endif %}

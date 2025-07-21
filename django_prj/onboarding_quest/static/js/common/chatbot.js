@@ -74,8 +74,11 @@ class ChatBot {
                 div.className = "chatbot-session-item";
                 div.setAttribute("data-session-id", session.session_id);
                 div.innerHTML = `
+                <div class="chatbot-session-title">
+  <span class="chat-icon">💬</span>
+  <span class="session-summary">${session.summary || "새 대화"}</span>
+</div>
                 <div class="chatbot-session-preview">${session.preview || "..."}</div>
-                <div class="chatbot-session-summary">${session.summary || "새 채팅"}</div>
                 <button class="delete-session-btn" data-session-id="${session.session_id}">×</button>
                 <script type="application/json" class="session-messages">[]</script>
             `;
@@ -429,28 +432,68 @@ class ChatBot {
     }
 }
 
-// 전역 함수들
-// function createNewSession() {
-//     fetch('/common/chatbot/new-session/', {
-//         method: 'POST',
-//         headers: {
-//             'Content-Type': 'application/json',
-//             'X-CSRFToken': getCsrfToken()
-//         }
-//     })
-//         .then(response => response.json())
-//         .then(data => {
-//             if (data.success) {
-//                 window.location.href = `/common/chatbot/?session=${data.session_id}`;
-//             } else {
-//                 alert('새 채팅 생성 실패: ' + (data.error || '알 수 없는 오류'));
-//             }
-//         })
-//         .catch(error => {
-//             console.error('새 채팅 생성 오류:', error);
-//             alert('새 채팅 생성 중 오류가 발생했습니다.');
+
+
+// async function createNewSession() {
+//     try {
+//         const res = await fetch('http://127.0.0.1:8001/chat/session/create', {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+//             body: new URLSearchParams({ user_id: user_id })
 //         });
+
+//         const data = await res.json();
+//         if (!data.success) {
+//             alert("세션 생성 실패: " + (data.error || ""));
+//             return;
+//         }
+
+//         const listContainer = document.getElementById("chatbot-session-list");
+
+//         // ✅ 새 세션 DOM 직접 생성해서 추가
+//         const div = document.createElement("div");
+//         div.className = "chatbot-session-item selected"; // ✅ selected 추가
+//         div.setAttribute("data-session-id", data.session_id);
+//         div.innerHTML = `
+//             <div class="chatbot-session-preview">...</div>
+//             <div class="chatbot-session-summary">새 대화</div>
+//             <button class="delete-session-btn" data-session-id="${data.session_id}">×</button>
+//             <script type="application/json" class="session-messages">[]</script>
+//         `;
+
+//         // ✅ 기존 selected 제거
+//         document.querySelectorAll('.chatbot-session-item.selected')
+//             .forEach(el => el.classList.remove('selected'));
+
+//         listContainer.prepend(div);  // 상단에 추가
+
+//         // ✅ selectedSessionInput 값 설정
+//         window.chatBot.selectedSessionInput.value = data.session_id;
+
+//         // ✅ 메시지 초기화
+//         window.chatBot.chatArea.innerHTML = '';
+//         document.getElementById("chatbot-input").value = '';
+
+//         // ✅ 클릭 이벤트 바인딩
+//         div.addEventListener('click', (e) => {
+//             if (e.target.closest('.delete-session-btn')) return;
+//             window.chatBot.selectSession(div);
+//         });
+
+//         const deleteBtn = div.querySelector('.delete-session-btn');
+//         if (deleteBtn) {
+//             deleteBtn.addEventListener('click', (e) => {
+//                 e.stopPropagation();
+//                 window.chatBot.openDeleteModal(data.session_id);
+//             });
+//         }
+
+//     } catch (e) {
+//         console.error("세션 생성 실패:", e);
+//         alert("세션 생성 중 오류가 발생했습니다.");
+//     }
 // }
+
 
 async function createNewSession() {
     try {
@@ -470,25 +513,26 @@ async function createNewSession() {
 
         // ✅ 새 세션 DOM 직접 생성해서 추가
         const div = document.createElement("div");
-        div.className = "chatbot-session-item selected"; // ✅ selected 추가
+        div.className = "chatbot-session-item selected";
         div.setAttribute("data-session-id", data.session_id);
         div.innerHTML = `
-            <div class="chatbot-session-preview">...</div>
-            <div class="chatbot-session-summary">새 대화</div>
-            <button class="delete-session-btn" data-session-id="${data.session_id}">×</button>
-            <script type="application/json" class="session-messages">[]</script>
-        `;
+  <div class="chatbot-session-title">
+    <span class="chat-icon">💬</span>
+    <span class="session-summary">새 대화</span>
+  </div>
+  <div class="chatbot-session-preview">...</div>
+  <button class="delete-session-btn" data-session-id="${data.session_id}">×</button>
+  <script type="application/json" class="session-messages">[]</script>
+`;
 
         // ✅ 기존 selected 제거
         document.querySelectorAll('.chatbot-session-item.selected')
             .forEach(el => el.classList.remove('selected'));
 
-        listContainer.prepend(div);  // 상단에 추가
+        listContainer.prepend(div);
 
-        // ✅ selectedSessionInput 값 설정
+        // ✅ 세션 입력값 초기화
         window.chatBot.selectedSessionInput.value = data.session_id;
-
-        // ✅ 메시지 초기화
         window.chatBot.chatArea.innerHTML = '';
         document.getElementById("chatbot-input").value = '';
 
@@ -504,6 +548,26 @@ async function createNewSession() {
                 e.stopPropagation();
                 window.chatBot.openDeleteModal(data.session_id);
             });
+        }
+
+        // 🔥 추가: 챗봇 환영 메시지 자동 출력
+        const welcomeText = "어서오세요. 무엇을 도와드릴까요?";
+        window.chatBot.addMessageToChat('bot', welcomeText);
+
+        // 🔥 추가: session-messages 스크립트에도 초기 메시지 반영
+        const script = div.querySelector('.session-messages');
+        if (script) {
+            try {
+                const existing = JSON.parse(script.textContent || '[]');
+                existing.push({
+                    type: 'bot',
+                    text: welcomeText,
+                    time: new Date().toISOString().split('T')[0]
+                });
+                script.textContent = JSON.stringify(existing);
+            } catch (e) {
+                console.error('세션 메시지 초기화 실패:', e);
+            }
         }
 
     } catch (e) {
