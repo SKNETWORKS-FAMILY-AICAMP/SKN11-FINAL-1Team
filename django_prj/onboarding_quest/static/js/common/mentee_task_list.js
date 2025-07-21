@@ -473,9 +473,24 @@ document.addEventListener('DOMContentLoaded', function() {
     subtaskForm.reset();
     document.getElementById('subtask-parent-title').value = currentTask.title || '';
     document.getElementById('subtask-parent-id').value = currentTask.id;
-    document.getElementById('subtask-priority').value = '';
+    
+    // 상위 Task와 동일한 우선순위 설정
+    document.getElementById('subtask-priority').value = currentTask.priority || '하';
+    
+    // 상위 Task와 동일한 시작일/마감일 설정 (TaskAssign 필드명 사용)
+    if (currentTask.scheduled_start_date) {
+      document.getElementById('subtask-start-date').value = currentTask.scheduled_start_date;
+    } else {
+      // 시작일이 없으면 오늘 날짜로 설정
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('subtask-start-date').value = today;
+    }
+    
+    if (currentTask.scheduled_end_date) {
+      document.getElementById('subtask-end-date').value = currentTask.scheduled_end_date;
+    }
+    
     document.getElementById('subtask-status').value = '진행 전';
-    document.getElementById('subtask-end-date').value = '';
   });
   // 닫기 버튼(×)과 취소 버튼 모두 모달 닫기
   const subtaskCloseBtn = document.getElementById('subtask-close-btn');
@@ -500,6 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const description = document.getElementById('subtask-desc').value.trim();
     const status = document.getElementById('subtask-status').value;
     const priority = document.getElementById('subtask-priority').value;
+    const start_date = document.getElementById('subtask-start-date').value;
     const end_date = document.getElementById('subtask-end-date').value;
     const parent_id = document.getElementById('subtask-parent-id').value;
     // 상위 Task의 mentorship_id, week, order도 전달
@@ -514,7 +530,18 @@ document.addEventListener('DOMContentLoaded', function() {
           'Content-Type': 'application/json',
           'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
         },
-        body: JSON.stringify({title, guideline, description, status, priority, scheduled_end_date: end_date, mentorship_id, week, order})
+        body: JSON.stringify({
+          title, 
+          guideline, 
+          description, 
+          status, 
+          priority, 
+          scheduled_start_date: start_date, 
+          scheduled_end_date: end_date, 
+          mentorship_id, 
+          week, 
+          order
+        })
       });
       const data = await resp.json();
       if (data.success) {
