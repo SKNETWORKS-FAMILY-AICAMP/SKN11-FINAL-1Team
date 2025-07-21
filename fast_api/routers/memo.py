@@ -7,6 +7,8 @@ from database import get_db
 import logging
 
 # 로거 설정
+import logging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/memo", tags=["memo"])

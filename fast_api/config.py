@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     debug: bool = str2bool(os.getenv("DEBUG", "0"))
 
     # 로깅 설정
-    log_level: str = "INFO"
+    log_level: str = "DEBUG"
 
     class Config:
         env_file = ".env"
