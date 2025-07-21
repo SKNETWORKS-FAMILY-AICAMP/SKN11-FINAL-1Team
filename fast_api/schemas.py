@@ -79,6 +79,7 @@ class UserBase(BaseModel):
     role: str
     employee_number: Optional[int] = None
     is_admin: Optional[bool] = False
+    profile_image: Optional[str] = None
     
     @validator('first_name', 'last_name', 'job_part', 'role', 'position')
     def name_fields_must_not_be_empty(cls, v):
@@ -112,10 +113,34 @@ class User(UserBase):
     company_id: Optional[str] = None
     mentorship_id: Optional[int] = None
     last_login: Optional[datetime] = None
+    profile_image: Optional[str] = None
     is_active: Optional[bool] = True
     is_staff: Optional[bool] = False
     department: Optional[Department] = None
     company: Optional[Company] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class AlarmBase(BaseModel):
+    message: str
+    is_active: Optional[bool] = True
+    
+    @validator('message')
+    def message_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('알림 메시지는 비어있을 수 없습니다')
+        return v.strip()
+
+class AlarmCreate(AlarmBase):
+    user_id: int
+
+class Alarm(AlarmBase):
+    id: int
+    user_id: int
+    created_at: Optional[datetime] = None
+    user: Optional[User] = None
     
     class Config:
         from_attributes = True

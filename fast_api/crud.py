@@ -747,3 +747,72 @@ def delete_chat_message(db: Session, message_id: int):
         db.delete(db_message)
         db.commit()
     return db_message
+
+
+# Alarm CRUD
+def create_alarm(db: Session, alarm: schemas.AlarmCreate):
+    """알람 생성"""
+    db_alarm = models.Alarm(**alarm.dict())
+    db.add(db_alarm)
+    db.commit()
+    db.refresh(db_alarm)
+    return db_alarm
+
+def get_alarm(db: Session, alarm_id: int):
+    """알람 단일 조회"""
+    return db.query(models.Alarm).filter(models.Alarm.id == alarm_id).first()
+
+def get_alarms(db: Session, skip: int = 0, limit: int = 100):
+    """알람 목록 조회"""
+    return db.query(models.Alarm).offset(skip).limit(limit).all()
+
+def get_alarms_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    """사용자별 알람 목록 조회"""
+    return db.query(models.Alarm).filter(models.Alarm.user_id == user_id).offset(skip).limit(limit).all()
+
+def get_active_alarms_by_user(db: Session, user_id: int):
+    """사용자의 활성 알람 조회"""
+    return db.query(models.Alarm).filter(
+        and_(
+            models.Alarm.user_id == user_id,
+            models.Alarm.is_active == True
+        )
+    ).order_by(models.Alarm.created_at.desc()).all()
+
+def update_alarm(db: Session, alarm_id: int, alarm_update: schemas.AlarmCreate):
+    """알람 정보 업데이트"""
+    db_alarm = get_alarm(db, alarm_id)
+    if db_alarm:
+        for key, value in alarm_update.dict().items():
+            setattr(db_alarm, key, value)
+        db.commit()
+        db.refresh(db_alarm)
+    return db_alarm
+
+def update_alarm_status(db: Session, alarm_id: int, is_active: bool):
+    """알람 활성 상태 업데이트"""
+    db_alarm = get_alarm(db, alarm_id)
+    if db_alarm:
+        db_alarm.is_active = is_active
+        db.commit()
+        db.refresh(db_alarm)
+    return db_alarm
+
+def delete_alarm(db: Session, alarm_id: int):
+    """알람 삭제"""
+    db_alarm = get_alarm(db, alarm_id)
+    if db_alarm:
+        db.delete(db_alarm)
+        db.commit()
+    return db_alarm
+
+def mark_all_alarms_read(db: Session, user_id: int):
+    """사용자의 모든 알람을 읽음 처리"""
+    db.query(models.Alarm).filter(
+        and_(
+            models.Alarm.user_id == user_id,
+            models.Alarm.is_active == True
+        )
+    ).update({"is_active": False})
+    db.commit()
+    return True
