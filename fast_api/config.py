@@ -45,10 +45,7 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """PostgreSQL 연결 URL 생성"""
-        if self.db_password:
-            return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        else:
-            return f"postgresql://{self.db_user}@{self.db_host}:{self.db_port}/{self.db_name}"
+        return "postgresql://postgres:sungilbang@skndb.czcym4u8awpn.ap-northeast-2.rds.amazonaws.com:5432/skndb"
     
     # =================================
     # 🔒 보안 설정

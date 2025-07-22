@@ -25,8 +25,12 @@ def parse_list(v, delimiter=','):
 # =================================
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here-change-in-production')
 DEBUG = str2bool(os.getenv('DEBUG', 'False'))
-ALLOWED_HOSTS = parse_list(os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1'))
-
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost', 
+    '13.124.104.189',  # 현재 EC2 공인 IP
+    '*',  # 모든 호스트 허용 (개발용, 운영에서는 권장하지 않음)
+]
 # =================================
 # 📋 로깅 설정
 # =================================
