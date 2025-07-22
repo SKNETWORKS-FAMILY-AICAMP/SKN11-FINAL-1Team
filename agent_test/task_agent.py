@@ -57,13 +57,13 @@ def generate_curriculum_draft(data: CurriculumInput) -> str:
     return response.choices[0].message.content
 
 # 세부 Task 생성 함수
-def generate_task_details(title: str, description: str, week_num: int, weekly_plan: str) -> list:
+def generate_task_details(title: str, description: str, weekly_plan: str) -> list:
     prompt = f"""
-너는 프로젝트 매니저야. 아래 커리큘럼을 참고하여 {week_num}주차의 세부 Task들을 작성해.
+너는 프로젝트 매니저야. 아래 커리큘럼을 참고하여 세부 Task들을 작성해.
 
 커리큘럼 제목: {title}
 커리큘럼 설명: {description}
-{week_num}주차 초안:
+초안:
 {weekly_plan}
 
 **출력은 반드시 아래 JSON 배열만 반환해. 설명, 문장, 다른 텍스트를 포함하지 마.**
@@ -72,10 +72,10 @@ JSON 형식:
 [
   {{
     "title": "Task 이름",
-    "guide": "Task 가이드라인",
+    "guideline": "Task 가이드라인",
     "description": "Task에 대한 템플릿 구조 (멘티가 작성할 수 있는 항목 예: '1) 배운 점:\\n2) 개선할 점:')",
-    "week": {week_num},
-    "period": 1,
+    "week": 몇 주차인지(정수 타입),
+    "period": Task 수행 기간 (몇 일 걸리는 일인지) (정수 타입),
     "priority": "상/중/하 중 하나"
   }},
   ...
@@ -87,7 +87,7 @@ JSON 형식:
             {"role": "system", "content": "너는 세부 Task를 설계하는 프로젝트 매니저야."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.7
+        temperature=0.3
     )
     content = response.choices[0].message.content
     try:
@@ -109,7 +109,7 @@ def generate_all_tasks(data: CurriculumInput) -> list:
         tasks = generate_task_details(
             title=data.curriculum_title,
             description=data.curriculum_description,
-            week_num=week_index,
+            # week_num=week_index,
             weekly_plan=weekly_plan
         )
         all_tasks.extend(tasks)
@@ -137,9 +137,9 @@ if __name__ == "__main__":
     input_data = CurriculumInput(
         curriculum_title="AI 엔지니어 온보딩",
         curriculum_description="신입 AI 엔지니어를 위한 6주 온보딩. 실습 중심이며, 프로젝트 기반으로 구성됨.",
-        job_role="AI 엔지니어",
-        weeks=6,
-        goal="신입사원의 기술 적응과 프로젝트 수행 역량 평가"
+        # job_role="AI 엔지니어",
+        # weeks=6,
+        # goal="신입사원의 기술 적응과 프로젝트 수행 역량 평가"
     )
 
     workflow = build_langgraph()

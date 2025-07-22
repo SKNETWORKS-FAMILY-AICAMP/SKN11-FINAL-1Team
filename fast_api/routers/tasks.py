@@ -277,7 +277,7 @@ async def generate_draft(input_data: dict):
 @router.post("/generate_tasks_from_draft/")
 async def generate_tasks_from_draft(input_data: dict):
     """
-    Generate tasks based on the provided draft.
+    Generate tasks based on the provided draft using LangGraph workflow.
     """
     try:
         import sys
@@ -288,23 +288,28 @@ async def generate_tasks_from_draft(input_data: dict):
         if project_root not in sys.path:
             sys.path.insert(0, project_root)
         
-        print(f"[DEBUG] Generating tasks - Input data: {input_data}")
+        print(f"[DEBUG] Generating tasks with LangGraph - Input data: {input_data}")
         
-        from agent_test.task_agent import generate_all_tasks, CurriculumInput
+        from agent_test.task_agent import build_langgraph, CurriculumInput
 
         # 기본값 설정
         curriculum_input = CurriculumInput(
             curriculum_title=input_data.get('title', ''),
             curriculum_description=input_data.get('description', ''),
-            job_role=input_data.get('job_role', '신입사원'),
-            weeks=input_data.get('weeks', 12),
-            goal=input_data.get('goal', '신입사원의 성공적인 온보딩과 조직 적응')
+            # job_role=input_data.get('job_role', '신입사원'),
+            # weeks=input_data.get('weeks', 12),
+            # goal=input_data.get('goal', '신입사원의 성공적인 온보딩과 조직 적응')
         )
         
         print(f"[DEBUG] Generating tasks for: {curriculum_input.curriculum_title}")
         
-        all_tasks = generate_all_tasks(curriculum_input)
-        print(f"[DEBUG] Generated {len(all_tasks)} tasks")
+        # LangGraph 워크플로우 빌드 및 실행
+        workflow = build_langgraph()
+        app = workflow.compile()
+        result = app.invoke({"input_data": curriculum_input.__dict__})
+        all_tasks = result["tasks"]
+        
+        print(f"[DEBUG] Generated {len(all_tasks)} tasks using LangGraph")
         return {"tasks": all_tasks}
         
     except ImportError as e:
