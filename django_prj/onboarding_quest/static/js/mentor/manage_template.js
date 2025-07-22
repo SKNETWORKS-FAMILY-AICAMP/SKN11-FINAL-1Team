@@ -34,16 +34,20 @@ class CurriculumManager {
             });
         }
 
-        // 상세 페이지 버튼들 - 이벤트 위임 사용
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('#clone-btn')) {
-                this.handleDetailButtonClick(e.target.closest('#clone-btn'));
-            } else if (e.target.closest('#delete-btn')) {
-                this.handleDetailButtonClick(e.target.closest('#delete-btn'));
-            } else if (e.target.closest('#edit-btn')) {
-                this.handleDetailButtonClick(e.target.closest('#edit-btn'));
-            }
-        });
+        // 상세 페이지 버튼들에 직접 이벤트 리스너 등록
+        const cloneBtn = document.querySelector('#clone-btn');
+        const deleteBtn = document.querySelector('#delete-btn');
+        const editBtn = document.querySelector('#edit-btn');
+        
+        if (cloneBtn) {
+            cloneBtn.addEventListener('click', () => this.handleDetailButtonClick(cloneBtn));
+        }
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => this.handleDetailButtonClick(deleteBtn));
+        }
+        if (editBtn) {
+            editBtn.addEventListener('click', () => this.handleDetailButtonClick(editBtn));
+        }
     }
 
     handleDetailButtonClick(button) {
