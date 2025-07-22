@@ -136,14 +136,12 @@ WSGI_APPLICATION = 'onboarding_quest.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'onboarding_quest_db'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
-        },
+        'NAME': 'skndb',
+        'USER': 'postgres',
+        'PASSWORD': 'sungilbang',
+        'HOST': 'skndb.czcym4u8awpn.ap-northeast-2.rds.amazonaws.com',
+        'PORT': '5432'
+        
     }
 }
 
