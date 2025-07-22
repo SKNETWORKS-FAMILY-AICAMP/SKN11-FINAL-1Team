@@ -2,16 +2,21 @@ import os
 import json
 import re
 from dataclasses import dataclass
+from typing import TypedDict
 from dotenv import load_dotenv
 from openai import OpenAI
-from langchain_openai import ChatOpenAI
+from langgraph.graph import StateGraph, END
 
-
+# 환경 변수 로드
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_api_key)
-llm = ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=openai_api_key)
 DB_PATH = "sample.db"
+
+# 상태 스키마 정의
+class TaskState(TypedDict):
+    input_data: dict
+    tasks: list
 
 # 커리큘럼 입력 모델
 @dataclass
@@ -40,7 +45,7 @@ def generate_prompt(data: CurriculumInput) -> str:
 ...
 """
 
-#  커리큘럼 초안 생성 함수 (신버전 OpenAI SDK 방식?)
+# 커리큘럼 초안 생성 함수
 def generate_curriculum_draft(data: CurriculumInput) -> str:
     prompt = generate_prompt(data)
     response = client.chat.completions.create(
@@ -53,6 +58,7 @@ def generate_curriculum_draft(data: CurriculumInput) -> str:
     )
     return response.choices[0].message.content
 
+# 세부 Task 생성 함수
 def generate_task_details(title: str, description: str, week_num: int, weekly_plan: str) -> list:
     prompt = f"""
 너는 프로젝트 매니저야. 아래 커리큘럼을 참고하여 {week_num}주차의 세부 Task들을 작성해.
@@ -86,7 +92,6 @@ JSON 형식:
         temperature=0.7
     )
     content = response.choices[0].message.content
-
     try:
         tasks = json.loads(content)
     except json.JSONDecodeError:
@@ -94,17 +99,14 @@ JSON 형식:
         tasks = json.loads(content)
     return tasks
 
-
+# 전체 Task 생성 함수
 def generate_all_tasks(data: CurriculumInput) -> list:
-    # 1. 커리큘럼 초안 생성
     draft = generate_curriculum_draft(data)
     print(draft)
 
-    # 2. 주차별 초안 분리 (정규식으로 각 주차 내용 나누기)
     weekly_plans = re.findall(r"\d+주차:.*?(?=\n\d+주차:|\Z)", draft, re.S)
-
     all_tasks = []
-    # 3. 각 주차별 세부 Task 생성
+
     for week_index, weekly_plan in enumerate(weekly_plans, start=1):
         tasks = generate_task_details(
             title=data.curriculum_title,
@@ -113,9 +115,25 @@ def generate_all_tasks(data: CurriculumInput) -> list:
             weekly_plan=weekly_plan
         )
         all_tasks.extend(tasks)
-        # JSON 리스트만 출력
         print(json.dumps(tasks, indent=2, ensure_ascii=False))
     return all_tasks
+
+# LangGraph 노드 정의
+def curriculum_node(state: TaskState):
+    data_dict = state["input_data"]
+    data = CurriculumInput(**data_dict)
+    tasks = generate_all_tasks(data)
+    return {"tasks": tasks}
+
+# LangGraph 워크플로우 구성
+def build_langgraph():
+    graph = StateGraph(TaskState)
+    graph.add_node("generate_tasks", curriculum_node)
+    graph.set_entry_point("generate_tasks")
+    graph.add_edge("generate_tasks", END)
+    return graph
+
+
 
 if __name__ == "__main__":
     input_data = CurriculumInput(
@@ -126,9 +144,11 @@ if __name__ == "__main__":
         goal="신입사원의 기술 적응과 프로젝트 수행 역량 평가"
     )
 
-    all_tasks = generate_all_tasks(input_data)
+    workflow = build_langgraph()
+    app = workflow.compile()  # 실행 가능한 그래프로 컴파일
+    result = app.invoke({"input_data": input_data.__dict__})
+    all_tasks = result["tasks"]
 
-    # 4. 전체 Task JSON 파일로 저장
     with open("tasks_6weeks.json", "w", encoding="utf-8") as f:
         json.dump(all_tasks, f, ensure_ascii=False, indent=2)
     print("\n✅ 전체 Task가 tasks_6weeks.json 파일로 저장되었습니다.")
