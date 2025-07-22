@@ -16,6 +16,9 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langchain_core.messages import SystemMessage, HumanMessage
 import threading
 from contextlib import contextmanager
+
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
@@ -49,7 +52,7 @@ logging.basicConfig(level=logging.INFO)
 
 # LangChain 구성
 client = QdrantClient(url=QDRANT_URL)
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-large")
 llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
 
 WINDOW_SIZE = 10
@@ -344,38 +347,93 @@ def decide_to_reflect_improved(state: AgentState) -> str:
         return "summarize"
 
 # 사용자별 필터링 검색 함수
-def search_documents_filtered(state: AgentState) -> AgentState:
-    """사용자 부서별 문서 필터링 + 유사도 기반 필터링 적용"""
+# def search_documents_filtered(state: AgentState) -> AgentState:
+#     """사용자 부서별 문서 필터링 + 유사도 기반 필터링 적용"""
+#     query = state.get("rewritten_question") or state["question"]
+#     user_department_id = state.get("user_department_id")
+
+#     query_vec = embeddings.embed_query(query)
+
+#     # 🔍 부서 필터 정의
+#     if user_department_id:
+#         search_filter = Filter(
+#             should=[
+#                 FieldCondition(
+#                     key="metadata.department_id",
+#                     match=MatchValue(value=user_department_id)
+#                 ),
+#                 FieldCondition(
+#                     key="metadata.common_doc",
+#                     match=MatchValue(value=True)
+#                 )
+#             ]
+#         )
+#     else:
+#         search_filter = Filter(
+#             must=[
+#                 FieldCondition(
+#                     key="metadata.common_doc",
+#                     match=MatchValue(value=True)
+#                 )
+#             ]
+#         )
+
+#     # 🔍 Qdrant에서 유사도 검색
+#     results = client.search(
+#         collection_name=COLLECTION_NAME,
+#         query_vector=query_vec,
+#         query_filter=search_filter,
+#         limit=10,
+#         with_payload=True
+#     )
+
+#     logger.info(f"[🔍 Qdrant 검색 결과 수] {len(results)}")
+
+#     # ✅ 유사도 임계값 필터링
+#     threshold = 0.75
+#     filtered = [r for r in results if r.score >= threshold][:3]
+
+#     # fallback: 유사한 청크가 없을 경우 가장 상위 하나만 사용
+#     if not filtered:
+#         logger.warning("⚠️ 유사한 문서가 없습니다. 가장 유사한 1개 청크만 사용합니다.")
+#         filtered = results[:1]
+
+#     contexts = []
+#     for r in filtered:
+#         title = r.payload.get("metadata", {}).get("title", "무제")
+#         text = r.payload.get("text", "")
+#         file_name = (
+#             r.payload.get("metadata", {}).get("original_file_name") or
+#             r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+#         )
+#         logger.info(f"✅ 포함된 context: {title} (score: {r.score:.4f})")
+#         contexts.append(f"[{title}] (출처: {file_name})\n{text}")
+
+#     return {**state, "contexts": contexts}
+
+
+def search_documents_with_rerank(state: AgentState) -> AgentState:
     query = state.get("rewritten_question") or state["question"]
     user_department_id = state.get("user_department_id")
 
     query_vec = embeddings.embed_query(query)
 
-    # 🔍 부서 필터 정의
+    # 부서별 필터
     if user_department_id:
         search_filter = Filter(
             should=[
-                FieldCondition(
-                    key="metadata.department_id",
-                    match=MatchValue(value=user_department_id)
-                ),
-                FieldCondition(
-                    key="metadata.common_doc",
-                    match=MatchValue(value=True)
-                )
+                FieldCondition(key="metadata.department_id", match=MatchValue(value=user_department_id)),
+                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
             ]
         )
     else:
         search_filter = Filter(
             must=[
-                FieldCondition(
-                    key="metadata.common_doc",
-                    match=MatchValue(value=True)
-                )
+                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
             ]
         )
 
-    # 🔍 Qdrant에서 유사도 검색
+    # Qdrant에서 유사도 기반 top-10 검색
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vec,
@@ -384,29 +442,46 @@ def search_documents_filtered(state: AgentState) -> AgentState:
         with_payload=True
     )
 
-    logger.info(f"[🔍 Qdrant 검색 결과 수] {len(results)}")
+    if not results:
+        return {**state, "contexts": []}
 
-    # ✅ 유사도 임계값 필터링
-    threshold = 0.75
-    filtered = [r for r in results if r.score >= threshold][:3]
+    # GPT rerank 프롬프트 구성
+    prompt_chunks = ""
+    for i, r in enumerate(results, 1):
+        title = r.payload.get("metadata", {}).get("title", f"청크 {i}")
+        chunk = r.payload.get("text", "")
+        prompt_chunks += f"\n청크 {i} ({title}):\n{chunk}\n"
 
-    # fallback: 유사한 청크가 없을 경우 가장 상위 하나만 사용
-    if not filtered:
-        logger.warning("⚠️ 유사한 문서가 없습니다. 가장 유사한 1개 청크만 사용합니다.")
-        filtered = results[:1]
+    rerank_prompt = f"""
+다음 질문과 가장 관련 있는 청크를 3개 이내로 선택해 주세요.
+
+질문:
+{query}
+
+후보 청크:
+{prompt_chunks}
+
+선택한 청크의 번호를 쉼표로 구분해서 출력하세요 (예: 1,3,5).
+다른 설명은 하지 마세요.
+"""
+
+    response = llm.invoke(rerank_prompt).content.strip()
+    selected_nums = [int(x.strip()) for x in re.findall(r'\d+', response)]
 
     contexts = []
-    for r in filtered:
-        title = r.payload.get("metadata", {}).get("title", "무제")
-        text = r.payload.get("text", "")
-        file_name = (
-            r.payload.get("metadata", {}).get("original_file_name") or
-            r.payload.get("metadata", {}).get("file_name", "알 수 없음")
-        )
-        logger.info(f"✅ 포함된 context: {title} (score: {r.score:.4f})")
-        contexts.append(f"[{title}] (출처: {file_name})\n{text}")
+    for idx in selected_nums:
+        if 1 <= idx <= len(results):
+            r = results[idx - 1]
+            title = r.payload.get("metadata", {}).get("title", "무제")
+            text = r.payload.get("text", "")
+            file_name = (
+                r.payload.get("metadata", {}).get("original_file_name") or
+                r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+            )
+            contexts.append(f"[{title}] (출처: {file_name})\n{text}")
 
     return {**state, "contexts": contexts}
+
 
 
 # 세션 요약 함수 (수정됨)
@@ -529,17 +604,23 @@ def generate_answer(state: AgentState) -> AgentState:
 지금까지의 대화 기록:
 {history_text}
 
-아래 질문에 대해 context에 충실하게 자세히 답변하세요.
-→ 반드시 형식: "제X조 조항명 에 따르면 ..."
+아래 질문에 대해 context에 충실하게, 정확하고 자연스럽게 답변하세요.
 
-참고 조항: {ref_titles}
+💡 규칙:
+- context에 관련 조항이 명확히 포함된 경우에만 "제X조 조항명에 따르면 ..." 형식을 사용하세요.
+- context에 직접적인 관련이 없을 경우 "해당 내용은 명시된 조항에서 확인되지 않았습니다"라고 답하세요.
+- context에 없는 정보를 임의로 생성하지 마세요.
+- 질문과 관련된 context 조항이 여러 개라면, 모두 인용하고 내용을 비교하여 설명하세요.
+
+📚 참고 조항: {ref_titles}
 
 Context:
 {context}
 
-Question: {question}
+질문: {question}
 
-Answer:"""
+정확하고 친절한 답변:
+"""
     
     response = llm.invoke(prompt)
     answer_text = response.content.strip()
@@ -576,7 +657,9 @@ Answer:"""
 builder = StateGraph(AgentState)
 builder.add_node("decide", decide_use_rag)
 builder.add_node("judge_rag", get_use_rag_condition)
-builder.add_node("search", search_documents_filtered)  # 필터링 검색으로 변경
+# builder.add_node("search", search_documents_filtered)  # 필터링 검색으로 변경
+builder.add_node("search", search_documents_with_rerank)
+
 builder.add_node("answer", generate_answer)
 builder.add_node("judge", judge_answer_improved)  # 개선된 함수 사용
 builder.add_node("rewrite", reformulate_question_improved)  # 개선된 함수 사용
