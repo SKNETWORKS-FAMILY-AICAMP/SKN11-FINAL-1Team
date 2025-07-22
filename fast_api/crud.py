@@ -310,7 +310,7 @@ def delete_user_with_company_department(db: Session, user_id: int, company_id: s
 
 # 기존 delete 함수들은 유지 (하위 호환성)
 def delete_user(db: Session, user_id: int):
-    """사용자 삭제 (관련 데이터도 함께 안전하게 삭제)"""
+    """사용자 삭제 (멘토링 관계 확인 후 안전하게 삭제)"""
     try:
         # 1. 사용자 조회
         db_user = get_user(db, user_id)
@@ -318,10 +318,41 @@ def delete_user(db: Session, user_id: int):
             print(f"❌ 삭제할 사용자를 찾을 수 없음: user_id={user_id}")
             return None
 
-        print(f"🗑️ 사용자 삭제 시작: {db_user.email} (ID: {user_id})")
+        print(f"🗑️ 사용자 삭제 검토 시작: {db_user.email} (ID: {user_id})")
 
-        # 2. 관련 데이터 삭제 (외래키 제약 조건 고려한 순서)
+        # 2. 멘토링 관계 확인 (삭제 차단 조건)
+        mentorship_as_mentor = db.query(models.Mentorship).filter(
+            models.Mentorship.mentor_id == user_id
+        ).first()
+        mentorship_as_mentee = db.query(models.Mentorship).filter(
+            models.Mentorship.mentee_id == user_id
+        ).first()
+        
+        if mentorship_as_mentor or mentorship_as_mentee:
+            mentor_count = db.query(models.Mentorship).filter(models.Mentorship.mentor_id == user_id).count()
+            mentee_count = db.query(models.Mentorship).filter(models.Mentorship.mentee_id == user_id).count()
+            
+            role_desc = []
+            if mentor_count > 0:
+                role_desc.append(f"멘토 {mentor_count}건")
+            if mentee_count > 0:
+                role_desc.append(f"멘티 {mentee_count}건")
+            
+            warning_msg = f"⚠️ 멘토링 관계가 있는 사용자는 삭제할 수 없습니다.\n" \
+                         f"📋 멘토링 현황: {', '.join(role_desc)}\n" \
+                         f"💡 해결 방법:\n" \
+                         f"  1. 먼저 해당 멘토링 관계를 종료하거나\n" \
+                         f"  2. 사용자를 '비활성' 상태로 변경하세요\n" \
+                         f"  3. 멘토링 데이터 보존을 위해 삭제 대신 비활성화를 권장합니다"
+            
+            print(warning_msg)
+            raise ValueError(warning_msg)
+
+        print(f"✅ 멘토링 관계 없음 - 삭제 진행 가능")
+
+        # 3. 관련 데이터 삭제 (외래키 제약 조건 고려한 순서)
         # SQLAlchemy 세션은 자동으로 트랜잭션을 관리함
+        
         
         # ChatMessage 삭제 (자식 테이블)
         try:
@@ -345,24 +376,7 @@ def delete_user(db: Session, user_id: int):
         except Exception as e:
             print(f"  - ChatSession 삭제 중 오류 (무시): {e}")
 
-        # Mentorship 관련 데이터 삭제
-        try:
-            mentorships_mentor_deleted = db.query(models.Mentorship).filter(
-                models.Mentorship.mentor_id == user_id
-            ).delete(synchronize_session=False)
-            print(f"  - Mentorship(멘토) 삭제: {mentorships_mentor_deleted}개")
-        except Exception as e:
-            print(f"  - Mentorship(멘토) 삭제 중 오류 (무시): {e}")
-        
-        try:
-            mentorships_mentee_deleted = db.query(models.Mentorship).filter(
-                models.Mentorship.mentee_id == user_id
-            ).delete(synchronize_session=False)
-            print(f"  - Mentorship(멘티) 삭제: {mentorships_mentee_deleted}개")
-        except Exception as e:
-            print(f"  - Mentorship(멘티) 삭제 중 오류 (무시): {e}")
-
-        # Task 관련 데이터 삭제
+        # Task 관련 데이터 삭제 (직접 연결된 Task만)
         try:
             if hasattr(models, 'Task'):
                 tasks_deleted = db.query(models.Task).filter(
@@ -381,14 +395,14 @@ def delete_user(db: Session, user_id: int):
         except Exception as e:
             print(f"  - Alarm 삭제 중 오류 (무시): {e}")
 
-        # Memo 관련 데이터 삭제
+        # 사용자가 직접 작성한 Memo 삭제 (TaskAssign과 무관한 개인 메모만)
         try:
-            memos_deleted = db.query(models.Memo).filter(
+            user_memos_deleted = db.query(models.Memo).filter(
                 models.Memo.user_id == user_id
             ).delete(synchronize_session=False)
-            print(f"  - Memo 삭제: {memos_deleted}개")
+            print(f"  - 사용자 작성 Memo 삭제: {user_memos_deleted}개")
         except Exception as e:
-            print(f"  - Memo 삭제 중 오류 (무시): {e}")
+            print(f"  - 사용자 작성 Memo 삭제 중 오류 (무시): {e}")
 
         # 3. 최종적으로 사용자 삭제
         print(f"  - 사용자 본체 삭제 시작: {db_user.email}")

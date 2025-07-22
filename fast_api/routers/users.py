@@ -156,7 +156,7 @@ async def delete_user_with_validation(
 
 @router.delete("/{user_id}")
 async def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """사용자 삭제 (기본 방식) - 안정적인 트랜잭션 처리"""
+    """사용자 삭제 (기본 방식) - 멘토링 관계 확인 후 안전하게 삭제"""
     try:
         print(f"🗑️ 사용자 삭제 요청: user_id={user_id}")
         
@@ -178,6 +178,11 @@ async def delete_user(user_id: int, db: Session = Depends(get_db)):
             print(f"❌ 사용자 삭제 실패: user_id={user_id}")
             raise HTTPException(status_code=500, detail="사용자 삭제 처리 중 오류가 발생했습니다")
             
+    except ValueError as ve:
+        # 멘토링 관계 확인 오류 (경고 메시지)
+        error_msg = str(ve)
+        print(f"⚠️ 삭제 차단: {error_msg}")
+        raise HTTPException(status_code=400, detail=error_msg)
     except HTTPException:
         # HTTPException은 그대로 전달
         raise
@@ -195,7 +200,7 @@ class UserIds(BaseModel):
 
 @router.delete("/")
 async def delete_multiple_users(user_ids_payload: UserIds, db: Session = Depends(get_db)):
-    """다중 사용자 삭제 - 안정적인 트랜잭션 처리"""
+    """다중 사용자 삭제 - 멘토링 관계 확인 후 안전하게 삭제"""
     user_ids = user_ids_payload.user_ids
     if not user_ids:
         raise HTTPException(status_code=400, detail="삭제할 사용자 ID가 없습니다.")
@@ -204,6 +209,7 @@ async def delete_multiple_users(user_ids_payload: UserIds, db: Session = Depends
     error_count = 0
     errors = []
     deleted_users = []
+    blocked_users = []  # 멘토링 관계로 인해 삭제가 차단된 사용자들
 
     print(f"🗑️ 다중 사용자 삭제 시작: {len(user_ids)}명")
 
@@ -221,6 +227,15 @@ async def delete_multiple_users(user_ids_payload: UserIds, db: Session = Depends
                 errors.append(error_msg)
                 print(f"  ❌ {error_msg}")
                 
+        except ValueError as ve:
+            # 멘토링 관계로 인한 삭제 차단
+            error_count += 1
+            user_info = crud.get_user(db, user_id)
+            user_email = user_info.email if user_info else f"ID:{user_id}"
+            blocked_msg = f"{user_email}: 멘토링 관계가 있어 삭제할 수 없습니다"
+            blocked_users.append(blocked_msg)
+            errors.append(blocked_msg)
+            print(f"  ⚠️ 삭제 차단: {blocked_msg}")
         except Exception as e:
             error_count += 1
             error_msg = f"User ID {user_id}: {str(e)}"
@@ -228,27 +243,34 @@ async def delete_multiple_users(user_ids_payload: UserIds, db: Session = Depends
             print(f"  ❌ 사용자 삭제 중 오류: {error_msg}")
 
     # 결과 정리
-    result_message = f"총 {len(user_ids)}명 중 {success_count}명 삭제 성공, {error_count}명 실패"
+    result_message = f"총 {len(user_ids)}명 중 {success_count}명 삭제 성공"
+    if error_count > 0:
+        result_message += f", {error_count}명 실패"
+    if blocked_users:
+        result_message += f" (멘토링 관계로 {len(blocked_users)}명 차단됨)"
+    
     print(f"🏁 다중 삭제 완료: {result_message}")
 
-    if success_count == 0 and error_count > 0:
-        raise HTTPException(
-            status_code=500, 
-            content={
-                "message": "모든 사용자 삭제 실패", 
-                "errors": errors,
-                "success_count": success_count,
-                "error_count": error_count
-            }
-        )
-
-    return {
+    response_data = {
         "message": result_message,
         "success_count": success_count,
         "error_count": error_count,
         "deleted_users": deleted_users,
         "errors": errors if errors else None
     }
+    
+    # 멘토링 관계가 있는 사용자들에 대한 추가 안내
+    if blocked_users:
+        response_data["warning"] = "일부 사용자는 멘토링 관계가 있어 삭제되지 않았습니다. 먼저 멘토링 관계를 종료하거나 비활성화를 고려해주세요."
+        response_data["blocked_users"] = blocked_users
+
+    if success_count == 0 and error_count > 0:
+        raise HTTPException(
+            status_code=400,  # 멘토링 관계 오류는 400으로 변경
+            content=response_data
+        )
+
+    return response_data
 
 @router.get("/mentors/{mentor_id}/mentees", response_model=List[schemas.User])
 async def get_mentor_mentees(mentor_id: int, db: Session = Depends(get_db)):
