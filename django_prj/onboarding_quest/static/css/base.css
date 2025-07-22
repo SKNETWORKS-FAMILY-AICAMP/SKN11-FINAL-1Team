@@ -1,0 +1,277 @@
+body {
+  padding: 0;
+  background: #f8fafc;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+  line-height: 1.6;
+}
+
+body, input, textarea, select, button, table, th, td, .sidebar-text, .sidebar-link, .themed-btn, .themed-card {
+  font-family: 'Pretendard', sans-serif !important;
+}
+
+/* 모던 화이트 테마 스타일 */
+.themed-card, .doc-file-list, .doc-upload-box, .doc-left, .kanban-card, .task-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+}
+
+input, textarea, select {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-family: 'Pretendard', sans-serif;
+  font-size: 15px;
+  color: #1e293b;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+input:focus, textarea:focus, select:focus {
+  border: 1.5px solid #3b82f6;
+  outline: none;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+table {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+th, td {
+  background: #ffffff;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+}
+th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+
+button, .themed-btn, .doc-edit-btn, .doc-upload-btn {
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Pretendard', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  padding: 12px 20px;
+}
+button:hover, .themed-btn:hover, .doc-edit-btn:hover, .doc-upload-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  transform: translateY(-2px);
+}
+
+.active-link {
+  background-color: #eff6ff;
+  color: #3b82f6;
+  font-weight: 600;
+  border-right: 3px solid #3b82f6;
+}
+
+/* 컨테이너 및 레이아웃 */
+.main-content, .doc-container, .kanban-board, .task-list {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border: 1px solid #e2e8f0;
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+  width: 8px;
+  background: #f8fafc;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 모던 화이트 테마를 위한 추가 스타일 */
+.sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.sidebar-link {
+  color: #1e293b;
+  font-weight: 600;
+  transition: none;
+  border-radius: 12px;
+  margin: 2px 0;
+}
+.sidebar-link:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+
+/* 사이드바 프로필 영역 모던 스타일 */
+#level-area {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 24px !important;
+  border-radius: 0 !important;
+}
+
+/* 메인 컨텐츠 영역 */
+#main-content {
+  background: #f8fafc !important;
+}
+
+/* 카드 및 컨테이너 구분감 강화 */
+.doc-container {
+  background: #f8fafc;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 32px;
+}
+
+.doc-left {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  padding: 32px;
+}
+
+/* 테마 선택 영역 스타일 */
+.sidebar .p-6.border-t {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* 칸반 보드 스타일 개선 */
+.kanban-column {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 20px;
+  margin: 0 8px;
+}
+
+.kanban-card {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.kanban-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+/* 헤더 및 제목 스타일 */
+h1, h2, h3, h4, h5, h6 {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* 폼 요소 개선 */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  color: #475569;
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* 버튼 변형 */
+.btn-secondary {
+  background: #64748b;
+  color: #ffffff;
+}
+.btn-secondary:hover {
+  background: #475569;
+}
+
+/* 활동 섹션 스타일 */
+.activity-section {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-top: 24px;
+}
+
+.activity-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.activity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f9fafb;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-item div:first-child {
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.activity-item div:last-child {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* 사이드바 접힌 상태 스타일 */
+.sidebar-collapsed .sidebar-text {
+    display: none !important;
+}
+
+.sidebar-collapsed .sidebar-link {
+    display: none !important;
+}
+
+.sidebar-collapsed #level-area {
+    display: none !important;
+}
+
+.sidebar-collapsed nav {
+    display: none !important;
+}
+
+/* 접힌 상태에서는 햄버거 버튼만 표시 */
+.sidebar-collapsed .flex.items-center.justify-between {
+    justify-content: center !important;
+}
+
+.sidebar-collapsed .flex.items-center.justify-between .sidebar-text {
+    display: none !important;
+}

@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}계정 추가/수정{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/account/user_add_modify.css' %}">
+    <script src="{% static 'js/account/user_add_modify.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="form-box">
+    <h2>{% if edit_mode %}사원 정보 수정{% else %}계정 추가/수정{% endif %}</h2>
+    <form method="post" autocomplete="off">
+      {% csrf_token %}
+      {% for field in form.visible_fields %}
+        <div class="form-row">
+          <label for="{{ field.id_for_label }}">
+            {{ field.label }}
+          </label>
+          <div class="form-input-col">
+            {{ field }}
+            {% if field.help_text %}
+              <div class="help-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+              <div class="error-text">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      <div class="button-row">
+        <button class="btn-create" type="submit" id="submit-btn">
+          <span class="btn-text">{% if edit_mode %}수정{% else %}생성{% endif %}</span>
+          <span class="btn-loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            {% if edit_mode %}수정중...{% else %}생성중...{% endif %}
+          </span>
+        </button>
+        <button class="btn-cancel" type="button" onclick="history.back();">취소</button>
+      </div>
+    </form>
+  </div>
+
+<script>
+// CSRF 토큰 가져오기
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 메시지 표시 함수
+function showMessage(message, type = 'success') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `alert alert-${type}`;
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+        ${type === 'success' ? 'background-color: #28a745;' : 'background-color: #dc3545;'}
+    `;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 슬라이드 인 애니메이션
+    setTimeout(() => {
+        messageDiv.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        messageDiv.style.transform = 'translateX(100%)';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 3000);
+}
+
+// AJAX 폼 처리
+document.addEventListener('DOMContentLoaded', function() {
+    const userForm = document.querySelector('form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    const editMode = {% if edit_mode %}true{% else %}false{% endif %};
+    
+    if (userForm) {
+        userForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 로딩 상태 시작
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            submitBtn.disabled = true;
+            
+            try {
+                const formData = new FormData(userForm);
+                
+                const response = await fetch(window.location.pathname, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        const successMsg = editMode ? '사용자 정보가 성공적으로 수정되었습니다!' : '사용자가 성공적으로 생성되었습니다!';
+                        showMessage(successMsg);
+                        
+                        // 2초 후 이전 페이지로 이동
+                        setTimeout(() => {
+                            history.back();
+                        }, 2000);
+                    } else {
+                        // 폼 유효성 검사 오류 처리
+                        if (result.errors) {
+                            // 기존 오류 메시지 제거
+                            document.querySelectorAll('.error-text').forEach(el => el.remove());
+                            
+                            // 새 오류 메시지 표시
+                            for (const [fieldName, errors] of Object.entries(result.errors)) {
+                                const field = document.querySelector(`[name="${fieldName}"]`);
+                                if (field) {
+                                    const errorDiv = document.createElement('div');
+                                    errorDiv.className = 'error-text';
+                                    errorDiv.textContent = errors.join(', ');
+                                    field.parentNode.appendChild(errorDiv);
+                                }
+                            }
+                            throw new Error('입력 데이터를 확인해주세요.');
+                        } else {
+                            throw new Error(result.error || '처리 중 오류가 발생했습니다.');
+                        }
+                    }
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`서버 오류 (${response.status}): ${errorText}`);
+                }
+            } catch (error) {
+                console.error('사용자 처리 오류:', error);
+                showMessage(error.message || '처리 중 오류가 발생했습니다.', 'error');
+            } finally {
+                // 로딩 상태 종료
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+    }
+});
+
+// 로딩 스피너 스타일 추가
+const style = document.createElement('style');
+style.textContent = `
+.loading-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff33;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+}
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

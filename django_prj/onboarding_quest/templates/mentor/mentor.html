@@ -1,0 +1,346 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}멘토 대시보드{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/mentor/mentor.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="main-content">
+    <div class="bg-white rounded-xl shadow-sm p-8 mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">안녕하세요 {{ request.user.last_name }}{{ request.user.first_name }}님 🌟</h1>
+      <p class="text-lg text-gray-600">오늘도 멘티분들과 함께 성장하는 여정을 시작해보세요</p>
+    </div>
+
+    <div class="mentor-section bg-white rounded-xl shadow-sm p-8">
+      <div class="flex justify-between items-center mb-8">
+        <div class="flex gap-4">
+          <div class="relative">
+            <input type="text" id="searchInput" placeholder="멘티 이름을 검색해주세요..." 
+              class="pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 w-64 text-base">
+            <svg class="w-5 h-5 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <button id="searchBtn" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors text-base font-medium">
+            검색
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="mentorshipCards">
+        <!-- 멘토십 카드들이 JavaScript로 동적 로드됩니다 -->
+      </div>
+      
+      <!-- 로딩 상태 -->
+      <div id="loading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <p class="mt-4 text-gray-600">멘토십 정보를 불러오는 중...</p>
+      </div>
+      
+      <!-- 빈 상태 -->
+      <div id="emptyState" class="col-span-full text-center py-12" style="display: none;">
+        <div class="text-gray-400 text-6xl mb-4">📚</div>
+        <h3 class="text-xl font-medium text-gray-500 mb-2">관리 중인 멘토쉽이 없습니다</h3>
+        <p class="text-gray-400">새로운 멘토쉽을 시작해보세요</p>
+        <a href="{% url 'mentor:manage_mentee' %}" class="mt-4 inline-block bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+          멘토쉽 생성하기
+        </a>
+      </div>
+      
+      <!-- 오류 상태 -->
+      <div id="errorState" class="col-span-full text-center py-12" style="display: none;">
+        <div class="text-red-400 text-6xl mb-4">⚠️</div>
+        <h3 class="text-xl font-medium text-red-500 mb-2">데이터를 불러올 수 없습니다</h3>
+        <p class="text-gray-400" id="errorMessage">네트워크 오류가 발생했습니다.</p>
+        <button onclick="loadMentorships()" class="mt-4 inline-block bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+          다시 시도
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// 전역 변수
+let mentorId = null;
+const FASTAPI_BASE_URL = 'http://localhost:8001';
+
+// 페이지 로드시 멘토십 데이터 로드
+document.addEventListener('DOMContentLoaded', function() {
+    // 세션에서 user_id 가져오기
+    mentorId = getMentorIdFromSession();
+    console.log('멘토 ID:', mentorId);
+    
+    if (mentorId) {
+        loadMentorships();
+    } else {
+        showError('로그인이 필요합니다.');
+    }
+    
+    // 검색 이벤트 리스너
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchMentees();
+            }
+        });
+    }
+    
+    if (searchBtn) {
+        searchBtn.addEventListener('click', searchMentees);
+    }
+});
+
+// 세션에서 멘토 ID 가져오기
+function getMentorIdFromSession() {
+    // Django 템플릿에서 전달된 사용자 정보
+    return {{ user_id|default:"null" }};
+}
+
+// FastAPI에서 멘토십 데이터 로드
+async function loadMentorships() {
+    try {
+        showLoading(true);
+        console.log('멘토십 로딩 시작...');
+        console.log('멘토 ID:', mentorId);
+        
+        const url = `/api/mentorship/?mentor_id=${mentorId}`;
+        console.log('요청 URL:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'  // CSRF 토큰을 위해 추가
+        });
+        
+        console.log('응답 상태:', response.status);
+        console.log('응답 헤더:', response.headers);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('응답 오류 내용:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('받은 데이터:', data);
+        renderMentorshipCards(data);
+        
+    } catch (error) {
+        console.error('Error loading mentorships:', error);
+        
+        // 더 자세한 오류 정보 제공
+        let errorMessage = '멘토십 데이터를 불러오는 중 오류가 발생했습니다.';
+        
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            errorMessage += ' 네트워크 연결을 확인해주세요.';
+        } else if (error.message.includes('404')) {
+            errorMessage += ' API 엔드포인트를 찾을 수 없습니다.';
+        } else if (error.message.includes('500')) {
+            errorMessage += ' 서버 내부 오류가 발생했습니다.';
+        } else {
+            errorMessage += ` (${error.message})`;
+        }
+        
+        showError(errorMessage);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 멘토십 카드 렌더링
+function renderMentorshipCards(mentorships) {
+    const cardsContainer = document.getElementById('mentorshipCards');
+    
+    if (!mentorships || mentorships.length === 0) {
+        showEmptyState();
+        return;
+    }
+    
+    const cardsHTML = mentorships.map(mentorship => {
+        const progress = calculateProgress(mentorship);
+        const dday = calculateDday(mentorship);
+        
+        return `
+            <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-shadow cursor-pointer" 
+                 onclick="navigateToTaskList(${mentorship.id})">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span class="text-blue-600 font-bold text-lg">${mentorship.mentee_name.charAt(0)}</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-xl text-gray-900 mb-1">${mentorship.mentee_name}</h3>
+                            <div class="flex items-center gap-2">
+                                ${mentorship.tags ? mentorship.tags.map(tag => 
+                                    `<span class="bg-blue-50 text-blue-600 text-sm px-3 py-1.5 rounded-full font-medium">${tag}</span>`
+                                ).join('') : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ${dday ? `<span class="bg-red-50 text-red-600 text-base font-medium px-4 py-2 rounded-full">${dday}</span>` : ''}
+                </div>
+                
+                <div class="flex items-center gap-4 mb-4 bg-gray-50 rounded-lg p-4">
+                    <div class="flex-1">
+                        <span class="text-base font-medium text-gray-600">커리큘럼</span>
+                        <p class="text-gray-900 font-medium text-lg">${mentorship.curriculum_title || '기본 커리큘럼'}</p>
+                    </div>
+                    <div class="border-l border-gray-200 pl-4">
+                        <span class="text-base font-medium text-gray-600">총 주차</span>
+                        <p class="text-gray-900 font-medium text-lg">${mentorship.total_weeks || 12}주</p>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-base font-medium text-gray-600">진척도</span>
+                        <span class="text-base font-bold text-gray-900">${progress}%</span>
+                    </div>
+                    <div class="bg-gray-100 rounded-full h-3">
+                        <div class="bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    cardsContainer.innerHTML = cardsHTML;
+    hideAllStates();
+}
+
+// 진척도 계산
+function calculateProgress(mentorship) {
+    if (mentorship.completed_tasks && mentorship.total_tasks) {
+        return Math.round((mentorship.completed_tasks / mentorship.total_tasks) * 100);
+    }
+    return 0;
+}
+
+// D-DAY 계산
+function calculateDday(mentorship) {
+    if (!mentorship.end_date) return null;
+    
+    const endDate = new Date(mentorship.end_date);
+    const today = new Date();
+    const diffTime = endDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) {
+        return `D-${diffDays}`;
+    } else if (diffDays === 0) {
+        return 'D-DAY';
+    } else {
+        return `D+${Math.abs(diffDays)}`;
+    }
+}
+
+// 태스크 리스트로 이동
+function navigateToTaskList(mentorshipId) {
+    window.location.href = `/mentee/task_list/?mentorship_id=${mentorshipId}`;
+}
+
+// 상태 관리 함수들
+function showLoading(show) {
+    document.getElementById('loading').style.display = show ? 'block' : 'none';
+}
+
+function showEmptyState() {
+    document.getElementById('emptyState').style.display = 'block';
+    hideOtherStates(['emptyState']);
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorState').style.display = 'block';
+    hideOtherStates(['errorState']);
+}
+
+function hideAllStates() {
+    ['loading', 'emptyState', 'errorState'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+    });
+}
+
+function hideOtherStates(except) {
+    ['loading', 'emptyState', 'errorState', 'mentorshipCards'].forEach(id => {
+        if (!except.includes(id)) {
+            document.getElementById(id).style.display = 'none';
+        }
+    });
+}
+
+// CSRF 토큰 가져오기
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 검색 함수 (FastAPI 연동)
+async function searchMentees() {
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput ? searchInput.value.trim() : '';
+    
+    if (!mentorId) {
+        showError('로그인이 필요합니다.');
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        
+        const url = `/api/mentorship/?mentor_id=${mentorId}${query ? `&search=${encodeURIComponent(query)}` : ''}`;
+        console.log('검색 URL:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        renderMentorshipCards(data);
+        
+    } catch (error) {
+        console.error('Error searching mentorships:', error);
+        let errorMessage = '검색 중 오류가 발생했습니다.';
+        
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            errorMessage += ' 네트워크 연결을 확인해주세요.';
+        } else {
+            errorMessage += ` (${error.message})`;
+        }
+        
+        showError(errorMessage);
+    } finally {
+        showLoading(false);
+    }
+}
+</script>
+{% endblock %}

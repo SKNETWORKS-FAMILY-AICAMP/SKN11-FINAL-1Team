@@ -1,0 +1,776 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}멘티 관리 페이지{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/mentor/manage_mentee.css' %}">
+<style>
+.mentee-container {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  min-height: 700px;
+  margin-top: 20px;
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.mentee-list-area {
+  flex: none;
+  width: 300px;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+}
+
+.mentee-list-area h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #343a40;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 8px;
+}
+
+.mentee-list-search {
+  margin-bottom: 16px;
+}
+
+.mentee-list-search input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  font-size: 0.9em;
+  background: white;
+  transition: border-color 0.2s ease;
+  color: #495057;
+}
+
+.mentee-list-search input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.mentee-list-ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mentee-list-ul li {
+  margin-bottom: 4px;
+}
+
+.mentee-list-ul li:last-child { 
+  margin-bottom: 0; 
+}
+
+.mentee-list-ul a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.mentee-list-ul a.selected {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.mentee-list-ul a:hover:not(.selected) {
+  background: #e9ecef;
+  border-color: #ced4da;
+}
+
+.mentee-profile-area {
+  flex: 1 1 0;
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  min-width: 400px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+}
+
+.mentee-profile-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.mentee-avatar {
+  width: 60px; 
+  height: 60px;
+  border-radius: 50%;
+  background: #DBEAFE;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-size: 1.5em;
+  margin-right: 16px;
+  color: #2563EB;
+}
+
+.mentee-basic-info {
+  flex: 1;
+}
+
+.mentee-name {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #343a40;
+}
+
+.mentee-role {
+  color: #6c757d;
+  font-size: 0.9em;
+  margin-bottom: 8px;
+}
+
+.mentee-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mentee-info-table {
+  width: 100%;
+}
+
+.mentee-info-table h4 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #343a40;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+.info-label {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #495057;
+  width: 100px;
+  flex-shrink: 0;
+  margin-right: 12px;
+  padding-top: 8px;
+}
+
+.info-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.info-value textarea {
+  width: 100%;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  color: #495057;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 0.9em;
+  resize: none;
+  min-height: 36px;
+}
+
+.mentoring-settings-area {
+  flex: none;
+  width: 340px;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+}
+
+.mentoring-settings-area h4 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #343a40;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.mentoring-settings-area label {
+  font-size: 0.9em;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: block;
+  color: #495057;
+}
+
+.mentoring-settings-area input[type="text"],
+.mentoring-settings-area input[type="date"],
+.mentoring-settings-area select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  font-size: 0.9em;
+  margin-bottom: 16px;
+  background: white;
+  color: #495057;
+  transition: border-color 0.2s ease;
+}
+
+.mentoring-settings-area input[type="text"]:focus,
+.mentoring-settings-area input[type="date"]:focus,
+.mentoring-settings-area select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.mentoring-settings-area button[type="submit"] {
+  flex: 1;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.mentoring-settings-area button[type="submit"]:hover {
+  background: #0056b3;
+}
+
+.mentoring-settings-area button[type="button"] {
+  flex: 1;
+  background: white;
+  color: #6c757d;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 12px 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mentoring-settings-area button[type="button"]:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.mentoring-settings-area .end-date-label {
+  margin-top: 8px;
+  font-size: 0.9em;
+  color: #495057;
+  font-weight: 500;
+  background: #f8f9fa;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  text-align: center;
+}
+
+#curriculum-checkbox-container {
+  max-height: 200px; 
+  overflow-y: auto; 
+  border: 1px solid #ced4da; 
+  border-radius: 4px; 
+  padding: 12px; 
+  margin-bottom: 16px;
+  background: #f8f9fa;
+}
+
+#curriculum-checkbox-container label {
+  display: flex; 
+  align-items: center; 
+  font-weight: normal; 
+  margin-bottom: 10px;
+  color: #495057;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+#curriculum-checkbox-container label:hover {
+  background: white;
+}
+
+#curriculum-checkbox-container label:last-child {
+  margin-bottom: 0;
+}
+
+#curriculum-checkbox-container input[type="checkbox"] {
+  margin-right: 10px;
+  width: 16px;
+  height: 16px;
+  accent-color: #007bff;
+}
+
+/* curriculum icons and labels */
+.curriculum-icon {
+  margin-left: 8px;
+  font-size: 1.2em;
+  vertical-align: middle;
+}
+.curriculum-label {
+  margin-left: 4px;
+  font-size: 0.9em;
+  color: #495057;
+  vertical-align: middle;
+}
+
+.tag {
+  background: #e9ecef;
+  color: #495057;
+  border: 1px solid #ced4da;
+  font-weight: 500;
+  padding: 4px 4px;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.common-tag {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.dept-tag {
+  background: #cce7ff;
+  color: #004085;
+  border: 1px solid #b8daff;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+  .mentee-container {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .mentee-list-area,
+  .mentoring-settings-area {
+    width: 100%;
+  }
+}
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="mentee-container">
+  <!-- 1. 멘티(신입사원) 검색/리스트 -->
+  <div class="mentee-list-area">
+    <h3>멘티 목록</h3>
+    <div class="mentee-list-search">
+      <input type="text" id="mentee-search" placeholder="사원명 검색">
+    </div>
+    <ul class="mentee-list-ul" id="mentee-list">
+      {% for mentee in mentees %}
+      <li><a href="#" 
+        data-id="{{ mentee.user_id }}"
+        data-emp="{{ mentee.employee_number }}"
+        data-admin="{{ mentee.is_admin }}"
+        data-mentorship="{{ mentee.mentorship_id }}"
+        data-company="{{ mentee.company.company_name|default:'' }}"
+        data-dept="{{ mentee.department.department_name|default:'' }}"
+        data-tag="{{ mentee.tag }}"
+        data-role="{{ mentee.role }}"
+        data-join="{{ mentee.join_date }}"
+        data-position="{{ mentee.position }}"
+        data-job="{{ mentee.job_part }}"
+        data-email="{{ mentee.email }}"
+        data-password="{{ mentee.password }}"
+        data-lastname="{{ mentee.last_name }}"
+        data-firstname="{{ mentee.first_name }}"
+        data-lastlogin="{{ mentee.last_login }}"
+        data-active="{{ mentee.is_active }}"
+        data-staff="{{ mentee.is_staff }}"
+      >{{ mentee.last_name }}{{ mentee.first_name }}</a></li>
+      {% empty %}
+      <li><span>멘티가 없습니다.</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- 2. 멘티 정보 -->
+  <div class="mentee-profile-area" id="mentee-profile">
+    <div class="mentee-profile-header">
+      <div class="mentee-avatar" id="mentee-avatar">👤</div>
+      <div class="mentee-basic-info">
+        <div class="mentee-name" id="mentee-name">멘티를 선택하세요</div>
+        <div class="mentee-role" id="mentee-role">신입사원</div>
+        <div class="mentee-tags" id="mentee-tags"></div>
+      </div>
+    </div>
+    
+    <div class="mentee-info-table">
+      <h4>상세 정보</h4>
+      <div class="info-row">
+        <div class="info-label">사원번호</div>
+        <div class="info-value">
+          <textarea id="mentee-id" rows="1" readonly></textarea>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">이메일</div>
+        <div class="info-value">
+          <textarea id="mentee-email" rows="1" readonly></textarea>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">부서</div>
+        <div class="info-value">
+          <textarea id="mentee-dept" rows="1" readonly></textarea>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">직무</div>
+        <div class="info-value">
+          <textarea id="mentee-job" rows="1" readonly></textarea>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">직급</div>
+        <div class="info-value">
+          <textarea id="mentee-position" rows="1" readonly></textarea>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">입사일</div>
+        <div class="info-value">
+          <textarea id="mentee-join" rows="1" readonly></textarea>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">태그</div>
+        <div class="info-value">
+          <textarea id="mentee-tag" rows="1" readonly></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 멘토링 설정 -->
+  <div class="mentoring-settings-area">
+    <h4>멘토링 설정</h4>
+    <form id="mentoring-form">
+      {% csrf_token %}
+      <label>선택된 멘티</label>
+      <input type="text" id="selected-mentee" value="" readonly>
+      
+      <label>시작일자</label>
+      <input type="date" id="start-date" value="2025-07-16">
+      
+      <label>커리큘럼 선택</label>
+      <div id="curriculum-checkbox-container">
+        {% for curriculum in curriculums %}
+        <div>
+          <label>
+            <input type="checkbox" name="curriculum" value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}">
+            {% if curriculum.common %}
+              <span class="tag common-tag">공통</span>
+            {% else %}
+              <span class="tag dept-tag">{{ curriculum.department.department_name }}</span>
+            {% endif %}
+
+            <span>{{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)</span>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      
+      <div class="end-date-label" id="end-date-label">종료일: 커리큘럼을 선택하세요</div>
+      
+      <div class="button-group">
+        <button type="button" onclick="resetForm()">초기화</button>
+        <button type="submit">멘토쉽 생성</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// 실시간 검색 필터링
+const menteeSearch = document.getElementById('mentee-search');
+const menteeList = document.getElementById('mentee-list');
+const menteeProfile = document.getElementById('mentee-profile');
+const menteeName = document.getElementById('mentee-name');
+const menteeRole = document.getElementById('mentee-role');
+const menteeExtra = document.getElementById('mentee-extra');
+const selectedMentee = document.getElementById('selected-mentee');
+
+function bindMenteeEvents() {
+  const menteeLinks = menteeList.querySelectorAll('a');
+  menteeLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      menteeLinks.forEach(l => l.classList.remove('selected'));
+      link.classList.add('selected');
+      updateMenteeDetail(link.dataset.id);
+    });
+  });
+}
+
+menteeSearch.addEventListener('input', function() {
+  const val = menteeSearch.value.trim().toLowerCase();
+  const menteeLinks = menteeList.querySelectorAll('a');
+  menteeLinks.forEach(link => {
+    const name = (link.textContent || '').toLowerCase();
+    const isActive = link.getAttribute('data-active') === 'True';
+    const role = link.getAttribute('data-role');
+    
+    // 이름 검색 + 활성 사용자 + 멘티 역할 확인
+    if (name.includes(val) && isActive && role === 'mentee') {
+      link.parentElement.style.display = '';
+    } else {
+      link.parentElement.style.display = 'none';
+    }
+  });
+});
+
+bindMenteeEvents();
+
+// 커리큘럼/시작일 변경 시 종료일 자동 계산
+const startDateInput = document.getElementById('start-date');
+const curriculumCheckboxes = document.querySelectorAll('input[name="curriculum"]');
+const endDateLabel = document.getElementById('end-date-label');
+
+function updateEndDate() {
+  const start = new Date(startDateInput.value);
+  const checkedBoxes = Array.from(curriculumCheckboxes).filter(cb => cb.checked);
+  const weekValues = checkedBoxes.map(cb => parseInt(cb.getAttribute('data-weeks'))).filter(w => !isNaN(w));
+  const maxWeeks = Math.max(...weekValues, 0);
+
+  if (!isNaN(start.getTime()) && maxWeeks > 0) {
+    const end = new Date(start);
+    end.setDate(end.getDate() + maxWeeks * 7 - 1);
+    const yyyy = end.getFullYear();
+    const mm = String(end.getMonth() + 1).padStart(2, '0');
+    const dd = String(end.getDate()).padStart(2, '0');
+    endDateLabel.textContent = `종료일: ${yyyy}-${mm}-${dd}`;
+  } else {
+    endDateLabel.textContent = '종료일: 커리큘럼을 선택하세요';
+  }
+}
+
+startDateInput.addEventListener('change', updateEndDate);
+curriculumCheckboxes.forEach(cb => {
+  cb.addEventListener('change', updateEndDate);
+});
+
+// 서버에서 내려준 멘티 정보를 JS 객체로 구성
+const menteeData = {};
+document.querySelectorAll('#mentee-list a').forEach(link => {
+  menteeData[link.dataset.id] = {
+    id: link.dataset.id || '',
+    emp: link.dataset.emp || '',
+    admin: link.dataset.admin || '',
+    mentorship: link.dataset.mentorship || '',
+    company: link.dataset.company || '',
+    dept: link.dataset.dept || '',
+    tag: link.dataset.tag || '',
+    role: link.dataset.role || '',
+    join: link.dataset.join || '',
+    position: link.dataset.position || '',
+    job: link.dataset.job || '',
+    email: link.dataset.email || '',
+    password: link.dataset.password || '',
+    lastname: link.dataset.lastname || '',
+    firstname: link.dataset.firstname || '',
+    lastlogin: link.dataset.lastlogin || '',
+    active: link.dataset.active || '',
+    staff: link.dataset.staff || ''
+  };
+});
+
+const menteeId = document.getElementById('mentee-id');
+const menteeEmail = document.getElementById('mentee-email');
+const menteeDept = document.getElementById('mentee-dept');
+const menteeJob = document.getElementById('mentee-job');
+const menteePosition = document.getElementById('mentee-position');
+const menteeJoin = document.getElementById('mentee-join');
+const menteeTag = document.getElementById('mentee-tag');
+const menteeTags = document.getElementById('mentee-tags');
+
+function updateMenteeDetail(id) {
+  const d = menteeData[id];
+  if (d) {
+    const fullName = d.lastname + d.firstname;
+    menteeName.textContent = fullName;
+    selectedMentee.value = fullName;
+    
+    // 프로필 아바타를 이름의 첫 글자로 변경
+    const menteeAvatar = document.getElementById('mentee-avatar');
+    menteeAvatar.textContent = fullName.charAt(0);
+    
+    menteeId.value = d.emp;
+    menteeEmail.value = d.email;
+    menteeDept.value = d.dept;
+    menteeJob.value = d.job;
+    menteePosition.value = d.position;
+    menteeJoin.value = d.join;
+    menteeTag.value = d.tag;
+    
+    // 태그 렌더링
+    menteeTags.innerHTML = '';
+    (d.tag || '').split(' ').filter(Boolean).forEach(tag => {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = tag;
+      menteeTags.appendChild(span);
+    });
+  } else {
+    menteeName.textContent = '멘티를 선택하세요';
+    selectedMentee.value = '';
+    
+    // 기본 아바타로 되돌리기
+    const menteeAvatar = document.getElementById('mentee-avatar');
+    menteeAvatar.textContent = '👤';
+    
+    menteeId.value = '';
+    menteeEmail.value = '';
+    menteeDept.value = '';
+    menteeJob.value = '';
+    menteePosition.value = '';
+    menteeJoin.value = '';
+    menteeTag.value = '';
+    menteeTags.innerHTML = '';
+  }
+}
+
+// 최초 로드 시 첫 번째 멘티 정보 표시
+window.addEventListener('DOMContentLoaded', function() {
+  const first = document.querySelector('#mentee-list a');
+  if (first) {
+    first.classList.add('selected');
+    updateMenteeDetail(first.dataset.id);
+  }
+  updateEndDate();
+});
+
+// 생성 버튼 클릭 시 mentor 페이지로 이동
+const mentoringForm = document.getElementById('mentoring-form');
+mentoringForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const selected = document.querySelector('#mentee-list a.selected');
+  if (!selected) {
+    alert('멘티를 선택하세요.');
+    return;
+  }
+  
+  const menteeId = selected.dataset.id;
+  const scheduledStartDate = document.getElementById('start-date').value;
+  const checkedCurriculums = Array.from(document.querySelectorAll('input[name="curriculum"]:checked'));
+  const curriculumIds = checkedCurriculums.map(cb => cb.value);
+  
+  if (curriculumIds.length === 0) {
+    alert('최소 하나의 커리큘럼을 선택하세요.');
+    return;
+  }
+  
+  // 종료일 계산
+  const endDateLabel = document.getElementById('end-date-label');
+  let scheduledEndDate = '';
+  if (endDateLabel && endDateLabel.textContent.includes('종료일:')) {
+    scheduledEndDate = endDateLabel.textContent.replace('종료일:', '').trim();
+  }
+  
+  try {
+    // 로딩 상태 시작
+    const submitBtn = mentoringForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.textContent = '생성 중...';
+    submitBtn.disabled = true;
+    
+    const res = await fetch('/mentor/create_mentorship/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ 
+        mentee_id: menteeId, 
+        start_date: scheduledStartDate, 
+        end_date: scheduledEndDate, 
+        curriculum_ids: curriculumIds
+      })
+    });
+    
+    const data = await res.json();
+    
+    // 로딩 상태 해제
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    
+    if (data.success) {
+      // 성공 메시지 표시 및 즉시 리다이렉트
+      const mentorshipId = data.mentorship_id || '';
+      const successMessage = `멘토쉽이 성공적으로 생성되었습니다!${mentorshipId ? ` (ID: ${mentorshipId})` : ''}`;
+      
+      alert(successMessage);
+      
+      // 즉시 멘토 대시보드로 이동
+      window.location.href = '/mentor/';
+    } else {
+      throw new Error(data.message || '멘토쉽 생성에 실패했습니다.');
+    }
+  } catch (err) {
+    // 로딩 상태 해제
+    const submitBtn = mentoringForm.querySelector('button[type="submit"]');
+    submitBtn.textContent = '멘토쉽 생성';
+    submitBtn.disabled = false;
+    
+    console.error('멘토쉽 생성 오류:', err);
+    alert(`멘토쉽 생성 중 오류가 발생했습니다: ${err.message}`);
+  }
+});
+
+// 초기화 버튼 기능
+function resetForm() {
+  document.getElementById('start-date').value = '2025-07-16';
+  document.querySelectorAll('input[name="curriculum"]').forEach(cb => cb.checked = false);
+  document.getElementById('selected-mentee').value = '';
+  document.querySelector('#mentee-list a.selected')?.classList.remove('selected');
+  updateEndDate();
+  updateMenteeDetail(null);
+}
+</script>
+{% endblock %}

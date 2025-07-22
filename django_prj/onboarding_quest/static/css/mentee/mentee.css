@@ -1,0 +1,301 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.main-content {
+  padding: 0;
+  background-color: white;
+  border: 3px solid #ccc;
+  margin: 20px;
+}
+
+.welcome-section {
+  padding: 25px;
+  border-bottom: 2px solid #ddd;
+}
+
+.welcome-text {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 25px;
+}
+
+.level-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.level-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  border: 3px solid #ddd;
+}
+
+.level-details {
+  flex: 1;
+}
+
+.level-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.level-progress {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 20px;
+  background-color: #e9ecef;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 100%);
+  width: 90%;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.kanban-section {
+  padding: 25px;
+  border-bottom: 2px solid #ddd;
+}
+
+.filter-section {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.filter-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-arrow {
+  font-size: 12px;
+  transition: transform 0.3s;
+}
+
+.filter-dropdown.open .filter-arrow {
+  transform: rotate(180deg);
+}
+
+.filter-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 150px;
+  z-index: 100;
+  display: none;
+}
+
+.filter-menu.show {
+  display: block;
+}
+
+.filter-option {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #495057;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.filter-option:hover {
+  background-color: #f8f9fa;
+}
+
+.filter-option.selected {
+  background-color: #007bff;
+  color: white;
+}
+
+.kanban-board {
+  display: flex;
+  gap: 24px;
+}
+
+/* 기본 칸반 컬럼 스타일 */
+.kanban-column {
+  border-radius: 16px;
+  padding: 20px 16px 24px 16px;
+  min-height: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+  flex: 1;
+  min-width: 220px;
+}
+
+/* 각 컬럼별 배경색 */
+.todo-column { 
+  background: #f8f9fa; 
+}
+.processing-column { 
+  background: #fefce8; 
+}
+.review-request-column { 
+  background: #fef2f2; 
+}
+.success-column { 
+  background: #f0fdf4; 
+}
+
+.kanban-header {
+  font-weight: 600;
+  font-size: 1.1em;
+  margin-bottom: 16px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+/* 기본 카드 스타일 - 모든 카드는 화이트 */
+.kanban-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+  padding: 16px 18px 14px 18px;
+  border-left: 4px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid #f3f4f6;
+}
+
+/* 카드 호버 및 선택 효과 */
+.kanban-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+.kanban-card:active,
+.kanban-card.selected {
+  border-left: 4px solid #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+/* 컬럼별 카드 좌측 테두리 색상 (선택 시) */
+.todo-column .kanban-card:active,
+.todo-column .kanban-card.selected {
+  border-left-color: #6b7280;
+}
+
+.processing-column .kanban-card:active,
+.processing-column .kanban-card.selected {
+  border-left-color: #f59e0b;
+}
+
+.review-request-column .kanban-card:active,
+.review-request-column .kanban-card.selected {
+  border-left-color: #dc2626;
+}
+
+.success-column .kanban-card:active,
+.success-column .kanban-card.selected {
+  border-left-color: #10b981;
+}
+
+.kanban-card input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.kanban-card label {
+  font-size: 14px;
+  color: #495057;
+}
+
+.task-date {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+.activity-section {
+  padding: 25px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-top: 24px;
+}
+
+.activity-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.activity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f9fafb;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-item div:first-child {
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.activity-item div:last-child {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 500;
+}

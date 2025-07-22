@@ -1,0 +1,182 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}온보딩 퀘스트 시스템{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Pretendard 폰트 CDN -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body id="body" class="min-h-screen flex transition-colors duration-300">
+    <!-- Sidebar -->
+    <div id="sidebar" class="bg-white shadow-lg w-72 min-h-screen transition-all duration-300 ease-in-out flex flex-col border-r border-gray-200 fixed z-50" style="width: 18rem;">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
+            <span class="font-bold text-xl sidebar-text flex items-center gap-3 text-gray-900">
+                <div class="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center shadow-md">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                Sinip
+            </span>
+            <button id="sidebarToggle" class="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors p-1 rounded-lg hover:bg-gray-50">
+                <svg id="sidebarToggleIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+        <div class="px-7 py-7 border-b border-gray-200 bg-gray-50" id="level-area">
+            <div class="flex items-center gap-4 mb-4">
+                {% if request.user.role == 'mentee' %}
+                    <!-- 유저 프로필 이미지 -->
+                    <img src="{% if request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <div class="flex flex-col flex-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
+                            <!-- 알람 아이콘 -->
+                            <button id="alarmToggle" class="relative p-1 text-gray-500 hover:text-blue-500 transition-colors rounded-lg hover:bg-gray-100">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                </svg>
+                                <!-- 알람 개수 뱃지 -->
+                                <span id="alarmBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center hidden">0</span>
+                            </button>
+                        </div>
+                        <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 w-fit">열정멘티</span>
+                    </div>
+                {% elif request.user.role == 'mentor' %}
+                    <!-- 유저 프로필 이미지 -->
+                    <img src="{% if request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <div class="flex flex-col flex-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
+                            <!-- 알람 아이콘 -->
+                            <button id="alarmToggle" class="relative p-1 text-gray-500 hover:text-blue-500 transition-colors rounded-lg hover:bg-gray-100">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                </svg>
+                                <!-- 알람 개수 뱃지 -->
+                                <span id="alarmBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center hidden">0</span>
+                            </button>
+                        </div>
+                        <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 w-fit">만렙멘토</span>
+                    </div>
+                {% elif request.user.is_admin %}
+                    <!-- 유저 프로필 이미지 -->
+                    <img src="{% if request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200 bg-white shadow-md" />
+                    <div class="flex flex-col flex-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-gray-900 sidebar-text">{{ request.user.last_name }}{{ request.user.first_name }}</span>
+                            <!-- 알람 아이콘 -->
+                            <button id="alarmToggle" class="relative p-1 text-gray-500 hover:text-blue-500 transition-colors rounded-lg hover:bg-gray-100">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                </svg>
+                                <!-- 알람 개수 뱃지 -->
+                                <span id="alarmBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center hidden">0</span>
+                            </button>
+                        </div>
+                        <span class="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 w-fit">관리자</span>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-3">                
+                {% if request.user.role == 'mentee' %}
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 30%"></div>
+                {% elif request.user.role == 'mentor' %}
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
+                {% elif request.user.is_admin %}
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
+                {% endif %}
+            </div>
+
+            {% if request.user.is_authenticated %}
+            <div class="flex justify-end gap-2 mt-3">
+                <a href="{% url 'account:profile' %}" class="text-xs text-gray-500 hover:text-blue-500 transition-colors">내 정보</a>
+                <span class="text-gray-300">|</span>
+                <a href="{% url 'account:logout' %}" class="text-xs text-red-500 hover:text-red-500 transition-colors">로그아웃</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <nav class="flex-1 p-6 space-y-1">
+            {% if request.user.is_authenticated %}
+                {% if request.user.role == 'mentor' %}
+                    {% if request.user.is_admin %}
+                        <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>관리자</a>
+                        <a href="{% url 'account:manage_mentorship' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/manage_mentorship/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 관리</a>
+                    {% endif %}
+                    <a href="{% url 'mentor:mentor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
+                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
+                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
+                    <a href="{% url 'mentor:manage_mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 생성</a>
+                    <a href="{% url 'mentor:manage_template' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_template/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>커리큘럼 관리</a>
+                {% elif request.user.role == 'mentee' %}
+                    <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
+                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
+                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
+                    {% if user_mentorship %}
+                        <a href="{% url 'mentee:task_list' %}?mentorship_id={{ user_mentorship.mentorship_id }}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if 'task_list' in request.path %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>태스크 목록</a>
+                    {% else %}
+                        <span class="sidebar-link block py-3 px-4 rounded-lg flex items-center gap-3 font-bold text-gray-400 cursor-not-allowed"><span class="text-lg"></span>태스크 목록 <span class="text-xs">(멘토쉽 필요)</span></span>
+                    {% endif %}
+                {% endif %}
+            {% else %}
+                <a href="{% url 'account:login' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/login/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>로그인</a>
+            {% endif %}
+        </nav>
+    </div>
+    
+    <!-- 알람 사이드 패널 -->
+    <div id="alarmPanel" class="fixed top-0 w-72 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden" style="left: 18rem;">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
+            <span class="font-bold text-lg text-gray-900 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                알림
+            </span>
+            <button id="alarmClose" class="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors p-1 rounded-lg hover:bg-gray-50">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto">
+            <div id="alarmList" class="p-4 space-y-3">
+                <!-- 알람 목록이 여기에 동적으로 로드됩니다 -->
+                <div class="text-center text-gray-500 py-8">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <p>새로운 알림이 없습니다</p>
+                    {% if request.user.is_admin %}
+                        <button onclick="createTestAlarm()" class="mt-3 text-xs text-blue-600 hover:text-blue-800 underline">
+                            테스트 알림 생성
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 알람 패널 오버레이 -->
+    <div id="alarmOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
+    
+    <!-- Main Content -->
+    <div id="main-content" class="flex-1 flex flex-col transition-colors duration-300 bg-gray-50 ml-72" style="margin-left: 18rem;">
+        <main class="flex-1 p-8 bg-gray-50">
+            {% block content %}{% endblock %}
+        </main>
+        <footer id="footer" class="bg-white text-center py-6 border-t border-gray-100">
+            <p id="footerText" class="text-gray-500 font-medium">&copy; 2025 Onboarding Quest System</p>
+        </footer>
+    </div>
+    <script src="{% static 'js/base.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
