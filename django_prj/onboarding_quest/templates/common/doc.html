@@ -557,22 +557,26 @@ function showMessage(message, type = 'success') {
 // 문서 업로드 AJAX 처리
 document.addEventListener('DOMContentLoaded', function() {
     const uploadBtn = document.getElementById('doc-upload-btn');
-    const btnText = uploadBtn.querySelector('.btn-text');
-    const btnLoading = uploadBtn.querySelector('.btn-loading');
-    
     if (uploadBtn) {
+        const btnText = uploadBtn.querySelector('.btn-text');
+        const btnLoading = uploadBtn.querySelector('.btn-loading');
+        
         uploadBtn.addEventListener('click', async function() {
             const uploadList = document.getElementById('doc-upload-list-tbody');
-            const files = uploadList.querySelectorAll('tr');
+            if (!uploadList) {
+                showMessage('업로드할 파일 목록을 찾을 수 없습니다.', 'error');
+                return;
+            }
             
+            const files = uploadList.querySelectorAll('tr');
             if (files.length === 0) {
                 showMessage('업로드할 파일을 선택해주세요.', 'error');
                 return;
             }
             
             // 로딩 상태 시작
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'inline-flex';
+            if (btnText) btnText.style.display = 'none';
+            if (btnLoading) btnLoading.style.display = 'inline-flex';
             uploadBtn.disabled = true;
             
             try {
@@ -626,8 +630,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage(error.message || '문서 업로드 중 오류가 발생했습니다.', 'error');
             } finally {
                 // 로딩 상태 종료
-                btnText.style.display = 'inline';
-                btnLoading.style.display = 'none';
+                if (btnText) btnText.style.display = 'inline';
+                if (btnLoading) btnLoading.style.display = 'none';
                 uploadBtn.disabled = false;
             }
         });
