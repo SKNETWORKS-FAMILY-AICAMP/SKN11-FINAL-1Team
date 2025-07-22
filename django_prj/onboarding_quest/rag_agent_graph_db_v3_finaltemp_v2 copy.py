@@ -48,7 +48,7 @@ def get_db_connection():
 logging.basicConfig(level=logging.INFO)
 
 # LangChain 구성
-client = QdrantClient(url=QDRANT_URL, check_compatibility=False)
+client = QdrantClient(url=QDRANT_URL)
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
 
@@ -116,14 +116,24 @@ def create_chat_session(user_id: str) -> str:
         
     return str(session_id)
 
+# def save_message(session_id: str, text: str, message_type: str):
+#     """Context Manager만 사용하는 메시지 저장"""
+#     with get_db_connection() as conn:
+#         cursor = conn.cursor()
+#         cursor.execute(
+#             "INSERT INTO core_chatmessage (session_id, create_time, message_text, message_type) VALUES (?, ?, ?, ?)",
+#             (int(session_id), datetime.now().isoformat(), text, message_type)
+#         )
+
 def save_message(session_id: str, text: str, message_type: str):
-    """Context Manager만 사용하는 메시지 저장"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO core_chatmessage (session_id, create_time, message_text, message_type) VALUES (?, ?, ?, ?)",
-            (int(session_id), datetime.now().isoformat(), text, message_type)
+            "INSERT INTO core_chatmessage (session_id, create_time, message_text, message_type, is_active) VALUES (?, ?, ?, ?, ?)",
+            (int(session_id), datetime.now().isoformat(), text, message_type, 1)
         )
+
+
     # Context Manager가 자동으로 commit()과 close() 처리
 
 def load_session_history(session_id: str, limit: int = 10) -> List[str]:
@@ -370,15 +380,21 @@ def search_documents_filtered(state: AgentState) -> AgentState:
         collection_name=COLLECTION_NAME,
         query_vector=query_vec,
         query_filter=search_filter,
-        limit=3,
+        limit=5,
         with_payload=True
     )
+
+    logger.info(f"[🔍 Qdrant 검색 결과 수] {len(results)}")
     
     contexts = []
     for r in results:
         title = r.payload.get("metadata", {}).get("title", "무제")
         text = r.payload.get("text", "")
-        file_name = r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+        # file_name = r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+        file_name = (
+    r.payload.get("metadata", {}).get("original_file_name") or
+    r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+)
         contexts.append(f"[{title}] (출처: {file_name})\n{text}")
     
     return {**state, "contexts": contexts}
@@ -421,7 +437,7 @@ def summarize_session(state: AgentState) -> AgentState:
         
         # LLM으로 요약 생성
         messages_for_llm = [
-            SystemMessage(content="당신은 기업 내부 상담용 챗봇입니다. 다음 대화 내용은 한 사용자의 상담 기록입니다. 핵심 질문과 답변이 무엇이었는지 중심으로 요약해 주세요."),
+            SystemMessage(content="당신은 기업 내부 상담용 챗봇입니다. 다음 대화 내용은 한 사용자의 상담 기록입니다. 핵심 질문과 답변이 무엇이었는지 중심으로 20글자 내로 요약해 주세요."),
             HumanMessage(content=f"대화 내용:\n{combined}\n\n요약:")
         ]
         
@@ -453,6 +469,8 @@ def decide_use_rag(state: AgentState) -> AgentState:
 def get_use_rag_condition(state: AgentState) -> str:
     question = state["question"]
 
+    logger.info("🔥 get_use_rag_condition() 함수 호출됨!")
+
     prompt = f"""
 너는 사용자의 질문이 '회사 내부 문서 검색이 필요한 질문'인지 판단하는 심사관이야.
 
@@ -482,8 +500,20 @@ def generate_answer(state: AgentState) -> AgentState:
     recent_history = full_history[-WINDOW_SIZE:]
     history_text = "\n".join(recent_history)
     
-    titles = [c.split('\n')[0].strip("[]") for c in state.get("contexts", []) if c.startswith("[")]
+    titles = []
+    ref_files = set()
+
+    for c in state.get("contexts", []):
+        if c.startswith("["):
+            lines = c.split("\n")
+            if lines:
+                titles.append(lines[0].strip("[]"))
+            if "(출처: " in c:
+                file_name = c.split("(출처: ")[1].split(")")[0].strip()
+                ref_files.add(file_name)
+
     ref_titles = ", ".join(titles)
+    ref_file_list = ", ".join(sorted(ref_files))  # 중복 제거된 파일명들
     
     prompt = f"""
 지금까지의 대화 기록:
@@ -502,9 +532,18 @@ Question: {question}
 Answer:"""
     
     response = llm.invoke(prompt)
-    updated_history = full_history + [f"Q: {question}\nA: {response.content}"]
-    
-    return {**state, "answer": response.content, "chat_history": updated_history}
+    answer_text = response.content.strip()
+
+    # 참고 문서 표시 추가
+    if ref_file_list:
+        answer_text += f"\n\n📄 참고 문서: {ref_file_list}"
+
+    updated_history = full_history + [f"Q: {question}\nA: {answer_text}"]
+
+    return {**state, "answer": answer_text, "chat_history": updated_history}
+
+
+
 
 def direct_answer(state: AgentState) -> AgentState:
     question = state["question"]
@@ -558,36 +597,44 @@ def run_agent(user_id: str):
     session_id = create_chat_session(user_id)
     history = load_session_history(session_id=session_id, limit=10)
 
-    
     state: AgentState = {
         "chat_history": history,
         "rewrite_count": 0,
         "session_id": session_id
     }
-    
+
     while True:
         question = input("\n질문을 입력하세요: ")
         if question.lower() == "exit":
             print("\n✅ 세션 종료")
             break
-        
+
         save_message(session_id, question, "user")
-        
+
         state["question"] = question
         state["rewrite_count"] = 0
         state.pop("rewritten_question", None)
-        
+
         final = graph.invoke(state)
-        
+
         answer = final["answer"]
         evaluation_score = final.get("evaluation_score", 0)
-        
+
+        # ✅ RAG 사용 여부 판단
+        used_rag = bool(final.get("contexts"))  # context가 비어있지 않으면 RAG 사용
+        rag_tag = "🧾 [RAG 사용]" if used_rag else "💬 [RAG 미사용]"
+
+        # ✅ 사용자에게 출력
+        print(f"\n{rag_tag}")
         print(f"\n🧠 답변:\n{answer}")
         print(f"\n📊 평가 점수: {evaluation_score}/20")
-        
-        save_message(session_id, answer, "bot")
-        
+
+        # ✅ 로그에도 저장
+        save_message(session_id, f"{rag_tag}\n\n{answer}", "bot")
+
+        # 상태 업데이트
         state["chat_history"] = final.get("chat_history", [])
+
 
 # 테스트용
 if __name__ == "__main__":

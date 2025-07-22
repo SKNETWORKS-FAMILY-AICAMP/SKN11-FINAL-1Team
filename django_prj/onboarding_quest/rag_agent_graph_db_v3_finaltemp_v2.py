@@ -380,7 +380,7 @@ def search_documents_filtered(state: AgentState) -> AgentState:
         collection_name=COLLECTION_NAME,
         query_vector=query_vec,
         query_filter=search_filter,
-        limit=3,
+        limit=5,
         with_payload=True
     )
 

@@ -162,8 +162,7 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
             doc.metadata["department_id"] = department_id  # 부서 ID 추가
             doc.metadata["common_doc"] = common_doc        # 공통 문서 여부 추가
             doc.metadata["file_name"] = os.path.basename(file_path)  # 파일명 추가
-            if original_file_name:
-                doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
+            doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
             
             new_points.append(
     PointStruct(
