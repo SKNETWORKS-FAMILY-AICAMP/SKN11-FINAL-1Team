@@ -30,26 +30,33 @@ class CurriculumManager {
         const addBtn = document.querySelector('.add-template-btn');
         if (addBtn) {
             addBtn.addEventListener('click', () => {
-                window.location.href = '/mentor/add_template';
+                window.location.href = '/mentor/add_template/';
             });
         }
 
-        // 상세 페이지 버튼들
-        const buttons = document.querySelectorAll('.template-detail-header .template-btn, .template-detail-header .template-edit-btn');
-        buttons.forEach(button => {
-            button.addEventListener('click', () => this.handleDetailButtonClick(button));
+        // 상세 페이지 버튼들 - 이벤트 위임 사용
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#clone-btn')) {
+                this.handleDetailButtonClick(e.target.closest('#clone-btn'));
+            } else if (e.target.closest('#delete-btn')) {
+                this.handleDetailButtonClick(e.target.closest('#delete-btn'));
+            } else if (e.target.closest('#edit-btn')) {
+                this.handleDetailButtonClick(e.target.closest('#edit-btn'));
+            }
         });
     }
 
     handleDetailButtonClick(button) {
-        const action = button.textContent.trim();
+        const buttonId = button.id;
         const selectedItem = document.querySelector('.template-item.selected');
         if (!selectedItem) return;
+        
         const curriculumId = selectedItem.getAttribute('data-id');
         const isCommon = selectedItem.getAttribute('data-common') === 'True';
-        if (action === '복제') {
+        
+        if (buttonId === 'clone-btn') {
             // AJAX POST로 복제 요청
-            fetch(`/mentor/clone_template/${curriculumId}/`, {
+            fetch(`/mentor/api/clone_curriculum/${curriculumId}/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': this.getCSRFToken(),
@@ -68,11 +75,16 @@ class CurriculumManager {
             .catch(() => alert('복제 중 오류 발생'));
             return;
         }
-        if (isCommon) return; // 공용은 삭제/편집 불가
-        if (action === '삭제') {
+        
+        if (isCommon && (buttonId === 'delete-btn' || buttonId === 'edit-btn')) {
+            alert('공용 커리큘럼은 수정/삭제할 수 없습니다.');
+            return;
+        }
+        
+        if (buttonId === 'delete-btn') {
             if (!confirm('정말로 이 커리큘럼을 삭제하시겠습니까?')) return;
-            fetch(`/mentor/delete_template/${curriculumId}/`, {
-                method: 'POST',
+            fetch(`/mentor/api/delete_curriculum/${curriculumId}/`, {
+                method: 'DELETE',
                 headers: {
                     'X-CSRFToken': this.getCSRFToken(),
                     'Content-Type': 'application/json',
@@ -90,8 +102,9 @@ class CurriculumManager {
             .catch(() => alert('삭제 중 오류 발생'));
             return;
         }
-        if (action === '커리큘럼 편집') {
-            window.location.href = `/mentor/edit_template/${curriculumId}/`;
+        
+        if (buttonId === 'edit-btn') {
+            window.location.href = `/mentor/add_template/${curriculumId}/`;
         }
     }
 
@@ -211,40 +224,6 @@ class CurriculumManager {
             .replace(/&#x27;/g, "'");
     }
 
-    buildDetailHTML(data, tasks) {
-        return `
-            <div class="template-detail-section">
-                <div class="template-detail-title">공용 커리큘럼 여부</div>
-                <label class="checkbox-container">
-                    <input type="checkbox" ${data.common ? 'checked' : ''} disabled>
-                    공용 커리큘럼
-                </label>
-            </div>
-            
-            <div class="template-detail-section">
-                <div class="template-detail-title">커리큘럼 제목</div>
-                <input type="text" class="template-detail-input" value="${data.title}" readonly>
-            </div>
-            
-            <div class="template-detail-section">
-                <div class="template-detail-title">커리큘럼 설명</div>
-                <textarea class="template-detail-textarea" readonly>${data.desc || ''}</textarea>
-            </div>
-            
-            <div class="template-detail-section">
-                <div class="template-detail-title">주차별 온보딩 일정</div>
-                <textarea class="template-detail-textarea" readonly>${data.weeks.replace(/\n/g, '\r\n')}</textarea>
-            </div>
-            
-            <div class="template-detail-section">
-                <div class="template-detail-title">세부 Task</div>
-                <div class="template-task-list">
-                    ${this.buildTaskList(tasks)}
-                </div>
-            </div>
-        `;
-    }
-
     buildTaskList(tasks) {
         if (!tasks || tasks.length === 0) {
             return '<div class="no-tasks">세부 Task가 없습니다.</div>';
@@ -289,24 +268,6 @@ class CurriculumManager {
         if (firstSelected) {
             this.renderCurriculumDetail(firstSelected);
         }
-    }
-
-    // 액션 메서드들
-    cloneCurriculum(curriculumId) {
-        // TODO: 실제 복제 URL로 변경 필요
-        window.location.href = `/mentor/clone_template/${curriculumId}`;
-    }
-
-    deleteCurriculum(curriculumId) {
-        if (confirm('정말로 이 커리큘럼을 삭제하시겠습니까?')) {
-            // TODO: 실제 삭제 URL로 변경 필요
-            window.location.href = `/mentor/delete_template/${curriculumId}`;
-        }
-    }
-
-    editCurriculum(curriculumId) {
-        // TODO: 실제 편집 URL로 변경 필요
-        window.location.href = `/mentor/edit_template/${curriculumId}`;
     }
 
     getCSRFToken() {
