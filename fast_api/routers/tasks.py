@@ -69,7 +69,30 @@ async def create_task_assign(task: schemas.TaskAssignCreate, db: Session = Depen
     return crud.create_task_assign(db=db, task=task)
 
 
-@router.get("/assign/", response_model=List[schemas.TaskAssignResponse])
+@router.get("/assigns", response_model=List[schemas.TaskAssign])
+async def get_task_assigns_by_mentorship(
+    mentorship_id: int = None, 
+    user_id: int = None,
+    status: str = None,
+    week: int = None,
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    """태스크 할당 목록 조회 (멘토쉽, 사용자, 상태, 주차별 필터링 지원)"""
+    tasks = crud.get_task_assigns_filtered(
+        db, 
+        mentorship_id=mentorship_id,
+        user_id=user_id,
+        status=status,
+        week=week,
+        skip=skip, 
+        limit=limit
+    )
+    return tasks
+
+
+@router.get("/assign/", response_model=List[schemas.TaskAssign])
 async def get_task_assigns(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """태스크 할당 목록 조회"""
     tasks = crud.get_task_assigns(db, skip=skip, limit=limit)

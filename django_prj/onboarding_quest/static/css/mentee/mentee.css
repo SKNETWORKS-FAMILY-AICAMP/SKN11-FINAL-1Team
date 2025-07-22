@@ -166,7 +166,7 @@ body {
 .kanban-column {
   border-radius: 16px;
   padding: 20px 16px 24px 16px;
-  min-height: 340px;
+  min-height: 500px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   border: 1px solid #e5e7eb;
   flex: 1;

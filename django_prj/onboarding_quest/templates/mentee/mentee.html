@@ -7,7 +7,17 @@
 <link rel="stylesheet" href="{% static 'css/mentee/mentee.css' %}">
 
 <style>
-.kanban-board { display: flex; gap: 25px; min-height: 600px; }
+body, html {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.kanban-board { display: flex; gap: 5px; min-height: 600px; padding: 20px 15px 20px 15px; }
+.main-content {
+  flex: 1;
+}
 
 /* 기본 칸반 컬럼 스타일 */
 .kanban-column { 
@@ -356,7 +366,7 @@
 {% endblock %}
 
 {% block content %}
-  <div class="main-content bg-gray-50 p-8 rounded-lg">
+  <div class="main-content bg-gray-50 p-6 rounded-lg">
     <div class="welcome-section bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8 flex items-center gap-6">
       <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-200 bg-white shadow-sm" />
       <div class="flex flex-col flex-1">
@@ -370,9 +380,7 @@
       </div>      
     </div>
 
-    <div class="kanban-section bg-white rounded-xl shadow-md border border-gray-200 p-3 mb-8">
-      <div class="kanban-board" style="display: flex;">
-        
+      <div class="kanban-board" style="display: flex;">        
         <!-- 진행전 컬럼 -->
         <div class="kanban-column todo-column" data-status="진행전" style="flex:1; min-width:280px;" ondrop="drop(event)" ondragover="allowDrop(event)">
           <div class="kanban-header">진행전</div>
@@ -537,7 +545,6 @@
         </div>
         
       </div>
-    </div>
     </div>
   </div>
 {% endblock %}

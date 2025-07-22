@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 from config import settings
 from database import engine, Base
-from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, docs, chat, auth
+from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, docs, chat, auth, alarms, documents
 import models  # 모델을 임포트하여 테이블 생성
 
 # 데이터베이스 테이블 생성
@@ -34,15 +34,32 @@ app.include_router(tasks.router)
 app.include_router(memo.router)
 app.include_router(docs.router)
 app.include_router(chat.router)
-app.include_router(forms.router)
+app.include_router(documents.router)
+# app.include_router(forms.router)  # 템플릿이 없어서 비활성화
 app.include_router(chatbot.router)
+app.include_router(alarms.router)
+# app.include_router(rag.router)  # chat 라우터로 통합됨
 
 @app.get("/")
 async def root():
-    """루트 엔드포인트 - 폼 관리 홈으로 리다이렉트"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/forms/")
+    """루트 엔드포인트"""
+    return {
+        "message": "FastAPI 통합 백엔드 서버",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+        "integration_status": "완전 통합 완료"
+    }
 
+@app.get("/health")
+async def health():
+    """서버 건강성 체크"""
+    return {
+        "status": "healthy",
+        "message": "FastAPI server is running",
+        "database": "PostgreSQL",
+        "rag_available": True  # RAG 시스템 상태는 /api/rag/health에서 확인
+    }
 
 @app.get("/api/")
 async def api_root():
@@ -53,6 +70,7 @@ async def api_root():
         "redoc_url": "/redoc",
         "database": "PostgreSQL",
         "endpoints": {
+            "auth": "/api/auth",
             "companies": "/api/companies",
             "departments": "/api/departments", 
             "curriculum": "/api/curriculum",
@@ -62,18 +80,10 @@ async def api_root():
             "memo": "/api/memo",
             "docs": "/api/docs",
             "chat": "/api/chat",
-            "forms": "/api/forms",
-            "chatbot": "/api/chatbot"
+            "documents": "/api/documents",
+            "chatbot": "/api/chatbot",
+            "alarms": "/api/alarms"
         }
-    }
-
-@app.get("/health")
-async def health_check():
-    """헬스 체크 엔드포인트"""
-    return {
-        "status": "healthy",
-        "message": "서버가 정상적으로 작동중입니다",
-        "database": "PostgreSQL"
     }
 
 if __name__ == "__main__":

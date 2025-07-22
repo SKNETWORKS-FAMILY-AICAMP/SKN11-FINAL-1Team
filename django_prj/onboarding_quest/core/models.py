@@ -3,7 +3,9 @@ from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from datetime import date
 from django.conf import settings
-
+from django.db.models.signals import post_migrate
+from django.dispatch import receiver
+from django.contrib.auth.hashers import make_password
 
 
 # 유저를 만들면 → 우리가 만든 User 모델 구조에 맞게 DB에 저장
@@ -23,6 +25,36 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
+
+
+class EmailConfig(models.Model):
+    id = models.AutoField(primary_key=True)
+    email = models.EmailField(unique=True, help_text='이메일 주소')
+    password = models.CharField(max_length=255, help_text='이메일 비밀번호(해시)')
+    name = models.CharField(max_length=100, help_text='이메일 발신자 이름')
+
+    def set_password(self, raw_password):
+        from django.contrib.auth.hashers import make_password
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        from django.contrib.auth.hashers import check_password
+        return check_password(raw_password, self.password)
+
+    def __str__(self):
+        return f"{self.name} <{self.email}>"
+
+# 마이그레이션 후 기본값 자동 생성
+@receiver(post_migrate)
+def create_default_email_config(sender, **kwargs):
+    if sender.name == 'core':        
+        if not EmailConfig.objects.filter(email='sinipezflow@gmail.com').exists():
+            EmailConfig.objects.create(
+                email='sinipezflow@gmail.com',
+                password=make_password('jgdy jiwk fvez knvz'),
+                name='알림봇'
+            )
+
 
 
 class Company(models.Model):
@@ -96,6 +128,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=50, help_text='성')
     first_name = models.CharField(max_length=50, help_text='이름')
     last_login = models.DateTimeField(auto_now=True, null=True, blank=True, help_text='마지막 로그인 시각')
+    profile_image = models.ImageField(upload_to='profile_img/', null=True, blank=True, help_text='프로필 이미지')
 
     is_active = models.BooleanField(default=True, help_text='활성화 여부')
     is_staff = models.BooleanField(default=False, help_text='스태프 여부')
@@ -112,11 +145,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         """전체 이름 반환"""
         return f'{self.last_name} {self.first_name}'
 
+class Alarm(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='alarms', help_text='알림 대상 유저')
+    message = models.TextField(help_text='알림 메시지')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='생성일시')
+    is_active = models.BooleanField(default=True, help_text='활성화 여부')
 
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.message[:30]}"
+    
 class ChatSession(models.Model):
     session_id = models.AutoField(primary_key=True, help_text='채팅 세션 고유 ID')
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text='사용자')
     summary = models.CharField(max_length=255, null=True, blank=True, help_text='세션 요약')
+    is_active = models.BooleanField(default=True, help_text='세션 활성 여부')
 
 class ChatMessage(models.Model):
     message_id = models.AutoField(primary_key=True, help_text='메시지 고유 ID')
@@ -131,9 +174,10 @@ class ChatMessage(models.Model):
         blank=False,
         help_text='메시지 타입(user/chatbot)'
     )
-    message_text = models.CharField(max_length=1000, null=True, blank=True, help_text='메시지 내용')
-    create_time = models.DateField(auto_now_add=True, null=True, blank=True, help_text='메시지 생성일')
+    message_text = models.TextField(null=True, blank=True, help_text='메시지 내용')
+    create_time = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='메시지 생성일시')
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, help_text='채팅 세션')
+    is_active = models.BooleanField(default=True, help_text='메시지 활성 여부')
 
 class Docs(models.Model):
     docs_id = models.AutoField(primary_key=True, help_text='문서 고유 ID')
@@ -143,10 +187,12 @@ class Docs(models.Model):
     file_path = models.CharField(max_length=255, help_text='파일 경로')
     create_time = models.DateTimeField(auto_now_add=True, help_text='생성일')
     common_doc = models.BooleanField(default=False, help_text='공용 문서 여부')
+    original_file_name = models.CharField(max_length=255, null=True, blank=True, help_text='업로드 시 원래 파일명')
+
 
 class Curriculum(models.Model):
     curriculum_id = models.AutoField(primary_key=True, help_text='커리큘럼 고유 ID')
-    curriculum_description = models.CharField(max_length=255, null=True, blank=True, help_text='커리큘럼 설명')
+    curriculum_description = models.TextField(null=True, blank=True, help_text='커리큘럼 설명')
     curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
     department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, help_text='소속 부서')
     common = models.BooleanField(default=False, help_text='공용 커리큘럼 여부')
@@ -159,10 +205,16 @@ class Curriculum(models.Model):
 
 class TaskManage(models.Model):
     task_manage_id = models.AutoField(primary_key=True, help_text='과제 관리 고유 ID')
-    curriculum_id = models.ForeignKey(Curriculum, on_delete=models.CASCADE, related_name='tasks', help_text='소속 커리큘럼')
+    curriculum_id = models.ForeignKey(
+        Curriculum, 
+        on_delete=models.CASCADE, 
+        related_name='tasks', 
+        help_text='소속 커리큘럼',
+        db_column='curriculum_id'  # 명시적으로 컬럼명 지정
+    )
     title = models.CharField(max_length=255, help_text='과제 제목')
-    description = models.CharField(max_length=255, null=True, blank=True, help_text='과제 설명')
-    guideline = models.CharField(max_length=255, null=True, blank=True, help_text='과제 가이드라인')
+    description = models.TextField(null=True, blank=True, help_text='과제 설명')
+    guideline = models.TextField(null=True, blank=True, help_text='과제 가이드라인')
     week = models.IntegerField(help_text='몇 주차 과제인지')
     order = models.IntegerField(null=True, blank=True, help_text='과제 순서')
     period = models.IntegerField(null=True, blank=True, help_text='과제 기간')
@@ -191,14 +243,15 @@ class Mentorship(models.Model):
     is_active = models.BooleanField(default=True, help_text='멘토쉽 활성화 여부')
     curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
     total_weeks = models.IntegerField(default=0, help_text='총 주차 수')
+    report = models.TextField(null=True, blank=True, help_text='멘티 최종 평가')
 
 class TaskAssign(models.Model):
     task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subtasks', help_text='상위 과제(TaskAssign)')
     mentorship_id = models.ForeignKey(Mentorship, on_delete=models.CASCADE, help_text='멘토쉽')
     title = models.CharField(max_length=255, null=True, blank=True, help_text='과제 할당 제목')
-    description = models.CharField(max_length=255, null=True, blank=True, help_text='설명')
-    guideline = models.CharField(max_length=255, null=True, blank=True, help_text='과제 가이드라인')
+    description = models.TextField(null=True, blank=True, help_text='설명')
+    guideline = models.TextField(null=True, blank=True, help_text='과제 가이드라인')
     week = models.IntegerField(help_text='몇 주차 과제인지')
     order = models.IntegerField(null=True, blank=True, help_text='과제 순서')
     scheduled_start_date = models.DateField(null=True, blank=True, help_text='예정 시작일')
@@ -234,7 +287,7 @@ class TaskAssign(models.Model):
 
 class Memo(models.Model):
     memo_id = models.AutoField(primary_key=True, help_text='메모 고유 ID')
-    create_date = models.DateField(auto_now_add=True, null=True, blank=True, help_text='생성일')
-    comment = models.CharField(max_length=1000, null=True, blank=True, help_text='메모 내용')
+    create_date = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='생성일시')
+    comment = models.TextField(null=True, blank=True, help_text='메모 내용')
     task_assign = models.ForeignKey(TaskAssign, on_delete=models.CASCADE, help_text='과제 할당')
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, help_text='유저')

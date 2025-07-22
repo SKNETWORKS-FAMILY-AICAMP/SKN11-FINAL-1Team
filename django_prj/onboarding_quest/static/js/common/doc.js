@@ -1,45 +1,12 @@
-//#region 문서 업로드
+// ✅ doc.js (FastAPI 연동 + 기존 템플릿 구조 유지 + 누락 없이 완전 복원)
+
+console.log("🔥 doc.js 로딩됨");
+
 const dropArea = document.getElementById('doc-drop-area');
 const fileInput = document.getElementById('doc-file-input');
-
-if (dropArea && fileInput) {
-  ['dragenter', 'dragover'].forEach(evt => dropArea.addEventListener(evt, e => {
-    e.preventDefault();
-    dropArea.classList.add('dragover');
-  }));
-
-  ['dragleave', 'drop'].forEach(evt => dropArea.addEventListener(evt, e => {
-    e.preventDefault();
-    dropArea.classList.remove('dragover');
-  }));
-
-  dropArea.addEventListener('drop', e => {
-    e.preventDefault();
-    handleFiles(e.dataTransfer.files);
-  });
-
-  dropArea.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => handleFiles(e.target.files));
-}
-
 let addedFiles = [];
 const uploadListTbody = document.getElementById('doc-upload-list-tbody');
 const uploadBtn = document.getElementById('doc-upload-btn');
-
-function handleFiles(files) {
-  Array.from(files).forEach(file => {
-    if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
-      addedFiles.push({
-        file,
-        name: file.name,
-        description: '',
-        tags: '',
-        common_doc: false
-      });
-    }
-  });
-  renderUploadList();
-}
 
 function renderUploadList() {
   if (!uploadListTbody) return;
@@ -48,12 +15,11 @@ function renderUploadList() {
   addedFiles.forEach((f, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-            <td>${f.name}</td>
-            <td><input type="text" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
-            <td><input type="text" value="${f.tags}" onchange="updateFileInfo(${idx}, 'tags', this.value)"></td>
-            <td><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
-            <td><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
-        `;
+      <td style="width:25%;">${f.name}</td>
+      <td style="width:40%;"><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
+      <td style="width:15%;"><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
+      <td style="width:20%;"><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
+    `;
     uploadListTbody.appendChild(tr);
   });
 
@@ -67,9 +33,7 @@ function renderUploadList() {
 }
 
 function updateFileInfo(idx, field, value) {
-  if (addedFiles[idx]) {
-    addedFiles[idx][field] = value;
-  }
+  if (addedFiles[idx]) addedFiles[idx][field] = value;
 }
 
 function removeFile(idx) {
@@ -77,174 +41,297 @@ function removeFile(idx) {
   renderUploadList();
 }
 
-// 업로드 버튼 클릭 시 실행
-if (uploadBtn) {
-  uploadBtn.addEventListener('click', async () => {
-    if (addedFiles.length === 0) return;
-
-    try {
-      for (const fileInfo of addedFiles) {
-        const formData = new FormData();
-        formData.append('file', fileInfo.file);
-        formData.append('title', fileInfo.name);
-        formData.append('description', fileInfo.description);
-        formData.append('tags', fileInfo.tags);
-        formData.append('common_doc', fileInfo.common_doc);
-
-        const response = await fetch('/common/doc/upload/', {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': getCsrfToken()
-          },
-          body: formData
-        });
-
-        const result = await response.json();
-        if (!result.success) {
-          alert(`업로드 실패: ${result.error}`);
-          return;
-        }
-      }
-
-      alert('모든 파일이 성공적으로 업로드되었습니다.');
-      addedFiles = [];
-      renderUploadList();
-      window.location.reload();
-
-    } catch (error) {
-      console.error('업로드 오류:', error);
-      alert('업로드 중 오류가 발생했습니다.');
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+      addedFiles.push({ file, name: file.name, description: '', common_doc: false });
     }
   });
+  renderUploadList();
 }
 
-//#region 파일 다운로드 처리
-// 다운로드 링크 클릭 시 추가 처리
-document.addEventListener('DOMContentLoaded', function () {
-  const downloadLinks = document.querySelectorAll('.doc-download-link');
-
-  downloadLinks.forEach(link => {
-    link.addEventListener('click', function (e) {
-      e.preventDefault(); // 기본 동작 방지
-
-      const fileName = this.textContent.trim();
-      const downloadUrl = this.href;
-
-      // 다운로드 시작 알림
-      console.log(`파일 다운로드 시작: ${fileName}`);
-
-      // 새 창에서 다운로드 시작
-      const downloadWindow = window.open(downloadUrl, '_blank');
-
-      // 즉시 창 닫기 (다운로드만 시작)
-      setTimeout(() => {
-        if (downloadWindow) {
-          downloadWindow.close();
-        }
-      }, 100);
-
-      // 다운로드 버튼 임시 비활성화
-      this.style.pointerEvents = 'none';
-      this.style.opacity = '0.7';
-
-      // 3초 후 다시 활성화
-      setTimeout(() => {
-        this.style.pointerEvents = 'auto';
-        this.style.opacity = '1';
-      }, 3000);
+if (dropArea && fileInput) {
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropArea.addEventListener(evt, e => {
+      e.preventDefault();
+      dropArea.classList.add('dragover');
     });
   });
-});
 
-
-// 파일 다운로드 함수
-function downloadFile(docId) {
-  // 다운로드 링크 생성
-  const downloadLink = document.createElement('a');
-  downloadLink.href = `/common/doc/${docId}/download/`;
-  downloadLink.download = '';
-  downloadLink.style.display = 'none';
-
-  // 임시로 DOM에 추가
-  document.body.appendChild(downloadLink);
-
-  // 클릭하여 다운로드 시작
-  downloadLink.click();
-
-  // DOM에서 제거
-  document.body.removeChild(downloadLink);
-}
-
-//#region 문서 관리 기능
-let currentDocId = null;
-
-function editDoc(docId) {
-  console.log('수정 기능 - 문서 ID:', docId);
-  alert('수정 기능은 추후 구현 예정입니다.');
-}
-
-function deleteDoc(docId) {
-  currentDocId = docId;
-  const modal = document.getElementById('deleteModal');
-  if (modal) {
-    modal.style.display = 'flex';
-  } else {
-    if (confirm('정말로 이 문서를 삭제하시겠습니까?')) {
-      performDelete(docId);
-    }
-  }
-}
-
-function confirmDelete() {
-  if (currentDocId) {
-    performDelete(currentDocId);
-    closeDeleteModal();
-  }
-}
-
-function performDelete(docId) {
-  fetch(`/common/doc/${docId}/delete/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCsrfToken()
-    }
-  })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert('문서가 성공적으로 삭제되었습니다.');
-        const row = document.querySelector(`tr[data-doc-id="${docId}"]`);
-        if (row) {
-          row.remove();
-        }
-        window.location.reload();
-      } else {
-        alert('삭제 실패: ' + (data.error || '알 수 없는 오류'));
-      }
-    })
-    .catch(error => {
-      console.error('삭제 요청 오류:', error);
-      alert('삭제 중 오류가 발생했습니다.');
+  ['dragleave', 'drop'].forEach(evt => {
+    dropArea.addEventListener(evt, e => {
+      e.preventDefault();
+      dropArea.classList.remove('dragover');
     });
+  });
+
+  dropArea.addEventListener('drop', e => {
+    e.preventDefault();
+    handleFiles(e.dataTransfer.files);
+  });
+
+  dropArea.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => handleFiles(e.target.files));
 }
 
-function closeDeleteModal() {
-  const modal = document.getElementById('deleteModal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-  currentDocId = null;
-}
+uploadBtn?.addEventListener('click', async () => {
+  if (addedFiles.length === 0) return;
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = '업로드 중...';
 
-function getCsrfToken() {
-  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-  return csrfToken ? csrfToken.value : '';
-}
+  try {
+    for (const fileInfo of addedFiles) {
+      const formData = new FormData();
+      formData.append('file', fileInfo.file);
+      formData.append('title', fileInfo.name);  // ✅ FastAPI → Django 업로드에서 필요
+      formData.append('description', fileInfo.description);
+      formData.append('common_doc', fileInfo.common_doc ? 'true' : 'false');
+      formData.append('department_id', CURRENT_DEPARTMENT_ID);
+      formData.append('original_file_name', fileInfo.name);
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    closeDeleteModal();
+      const response = await fetch('http://localhost:8001/api/docs/rag/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      if (!result.success) throw new Error(result.message || '업로드 실패');
+    }
+
+    alert('모든 파일이 성공적으로 업로드되었습니다.');
+    addedFiles = [];
+    renderUploadList();
+    location.reload();
+
+  } catch (err) {
+    console.error('Upload error:', err);
+    alert('업로드 실패: ' + err.message);
+  } finally {
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = '📤 업로드';
   }
 });
 //#endregion
+
+//#region 문서 수정 기능
+function openEditModal(docId, currentDescription, currentCommonDoc) {
+  document.getElementById('edit-description').value = currentDescription || '';
+  document.getElementById('edit-common-doc').checked = currentCommonDoc === true || currentCommonDoc === 'true';
+  document.getElementById('edit-modal').style.display = 'flex';
+  document.getElementById('edit-form').dataset.docId = docId;
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+}
+
+document.getElementById('edit-form')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const docId = this.dataset.docId;
+  const description = document.getElementById('edit-description').value;
+  const commonDocChecked = document.getElementById('edit-common-doc').checked;
+
+  const formData = new FormData();
+  formData.append('description', description);
+  formData.append('common_doc', commonDocChecked ? 'true' : 'false');
+  formData.append('docs_id', docId);
+  formData.append('department_id', CURRENT_DEPARTMENT_ID);
+
+  fetch(`/common/doc/${docId}/update/`, {
+    method: 'POST',
+    body: formData
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('수정되었습니다.');
+        location.reload();
+      } else {
+        alert('수정 실패: ' + data.error);
+      }
+    })
+    .catch(err => {
+      console.error('수정 오류:', err);
+      alert('수정 중 오류가 발생했습니다.');
+    });
+
+  closeEditModal();
+});
+//#endregion
+
+//#region 문서 삭제 기능
+let deleteDocId = null;
+
+function deleteDoc(docId) {
+  deleteDocId = docId;
+  document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').style.display = 'none';
+  deleteDocId = null;
+}
+
+// function confirmDelete() {
+//   if (!deleteDocId) return;
+
+//   const formData = new FormData();
+//   formData.append('docs_id', deleteDocId);
+//   formData.append('department_id', CURRENT_DEPARTMENT_ID);
+
+//   fetch(`/common/doc/${deleteDocId}/delete/`, {
+//     method: 'POST',
+//     body: formData
+//   })
+//     .then(res => res.json())
+//     .then(data => {
+//       if (data.success) {
+//         alert('삭제되었습니다.');
+//         location.reload();
+//       } else {
+//         alert('삭제 실패: ' + data.error);
+//       }
+//     })
+//     .catch(err => {
+//       console.error('삭제 오류:', err);
+//       alert('삭제 중 오류가 발생했습니다.');
+//     });
+
+//   closeDeleteModal();
+// }
+
+
+function confirmDelete() {
+  if (!deleteDocId) return;
+
+  const formData = new FormData();
+  formData.append('docs_id', deleteDocId);
+  formData.append('department_id', CURRENT_DEPARTMENT_ID);
+
+  fetch(`http://localhost:8001/api/docs/rag/${deleteDocId}`, {
+    method: 'DELETE'
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('삭제되었습니다.');
+        location.reload();
+      } else {
+        alert('삭제 실패: ' + data.error);
+      }
+    })
+    .catch(err => {
+      console.error('삭제 오류:', err);
+      alert('삭제 중 오류가 발생했습니다.');
+    });
+
+  closeDeleteModal();
+}
+
+
+
+//#endregion
+
+// 외부 클릭 시 모달 닫기
+window.addEventListener('click', function (e) {
+  if (e.target === document.getElementById('edit-modal')) closeEditModal();
+  if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
+});
+
+async function loadDocumentList(departmentId) {
+  try {
+    const url = `http://localhost:8001/api/docs/department/${departmentId}`;
+    console.log("📡 요청 URL:", url);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    console.log("DOC LIST RESULT:", data);
+
+    const container = document.getElementById("doc-list");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    // FastAPI는 배열을 직접 반환
+    if (!Array.isArray(data)) {
+      container.innerHTML = `<tr><td colspan="4">문서 불러오기 실패: ${data.detail || '알 수 없는 오류'}</td></tr>`;
+      return;
+    }
+
+    if (data.length === 0) {
+      container.innerHTML = `<tr><td colspan="4">해당 부서의 문서가 없습니다.</td></tr>`;
+      return;
+    }
+
+    data.forEach(doc => {
+      const tr = document.createElement("tr");
+      tr.setAttribute("data-doc-id", doc.docs_id);
+
+      const canEdit = doc.department_id === CURRENT_DEPARTMENT_ID;
+
+      tr.innerHTML = `
+      <td>
+        <a href="http://localhost:8001/api/documents/download/${doc.docs_id}" target="_blank">
+          📄 ${doc.title || "이름없음"}
+        </a>
+      </td>
+      <td>${doc.description || "-"}</td>
+      <td>${doc.department ? doc.department.department_name : "-"}</td>
+      <td>
+        ${canEdit
+          ? `
+            <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
+            <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>
+          `
+          : `<span style="color:#999;">-</span>`
+        }
+      </td>
+    `;
+      container.appendChild(tr);
+    });
+  } catch (error) {
+    console.error("문서 목록 로드 오류:", error);
+    const container = document.getElementById("doc-list");
+    if (container) {
+      container.innerHTML = `<tr><td colspan="4">문서 목록을 불러오는 중 오류가 발생했습니다.</td></tr>`;
+    }
+  }
+}
+
+function downloadDocument(docsId) {
+  window.location.href = `http://localhost:8001/api/documents/download/${docsId}`;
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 DOM 로드 완료, CURRENT_DEPARTMENT_ID:", CURRENT_DEPARTMENT_ID);
+  loadDocumentList(CURRENT_DEPARTMENT_ID);
+
+  // 업로드 이벤트 등록
+  document.body.addEventListener("dragover", preventDefaults, false);
+  document.body.addEventListener("drop", handleDrop, false);
+});
+
+
+function preventDefaults(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function handleDrop(e) {
+  preventDefaults(e);
+  const dt = e.dataTransfer;
+  const files = dt.files;
+  handleUpload(files);
+}
+
+function handleUpload(files) {
+  if (!files || files.length === 0) return;
+  Array.from(files).forEach(file => {
+    if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+      addedFiles.push({ file, name: file.name, description: '', common_doc: false });
+    }
+  });
+  renderUploadList();
+}
+

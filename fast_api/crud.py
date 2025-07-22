@@ -86,11 +86,11 @@ def get_departments(db: Session, skip: int = 0, limit: int = 100):
     """부서 목록 조회"""
     return db.query(models.Department).offset(skip).limit(limit).all()
 
-def update_department(db: Session, department_id: int, department_update: schemas.DepartmentCreate):
+def update_department(db: Session, department_id: int, department_update: schemas.DepartmentUpdate):
     """부서 정보 업데이트"""
     db_department = get_department(db, department_id)
     if db_department:
-        for key, value in department_update.dict().items():
+        for key, value in department_update.dict(exclude_unset=True).items():
             setattr(db_department, key, value)
         db.commit()
         db.refresh(db_department)
@@ -275,12 +275,27 @@ def delete_user_with_company_department(db: Session, user_id: int, company_id: s
 
 # 기존 delete 함수들은 유지 (하위 호환성)
 def delete_user(db: Session, user_id: int):
-    """사용자 삭제 (기존 함수 - 하위 호환성 유지)"""
+    """사용자 삭제 (관련 ChatSession/ChatMessage도 함께 삭제)"""
+    # 1. 사용자 조회
     db_user = get_user(db, user_id)
-    if db_user:
-        db.delete(db_user)
-        db.commit()
+    if not db_user:
+        return None
+
+    # 2. 관련 ChatMessage 삭제
+    db.query(models.ChatMessage).filter(
+        models.ChatMessage.session_id.in_(
+            db.query(models.ChatSession.session_id).filter(models.ChatSession.user_id == user_id)
+        )
+    ).delete(synchronize_session=False)
+
+    # 3. 관련 ChatSession 삭제
+    db.query(models.ChatSession).filter(models.ChatSession.user_id == user_id).delete(synchronize_session=False)
+
+    # 4. 사용자 삭제
+    db.delete(db_user)
+    db.commit()
     return db_user
+
 
 def delete_mentorship(db: Session, mentorship_id: int):
     """멘토쉽 삭제"""
@@ -308,6 +323,10 @@ def get_task_manages(db: Session, skip: int = 0, limit: int = 100):
     """태스크 관리 목록 조회"""
     return db.query(models.TaskManage).offset(skip).limit(limit).all()
 
+def get_task_manages_by_curriculum(db: Session, curriculum_id: int):
+    """커리큘럼별 태스크 관리 조회"""
+    return db.query(models.TaskManage).filter(models.TaskManage.curriculum_id == curriculum_id).all()
+
 def update_task_manage(db: Session, task_id: int, task_update: schemas.TaskManageCreate):
     """태스크 관리 정보 업데이트"""
     db_task = get_task_manage(db, task_id)
@@ -328,9 +347,12 @@ def delete_task_manage(db: Session, task_id: int):
 
 
 # TaskAssign CRUD
-def create_task_assign(db: Session, task: schemas.TaskAssignCreate):
-    """태스크 할당 생성"""
-    db_task = models.TaskAssign(**task.dict())
+def create_task_assign(db: Session, task):
+    """태스크 할당 생성 - dict 또는 TaskAssignCreate 스키마 모두 지원"""
+    if isinstance(task, dict):
+        db_task = models.TaskAssign(**task)
+    else:
+        db_task = models.TaskAssign(**task.dict())
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -339,6 +361,36 @@ def create_task_assign(db: Session, task: schemas.TaskAssignCreate):
 def get_task_assign(db: Session, task_id: int):
     """태스크 할당 단일 조회"""
     return db.query(models.TaskAssign).filter(models.TaskAssign.task_assign_id == task_id).first()
+
+def get_tasks_by_mentorship(db: Session, mentorship_id: int):
+    """특정 멘토십의 모든 태스크 조회"""
+    return db.query(models.TaskAssign).filter(
+        models.TaskAssign.mentorship_id == mentorship_id
+    ).all()
+
+def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: int = None, status: str = None, week: int = None, skip: int = 0, limit: int = 100):
+    """필터링된 태스크 할당 목록 조회"""
+    query = db.query(models.TaskAssign)
+    
+    if mentorship_id:
+        query = query.filter(models.TaskAssign.mentorship_id == mentorship_id)
+    
+    if user_id:
+        # 멘토십을 통해 사용자와 연관된 태스크 조회
+        query = query.join(models.Mentorship).filter(
+            or_(
+                models.Mentorship.mentor_id == user_id,
+                models.Mentorship.mentee_id == user_id
+            )
+        )
+    
+    if status:
+        query = query.filter(models.TaskAssign.status == status)
+    
+    if week:
+        query = query.filter(models.TaskAssign.week == week)
+    
+    return query.offset(skip).limit(limit).all()
 
 def get_task_assigns(db: Session, skip: int = 0, limit: int = 100):
     """태스크 할당 목록 조회"""
@@ -391,6 +443,40 @@ def get_mentorship(db: Session, mentorship_id: int):
     """멘토링 단일 조회"""
     return db.query(models.Mentorship).filter(models.Mentorship.mentorship_id == mentorship_id).first()
 
+def get_mentorships_with_filters(
+    db: Session, 
+    mentor_id: int = None,
+    mentee_id: int = None,
+    search: str = None,
+    skip: int = 0, 
+    limit: int = 100
+):
+    """멘토십 목록 조회 (필터링 및 검색 지원)"""
+    query = db.query(models.Mentorship)
+    
+    # 멘토 ID 필터
+    if mentor_id:
+        query = query.filter(models.Mentorship.mentor_id == mentor_id)
+    
+    # 멘티 ID 필터
+    if mentee_id:
+        query = query.filter(models.Mentorship.mentee_id == mentee_id)
+    
+    # 검색 기능 (멘티 이름 또는 커리큘럼 제목으로 검색)
+    if search:
+        # 멘티 정보와 조인하여 검색 - Django 모델 구조에 맞게 수정
+        query = query.join(models.User, models.Mentorship.mentee_id == models.User.user_id)
+        
+        # 멘티 이름 또는 커리큘럼 제목으로 검색 - Django 모델 필드명 사용
+        search_filter = (
+            models.User.first_name.ilike(f"%{search}%") |
+            models.User.last_name.ilike(f"%{search}%") |
+            models.Mentorship.curriculum_title.ilike(f"%{search}%")
+        )
+        query = query.filter(search_filter)
+    
+    return query.offset(skip).limit(limit).all()
+
 def get_mentorships(db: Session, skip: int = 0, limit: int = 100):
     """멘토링 목록 조회"""
     return db.query(models.Mentorship).offset(skip).limit(limit).all()
@@ -436,6 +522,24 @@ def get_curricula_by_department(db: Session, department_id: int):
 def get_common_curricula(db: Session):
     """공용 커리큘럼 조회"""
     return db.query(models.Curriculum).filter(models.Curriculum.common == True).all()
+
+def get_filtered_curricula(db: Session, department_id: Optional[int] = None):
+    """공통 커리큘럼 + 특정 부서 커리큘럼 조회"""
+    query = db.query(models.Curriculum)
+    
+    if department_id is not None:
+        # 공통 커리큘럼 또는 특정 부서 커리큘럼
+        query = query.filter(
+            or_(
+                models.Curriculum.common == True,
+                models.Curriculum.department_id == department_id
+            )
+        )
+    else:
+        # 부서가 지정되지 않은 경우 공통 커리큘럼만
+        query = query.filter(models.Curriculum.common == True)
+    
+    return query.all()
 
 def update_curriculum(db: Session, curriculum_id: int, curriculum_update: schemas.CurriculumCreate):
     """커리큘럼 정보 업데이트"""
@@ -489,51 +593,90 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
 # Memo CRUD
 def create_memo(db: Session, memo: schemas.MemoCreate):
     """메모 생성"""
-    db_memo = models.Memo(**memo.dict())
-    db.add(db_memo)
-    db.commit()
-    db.refresh(db_memo)
-    return db_memo
+    try:
+        db_memo = models.Memo(**memo.dict())
+        db.add(db_memo)
+        db.commit()
+        db.refresh(db_memo)
+        return db_memo
+    except Exception as e:
+        db.rollback()
+        raise e
 
 def get_memo(db: Session, memo_id: int):
-    """메모 단일 조회"""
-    return db.query(models.Memo).filter(models.Memo.memo_id == memo_id).first()
+    """메모 단일 조회 - 사용자 정보 포함"""
+    try:
+        return db.query(models.Memo).join(models.User).filter(
+            models.Memo.memo_id == memo_id
+        ).first()
+    except Exception as e:
+        raise e
 
 def get_memos(db: Session, skip: int = 0, limit: int = 100):
-    """메모 목록 조회"""
-    return db.query(models.Memo).offset(skip).limit(limit).all()
+    """메모 목록 조회 - 사용자 정보 포함"""
+    try:
+        return db.query(models.Memo).join(models.User).offset(skip).limit(limit).all()
+    except Exception as e:
+        raise e
 
 def get_memos_by_task(db: Session, task_assign_id: int):
-    """과제별 메모 조회"""
-    return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
+    """과제별 메모 조회 - 사용자 정보 포함"""
+    try:
+        return db.query(models.Memo).join(models.User).filter(
+            models.Memo.task_assign_id == task_assign_id
+        ).all()
+    except Exception as e:
+        raise e
 
 def get_memos_by_user(db: Session, user_id: int):
-    """사용자별 메모 조회"""
-    return db.query(models.Memo).filter(models.Memo.user_id == user_id).all()
+    """사용자별 메모 조회 - 사용자 정보 포함"""
+    try:
+        return db.query(models.Memo).join(models.User).filter(
+            models.Memo.user_id == user_id
+        ).all()
+    except Exception as e:
+        raise e
 
 def update_memo(db: Session, memo_id: int, memo_update: schemas.MemoCreate):
     """메모 정보 업데이트"""
-    db_memo = get_memo(db, memo_id)
-    if db_memo:
-        for key, value in memo_update.dict().items():
-            setattr(db_memo, key, value)
-        db.commit()
-        db.refresh(db_memo)
-    return db_memo
+    try:
+        db_memo = get_memo(db, memo_id)
+        if db_memo:
+            for key, value in memo_update.dict().items():
+                setattr(db_memo, key, value)
+            db.commit()
+            db.refresh(db_memo)
+        return db_memo
+    except Exception as e:
+        db.rollback()
+        raise e
 
 def delete_memo(db: Session, memo_id: int):
     """메모 삭제"""
-    db_memo = get_memo(db, memo_id)
-    if db_memo:
-        db.delete(db_memo)
-        db.commit()
-    return db_memo
+    try:
+        db_memo = get_memo(db, memo_id)
+        if db_memo:
+            db.delete(db_memo)
+            db.commit()
+        return db_memo
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 # Docs CRUD
 def create_docs(db: Session, docs: schemas.DocsCreate):
     """문서 생성"""
-    db_docs = models.Docs(**docs.dict())
+    from datetime import datetime
+    db_docs = models.Docs(
+        department_id=docs.department_id,
+        title=docs.title,
+        description=docs.description,
+        file_path=docs.file_path,
+        common_doc=docs.common_doc,
+        create_time=datetime.now(),
+        original_file_name=getattr(docs, 'original_file_name', None)
+    )
     db.add(db_docs)
     db.commit()
     db.refresh(db_docs)
@@ -577,7 +720,11 @@ def delete_docs(db: Session, docs_id: int):
 # ChatSession CRUD
 def create_chat_session(db: Session, chat_session: schemas.ChatSessionCreate):
     """채팅 세션 생성"""
-    db_session = models.ChatSession(**chat_session.dict())
+    db_session = models.ChatSession(
+        user_id=chat_session.user_id,
+        summary=chat_session.summary,
+        is_active=True
+    )
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
@@ -613,7 +760,14 @@ def delete_chat_session(db: Session, session_id: int):
 # ChatMessage CRUD
 def create_chat_message(db: Session, chat_message: schemas.ChatMessageCreate):
     """채팅 메시지 생성"""
-    db_message = models.ChatMessage(**chat_message.dict())
+    from datetime import datetime
+    db_message = models.ChatMessage(
+        session_id=chat_message.session_id,
+        message_text=chat_message.message_text,
+        message_type=chat_message.message_type,
+        create_time=datetime.now().date(),
+        is_active=True
+    )
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
@@ -634,3 +788,155 @@ def delete_chat_message(db: Session, message_id: int):
         db.delete(db_message)
         db.commit()
     return db_message
+
+
+# Alarm CRUD
+def create_alarm(db: Session, alarm: schemas.AlarmCreate):
+    """알람 생성"""
+    db_alarm = models.Alarm(**alarm.dict())
+    db.add(db_alarm)
+    db.commit()
+    db.refresh(db_alarm)
+    return db_alarm
+
+def get_alarm(db: Session, alarm_id: int):
+    """알람 단일 조회"""
+    return db.query(models.Alarm).filter(models.Alarm.id == alarm_id).first()
+
+def get_alarms(db: Session, skip: int = 0, limit: int = 100):
+    """알람 목록 조회"""
+    return db.query(models.Alarm).offset(skip).limit(limit).all()
+
+def get_alarms_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    """사용자별 알람 목록 조회"""
+    return db.query(models.Alarm).filter(models.Alarm.user_id == user_id).offset(skip).limit(limit).all()
+
+def get_active_alarms_by_user(db: Session, user_id: int):
+    """사용자의 활성 알람 조회"""
+    return db.query(models.Alarm).filter(
+        and_(
+            models.Alarm.user_id == user_id,
+            models.Alarm.is_active == True
+        )
+    ).order_by(models.Alarm.created_at.desc()).all()
+
+def update_alarm(db: Session, alarm_id: int, alarm_update: schemas.AlarmCreate):
+    """알람 정보 업데이트"""
+    db_alarm = get_alarm(db, alarm_id)
+    if db_alarm:
+        for key, value in alarm_update.dict().items():
+            setattr(db_alarm, key, value)
+        db.commit()
+        db.refresh(db_alarm)
+    return db_alarm
+
+def update_alarm_status(db: Session, alarm_id: int, is_active: bool):
+    """알람 활성 상태 업데이트"""
+    db_alarm = get_alarm(db, alarm_id)
+    if db_alarm:
+        db_alarm.is_active = is_active
+        db.commit()
+        db.refresh(db_alarm)
+    return db_alarm
+
+def delete_alarm(db: Session, alarm_id: int):
+    """알람 삭제"""
+    db_alarm = get_alarm(db, alarm_id)
+    if db_alarm:
+        db.delete(db_alarm)
+        db.commit()
+    return db_alarm
+
+def mark_all_alarms_read(db: Session, user_id: int):
+    """사용자의 모든 알람을 읽음 처리"""
+    db.query(models.Alarm).filter(
+        and_(
+            models.Alarm.user_id == user_id,
+            models.Alarm.is_active == True
+        )
+    ).update({"is_active": False})
+    db.commit()
+    return True
+
+
+# RAG/Chat 추가 CRUD Functions
+def get_user_by_id(db: Session, user_id: int):
+    """사용자 ID로 사용자 조회"""
+    return db.query(models.User).filter(models.User.user_id == user_id).first()
+
+def get_department_by_id(db: Session, department_id: int):
+    """부서 ID로 부서 조회"""
+    return db.query(models.Department).filter(models.Department.department_id == department_id).first()
+
+def get_user_chat_sessions(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    """사용자의 채팅 세션 목록 조회 (활성 세션만)"""
+    return db.query(models.ChatSession).filter(
+        and_(
+            models.ChatSession.user_id == user_id,
+            models.ChatSession.is_active == True
+        )
+    ).order_by(models.ChatSession.session_id.desc()).offset(skip).limit(limit).all()
+
+def get_chat_messages(db: Session, session_id: int, skip: int = 0, limit: int = 100):
+    """채팅 세션의 메시지 목록 조회 (활성 메시지만)"""
+    return db.query(models.ChatMessage).filter(
+        and_(
+            models.ChatMessage.session_id == session_id,
+            models.ChatMessage.is_active == True
+        )
+    ).order_by(models.ChatMessage.create_time.asc()).offset(skip).limit(limit).all()
+
+def create_document(db: Session, department_id: int, title: str, description: str, file_path: str, common_doc: bool = False, original_file_name: str = None):
+    """문서 생성"""
+    from datetime import datetime
+    db_doc = models.Docs(
+        department_id=department_id,
+        title=title,
+        description=description,
+        file_path=file_path,
+        common_doc=common_doc,
+        create_time=datetime.now(),
+        original_file_name=original_file_name
+    )
+    db.add(db_doc)
+    db.commit()
+    db.refresh(db_doc)
+    return db_doc
+
+def get_document(db: Session, docs_id: int):
+    """문서 조회"""
+    return db.query(models.Docs).filter(models.Docs.docs_id == docs_id).first()
+
+def get_department_documents(db: Session, department_id: int, include_common: bool = True):
+    """부서별 문서 목록 조회"""
+    query = db.query(models.Docs)
+    if include_common:
+        query = query.filter(
+            or_(
+                models.Docs.department_id == department_id,
+                models.Docs.common_doc == True
+            )
+        )
+    else:
+        query = query.filter(models.Docs.department_id == department_id)
+    
+    return query.all()
+
+def update_document(db: Session, docs_id: int, **kwargs):
+    """문서 정보 업데이트"""
+    db_doc = get_document(db, docs_id)
+    if db_doc:
+        for key, value in kwargs.items():
+            if hasattr(db_doc, key):
+                setattr(db_doc, key, value)
+        db.commit()
+        db.refresh(db_doc)
+    return db_doc
+
+def delete_document(db: Session, docs_id: int):
+    """문서 삭제"""
+    db_doc = get_document(db, docs_id)
+    if db_doc:
+        db.delete(db_doc)
+        db.commit()
+    return db_doc

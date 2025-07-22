@@ -1,7 +1,7 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from core.models import TaskAssign
 from collections import defaultdict
@@ -359,23 +359,21 @@ def mentee(request):
                 print(f"🔍 DEBUG - 전체 조회된 멘토십들: {mentorships}")
                 
                 for idx, mentorship_data in enumerate(mentorships):
-                    print(f"🔍 DEBUG - 멘토십 {idx+1}: mentorship_id={mentorship_data.get('mentorship_id')}, mentee_id={mentorship_data.get('mentee_id')}, is_active={mentorship_data.get('is_active')}")
+                    print(f"🔍 DEBUG - 멘토십 {idx+1}: id={mentorship_data.get('id')}, mentee_id={mentorship_data.get('mentee_id')}, is_active={mentorship_data.get('is_active')}")
                 
                 if mentorships:
                     print(f"🔍 DEBUG - 조회된 멘토십 상세 분석:")
                     for i, mentorship_data in enumerate(mentorships):
                         print(f"🔍 DEBUG - 멘토십 [{i}]: 전체 데이터 = {mentorship_data}")
-                        mentorship_id_val = mentorship_data.get('mentorship_id')
-                        print(f"🔍 DEBUG - 멘토십 [{i}]: mentorship_id = {mentorship_id_val} (타입: {type(mentorship_id_val)})")
-                        
-                    found_mentorship_id = mentorships[0].get('mentorship_id')
-                    print(f"🔍 DEBUG - 선택된 멘토십: mentorship_id={found_mentorship_id} (타입: {type(found_mentorship_id)})")
-                    
+                        mentorship_id_val = mentorship_data.get('id')
+                        print(f"🔍 DEBUG - 멘토십 [{i}]: id = {mentorship_id_val} (타입: {type(mentorship_id_val)})")
+                    found_mentorship_id = mentorships[0].get('id')
+                    print(f"🔍 DEBUG - 선택된 멘토십: id={found_mentorship_id} (타입: {type(found_mentorship_id)})")
                     # 값이 1인지 확인
                     if found_mentorship_id == 1:
-                        print("⚠️  WARNING - mentorship_id가 1입니다! 이것이 예상되지 않은 값입니다.")
+                        print("⚠️  WARNING - id가 1입니다! 이것이 예상되지 않은 값입니다.")
                     else:
-                        print(f"✅ INFO - mentorship_id가 {found_mentorship_id}로 올바르게 설정됨")
+                        print(f"✅ INFO - id가 {found_mentorship_id}로 올바르게 설정됨")
                 else:
                     print("🔍 DEBUG - 사용자의 활성 멘토십이 없음")
                     
@@ -637,13 +635,24 @@ def mentee(request):
                 try:
                     print(f"DEBUG - FastAPI로 메모 조회 시도... task_assign_id={task.get('task_assign_id')}")
                     memos_response = fastapi_client.get_memos(task_assign_id=task.get('task_assign_id'))
-                    for memo in memos_response.get('memos', []):
-                        user_info = memo.get('user', {})
-                        memos.append({
-                            'user': f"{user_info.get('last_name', '')}{user_info.get('first_name', '')}",
-                            'comment': memo.get('comment'),
-                            'create_date': memo.get('create_date'),
-                        })
+                    
+                    # FastAPI 클라이언트가 직접 List[Memo] 반환
+                    if isinstance(memos_response, list):
+                        for memo in memos_response:
+                            user_info = memo.get('user', {})
+                            user_name = '익명'
+                            if user_info:
+                                last_name = user_info.get('last_name', '')
+                                first_name = user_info.get('first_name', '')
+                                if last_name or first_name:
+                                    user_name = f"{last_name}{first_name}".strip()
+                            
+                            memos.append({
+                                'user': user_name,
+                                'comment': memo.get('comment'),
+                                'create_date': memo.get('create_date'),
+                            })
+                    
                     print(f"DEBUG - 태스크 {task.get('task_assign_id')}의 메모 {len(memos)}개 로드")
                 except Exception as memo_error:
                     print(f"DEBUG - 메모 조회 실패: {memo_error}")
@@ -906,13 +915,22 @@ def task_detail(request, task_assign_id):
             logger.info(f"FastAPI로 메모 목록 조회 중... task_assign_id: {task_assign_id}")
             memos_response = fastapi_client.get_memos(task_assign_id=task_assign_id)
             
-            for memo in memos_response.get('memos', []):
-                user_info = memo.get('user', {})
-                memo_list.append({
-                    'user': f"{user_info.get('last_name', '')}{user_info.get('first_name', '')}",
-                    'comment': memo.get('comment'),
-                    'create_date': memo.get('create_date'),
-                })
+            # FastAPI 클라이언트가 직접 List[Memo] 반환
+            if isinstance(memos_response, list):
+                for memo in memos_response:
+                    user_info = memo.get('user', {})
+                    user_name = '익명'
+                    if user_info:
+                        last_name = user_info.get('last_name', '')
+                        first_name = user_info.get('first_name', '')
+                        if last_name or first_name:
+                            user_name = f"{last_name}{first_name}".strip()
+                    
+                    memo_list.append({
+                        'user': user_name,
+                        'comment': memo.get('comment'),
+                        'create_date': memo.get('create_date'),
+                    })
             
             logger.info(f"FastAPI로 메모 {len(memo_list)}개 조회 성공")
         except Exception as memo_error:
@@ -1027,7 +1045,7 @@ def update_task_status(request, task_id):
         mentorships = mentorships_result.get('mentorships', [])
         
         # 사용자의 멘토쉽 목록에서 요청된 mentorship_id가 있는지 확인
-        user_mentorship_ids = [m.get('mentorship_id') for m in mentorships]
+        user_mentorship_ids = [m.get('id') for m in mentorships]
         logger.info(f"🔍 사용자의 활성 멘토쉽 ID들: {user_mentorship_ids}")
         
         if client_mentorship_id not in user_mentorship_ids:

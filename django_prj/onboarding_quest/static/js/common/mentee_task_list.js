@@ -19,35 +19,23 @@ function toggleSubtaskList(toggleBtn) {
 
 // 🔧 가이드라인 표시 함수
 function displayGuideline(taskData) {
-  console.log('🔍 displayGuideline 호출:', taskData);
   const guidelineContent = document.getElementById('guideline-content');
-  console.log('🔍 guideline-content 요소:', guidelineContent);
-  
   if (guidelineContent && taskData) {
     const guideline = taskData.guideline || '가이드라인이 없습니다.';
-    console.log('🔍 표시할 가이드라인:', guideline);
     guidelineContent.textContent = guideline;
   } else {
-    console.log('❌ guidelineContent 또는 taskData가 없음');
+    console.error('❌ guidelineContent 또는 taskData가 없음');
   }
 }
 
-// 🔧 가이드라인 편집 기능 (제거됨)
-
 // 🔧 메모 로드 함수
 async function loadMemos(taskId) {
-  console.log('🔍 메모 로드 시작 - taskId:', taskId);
   try {
     const response = await fetch(`/mentee/task_detail/${taskId}/`);
-    console.log('🔍 응답 상태:', response.status);
     const data = await response.json();
-    console.log('🔍 받은 데이터:', data);
-    
     if (data.success && data.task && data.task.memos) {
-      console.log('🔍 메모 데이터 있음:', data.task.memos);
       displayMemos(data.task.memos);
     } else {
-      console.log('🔍 메모 데이터 없음 - 빈 배열 표시');
       displayMemos([]); // 빈 배열로 표시
     }
   } catch (error) {
@@ -58,39 +46,27 @@ async function loadMemos(taskId) {
 
 // 🔧 메모 표시 함수
 function displayMemos(memos) {
-  console.log('🔍 displayMemos 호출:', memos);
   const chatMessages = document.getElementById('chat-messages');
-  console.log('🔍 chat-messages 요소:', chatMessages);
-  
   if (!chatMessages) {
-    console.log('❌ chat-messages 요소를 찾을 수 없음');
+    console.error('❌ chat-messages 요소를 찾을 수 없음');
     return;
   }
-  
   chatMessages.innerHTML = '';
-  
   if (memos && memos.length > 0) {
-    console.log(`🔍 ${memos.length}개 메모 표시 중`);
-    memos.forEach((memo, index) => {
-      console.log(`🔍 메모 ${index}:`, memo);
+    memos.forEach((memo) => {
       const memoDiv = document.createElement('div');
       memoDiv.style.cssText = 'margin-bottom:12px; padding:8px; background:white; border-radius:6px; border-left:3px solid #28a745;';
-      
       memoDiv.innerHTML = `
         <div style="font-size:12px; color:#666; margin-bottom:4px;">
           ${memo.user || '사용자'} • ${new Date(memo.create_date).toLocaleString('ko-KR')}
         </div>
         <div style="color:#333;">${memo.comment}</div>
       `;
-      
       chatMessages.appendChild(memoDiv);
     });
   } else {
-    console.log('🔍 메모가 없음 - 기본 메시지 표시');
     chatMessages.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">등록된 메모가 없습니다.</div>';
   }
-  
-  // 스크롤을 맨 아래로
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -497,9 +473,24 @@ document.addEventListener('DOMContentLoaded', function() {
     subtaskForm.reset();
     document.getElementById('subtask-parent-title').value = currentTask.title || '';
     document.getElementById('subtask-parent-id').value = currentTask.id;
-    document.getElementById('subtask-priority').value = '';
+    
+    // 상위 Task와 동일한 우선순위 설정
+    document.getElementById('subtask-priority').value = currentTask.priority || '하';
+    
+    // 상위 Task와 동일한 시작일/마감일 설정 (TaskAssign 필드명 사용)
+    if (currentTask.scheduled_start_date) {
+      document.getElementById('subtask-start-date').value = currentTask.scheduled_start_date;
+    } else {
+      // 시작일이 없으면 오늘 날짜로 설정
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('subtask-start-date').value = today;
+    }
+    
+    if (currentTask.scheduled_end_date) {
+      document.getElementById('subtask-end-date').value = currentTask.scheduled_end_date;
+    }
+    
     document.getElementById('subtask-status').value = '진행 전';
-    document.getElementById('subtask-end-date').value = '';
   });
   // 닫기 버튼(×)과 취소 버튼 모두 모달 닫기
   const subtaskCloseBtn = document.getElementById('subtask-close-btn');
@@ -524,10 +515,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const description = document.getElementById('subtask-desc').value.trim();
     const status = document.getElementById('subtask-status').value;
     const priority = document.getElementById('subtask-priority').value;
+    const start_date = document.getElementById('subtask-start-date').value;
     const end_date = document.getElementById('subtask-end-date').value;
     const parent_id = document.getElementById('subtask-parent-id').value;
     // 상위 Task의 mentorship_id, week, order도 전달
-    const mentorship_id = currentTask.mentorship_id || (currentTask.mentorship_id_id || null);
+    const mentorship_id = currentTask.mentorship_id || (currentTask.mentorship_id || null);
     const week = currentTask.week;
     const order = null;
     if (!title) return alert('제목을 입력하세요.');
@@ -538,7 +530,18 @@ document.addEventListener('DOMContentLoaded', function() {
           'Content-Type': 'application/json',
           'X-CSRFToken': (document.querySelector('input[name=csrfmiddlewaretoken]')||{}).value || ''
         },
-        body: JSON.stringify({title, guideline, description, status, priority, scheduled_end_date: end_date, mentorship_id, week, order})
+        body: JSON.stringify({
+          title, 
+          guideline, 
+          description, 
+          status, 
+          priority, 
+          scheduled_start_date: start_date, 
+          scheduled_end_date: end_date, 
+          mentorship_id, 
+          week, 
+          order
+        })
       });
       const data = await resp.json();
       if (data.success) {
