@@ -345,13 +345,13 @@ def decide_to_reflect_improved(state: AgentState) -> str:
 
 # 사용자별 필터링 검색 함수
 def search_documents_filtered(state: AgentState) -> AgentState:
-    """사용자 부서별 문서 필터링 검색"""
+    """사용자 부서별 문서 필터링 + 유사도 기반 필터링 적용"""
     query = state.get("rewritten_question") or state["question"]
     user_department_id = state.get("user_department_id")
-    
+
     query_vec = embeddings.embed_query(query)
-    
-    # 사용자 부서 문서 + 공통 문서만 검색
+
+    # 🔍 부서 필터 정의
     if user_department_id:
         search_filter = Filter(
             should=[
@@ -366,7 +366,6 @@ def search_documents_filtered(state: AgentState) -> AgentState:
             ]
         )
     else:
-        # 부서 정보가 없으면 공통 문서만 검색
         search_filter = Filter(
             must=[
                 FieldCondition(
@@ -375,29 +374,40 @@ def search_documents_filtered(state: AgentState) -> AgentState:
                 )
             ]
         )
-    
+
+    # 🔍 Qdrant에서 유사도 검색
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vec,
         query_filter=search_filter,
-        limit=5,
+        limit=10,
         with_payload=True
     )
 
     logger.info(f"[🔍 Qdrant 검색 결과 수] {len(results)}")
-    
+
+    # ✅ 유사도 임계값 필터링
+    threshold = 0.75
+    filtered = [r for r in results if r.score >= threshold][:3]
+
+    # fallback: 유사한 청크가 없을 경우 가장 상위 하나만 사용
+    if not filtered:
+        logger.warning("⚠️ 유사한 문서가 없습니다. 가장 유사한 1개 청크만 사용합니다.")
+        filtered = results[:1]
+
     contexts = []
-    for r in results:
+    for r in filtered:
         title = r.payload.get("metadata", {}).get("title", "무제")
         text = r.payload.get("text", "")
-        # file_name = r.payload.get("metadata", {}).get("file_name", "알 수 없음")
         file_name = (
-    r.payload.get("metadata", {}).get("original_file_name") or
-    r.payload.get("metadata", {}).get("file_name", "알 수 없음")
-)
+            r.payload.get("metadata", {}).get("original_file_name") or
+            r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+        )
+        logger.info(f"✅ 포함된 context: {title} (score: {r.score:.4f})")
         contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-    
+
     return {**state, "contexts": contexts}
+
 
 # 세션 요약 함수 (수정됨)
 def summarize_session(state: AgentState) -> AgentState:
