@@ -620,6 +620,12 @@ function toggleTaskSection() {
   }
 }
 
+// Task 섹션을 확실히 보이게 하는 함수
+function showTaskSection() {
+  const taskList = document.getElementById('task-list');
+  taskList.style.display = 'flex';
+}
+
 // Drag & Drop for task list (주차별 이동 및 주차 내 순서만 변경)
 function initTaskListDnD() {
   const taskList = document.getElementById('task-list');
@@ -1015,14 +1021,15 @@ document.getElementById('save-curriculum-btn').onclick = async function() {
     document.getElementById('curriculum-desc').value = window.curriculum.curriculum_description || '';
     document.getElementById('curriculum-textarea').value = window.curriculum.week_schedule || '';
 
+    // 편집 모드에서는 Task 섹션을 바로 보이게 함
+    showTaskSection();
+
     if (Array.isArray(window.tasks_json) && window.tasks_json.length > 0) {
       renderTasksByWeek(window.tasks_json);
-      toggleTaskSection(); // Task 섹션 보이기
     } else {
       // Task가 없어도 기본 1주차는 표시하고 Task 섹션도 보이게
       window.tasks_json = [];
       renderTasksByWeek(window.tasks_json);
-      toggleTaskSection(); // Task 섹션 보이기
     }
     initTaskListDnD();
   } else {
