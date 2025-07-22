@@ -10,10 +10,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent.parent
 load_dotenv(PROJECT_ROOT / '.env')
 
+def str2bool(v):
+    """문자열을 boolean으로 변환"""
+    return str(v).lower() in ("1", "true", "yes", "on")
+
+def parse_list(v, delimiter=','):
+    """문자열을 리스트로 변환"""
+    if not v:
+        return []
+    return [item.strip() for item in v.split(delimiter) if item.strip()]
+
+# =================================
+# 🔒 보안 설정
+# =================================
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here-change-in-production')
+DEBUG = str2bool(os.getenv('DEBUG', 'False'))
+ALLOWED_HOSTS = parse_list(os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1'))
+
+# =================================
+# 📋 로깅 설정
+# =================================
 # .well-known 경로 404 로그 무시용 필터
 class IgnoreWellKnown(logging.Filter):
     def filter(self, record):
         return '/.well-known/' not in record.getMessage()
+
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
 
 LOGGING = {
     'version': 1,
@@ -35,56 +57,34 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'filters': ['ignore_well_known'],
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'debug.log',
             'formatter': 'verbose',
         },
     },
     'loggers': {
         'django.server': {
             'handlers': ['console'],
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'account.views': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': True,
         },
         'core.utils.fastapi_client': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': True,
         },
     },
 }
-from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if os.getenv('ALLOWED_HOSTS') else []
-
-
-# Application definition
-
+# =================================
+# 📱 Django 애플리케이션 설정
+# =================================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -130,28 +130,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'onboarding_quest.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+# =================================
+# 🗄️ 데이터베이스 설정
+# =================================
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        'NAME': os.getenv('DB_NAME', 'onboarding_quest_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
             'client_encoding': 'UTF8',
         },
     }
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
+# =================================
+# 🔐 비밀번호 검증
+# =================================
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -167,25 +165,32 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
+# =================================
+# 🌍 국제화 설정
+# =================================
 LANGUAGE_CODE = 'ko-kr'
-
-TIME_ZONE = 'UTC'
-
+TIME_ZONE = 'Asia/Seoul'
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = 'static/'
+# =================================
+# 📁 정적 파일 및 미디어 설정
+# =================================
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+# 미디어 파일 설정 (.env에서 가져오기)
+MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+MEDIA_ROOT = os.path.join(BASE_DIR, os.getenv('MEDIA_ROOT', 'media'))
+
+# 파일 업로드 크기 제한
+MAX_FILE_SIZE_MB = int(os.getenv('MAX_FILE_SIZE', '50'))
+FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024  # MB to bytes
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_FILE_SIZE_MB * 2 * 1024 * 1024  # 2x for safety
+
+# =================================
+# 🔐 인증 설정
+# =================================
 AUTH_USER_MODEL = 'core.User'
 
 # CSRF 설정
@@ -193,23 +198,35 @@ CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_HTTPONLY = False
 
+# 로그인 관련 URL
 LOGIN_URL = '/account/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/account/login/'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+# =================================
+# 🌐 외부 서비스 연동
+# =================================
+# FastAPI 서버 설정
+FASTAPI_HOST = os.getenv('FASTAPI_HOST', 'localhost')
+FASTAPI_PORT = int(os.getenv('FASTAPI_PORT', '8001'))
+FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', f'http://{FASTAPI_HOST}:{FASTAPI_PORT}')
 
+# RAG 시스템 설정
+RAG_API_URL = os.getenv('RAG_API_URL', FASTAPI_BASE_URL)
+QDRANT_URL = os.getenv('QDRANT_URL', 'http://localhost:6333')
+QDRANT_COLLECTION_NAME = os.getenv('QDRANT_COLLECTION_NAME', 'rag_multiformat')
+
+# =================================
+# 🚀 기타 설정
+# =================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# FastAPI 설정
-FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')
-
-
-# 미디어 파일 설정
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# 파일 업로드 크기 제한
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+# 디버그 모드에서 설정 정보 출력
+if DEBUG:
+    print(f"🐍 Django Settings Loaded:")
+    print(f"   - Debug Mode: {DEBUG}")
+    print(f"   - Database: {DATABASES['default']['NAME']}@{DATABASES['default']['HOST']}")
+    print(f"   - FastAPI URL: {FASTAPI_BASE_URL}")
+    print(f"   - Media Root: {MEDIA_ROOT}")
+    print(f"   - RAG API: {RAG_API_URL}")
+    print(f"   - Log Level: {LOG_LEVEL}")

@@ -11,9 +11,6 @@ import random
 from random import randint
 
 
-
-
-
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
@@ -27,10 +24,10 @@ class Command(BaseCommand):
             defaults={'company_name': 'EZFLOW'}
         )
 
-        # 2. 부서 3개 (개발, 영업, HR)
-        self.stdout.write('2. 부서 3개 생성...')
+        # 2. 부서 4개 (LLM 개발, 영업, HR, 마케팅)
+        self.stdout.write('2. 부서 4개 생성...')
         departments = {}
-        for dept_name in ['개발', '영업', 'HR']:
+        for dept_name in ['LLM 개발', '영업', 'HR', '마케팅']:
             dept, _ = Department.objects.get_or_create(
                 department_name=dept_name,
                 company=company,
@@ -51,8 +48,8 @@ class Command(BaseCommand):
             admin_user = User.objects.create_user(
                 email='hr_admin@ezflow.com',  # HR 구분
                 password='123',  # 비밀번호 통일
-                first_name='관리자',
-                last_name='이',  # 성만 다르게
+                first_name='정호',
+                last_name='이',  # 실제 한국 이름으로 변경
                 employee_number=1000,
                 is_admin=True,
                 is_staff=True,
@@ -69,11 +66,25 @@ class Command(BaseCommand):
             admin_user = User.objects.get(employee_number=1000)
             self.stdout.write('   ℹ️ HR 관리자가 이미 존재합니다')
 
-        # 4. 부서별 멘티 2명, 멘토 10명
-        self.stdout.write('4. 부서별 멘티 2명, 멘토 10명 생성...')
+        # 4. 부서별 멘티 2명, 멘토 8명
+        self.stdout.write('4. 부서별 멘티 2명, 멘토 8명 생성...')
         users_by_dept = {k: {'mentors': [], 'mentees': []} for k in departments}
         emp_num = 1001
-        last_names = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '오', '한', '신', '서', '권']
+        
+        # 실제 한국 이름 목록
+        korean_names = [
+            ('김', '민수'), ('이', '영지'), ('박', '근호'), ('최', '지현'), ('정', '현우'),
+            ('강', '수진'), ('조', '동훈'), ('윤', '소영'), ('장', '준호'), ('임', '혜진'),
+            ('오', '태윤'), ('한', '미영'), ('신', '재현'), ('서', '은혜'), ('권', '성민'),
+            ('노', '다영'), ('송', '우진'), ('안', '시우'), ('홍', '예린'), ('문', '건우'),
+            ('양', '나영'), ('백', '도현'), ('허', '수아'), ('남', '민재'), ('심', '유진'),
+            ('고', '지우'), ('유', '하준'), ('전', '서현'), ('류', '민호'), ('구', '아름'),
+            ('변', '준영'), ('엄', '지수'), ('원', '태현'), ('이', '소민'), ('차', '동현'),
+            ('주', '예지'), ('명', '현수'), ('배', '서윤'), ('도', '민규'), ('진', '하영'),
+            ('마', '준석'), ('석', '예은'), ('선', '민찬'), ('설', '지민'), ('길', '서준'),
+            ('연', '채원'), ('방', '시현'), ('표', '도윤'), ('범', '하은'), ('변', '준우')
+        ]
+        
         tag_pool_mentee = [
             '#성장', '#도전', '#학습', '#열정', '#협업', '#창의', '#긍정', '#노력', '#초보', '#신입', '#온보딩', '#멘티', '#호기심', '#목표', '#발전'
         ]
@@ -83,10 +94,12 @@ class Command(BaseCommand):
         for dept_idx, (dept_name, dept) in enumerate(departments.items()):
             self.stdout.write(f'  - {dept_name}팀 멘티/멘토 생성')
             # 부서별 prefix
-            if dept_name == '개발':
+            if dept_name == 'LLM 개발':
                 email_prefix = 'dev'
             elif dept_name == '영업':
                 email_prefix = 'sale'
+            elif dept_name == '마케팅':
+                email_prefix = 'mkt'
             else:
                 email_prefix = 'hr'
             # 멘티 2명
@@ -94,12 +107,13 @@ class Command(BaseCommand):
                 mentee_email = f'{email_prefix}_mentee{i+1}@ezflow.com'
                 # 이메일 중복 체크
                 if not User.objects.filter(email=mentee_email).exists():
-                    last_name = last_names[(dept_idx*2 + i) % len(last_names)]
+                    # 실제 한국 이름 사용
+                    last_name, first_name = korean_names[(dept_idx*2 + i) % len(korean_names)]
                     mentee_tags = [f'#{dept_name}', '#멘티'] + random.sample(tag_pool_mentee, 2)
                     mentee = User.objects.create_user(
                         email=mentee_email,
                         password='123',
-                        first_name='멘티',
+                        first_name=first_name,
                         last_name=last_name,
                         employee_number=emp_num,
                         is_admin=False,
@@ -118,17 +132,18 @@ class Command(BaseCommand):
                     mentee = User.objects.get(email=mentee_email)
                     users_by_dept[dept_name]['mentees'].append(mentee)
                 emp_num += 1
-            # 멘토 10명
-            for i in range(10):
+            # 멘토 8명
+            for i in range(8):
                 mentor_email = f'{email_prefix}_mentor{i+1}@ezflow.com'
                 # 이메일 중복 체크
                 if not User.objects.filter(email=mentor_email).exists():
-                    last_name = last_names[(dept_idx*10 + i) % len(last_names)]
+                    # 실제 한국 이름 사용
+                    last_name, first_name = korean_names[(dept_idx*8 + i + 8) % len(korean_names)]  # +8로 멘티와 다른 이름 사용
                     mentor_tags = [f'#{dept_name}', '#멘토'] + random.sample(tag_pool_mentor, 2)
                     mentor = User.objects.create_user(
                         email=mentor_email,
                         password='123',
-                        first_name='멘토',
+                        first_name=first_name,
                         last_name=last_name,
                         employee_number=emp_num,
                         is_admin=False,
@@ -148,7 +163,7 @@ class Command(BaseCommand):
                     users_by_dept[dept_name]['mentors'].append(mentor)
                 emp_num += 1
 
-        # 7. Docs (공통, 개발, 영업)
+        # 7. Docs (공통, LLM 개발, 영업, 마케팅)
         self.stdout.write('7. 부서별 문서(Docs) 생성...')
         Docs.objects.get_or_create(
             department=departments['HR'],
@@ -160,11 +175,11 @@ class Command(BaseCommand):
             }
         )
         Docs.objects.get_or_create(
-            department=departments['개발'],
-            title='프로그램 메뉴얼',
+            department=departments['LLM 개발'],
+            title='LLM 개발 가이드',
             defaults={
-                'description': '개발팀용 프로그램 메뉴얼',
-                'file_path': '/docs/dev_manual.pdf',
+                'description': 'LLM 개발팀용 AI 모델 개발 가이드',
+                'file_path': '/docs/llm_dev_guide.pdf',
                 'common_doc': False
             }
         )
@@ -177,6 +192,16 @@ class Command(BaseCommand):
                 'common_doc': False
             }
         )
+        Docs.objects.get_or_create(
+            department=departments['마케팅'],
+            title='마케팅 캠페인 가이드',
+            defaults={
+                'description': '마케팅팀 캠페인 기획 및 실행 가이드',
+                'file_path': '/docs/marketing_guide.pdf',
+                'common_doc': False
+            }
+        )
+
 
         # 8. 멘토쉽의 멘티 직무에 맞는 Curriculum 및 TaskManage 샘플 생성
         self.stdout.write('8. 공용/부서별 온보딩 커리큘럼(Curriculum) 및 세부 Task(TaskManage) 생성...')
@@ -205,24 +230,24 @@ class Command(BaseCommand):
                 ]
             },
             {
-                'title': '개발부서 온보딩',
-                'desc': '개발팀 신입사원을 위한 실무 온보딩',
+                'title': 'LLM 개발부서 온보딩',
+                'desc': 'LLM 개발팀 신입사원을 위한 AI 모델 개발 온보딩',
                 'common': False,
-                'department': '개발',
-                'week_schedule': '1주차: 개발환경 세팅 및 코드리뷰 참여\n2주차: 개발가이드 숙지 및 빌드/배포 실습\n3주차: API 문서 활용 및 테스트 코드 작성\n4주차: 이슈트래커 사용법 및 개발팀 회의 참석\n5주차: 신규 기능 구현 및 배포 프로세스 이해\n6주차: 기술부채 관리 및 성장계획 수립',
+                'department': 'LLM 개발',
+                'week_schedule': '1주차: Python/PyTorch 환경 세팅 및 LLM 기초 이론\n2주차: 데이터셋 처리 및 전처리 실습\n3주차: 모델 훈련 및 파인튜닝 실습\n4주차: 모델 평가 및 벤치마크 테스트\n5주차: 모델 배포 및 API 서빙 실습\n6주차: MLOps 파이프라인 구축 및 성장계획 수립',
                 'tasks': [
-                    (1, '개발환경 세팅', 'IDE, Git, 패키지 설치'),
-                    (1, '코드리뷰 참여하기', '팀 코드리뷰 프로세스 체험'),
-                    (2, '사내 개발가이드 숙지', '코딩 컨벤션, 브랜치 전략 등'),
-                    (2, '프로젝트 빌드/배포 실습', '로컬 빌드, 테스트, 배포'),
-                    (3, 'API 문서 활용', 'Swagger 등 API 문서 확인'),
-                    (3, '테스트 코드 작성', '단위테스트, 통합테스트 실습'),
-                    (4, '이슈트래커 사용법', 'Jira, GitHub Issues 등 실습'),
-                    (4, '개발팀 회의 참석', '정기/비정기 회의 참여'),
-                    (5, '프로젝트 신규 기능 구현', '작은 기능 직접 구현'),
-                    (5, '배포 프로세스 이해', 'CI/CD 파이프라인 체험'),
-                    (6, '기술부채 관리', '리팩토링, 문서화 실습'),
-                    (6, '개발자 성장계획 수립', '멘토와 성장목표 설정'),
+                    (1, 'Python/PyTorch 환경 세팅', 'CUDA, PyTorch, Transformers 라이브러리 설치'),
+                    (1, 'LLM 기초 이론 학습', 'Transformer, GPT, BERT 아키텍처 이해'),
+                    (2, '데이터셋 전처리', '텍스트 데이터 토크나이징 및 전처리 실습'),
+                    (2, '데이터 로더 구현', 'DataLoader 및 배치 처리 실습'),
+                    (3, '모델 파인튜닝 실습', 'Pre-trained 모델 파인튜닝 실습'),
+                    (3, '하이퍼파라미터 튜닝', '학습률, 배치사이즈 등 최적화'),
+                    (4, '모델 평가 지표 학습', 'BLEU, ROUGE, Perplexity 등 평가'),
+                    (4, '벤치마크 테스트', '표준 데이터셋으로 성능 평가'),
+                    (5, '모델 배포 실습', 'FastAPI로 모델 서빙 구현'),
+                    (5, 'API 최적화', '추론 속도 및 메모리 최적화'),
+                    (6, 'MLOps 파이프라인 구축', 'MLflow, DVC 등 도구 활용'),
+                    (6, 'LLM 개발자 성장계획 수립', '멘토와 AI 전문가 성장목표 설정'),
                 ]
             },
             {
@@ -265,6 +290,27 @@ class Command(BaseCommand):
                     (5, '근태 기록 관리', '근태 시스템 실습'),
                     (6, '퇴직 절차 안내', '퇴직 프로세스 실습'),
                     (6, 'HR 성장계획 수립', '멘토와 성장목표 설정'),
+                ]
+            },
+            {
+                'title': '마케팅팀 온보딩',
+                'desc': '마케팅팀 신입사원을 위한 실무 온보딩',
+                'common': False,
+                'department': '마케팅',
+                'week_schedule': '1주차: 마케팅 전략 이해 및 브랜드 가이드 숙지\n2주차: 캠페인 기획 실습 및 광고 플랫폼 교육\n3주차: 콘텐츠 제작 및 SNS 마케팅 실습\n4주차: 데이터 분석 도구 활용 및 성과 측정\n5주차: 고객 세분화 및 타겟팅 전략 수립\n6주차: 마케팅 예산 관리 및 ROI 분석',
+                'tasks': [
+                    (1, '마케팅 전략 이해', '회사 마케팅 전략 및 목표 파악'),
+                    (1, '브랜드 가이드 숙지', '브랜드 아이덴티티 및 가이드라인 학습'),
+                    (2, '캠페인 기획 실습', '마케팅 캠페인 기획안 작성'),
+                    (2, '광고 플랫폼 교육', 'Google Ads, Facebook Ads 등 플랫폼 교육'),
+                    (3, '콘텐츠 제작', '마케팅 콘텐츠 기획 및 제작'),
+                    (3, 'SNS 마케팅 실습', '소셜미디어 마케팅 전략 및 실습'),
+                    (4, '데이터 분석 도구 활용', 'GA, 마케팅 분석 툴 사용법'),
+                    (4, '성과 측정', '마케팅 KPI 설정 및 성과 분석'),
+                    (5, '고객 세분화', '타겟 고객 분석 및 페르소나 설정'),
+                    (5, '타겟팅 전략 수립', '세그먼트별 마케팅 전략 수립'),
+                    (6, '마케팅 예산 관리', '예산 배분 및 관리 방법 학습'),
+                    (6, 'ROI 분석', '마케팅 투자 대비 효과 분석'),
                 ]
             },
             {
@@ -354,19 +400,19 @@ class Command(BaseCommand):
         # 9. ChatSession별 ChatMessage 샘플 생성 (직무별 3~5개, 내용 다르게)
         self.stdout.write('9. ChatSession/ChatMessage 샘플 생성...')
         job_message_samples = {
-            '개발': [
-                '프로그램 매뉴얼을 어디서 볼 수 있나요?',
-                'Git 사용법이 잘 이해가 안돼요.',
-                'Django에서 모델을 추가하려면 어떻게 해야 하나요?',
-                '코드 리뷰는 어떤 방식으로 진행되나요?',
-                '개발 환경 세팅이 궁금합니다.',
-                '테스트 코드는 어떻게 작성하나요?',
-                '배포 프로세스가 궁금합니다.',
-                'API 문서는 어디에 있나요?',
-                '코드 컨벤션은 어떻게 되나요?',
-                '신규 프로젝트 세팅 방법이 궁금해요.',
-                '에러 로그는 어디서 확인하나요?',
-                'CI/CD 파이프라인 설명 부탁드립니다.'
+            'LLM 개발': [
+                'PyTorch 설치가 안 되는데 어떻게 해야 하나요?',
+                'Transformer 모델 구조가 이해가 안 가요.',
+                'CUDA 메모리 부족 오류가 나는데 해결 방법이 있나요?',
+                '데이터셋 전처리는 어떻게 하나요?',
+                '모델 파인튜닝 시 학습률은 어떻게 설정하나요?',
+                'BLEU 점수는 어떻게 계산하나요?',
+                '모델 배포는 어떻게 하나요?',
+                'MLOps 파이프라인은 어떻게 구축하나요?',
+                'GPU 사용량을 최적화하려면 어떻게 해야 하나요?',
+                'Hugging Face 모델을 어떻게 사용하나요?',
+                'LLM 평가 지표에는 어떤 것들이 있나요?',
+                'LoRA 파인튜닝은 어떻게 하나요?'
             ],
             '영업': [
                 '고객사 DB는 어디서 관리하나요?',
@@ -395,22 +441,36 @@ class Command(BaseCommand):
                 '사내 이벤트 일정은 어디서 확인하나요?',
                 '인사 발령 공지는 어디서 확인하나요?',
                 '근태 기록은 어떻게 확인하나요?'
+            ],
+            '마케팅': [
+                '마케팅 캠페인 기획은 어떻게 하나요?',
+                '브랜드 가이드라인은 어디서 확인하나요?',
+                'SNS 마케팅 전략이 궁금합니다.',
+                '광고 예산은 어떻게 배정되나요?',
+                '타겟 고객 분석 방법을 알려주세요.',
+                '콘텐츠 제작 가이드가 있나요?',
+                '마케팅 성과는 어떻게 측정하나요?',
+                '경쟁사 마케팅 분석 자료가 있나요?',
+                '마케팅 회의 일정은 어떻게 확인하나요?',
+                '고객 피드백은 어디서 확인하나요?',
+                'A/B 테스트는 어떻게 진행하나요?',
+                '마케팅 도구 사용법이 궁금합니다.'
             ]
         }
         job_chatbot_answers = {
-            '개발': [
-                '프로그램 매뉴얼은 사내 위키 또는 개발팀 공유 폴더에서 확인하실 수 있습니다.',
-                'Git 사용법 관련 자료는 온보딩 문서와 사내 교육 영상을 참고해 주세요.',
-                'Django 모델 추가는 models.py에 클래스 정의 후 makemigrations, migrate 하시면 됩니다.',
-                '코드 리뷰는 GitHub PR을 통해 진행하며, 팀원들이 코멘트를 남깁니다.',
-                '개발 환경 세팅 가이드는 사내 위키에 상세히 안내되어 있습니다.',
-                '테스트 코드는 pytest 예제와 사내 가이드 문서를 참고해 주세요.',
-                '배포 프로세스는 Jenkins를 통해 자동화되어 있습니다.',
-                'API 문서는 Swagger에서 확인 가능합니다.',
-                '코드 컨벤션은 사내 개발 가이드 문서를 참고해 주세요.',
-                '신규 프로젝트 세팅은 템플릿 저장소를 복제해 시작합니다.',
-                '에러 로그는 Sentry와 서버 로그에서 확인할 수 있습니다.',
-                'CI/CD 파이프라인은 개발팀 위키에 상세히 설명되어 있습니다.'
+            'LLM 개발': [
+                'PyTorch는 CUDA 버전을 확인하여 맞는 버전을 설치해주세요. 사내 개발환경 가이드를 참고하세요.',
+                'Transformer는 Attention 메커니즘 기반 모델입니다. 사내 AI 교육자료를 참고해 주세요.',
+                'CUDA 메모리 부족시 배치사이즈를 줄이거나 gradient_checkpointing을 사용해보세요.',
+                '데이터셋 전처리는 토크나이저를 사용하며, 팀 가이드 문서에 예제가 있습니다.',
+                '모델 파인튜닝시 일반적으로 1e-5 ~ 5e-5 학습률을 사용합니다. 실험을 통해 최적값을 찾으세요.',
+                'BLEU 점수는 sacrebleu 라이브러리를 사용하여 계산할 수 있습니다.',
+                '모델 배포는 FastAPI나 TorchServe를 사용합니다. 배포 가이드를 참고하세요.',
+                'MLOps는 MLflow와 DVC를 사용합니다. 파이프라인 구축 문서를 확인해주세요.',
+                'GPU 최적화는 mixed precision과 gradient accumulation을 활용하세요.',
+                'Hugging Face는 transformers 라이브러리를 통해 사용할 수 있습니다.',
+                'LLM 평가에는 BLEU, ROUGE, Perplexity, BERTScore 등이 있습니다.',
+                'LoRA는 PEFT 라이브러리를 사용하여 효율적인 파인튜닝이 가능합니다.'
             ],
             '영업': [
                 '고객사 DB는 CRM 시스템에서 관리합니다. 접근 권한은 영업팀장에게 문의하세요.',
@@ -439,6 +499,20 @@ class Command(BaseCommand):
                 '사내 이벤트 일정은 사내 캘린더에서 확인할 수 있습니다.',
                 '인사 발령 공지는 인트라넷 공지사항에 게시됩니다.',
                 '근태 기록은 인사관리 시스템에서 확인 가능합니다.'
+            ],
+            '마케팅': [
+                '마케팅 캠페인 기획은 마케팅팀 템플릿을 참고해 주세요.',
+                '브랜드 가이드라인은 마케팅팀 공유 폴더에서 확인할 수 있습니다.',
+                'SNS 마케팅 전략은 마케팅 매뉴얼 4장을 참고해 주세요.',
+                '광고 예산 배정은 분기별 마케팅 계획에 따라 결정됩니다.',
+                '타겟 고객 분석은 마케팅 분석 도구와 고객 데이터를 활용해 주세요.',
+                '콘텐츠 제작 가이드는 브랜드 가이드라인 내에 포함되어 있습니다.',
+                '마케팅 성과는 KPI 대시보드에서 실시간으로 확인할 수 있습니다.',
+                '경쟁사 마케팅 분석 자료는 전략기획팀에서 제공합니다.',
+                '마케팅 회의 일정은 팀 캘린더에서 확인 가능합니다.',
+                '고객 피드백은 CRM 시스템과 소셜미디어 모니터링 툴에서 확인하세요.',
+                'A/B 테스트는 마케팅 분석 플랫폼을 활용해 진행합니다.',
+                '마케팅 도구 사용법은 온보딩 교육과 사내 매뉴얼을 참고해 주세요.'
             ]
         }
 
@@ -546,9 +620,12 @@ class Command(BaseCommand):
                         # 상위 TaskAssign에 대한 하위 태스크 생성 (1~3개)
                         num_subtasks = randint(1, 3)
                         subtask_templates = {
-                            '개발환경 세팅': ['IDE 설치', '깃허브 연동', '패키지 설치'],
-                            '코드리뷰 참여하기': ['PR 생성', '코드 수정', '리뷰 반영'],
-                            '사내 개발가이드 숙지': ['가이드 문서 읽기', '예시 코드 실습', '질문 정리'],
+                            'Python/PyTorch 환경 세팅': ['CUDA 드라이버 설치', 'PyTorch 설치', 'Transformers 라이브러리 설치'],
+                            'LLM 기초 이론 학습': ['논문 읽기', '아키텍처 이해', '실습 예제 수행'],
+                            '데이터셋 전처리': ['데이터 수집', '토크나이징', '배치 처리'],
+                            '모델 파인튜닝 실습': ['모델 로드', '학습 설정', '파인튜닝 실행'],
+                            '모델 평가 지표 학습': ['평가 스크립트 작성', '지표 계산', '결과 분석'],
+                            '모델 배포 실습': ['API 서버 구축', '모델 로드', '추론 테스트'],
                             '고객사 DB 열람': ['CRM 접속', '고객 정보 확인', '데이터 분석'],
                             '영업 스크립트 학습': ['기본 스크립트 암기', '상황별 대응법', '롤플레잉 연습'],
                             '인사관리 시스템 실습': ['시스템 접속', '기능별 실습', '테스트 데이터 입력'],
@@ -584,7 +661,93 @@ class Command(BaseCommand):
                         
                         # TaskAssign에 대한 멘토-멘티 댓글(Memo) 생성 (2~3개)
                         num_memos = randint(2, 3)
-                        memo_templates = {
+                        
+                        # 부서별 맞춤형 멘토-멘티 댓글 템플릿
+                        dept_specific_templates = {
+                            'LLM 개발': {
+                                'mentor': [
+                                    "PyTorch 환경 세팅이 잘 되셨나요? CUDA 버전 확인이 중요합니다.",
+                                    "Transformer 모델 구조 이해가 어려우시면 Attention 메커니즘부터 차근차근 공부해보세요.",
+                                    "데이터셋 전처리 시 토크나이징이 핵심입니다. 예제 코드를 참고해보세요.",
+                                    "파인튜닝할 때 학습률을 1e-5부터 시작해보시고 점진적으로 조정해보세요.",
+                                    "BLEU 점수 계산은 sacrebleu 라이브러리 사용하시면 됩니다. 궁금하면 언제든 물어보세요.",
+                                    "모델 배포 시 FastAPI를 활용하면 효율적입니다. 참고 자료 공유드릴게요.",
+                                    "GPU 메모리 최적화가 중요해요. gradient_checkpointing을 활용해보세요."
+                                ],
+                                'mentee': [
+                                    "PyTorch 설치가 계속 오류가 나는데 도움을 받을 수 있을까요?",
+                                    "Transformer 논문을 읽어봤는데 Multi-Head Attention 부분이 이해가 안 가요.",
+                                    "데이터 전처리 과정에서 토크나이저 사용법이 궁금합니다.",
+                                    "파인튜닝 실습 중 CUDA out of memory 오류가 발생했습니다.",
+                                    "모델 평가 지표들의 차이점을 알고 싶어요.",
+                                    "배포한 모델의 추론 속도가 너무 느린 것 같아요.",
+                                    "Hugging Face 모델을 로드하는 방법을 알려주세요."
+                                ]
+                            },
+                            '영업': {
+                                'mentor': [
+                                    "CRM 시스템 사용법 익히셨나요? 고객 관리의 핵심입니다.",
+                                    "영업 스크립트는 상황별로 다르게 적용하시는 게 중요해요.",
+                                    "미팅 준비할 때 고객사 배경 조사를 충분히 해보세요.",
+                                    "실적 보고서 작성 시 수치와 함께 분석도 포함해주세요.",
+                                    "경쟁사 분석은 우리 제품의 차별점을 부각시키는 방향으로 해보세요.",
+                                    "신규 고객 발굴 시 타겟팅이 중요합니다. 함께 전략을 세워봐요.",
+                                    "계약서 검토 시 주요 조항들을 꼼꼼히 확인해주세요."
+                                ],
+                                'mentee': [
+                                    "CRM에서 고객 정보를 어떻게 효율적으로 관리하나요?",
+                                    "첫 영업 미팅에서 어떤 점을 주의해야 할까요?",
+                                    "고객 불만 처리 시 어떤 절차를 따라야 하나요?",
+                                    "경쟁사 대비 우리 제품의 강점을 어떻게 어필해야 할까요?",
+                                    "영업 목표 달성을 위한 전략이 궁금해요.",
+                                    "계약 협상 시 유의할 점이 있나요?",
+                                    "실적 보고서 양식을 확인하고 싶습니다."
+                                ]
+                            },
+                            'HR': {
+                                'mentor': [
+                                    "인사관리 시스템의 각 기능들을 차근차근 익혀보세요.",
+                                    "채용 프로세스는 공정성과 객관성이 가장 중요합니다.",
+                                    "직원 상담 시 경청하는 자세가 중요해요.",
+                                    "노무관리는 법적 근거를 정확히 파악하는 게 필요합니다.",
+                                    "복리후생 제도 안내 시 직원들이 이해하기 쉽게 설명해주세요.",
+                                    "평가 제도 운영 시 공정성과 투명성을 유지해야 합니다.",
+                                    "교육 프로그램 기획 시 직원들의 니즈를 파악하는 게 중요해요."
+                                ],
+                                'mentee': [
+                                    "인사시스템에서 휴가 승인 처리는 어떻게 하나요?",
+                                    "면접 진행 시 질문해서는 안 되는 내용이 있나요?",
+                                    "퇴직금 계산 방법을 알려주세요.",
+                                    "근로기준법 관련해서 궁금한 점이 있어요.",
+                                    "직원 교육 프로그램을 어떻게 기획해야 할까요?",
+                                    "성과평가 기준을 어떻게 설정하나요?",
+                                    "사내 이벤트 예산 관리는 어떻게 하나요?"
+                                ]
+                            },
+                            '마케팅': {
+                                'mentor': [
+                                    "브랜드 가이드라인을 숙지하시고 일관성 있게 적용해보세요.",
+                                    "타겟 고객 분석이 캠페인 성공의 핵심입니다.",
+                                    "SNS 마케팅은 각 플랫폼별 특성을 이해하는 게 중요해요.",
+                                    "콘텐츠 제작 시 브랜드 톤앤매너를 유지해주세요.",
+                                    "마케팅 KPI 설정 시 측정 가능한 지표를 선택하세요.",
+                                    "A/B 테스트를 통해 최적의 전략을 찾아가세요.",
+                                    "경쟁사 마케팅 분석으로 인사이트를 얻어보세요."
+                                ],
+                                'mentee': [
+                                    "브랜드 아이덴티티를 어떻게 콘텐츠에 반영하나요?",
+                                    "타겟 페르소나 설정 방법이 궁금해요.",
+                                    "Instagram과 Facebook 마케팅 전략의 차이점은?",
+                                    "캠페인 성과 측정 도구 사용법을 알려주세요.",
+                                    "광고 예산 배분을 어떻게 해야 효율적일까요?",
+                                    "고객 피드백을 마케팅에 어떻게 활용하나요?",
+                                    "마케팅 자동화 툴 추천해 주세요."
+                                ]
+                            }
+                        }
+                        
+                        # 기본 템플릿 (부서별 템플릿이 없는 경우)
+                        default_templates = {
                             'mentor': [
                                 "안녕하세요! 이 과제에 대해 궁금한 점이 있으면 언제든 말씀해 주세요.",
                                 "진행하시면서 어려운 부분이 있으면 바로 연락 주시기 바랍니다.",
@@ -602,6 +765,14 @@ class Command(BaseCommand):
                                 "다음 단계로 진행해도 될까요?"
                             ]
                         }
+                        
+                        # 멘토와 멘티의 부서 확인
+                        mentor_dept = mentor.department.department_name if mentor.department else None
+                        mentee_dept = mentee.department.department_name if mentee.department else None
+                        
+                        # 부서별 템플릿 선택 (멘토 부서 우선, 없으면 멘티 부서, 둘 다 없으면 기본 템플릿)
+                        dept_name = mentor_dept or mentee_dept
+                        memo_templates = dept_specific_templates.get(dept_name, default_templates)
                         
                         for memo_idx in range(num_memos):
                             # 멘토/멘티 교대로 댓글 작성
@@ -679,14 +850,62 @@ class Command(BaseCommand):
 
         # 12. 멘토쉽별 종합 리포트 샘플 생성
         self.stdout.write('12. 멘토쉽별 종합 리포트 샘플 생성...')
-        report_samples = [
+        
+        # 부서별 맞춤형 리포트 템플릿
+        dept_specific_reports = {
+            'LLM 개발': [
+                '멘티는 PyTorch 환경 세팅과 LLM 기초 이론 학습에서 높은 이해도를 보였습니다. 데이터 전처리와 모델 파인튜닝 실습을 성실히 수행하였으며, 특히 GPU 메모리 최적화와 관련된 기술적 문제 해결 능력이 돋보입니다. AI/ML 분야의 전문가로 성장할 잠재력이 충분합니다.',
+                'Transformer 아키텍처 이해와 모델 평가 지표 학습에서 우수한 성과를 보였습니다. MLOps 파이프라인 구축과 모델 배포 실습을 통해 실무 역량을 키웠으며, 자기주도적 학습 태도가 인상적입니다. 향후 LLM 개발 전문가로서 큰 성장이 기대됩니다.',
+                'CUDA와 PyTorch 환경에 빠르게 적응하였으며, 파인튜닝과 모델 최적화 과제를 성실히 완료했습니다. 기술적 호기심이 높고 새로운 AI 기술 습득에 적극적입니다. 다만, 코드 최적화 부분에서 조금 더 경험을 쌓으면 좋겠습니다.',
+                'LLM 개발 전반에 걸쳐 뛰어난 학습 능력을 보였습니다. 특히 BLEU, ROUGE 등 평가 지표 활용과 FastAPI를 통한 모델 서빙에서 실무적 역량을 입증했습니다. 팀 내에서의 기술 공유와 협업 태도도 우수하여 향후 AI 팀의 핵심 인재로 성장할 것으로 예상됩니다.'
+            ],
+            '영업': [
+                '멘티는 CRM 시스템 활용과 고객사 관리에서 빠른 적응력을 보였습니다. 영업 스크립트 학습과 고객 미팅 동행을 통해 실무 감각을 키웠으며, 특히 신규 고객 발굴 과제에서 창의적인 아이디어를 제시했습니다. 영업 전문가로서의 잠재력이 높습니다.',
+                '계약 프로세스 이해와 실적 보고서 작성에서 체계적인 업무 처리 능력을 보였습니다. 고객 불만 처리와 경쟁사 분석 과제를 성실히 수행하였으며, 고객 중심적 사고와 분석적 접근 방식이 돋보입니다. 영업팀의 핵심 인재로 성장할 것으로 기대됩니다.',
+                '영업 목표 설정과 계약서 작성 실습에서 꼼꼼함과 정확성을 보였습니다. 고객과의 소통 능력이 우수하고 프로모션 정책 이해도 빠릅니다. 다만, 적극적인 영업 마인드를 더 키워나가면 좋겠습니다.',
+                '영업 전반에 걸친 이해도가 높고 실무 적응력이 뛰어납니다. CRM 데이터 분석과 영업 전략 수립에서 논리적 사고력을 보여주었으며, 팀워크와 고객 서비스 마인드가 우수합니다. 향후 영업팀 리더로 성장할 가능성이 높습니다.'
+            ],
+            'HR': [
+                '멘티는 인사관리 시스템 활용과 채용 프로세스 이해에서 높은 숙련도를 보였습니다. 복리후생 제도 안내와 직원 상담 과제를 통해 인사 업무의 전반적 흐름을 파악했으며, 특히 법규 준수와 공정성 확보에 대한 의식이 뛰어납니다.',
+                '평가 및 보상 시스템 이해와 교육 프로그램 기획에서 창의적 아이디어를 제시했습니다. 근태 관리와 인사 발령 업무를 성실히 수행하였으며, 직원들과의 소통 능력과 문제 해결 능력이 우수합니다. HR 전문가로서 큰 성장이 기대됩니다.',
+                '사내 규정 관리와 퇴직 절차 안내 업무에서 정확성과 체계성을 보였습니다. 사내 이벤트 기획 과제를 통해 조직 활성화에 대한 관심과 아이디어를 보여주었습니다. 다만, 노무 관련 법규 지식을 더 쌓아나가면 좋겠습니다.',
+                'HR 업무 전반에 대한 이해도가 높고 직원 지원 마인드가 강합니다. 인사 시스템 관리와 조직문화 개선에 대한 관심이 높으며, 공정하고 투명한 인사 업무 수행 의지를 보였습니다. 향후 HR 팀의 중추적 역할을 할 것으로 예상됩니다.'
+            ],
+            '마케팅': [
+                '멘티는 브랜드 가이드라인 숙지와 마케팅 캠페인 기획에서 창의적 사고력을 보였습니다. SNS 마케팅 실습과 콘텐츠 제작 과제를 통해 디지털 마케팅 역량을 키웠으며, 특히 타겟 고객 분석과 페르소나 설정에서 분석적 접근이 돋보입니다.',
+                '마케팅 데이터 분석 도구 활용과 성과 측정에서 우수한 역량을 보였습니다. A/B 테스트 설계와 ROI 분석 과제를 성실히 수행하였으며, 데이터 기반 의사결정 능력이 뛰어납니다. 퍼포먼스 마케팅 전문가로 성장할 잠재력이 높습니다.',
+                '광고 플랫폼 교육과 마케팅 예산 관리에서 체계적인 접근을 보였습니다. 고객 세분화와 타겟팅 전략 수립 과제에서 논리적 사고력을 발휘했으며, 브랜드 일관성 유지에 대한 이해도가 높습니다. 다만, 크리에이티브한 아이디어 발상을 더 키워나가면 좋겠습니다.',
+                '마케팅 전략 수립부터 실행까지 전반적인 프로세스를 잘 이해하고 있습니다. 경쟁사 분석과 트렌드 파악 능력이 우수하며, 고객 피드백을 마케팅에 반영하는 역량도 뛰어납니다. 종합적인 마케팅 전문가로 성장할 것으로 기대됩니다.'
+            ]
+        }
+        
+        # 기본 리포트 템플릿 (부서가 명확하지 않은 경우)
+        default_reports = [
             '멘티는 온보딩 기간 동안 적극적으로 참여하였으며, 과제 수행 능력이 우수합니다. 협업과 소통 능력이 뛰어나 향후 성장 가능성이 높습니다.',
             '과제 제출 및 피드백 반영이 성실하며, 자기주도적으로 업무를 수행하였습니다. 추가적인 실무 경험이 쌓이면 더욱 발전할 것으로 기대됩니다.',
             '업무 이해도가 높고, 새로운 환경에 빠르게 적응하였습니다. 다만, 일정 관리에 조금 더 신경 쓸 필요가 있습니다.',
             '팀원과의 협업에서 긍정적인 태도를 보였으며, 주어진 과제를 성실히 수행하였습니다. 앞으로의 성장도 기대됩니다.'
         ]
+        
         mentorships = Mentorship.objects.all()
         for idx, mentorship in enumerate(mentorships):
-            mentorship.report = random.choice(report_samples)
+            # 멘토 또는 멘티의 부서 정보 가져오기
+            mentor = User.objects.get(user_id=mentorship.mentor_id)
+            mentee = User.objects.get(user_id=mentorship.mentee_id)
+            
+            # 부서명 확인 (멘토 부서 우선, 없으면 멘티 부서)
+            mentor_dept = mentor.department.department_name if mentor.department else None
+            mentee_dept = mentee.department.department_name if mentee.department else None
+            dept_name = mentor_dept or mentee_dept
+            
+            # 부서별 맞춤 리포트 선택
+            if dept_name in dept_specific_reports:
+                report_pool = dept_specific_reports[dept_name]
+            else:
+                report_pool = default_reports
+            
+            # 랜덤하게 리포트 선택
+            mentorship.report = random.choice(report_pool)
             mentorship.save()
+            
         self.stdout.write(f'Mentorship 리포트 샘플 {mentorships.count()}개 생성 완료!')

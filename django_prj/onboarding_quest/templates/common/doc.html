@@ -392,6 +392,14 @@ body {
 {% endblock %}
 
 {% block content %}
+<script>
+  const CURRENT_DEPARTMENT_ID = {{ user.department.department_id }};
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    loadDocumentList(CURRENT_DEPARTMENT_ID);
+  });
+</script>
 <div class="doc-container">
   <div class="doc-left">
     <!-- 문서 업로드 박스 -->
@@ -410,11 +418,11 @@ body {
         <table class="doc-upload-list-table">
           <thead>
             <tr>
-              <th>파일명</th>
-              <th>설명</th>
-              <th>분류(태그)</th>
-              <th>공통문서</th>
-              <th>제거</th>
+              <th style="width:25%;">파일명</th>
+              <th style="width:40%;">설명</th>
+              
+              <th style="width:15%;">공통문서</th>
+              <th style="width:20%;">제거</th>
             </tr>
           </thead>
           <tbody id="doc-upload-list-tbody">
@@ -438,45 +446,48 @@ body {
       <table class="doc-file-list-table">
         <thead>
           <tr>
-            <th>파일명</th>
-            <th>설명</th>
-            <th>분류(태그)</th>
-            <th>관리부서</th>
-            <th>관리</th>
+            <th style="width:25%;">파일명</th>
+            <th style="width:40%;">설명</th>
+            
+            <th style="width:15%;">관리부서</th>
+            <th style="width:20%;">관리</th>
           </tr>
         </thead>
-        <tbody>
-          {% for doc in core_docs %}
-          <tr data-doc-id="{{ doc.docs_id }}">
-            <td>
-              <!-- 파일명을 다운로드 링크로 변경 -->
-              <a href="/common/doc/{{ doc.docs_id }}/download/" class="doc-download-link" title="클릭하여 다운로드"
-                target="_blank">
-                📄 {{ doc.title }}
-              </a>
-            </td>
-            <td>{{ doc.description|default:"-" }}</td>
-            <td>-</td>
-            <td>
-              {% if doc.department %}{{ doc.department.department_name }}{% else %}-{% endif %}
-            </td>
-            <td>
-              {% if user.department and doc.department and user.department.pk == doc.department.pk %}
-              <button class="doc-edit-btn" onclick="editDoc({{ doc.docs_id }})">수정</button>
-              <button class="doc-delete-btn" onclick="deleteDoc({{ doc.docs_id }})">삭제</button>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5" style="text-align: center; padding: 40px; color: var(--gray-500);">등록된 문서가 없습니다.</td>
-          </tr>
-          {% endfor %}
+        <tbody id="doc-list">
+          <!-- JS로 동적 문서 리스트 삽입됨 -->
         </tbody>
+
       </table>
     </div>
   </div>
 </div>
+
+
+<!-- 수정 모달 -->
+<div id="edit-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <h3>문서 정보 수정</h3>
+    <form id="edit-form">
+      {% csrf_token %}
+      <div style="margin-bottom: 15px;">
+        <label for="edit-description">설명:</label>
+        <textarea id="edit-description" rows="3"
+          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label for="edit-common-doc">공통문서 여부:</label>
+        <input type="checkbox" id="edit-common-doc">
+      </div>
+
+      <div class="modal-buttons">
+        <button type="button" class="modal-btn cancel" onclick="closeEditModal()">취소</button>
+        <button type="submit" class="modal-btn confirm">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 
 <!-- 삭제 확인 모달 -->
 <div class="modal-overlay" id="deleteModal" style="display: none;">
@@ -490,7 +501,7 @@ body {
   </div>
 </div>
 
-<script src="{% static 'js/common/doc.js' %}"></script>
+<script src="{% static 'js/common/doc.js' %}?v={{ now|date:'U' }}"></script>
 
 <script>
 // CSRF 토큰 가져오기
@@ -546,22 +557,26 @@ function showMessage(message, type = 'success') {
 // 문서 업로드 AJAX 처리
 document.addEventListener('DOMContentLoaded', function() {
     const uploadBtn = document.getElementById('doc-upload-btn');
-    const btnText = uploadBtn.querySelector('.btn-text');
-    const btnLoading = uploadBtn.querySelector('.btn-loading');
-    
     if (uploadBtn) {
+        const btnText = uploadBtn.querySelector('.btn-text');
+        const btnLoading = uploadBtn.querySelector('.btn-loading');
+        
         uploadBtn.addEventListener('click', async function() {
             const uploadList = document.getElementById('doc-upload-list-tbody');
-            const files = uploadList.querySelectorAll('tr');
+            if (!uploadList) {
+                showMessage('업로드할 파일 목록을 찾을 수 없습니다.', 'error');
+                return;
+            }
             
+            const files = uploadList.querySelectorAll('tr');
             if (files.length === 0) {
                 showMessage('업로드할 파일을 선택해주세요.', 'error');
                 return;
             }
             
             // 로딩 상태 시작
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'inline-flex';
+            if (btnText) btnText.style.display = 'none';
+            if (btnLoading) btnLoading.style.display = 'inline-flex';
             uploadBtn.disabled = true;
             
             try {
@@ -615,8 +630,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 showMessage(error.message || '문서 업로드 중 오류가 발생했습니다.', 'error');
             } finally {
                 // 로딩 상태 종료
-                btnText.style.display = 'inline';
-                btnLoading.style.display = 'none';
+                if (btnText) btnText.style.display = 'inline';
+                if (btnLoading) btnLoading.style.display = 'none';
                 uploadBtn.disabled = false;
             }
         });

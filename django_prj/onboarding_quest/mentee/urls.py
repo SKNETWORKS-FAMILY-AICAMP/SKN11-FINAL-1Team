@@ -11,4 +11,5 @@ urlpatterns = [
     path('task_comment/<int:task_assign_id>/', views.task_comment, name='task_comment'),
     path('create_subtask/<int:parent_id>/', views.create_subtask, name='create_subtask'),
     path('update_task_status/<int:task_id>/', views.update_task_status, name='update_task_status'),
+    path('test-status-change/', views.change_task_status_for_test, name='change_task_status_for_test'),
 ]

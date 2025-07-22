@@ -551,7 +551,7 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <a href="{% url 'account:user_update' u.user_id %}" class="action-btn action-btn-edit" title="수정">
+                                <a href="{% url 'account:user_edit' u.user_id %}" class="action-btn action-btn-edit" title="수정">
                                     <svg class="action-icon" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L5.232 11.232a2 2 0 010-2.828L9 13z"/>
                                     </svg>
@@ -629,49 +629,59 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 다중 사용자 삭제 함수
     async function deleteMultipleUsers(userIds) {
-        try {
-            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken');
-            
-            // 선택된 모든 사용자를 순차적으로 삭제
-            let successCount = 0;
-            let errorCount = 0;
-            
-            for (const userId of userIds) {
-                try {
-                    const response = await fetch(`{% url 'account:user_delete' '0' %}`.replace('0', userId), {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': csrftoken,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                        console.error(`사용자 ${userId} 삭제 실패:`, result.error);
+    try {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken');
+        
+        // 선택된 모든 사용자를 순차적으로 삭제
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const userId of userIds) {
+            try {
+                // URL 직접 문자열로 교체 (템플릿 태그 충돌 방지)
+                const url = `/account/user/${userId}/delete/`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
-                } catch (error) {
-                    errorCount++;
-                    console.error(`사용자 ${userId} 삭제 중 오류:`, error);
+                });
+
+                // JSON 응답 시도
+                let result = {};
+                try {
+                    result = await response.json();
+                } catch (err) {
+                    console.error('JSON 파싱 실패, 상태 코드:', response.status);
                 }
+
+                if (response.ok && result.success !== false) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                    console.error(`사용자 ${userId} 삭제 실패:`, result.error || '알 수 없는 오류');
+                }
+            } catch (error) {
+                errorCount++;
+                console.error(`사용자 ${userId} 삭제 중 오류:`, error);
             }
-            
-            // 결과 메시지 표시
-            if (successCount > 0) {
-                alert(`${successCount}명의 사용자가 삭제되었습니다.${errorCount > 0 ? `\n${errorCount}명의 사용자 삭제 실패.` : ''}`);
-                location.reload();
-            } else {
-                alert('사용자 삭제에 실패했습니다.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('삭제 중 오류가 발생했습니다.');
         }
+        
+        // 결과 메시지 표시
+        if (successCount > 0) {
+            alert(`${successCount}명의 사용자가 삭제되었습니다.${errorCount > 0 ? `\n${errorCount}명의 사용자 삭제 실패.` : ''}`);
+            location.reload();
+        } else {
+            alert('사용자 삭제에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('삭제 중 오류가 발생했습니다.');
     }
-});
+}
+
 
 function resetPassword(userId) {
     if (confirm('이 사용자의 비밀번호를 초기화하시겠습니까? (초기화 후 비밀번호: 123)')) {

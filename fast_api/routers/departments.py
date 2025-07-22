@@ -36,7 +36,7 @@ async def get_department(department_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{department_id}", response_model=schemas.Department)
-async def update_department(department_id: int, department: schemas.DepartmentCreate, db: Session = Depends(get_db)):
+async def update_department(department_id: int, department: schemas.DepartmentUpdate, db: Session = Depends(get_db)):
     """부서 정보 수정"""
     db_department = crud.get_department(db, department_id=department_id)
     if db_department is None:

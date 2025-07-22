@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, validator, Field
 from typing import Optional, List
 from datetime import date, datetime
 from fastapi import Form, UploadFile, File
@@ -53,6 +53,11 @@ class DepartmentBase(BaseModel):
 class DepartmentCreate(DepartmentBase):
     company_id: str
 
+class DepartmentUpdate(BaseModel):
+    department_name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
 class Department(DepartmentBase):
     department_id: int  # Integer로 다시 변경
     company_id: str
@@ -74,6 +79,7 @@ class UserBase(BaseModel):
     role: str
     employee_number: Optional[int] = None
     is_admin: Optional[bool] = False
+    profile_image: Optional[str] = None
     
     @validator('first_name', 'last_name', 'job_part', 'role', 'position')
     def name_fields_must_not_be_empty(cls, v):
@@ -107,10 +113,34 @@ class User(UserBase):
     company_id: Optional[str] = None
     mentorship_id: Optional[int] = None
     last_login: Optional[datetime] = None
+    profile_image: Optional[str] = None
     is_active: Optional[bool] = True
     is_staff: Optional[bool] = False
     department: Optional[Department] = None
     company: Optional[Company] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class AlarmBase(BaseModel):
+    message: str
+    is_active: Optional[bool] = True
+    
+    @validator('message')
+    def message_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('알림 메시지는 비어있을 수 없습니다')
+        return v.strip()
+
+class AlarmCreate(AlarmBase):
+    user_id: int
+
+class Alarm(AlarmBase):
+    id: int
+    user_id: int
+    created_at: Optional[datetime] = None
+    user: Optional[User] = None
     
     class Config:
         from_attributes = True
@@ -177,9 +207,15 @@ class TaskAssign(TaskAssignBase):
     task_assign_id: int
     parent_id: Optional[int] = None
     mentorship_id: int
-    parent: Optional['TaskAssign'] = None
-    subtasks: Optional[List['TaskAssign']] = None
-    mentorship: Optional['Mentorship'] = None
+    
+    class Config:
+        from_attributes = True
+
+# 순환 참조를 피하기 위한 응답용 스키마
+class TaskAssignResponse(TaskAssignBase):
+    task_assign_id: int
+    parent_id: Optional[int] = None
+    mentorship_id: int
     
     class Config:
         from_attributes = True
@@ -191,23 +227,47 @@ class MentorshipBase(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     is_active: Optional[bool] = True
-    curriculum_title: str
+    curriculum_title: Optional[str] = None  # Django 모델에 맞게 curriculum_title 사용
     total_weeks: Optional[int] = 0
 
 class MentorshipCreate(MentorshipBase):
     pass
 
 class Mentorship(MentorshipBase):
-    mentorship_id: int
+    mentorship_id: int  # Django 모델의 기본키
     mentor: Optional[User] = None
     mentee: Optional[User] = None
     
     class Config:
         from_attributes = True
 
+class MentorshipResponse(BaseModel):
+    """FastAPI 응답용 풍부한 멘토십 정보"""
+    id: int
+    mentor_id: int
+    mentee_id: int
+    curriculum_id: Optional[int] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    status: Optional[str] = "active"
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    # 추가 정보
+    mentee_name: str
+    mentor_name: str
+    curriculum_title: str
+    total_weeks: int
+    total_tasks: int
+    completed_tasks: int
+    tags: List[str] = []
+    
+    class Config:
+        from_attributes = True
+
 
 class MemoBase(BaseModel):
-    create_date: Optional[date] = None
+    create_date: Optional[datetime] = None
     comment: Optional[str] = None
 
 class MemoCreate(MemoBase):
@@ -218,8 +278,7 @@ class Memo(MemoBase):
     memo_id: int
     task_assign_id: int
     user_id: int
-    task_assign: Optional[TaskAssign] = None
-    user: Optional[User] = None
+    user: Optional['User'] = None  # 사용자 정보 포함
     
     class Config:
         from_attributes = True
@@ -227,6 +286,7 @@ class Memo(MemoBase):
 
 class ChatSessionBase(BaseModel):
     summary: Optional[str] = None
+    is_active: Optional[bool] = True
 
 class ChatSessionCreate(ChatSessionBase):
     user_id: int
@@ -244,6 +304,7 @@ class ChatMessageBase(BaseModel):
     message_type: str
     message_text: Optional[str] = None
     create_time: Optional[date] = None
+    is_active: Optional[bool] = True
 
 class ChatMessageCreate(ChatMessageBase):
     session_id: int
@@ -265,11 +326,13 @@ class DocsBase(BaseModel):
 
 class DocsCreate(DocsBase):
     department_id: int  # Integer로 다시 변경
+    original_file_name: Optional[str] = None
 
 class Docs(DocsBase):
     docs_id: int
     create_time: datetime
     department_id: int  # Integer로 다시 변경
+    original_file_name: Optional[str] = None
     department: Optional[Department] = None
     
     class Config:
@@ -364,3 +427,48 @@ class FileUploadResponse(BaseModel):
     file_size: int
     content_type: str
     upload_time: datetime
+
+
+# RAG 관련 스키마
+class RagChatRequest(BaseModel):
+    question: str
+    session_id: Optional[int] = None
+    user_id: int
+    department_id: int
+
+class RagChatResponse(BaseModel):
+    answer: str
+    session_id: int
+    contexts: List[str] = []
+    summary: Optional[str] = None
+    used_rag: bool = False
+    success: bool = True
+
+class DocumentUploadRequest(BaseModel):
+    department_id: int
+    common_doc: bool = False
+    original_file_name: str = ""
+    description: str = ""
+
+class DocumentUploadResponse(BaseModel):
+    success: bool
+    chunks_uploaded: Optional[int] = None
+    original_file: Optional[str] = None
+    saved_path: Optional[str] = None
+    docs_id: Optional[int] = None
+    error: Optional[str] = None
+
+class SessionListResponse(BaseModel):
+    success: bool
+    sessions: List[dict] = []
+    error: Optional[str] = None
+
+class MessageListResponse(BaseModel):
+    success: bool
+    messages: List[dict] = []
+    error: Optional[str] = None
+
+class DocumentListResponse(BaseModel):
+    success: bool
+    docs: List[dict] = []
+    error: Optional[str] = None
