@@ -17,6 +17,9 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langchain_core.messages import SystemMessage, HumanMessage
 import threading
 from contextlib import contextmanager
+
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
@@ -59,7 +62,7 @@ logging.basicConfig(level=logging.INFO)
 
 # LangChain 구성
 client = QdrantClient(url=QDRANT_URL)
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-large")
 llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
 
 WINDOW_SIZE = 10
@@ -342,61 +345,77 @@ def decide_to_reflect_improved(state: AgentState) -> str:
     else:
         return "summarize"
 
-# 사용자별 필터링 검색 함수
-def search_documents_filtered(state: AgentState) -> AgentState:
-    """사용자 부서별 문서 필터링 검색"""
+
+def search_documents_with_rerank(state: AgentState) -> AgentState:
     query = state.get("rewritten_question") or state["question"]
     user_department_id = state.get("user_department_id")
-    
+
     query_vec = embeddings.embed_query(query)
-    
-    # 사용자 부서 문서 + 공통 문서만 검색
+
+    # 부서별 필터
     if user_department_id:
         search_filter = Filter(
             should=[
-                FieldCondition(
-                    key="metadata.department_id",
-                    match=MatchValue(value=user_department_id)
-                ),
-                FieldCondition(
-                    key="metadata.common_doc",
-                    match=MatchValue(value=True)
-                )
+                FieldCondition(key="metadata.department_id", match=MatchValue(value=user_department_id)),
+                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
             ]
         )
     else:
-        # 부서 정보가 없으면 공통 문서만 검색
         search_filter = Filter(
             must=[
-                FieldCondition(
-                    key="metadata.common_doc",
-                    match=MatchValue(value=True)
-                )
+                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
             ]
         )
-    
+
+    # Qdrant에서 유사도 기반 top-10 검색
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vec,
         query_filter=search_filter,
-        limit=3,
+        limit=10,
         with_payload=True
     )
 
-    logger.info(f"[🔍 Qdrant 검색 결과 수] {len(results)}")
-    
+    if not results:
+        return {**state, "contexts": []}
+
+    # GPT rerank 프롬프트 구성
+    prompt_chunks = ""
+    for i, r in enumerate(results, 1):
+        title = r.payload.get("metadata", {}).get("title", f"청크 {i}")
+        chunk = r.payload.get("text", "")
+        prompt_chunks += f"\n청크 {i} ({title}):\n{chunk}\n"
+
+    rerank_prompt = f"""
+다음 질문과 가장 관련 있는 청크를 3개 이내로 선택해 주세요.
+
+질문:
+{query}
+
+후보 청크:
+{prompt_chunks}
+
+선택한 청크의 번호를 쉼표로 구분해서 출력하세요 (예: 1,3,5).
+다른 설명은 하지 마세요.
+"""
+
+    response = llm.invoke(rerank_prompt).content.strip()
+    selected_nums = [int(x.strip()) for x in re.findall(r'\d+', response)]
+
     contexts = []
-    for r in results:
-        title = r.payload.get("metadata", {}).get("title", "무제")
-        text = r.payload.get("text", "")
-        # file_name = r.payload.get("metadata", {}).get("file_name", "알 수 없음")
-        file_name = (
-    r.payload.get("metadata", {}).get("original_file_name") or
-    r.payload.get("metadata", {}).get("file_name", "알 수 없음")
-)
-        contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-    
+    for idx in selected_nums:
+        if 1 <= idx <= len(results):
+            r = results[idx - 1]
+            title = r.payload.get("metadata", {}).get("title", "무제")
+            text = r.payload.get("text", "")
+            file_name = (
+                r.payload.get("metadata", {}).get("original_file_name") or
+                r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+            )
+            contexts.append(f"[{title}] (출처: {file_name})\n{text}")
+
     return {**state, "contexts": contexts}
+
 
 # 세션 요약 함수 (PostgreSQL 버전)
 def summarize_session(state: AgentState) -> AgentState:
@@ -454,16 +473,6 @@ def summarize_session(state: AgentState) -> AgentState:
 def decide_use_rag(state: AgentState) -> AgentState:
     return state
 
-# def get_use_rag_condition(state: AgentState) -> str:
-#     question = state["question"]
-#     prompt = f"""다음 질문을 읽고, 사내 문서나 규정과 같은 참고 문서가 필요한 질문인지 판단하세요.
-
-# 질문: "{question}"
-
-# 문서가 필요하면 "use_rag", 아니면 "skip_rag"만 출력하세요."""
-    
-#     result = llm.invoke(prompt).content.strip().lower()
-#     return "use_rag" if "use" in result else "skip_rag"
 
 def get_use_rag_condition(state: AgentState) -> str:
     question = state["question"]
@@ -518,17 +527,23 @@ def generate_answer(state: AgentState) -> AgentState:
 지금까지의 대화 기록:
 {history_text}
 
-아래 질문에 대해 context에 충실하게 자세히 답변하세요.
-→ 반드시 형식: "제X조 조항명 에 따르면 ..."
+아래 질문에 대해 context에 충실하게, 정확하고 자연스럽게 답변하세요.
 
-참고 조항: {ref_titles}
+💡 규칙:
+- context에 관련 조항이 명확히 포함된 경우에만 "제X조 조항명에 따르면 ..." 형식을 사용하세요.
+- context에 직접적인 관련이 없을 경우 "해당 내용은 명시된 조항에서 확인되지 않았습니다"라고 답하세요.
+- context에 없는 정보를 임의로 생성하지 마세요.
+- 질문과 관련된 context 조항이 여러 개라면, 모두 인용하고 내용을 비교하여 설명하세요.
+
+📚 참고 조항: {ref_titles}
 
 Context:
 {context}
 
-Question: {question}
+질문: {question}
 
-Answer:"""
+정확하고 친절한 답변:
+"""
     
     response = llm.invoke(prompt)
     answer_text = response.content.strip()
@@ -565,7 +580,9 @@ Answer:"""
 builder = StateGraph(AgentState)
 builder.add_node("decide", decide_use_rag)
 builder.add_node("judge_rag", get_use_rag_condition)
-builder.add_node("search", search_documents_filtered)  # 필터링 검색으로 변경
+# builder.add_node("search", search_documents_filtered)  # 필터링 검색으로 변경
+builder.add_node("search", search_documents_with_rerank)
+
 builder.add_node("answer", generate_answer)
 builder.add_node("judge", judge_answer_improved)  # 개선된 함수 사용
 builder.add_node("rewrite", reformulate_question_improved)  # 개선된 함수 사용

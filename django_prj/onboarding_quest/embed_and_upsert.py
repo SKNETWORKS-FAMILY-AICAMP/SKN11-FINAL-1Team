@@ -10,6 +10,8 @@ from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from loaders import load_documents
 import uuid
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 # 로깅 설정
 os.makedirs("log", exist_ok=True)
@@ -27,11 +29,11 @@ load_dotenv()
 QDRANT_URL = os.getenv("QDRANT_URL")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 COLLECTION_NAME = "rag_multiformat"
-VECTOR_SIZE = 1536
+VECTOR_SIZE = 3072
 
 # Qdrant 클라이언트 및 임베딩 모델 초기화
 client = QdrantClient(url=QDRANT_URL)
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-small")
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-large")
 
 # 조항 패턴 목록 (멀티 포맷 대응)
 SECTION_PATTERNS = [
@@ -107,6 +109,10 @@ def get_existing_point_ids():
             existing_ids.add(f"{file}-{chunk_id}")
     return existing_ids
 
+
+
+
+
 # 문서 임베딩 및 Qdrant 업로드 (개선된 버전)
 def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, common_doc=False, original_file_name=None) -> int:
     """
@@ -131,8 +137,8 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
         logging.info(f"조항 추출 개수: {len(sections)}")
         
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=512,
-            chunk_overlap=50,
+            chunk_size=768,
+            chunk_overlap=100,
             separators=["\n\n", "\n", ".", " ", ""],
         )
         
@@ -140,7 +146,9 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
         for title, content in sections:
             chunks = text_splitter.split_text(content)
             for chunk in chunks:
-                combined_text = f"[{title}]\n{chunk}"
+                # combined_text = f"[{title}]\n{chunk}"
+                combined_text = f"이 내용은 '{title}'에 대한 설명입니다.\n\n{chunk}"
+
                 split_docs.append(Document(page_content=combined_text, metadata={"title": title}))
         
         logging.info(f"최종 청크 개수: {len(split_docs)}")
@@ -162,8 +170,7 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
             doc.metadata["department_id"] = department_id  # 부서 ID 추가
             doc.metadata["common_doc"] = common_doc        # 공통 문서 여부 추가
             doc.metadata["file_name"] = os.path.basename(file_path)  # 파일명 추가
-            if original_file_name:
-                doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
+            doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
             
             new_points.append(
     PointStruct(
@@ -194,6 +201,10 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
     except Exception as e:
         logging.error(f"{file_path} 처리 중 오류 발생: {e}")
         return 0
+
+
+
+
 
 # 다중 파일 자동 처리 엔트리포인트
 if __name__ == "__main__":
