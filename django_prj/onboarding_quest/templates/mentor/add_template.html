@@ -212,6 +212,32 @@
       padding: 18px 48px 18px 48px;
       z-index: 10000;
     }
+    
+    /* 로딩 스피너 스타일 */
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .btn-loading {
+      display: none;
+      align-items: center;
+    }
+    
+    .template-btn:disabled {
+      background: #999 !important;
+      cursor: not-allowed;
+    }
   </style>
 {% endblock %}
 
@@ -233,7 +259,13 @@
         <label class="template-form-label">커리큘럼 설명</label>
         <textarea class="template-form-textarea" id="curriculum-desc" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
         <div style="display: flex; justify-content: flex-end;">
-          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">✨AI 커리큘럼 생성</button>
+          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">
+            <span class="btn-text">✨AI 커리큘럼 생성</span>
+            <span class="btn-loading" style="display: none;">
+              <div class="loading-spinner"></div>
+              생성중...
+            </span>
+          </button>
         </div>
       </div>
       <div class="template-form-row" id="draft-section">
@@ -247,7 +279,13 @@
 
 위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
         <div style="display: flex; justify-content: flex-end;">
-          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">✨AI 세부 Task 생성</button>
+          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">
+            <span class="btn-text">✨AI 세부 Task 생성</span>
+            <span class="btn-loading" style="display: none;">
+              <div class="loading-spinner"></div>
+              생성중...
+            </span>
+          </button>
         </div>
       </div>
     </form>
@@ -388,8 +426,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 로딩 상태 시작
+    const btnText = this.querySelector('.btn-text');
+    const btnLoading = this.querySelector('.btn-loading');
+    
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline-flex';
     this.disabled = true;
-    this.textContent = '생성 중...';
 
     try {
       // API 호출 - FastAPI로 직접 요청
@@ -423,8 +465,9 @@ document.addEventListener('DOMContentLoaded', function() {
       showMessage(`커리큘럼 초안 생성 중 오류가 발생했습니다: ${error.message}`, 'error');
     } finally {
       // 로딩 상태 해제
+      btnText.style.display = 'inline';
+      btnLoading.style.display = 'none';
       this.disabled = false;
-      this.textContent = '✨AI 커리큘럼 생성';
     }
   });
   
@@ -448,8 +491,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 로딩 상태 시작
+    const btnText = this.querySelector('.btn-text');
+    const btnLoading = this.querySelector('.btn-loading');
+    
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline-flex';
     this.disabled = true;
-    this.textContent = '생성 중...';
     
     try {
       // API 호출하여 세부 Task 생성 - FastAPI로 직접 요청
@@ -492,8 +539,9 @@ document.addEventListener('DOMContentLoaded', function() {
       showMessage(`Task 생성 중 오류가 발생했습니다: ${error.message}`, 'error');
     } finally {
       // 로딩 상태 종료
+      btnText.style.display = 'inline';
+      btnLoading.style.display = 'none';
       this.disabled = false;
-      this.textContent = '✨AI 세부 Task 생성';
     }
   });
 
