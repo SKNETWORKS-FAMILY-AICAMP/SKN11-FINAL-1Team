@@ -23,25 +23,23 @@ class TaskState(TypedDict):
 class CurriculumInput:
     curriculum_title: str
     curriculum_description: str
-    job_role: str
-    weeks: int
-    goal: str
 
 # 프롬프트 생성 함수
 def generate_prompt(data: CurriculumInput) -> str:
     return f"""
-너는 신입사원 온보딩 커리큘럼 기획 전문가야.
-아래 정보를 바탕으로 총 {data.weeks}주차 일정으로 구성된 커리큘럼 초안을 주차별로 요약해서 만들어줘.
+너는 온보딩 커리큘럼 기획 전문가야.
+아래 정보를 바탕으로 커리큘럼 초안을 주차별로 요약해서 만들어줘.
 
 - 커리큘럼 제목: {data.curriculum_title}
-- 설명: {data.curriculum_description}
-- 직무: {data.job_role}
-- 온보딩 목적: {data.goal}
-- 기간: {data.weeks}주
+- {data.curriculum_description}
 
-형식은 다음과 같아:
+출력은 반드시 아래 형식처럼 반환해. 설명, 문장, 다른 텍스트를 포함하지 마.
 1주차: ...
+- ...
+- ...
 2주차: ...
+- ...
+- ...
 ...
 """
 
@@ -54,7 +52,7 @@ def generate_curriculum_draft(data: CurriculumInput) -> str:
             {"role": "system", "content": "너는 커리큘럼 작성 전문가야."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.7
+        temperature=0.3
     )
     return response.choices[0].message.content
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from typing import List
 import crud
@@ -215,4 +216,105 @@ async def create_mentorship(mentorship: schemas.MentorshipCreate, db: Session = 
 async def get_mentorships(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """멘토링 관계 목록 조회"""
     mentorships = crud.get_mentorships(db, skip=skip, limit=limit)
-    return mentorships 
+    return mentorships
+
+
+@router.post("/generate_draft/", response_class=PlainTextResponse)
+async def generate_draft(input_data: dict):
+    """
+    Generate curriculum draft based on input data.
+    """
+    try:
+        import sys
+        import os
+        
+        # 프로젝트 루트를 Python 경로에 추가
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        
+        print(f"[DEBUG] Python path: {sys.path[:3]}")
+        print(f"[DEBUG] Project root: {project_root}")
+        print(f"[DEBUG] Input data: {input_data}")
+        
+        from agent_test.task_agent import generate_curriculum_draft, CurriculumInput
+
+        # 기본값 설정
+        curriculum_input = CurriculumInput(
+            curriculum_title=input_data.get('title', ''),
+            curriculum_description=input_data.get('description', ''),
+            # job_role=input_data.get('job_role', '신입사원'),
+            # weeks=input_data.get('weeks', 12),
+            # goal=input_data.get('goal', '신입사원의 성공적인 온보딩과 조직 적응')
+        )
+        
+        print(f"[DEBUG] Curriculum input: {curriculum_input}")
+        
+        # OpenAI API 키 확인
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        openai_key = os.getenv("OPENAI_API_KEY")
+        print(f"[DEBUG] OpenAI API key exists: {bool(openai_key)}")
+        
+        draft = generate_curriculum_draft(curriculum_input)
+        print(f"[DEBUG] Generated draft: {draft[:100]}...")
+        return draft
+        
+    except ImportError as e:
+        error_msg = f"Import error: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        return f"오류: {error_msg}"
+    except Exception as e:
+        import traceback
+        error_msg = f"Error generating draft: {str(e)}"
+        traceback_str = traceback.format_exc()
+        print(f"[ERROR] {error_msg}")
+        print(f"[ERROR] Traceback: {traceback_str}")
+        return f"오류: {error_msg}\n상세: {traceback_str}"
+
+
+@router.post("/generate_tasks_from_draft/")
+async def generate_tasks_from_draft(input_data: dict):
+    """
+    Generate tasks based on the provided draft.
+    """
+    try:
+        import sys
+        import os
+        
+        # 프로젝트 루트를 Python 경로에 추가
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        
+        print(f"[DEBUG] Generating tasks - Input data: {input_data}")
+        
+        from agent_test.task_agent import generate_all_tasks, CurriculumInput
+
+        # 기본값 설정
+        curriculum_input = CurriculumInput(
+            curriculum_title=input_data.get('title', ''),
+            curriculum_description=input_data.get('description', ''),
+            job_role=input_data.get('job_role', '신입사원'),
+            weeks=input_data.get('weeks', 12),
+            goal=input_data.get('goal', '신입사원의 성공적인 온보딩과 조직 적응')
+        )
+        
+        print(f"[DEBUG] Generating tasks for: {curriculum_input.curriculum_title}")
+        
+        all_tasks = generate_all_tasks(curriculum_input)
+        print(f"[DEBUG] Generated {len(all_tasks)} tasks")
+        return {"tasks": all_tasks}
+        
+    except ImportError as e:
+        error_msg = f"Import error: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        return {"error": error_msg, "type": "import_error"}
+    except Exception as e:
+        import traceback
+        error_msg = f"Error generating tasks: {str(e)}"
+        traceback_str = traceback.format_exc()
+        print(f"[ERROR] {error_msg}")
+        print(f"[ERROR] Traceback: {traceback_str}")
+        return {"error": error_msg, "traceback": traceback_str, "type": "general_error"}

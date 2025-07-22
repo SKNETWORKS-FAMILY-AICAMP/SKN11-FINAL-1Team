@@ -375,49 +375,72 @@ function showMessage(message, type = 'success') {
 document.addEventListener('DOMContentLoaded', function() {
   // 커리큘럼 초안 생성 버튼에 AJAX 기능 추가
   document.getElementById('generate-draft-btn').addEventListener('click', async function() {
-    const btnText = this.querySelector('.btn-text');
-    const btnLoading = this.querySelector('.btn-loading');
-    const description = document.getElementById('curriculum-desc').value.trim();
-    
-    if (!description) {
-      showMessage('커리큘럼 설명을 입력해주세요.', 'error');
+    const titleInput = document.querySelector('.tasklist-search');
+    const descInput = document.getElementById('curriculum-desc');
+
+    // 입력값 가져오기
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+
+    if (!title || !description) {
+      showMessage('커리큘럼 제목과 설명을 입력해주세요.', 'error');
       return;
     }
-    
+
     // 로딩 상태 시작
-    btnText.style.display = 'none';
-    btnLoading.style.display = 'inline-flex';
     this.disabled = true;
-    
+    this.textContent = '생성 중...';
+
     try {
-      // 실제로는 AI API를 호출하거나 서버에서 초안을 생성할 수 있지만
-      // 현재는 기본 초안 템플릿을 사용
-      setTimeout(() => {
-        generateDraftContent();
-        showMessage('커리큘럼 초안이 생성되었습니다!');
-        
-        // 로딩 상태 종료
-        btnText.style.display = 'inline';
-        btnLoading.style.display = 'none';
-        this.disabled = false;
-      }, 1500); // 1.5초 대기로 로딩 효과 시연
+      // API 호출 - FastAPI로 직접 요청
+      const response = await fetch('http://localhost:8001/api/tasks/generate_draft/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title,
+          description: description,
+          job_role: '신입사원',
+          weeks: 12,
+          goal: '신입사원의 성공적인 온보딩과 조직 적응'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.text();
       
+      // 결과값을 textarea에 삽입
+      const draftTextarea = document.getElementById('curriculum-textarea');
+      draftTextarea.value = result;
+
+      showMessage('커리큘럼 초안이 성공적으로 생성되었습니다.');
     } catch (error) {
-      console.error('초안 생성 오류:', error);
-      showMessage('초안 생성 중 오류가 발생했습니다.', 'error');
-      
-      // 로딩 상태 종료
-      btnText.style.display = 'inline';
-      btnLoading.style.display = 'none';
+      console.error('Error:', error);
+      showMessage(`커리큘럼 초안 생성 중 오류가 발생했습니다: ${error.message}`, 'error');
+    } finally {
+      // 로딩 상태 해제
       this.disabled = false;
+      this.textContent = '✨AI 커리큘럼 생성';
     }
   });
   
   // 세부 Task 생성 버튼에 AJAX 기능 추가
   document.getElementById('generate-task-btn').addEventListener('click', async function() {
-    const btnText = this.querySelector('.btn-text');
-    const btnLoading = this.querySelector('.btn-loading');
+    const titleInput = document.querySelector('.tasklist-search');
+    const descInput = document.getElementById('curriculum-desc');
     const weekSchedule = document.getElementById('curriculum-textarea').value.trim();
+    
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+    
+    if (!title || !description) {
+      showMessage('커리큘럼 제목과 설명을 입력해주세요.', 'error');
+      return;
+    }
     
     if (!weekSchedule) {
       showMessage('주차별 커리큘럼 일정을 입력해주세요.', 'error');
@@ -425,31 +448,52 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 로딩 상태 시작
-    btnText.style.display = 'none';
-    btnLoading.style.display = 'inline-flex';
     this.disabled = true;
+    this.textContent = '생성 중...';
     
     try {
-      // 실제로는 AI API를 호출하여 세부 Task를 생성할 수 있지만
-      // 현재는 주차별 기본 Task를 생성
-      setTimeout(() => {
-        generateTasksFromSchedule(weekSchedule);
-        showMessage('세부 Task가 생성되었습니다!');
-        
-        // 로딩 상태 종료
-        btnText.style.display = 'inline';
-        btnLoading.style.display = 'none';
-        this.disabled = false;
-      }, 2000); // 2초 대기로 로딩 효과 시연
+      // API 호출하여 세부 Task 생성 - FastAPI로 직접 요청
+      const response = await fetch('http://localhost:8001/api/tasks/generate_tasks_from_draft/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title,
+          description: description,
+          job_role: '신입사원',
+          weeks: 12,
+          goal: '신입사원의 성공적인 온보딩과 조직 적응'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // 에러 응답인지 확인
+      if (result.error) {
+        throw new Error(`API Error: ${result.error}`);
+      }
+      
+      const tasks = result.tasks;
+      
+      // 생성된 tasks를 window.tasks_json에 저장
+      window.tasks_json = tasks;
+      
+      // Task 목록 렌더링
+      renderTasksByWeek(tasks);
+      showMessage('세부 Task가 성공적으로 생성되었습니다!');
       
     } catch (error) {
       console.error('Task 생성 오류:', error);
-      showMessage('Task 생성 중 오류가 발생했습니다.', 'error');
-      
+      showMessage(`Task 생성 중 오류가 발생했습니다: ${error.message}`, 'error');
+    } finally {
       // 로딩 상태 종료
-      btnText.style.display = 'inline';
-      btnLoading.style.display = 'none';
       this.disabled = false;
+      this.textContent = '✨AI 세부 Task 생성';
     }
   });
 
