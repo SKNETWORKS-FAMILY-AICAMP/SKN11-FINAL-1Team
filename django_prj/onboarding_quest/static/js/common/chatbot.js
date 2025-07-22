@@ -252,14 +252,35 @@ class ChatBot {
         this.loadingMessageElement = messageContent;
     }
 
+    // async typeText(element, text) {
+    //     element.innerHTML = '';
+    //     for (let i = 0; i < text.length; i++) {
+    //         element.textContent += text[i];
+    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    //         await new Promise(res => setTimeout(res, 15));
+    //     }
+    // }
     async typeText(element, text) {
-        element.innerHTML = '';
+        const converter = new showdown.Converter({
+            simpleLineBreaks: true,
+            tables: true
+        });
+
+        let currentText = '';
         for (let i = 0; i < text.length; i++) {
-            element.textContent += text[i];
+            currentText += text[i];
+
+            // 실시간으로 Markdown 변환 및 렌더링
+            element.innerHTML = converter.makeHtml(currentText);
+
+            // 스크롤을 자동으로 가장 아래로 이동
             this.chatArea.scrollTop = this.chatArea.scrollHeight;
+
+            // 글자 출력 속도 조절 (15ms마다 1글자씩 출력)
             await new Promise(res => setTimeout(res, 15));
         }
     }
+
 
     updateSessionMessagesInDOM(type, text) {
         const sessionId = this.selectedSessionInput.value;
