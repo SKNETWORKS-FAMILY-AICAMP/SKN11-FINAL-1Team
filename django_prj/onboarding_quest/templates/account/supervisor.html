@@ -466,24 +466,54 @@
     <div class="main-content">
         <div class="top-bar">
             <div class="search-container">
-                <form method="get" style="display: flex; gap: 12px; align-items: center; width: 100%;">
-                    <input type="text" name="search" placeholder="사번, 이름, 이메일 검색" value="{{ search_query }}" class="search-input">
+                <div style="display: flex; gap: 12px; align-items: center; width: 100%; flex-wrap: wrap;">
+                    <input type="text" id="search-input" placeholder="사번, 이름, 이메일 검색" value="{{ search_query }}" class="search-input" onkeyup="handleSearchKeyup(event)">
+                    
+                    <!-- 필터링 옵션 추가 -->
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label style="font-size: 14px; color: #4b5563;">사번순:</label>
+                        <select id="employee-number-sort" class="form-input" style="width: auto; padding: 8px 12px;">
+                            <option value="">선택</option>
+                            <option value="asc">오름차순</option>
+                            <option value="desc">내림차순</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label style="font-size: 14px; color: #4b5563;">입사일순:</label>
+                        <select id="join-date-sort" class="form-input" style="width: auto; padding: 8px 12px;">
+                            <option value="">선택</option>
+                            <option value="asc">오름차순</option>
+                            <option value="desc">내림차순</option>
+                        </select>
+                    </div>
+                    
                     {% if selected_department_id %}
-                    <input type="hidden" name="dept" value="{{ selected_department_id }}">
+                    <input type="hidden" id="dept-filter" value="{{ selected_department_id }}">
                     {% endif %}
-                    <button type="submit" class="btn btn-primary">
+                    
+                    <button type="button" class="btn btn-primary" onclick="performSearch()">
                         검색
                     </button>
-                    <button type="button" class="btn btn-secondary" style="padding: 10px;" onclick="window.location.href='{% url 'account:supervisor' %}'" title="새로고침">
+                    <button type="button" class="btn btn-secondary" onclick="clearSearch()" title="검색 초기화">
+                        초기화
+                    </button>
+                    <button type="button" class="btn btn-secondary" style="padding: 10px;" onclick="refreshUserList()" title="새로고림">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                     </button>
-                </form>
+                </div>
             </div>
     
             
             <div style="display: flex; gap: 12px; align-items: center;">
+                <button id="refresh-users-btn" class="btn" style="background: #059669; color: white;" onclick="refreshUserList()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    새로고침
+                </button>
                 <button id="delete-selected-btn" class="btn" style="background: #dc2626; color: white; display: none;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -507,12 +537,18 @@
                         <th class="checkbox-column">
                             <input type="checkbox" class="checkbox-input" id="select-all">
                         </th>
-                        <th>사번</th>
+                        <th style="cursor: pointer;" onclick="toggleSort('employee_number')" title="클릭하여 정렬">
+                            사번 
+                            <span id="employee-number-indicator" style="margin-left: 5px; color: #6b7280;"></span>
+                        </th>
                         <th>이름</th>
                         <th>이메일</th>
                         <th>부서</th>
                         <th>직급</th>
-                        <th>입사일</th>
+                        <th style="cursor: pointer;" onclick="toggleSort('join_date')" title="클릭하여 정렬">
+                            입사일
+                            <span id="join-date-indicator" style="margin-left: 5px; color: #6b7280;"></span>
+                        </th>
                         <th>상태</th>
                         <th>작업</th>
                     </tr>
@@ -543,7 +579,7 @@
                             {% endif %}
                         </td>
                         <td>{{ u.position }}</td>
-                        <td>{{ u.join_date|date:"Y-m-d" }}</td>
+                        <td>{{ u.join_date }}</td>
                         <td>
                             <span class="px-3 py-1.5 text-base font-semibold rounded-md {% if u.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
                                 {% if u.is_active %}활성{% else %}비활성{% endif %}
@@ -551,7 +587,7 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <a href="{% url 'account:user_edit' u.user_id %}" class="action-btn action-btn-edit" title="수정">
+                                <a href="{% url 'account:user_update' u.user_id %}" class="action-btn action-btn-edit" title="수정">
                                     <svg class="action-icon" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L5.232 11.232a2 2 0 010-2.828L9 13z"/>
                                     </svg>
@@ -561,11 +597,11 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m0 0a2 2 0 01-2 2m2-2h3M9 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-5m-9-9L12 3l4 4"/>
                                     </svg>
                                 </button>
-                                <a href="{% url 'account:user_delete' u.user_id %}" class="action-btn action-btn-delete" title="삭제" onclick="return confirm('정말 삭제하시겠습니까?');">
+                                <button onclick="deleteSingleUser({{ u.user_id }})" class="action-btn action-btn-delete" title="삭제">
                                     <svg class="action-icon" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                     </svg>
-                                </a>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -581,27 +617,245 @@
 </div>
 
 <script>
-// 체크박스 관련 기능
-document.addEventListener('DOMContentLoaded', function() {
+// 사용자 목록 새로고침 함수
+async function refreshUserList(searchQuery = '') {
+    try {
+        // FastAPI에서 사용자 목록 가져오기
+        const deptId = document.getElementById('dept-filter')?.value;
+        const params = new URLSearchParams();
+        
+        // 세션에서 회사 ID 가져오기 (Django 템플릿에서 전달)
+        const companyId = '{{ user_data.company_id }}';
+        if (companyId) {
+            params.append('company_id', companyId);
+        }
+        
+        if (searchQuery) {
+            params.append('search', searchQuery);
+        }
+        
+        if (deptId) {
+            params.append('department_id', deptId);
+        }
+        
+        const response = await fetch(`http://127.0.0.1:8001/api/users/?${params.toString()}`, {
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            mode: 'cors',
+            credentials: 'omit'
+        });
+        
+        if (response.ok) {
+            let users = await response.json();
+            // 클라이언트 사이드에서 정렬 적용
+            users = applySorting(users);
+            updateUserTable(users);
+        } else {
+            console.error('사용자 목록 조회 실패:', response.status);
+        }
+    } catch (error) {
+        console.error('사용자 목록 새로고침 실패:', error);
+        // 실패 시 페이지 전체 새로고침으로 대체
+        window.location.reload();
+    }
+}
+
+// 사용자 테이블 업데이트 함수
+function updateUserTable(users) {
+    const tbody = document.querySelector('.table tbody');
+    
+    if (users.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" style="text-align: center; padding: 40px; color: #9ca3af;">등록된 직원이 없습니다.</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td class="checkbox-column">
+                <input type="checkbox" class="checkbox-input user-checkbox" data-user-id="${user.user_id}">
+            </td>
+            <td>${user.employee_number || ''}</td>
+            <td>${user.last_name}${user.first_name}</td>
+            <td>${user.email}</td>
+            <td>
+                ${user.department ? 
+                    `<span class="badge badge-dev">${user.department.department_name}</span>` : 
+                    '<span class="badge badge-dev">부서없음</span>'
+                }
+            </td>
+            <td>${user.position}</td>
+            <td>${user.join_date || ''}</td>
+            <td>
+                <span class="px-3 py-1.5 text-base font-semibold rounded-md ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                    ${user.is_active ? '활성' : '비활성'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <a href="/account/user/${user.user_id}/update/" class="action-btn action-btn-edit" title="수정">
+                        <svg class="action-icon" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L5.232 11.232a2 2 0 010-2.828L9 13z"/>
+                        </svg>
+                    </a>
+                    <button onclick="resetPassword(${user.user_id})" class="action-btn action-btn-reset" title="비밀번호 초기화">
+                        <svg class="action-icon" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m0 0a2 2 0 01-2 2m2-2h3M9 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-5m-9-9L12 3l4 4"/>
+                        </svg>
+                    </button>
+                    <button onclick="deleteSingleUser(${user.user_id})" class="action-btn action-btn-delete" title="삭제">
+                        <svg class="action-icon" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    // 체크박스 이벤트 리스너 재설정
+    setupCheckboxListeners();
+}
+
+// 정렬 적용 함수
+function applySorting(users) {
+    const employeeNumberSort = document.getElementById('employee-number-sort').value;
+    const joinDateSort = document.getElementById('join-date-sort').value;
+    
+    let sortedUsers = [...users];
+    
+    // 사번 정렬 (우선순위 높음)
+    if (employeeNumberSort) {
+        sortedUsers.sort((a, b) => {
+            const aNum = parseInt(a.employee_number) || 0;
+            const bNum = parseInt(b.employee_number) || 0;
+            
+            if (employeeNumberSort === 'asc') {
+                return aNum - bNum;
+            } else {
+                return bNum - aNum;
+            }
+        });
+    }
+    // 입사일 정렬 (사번 정렬이 없을 때만 적용)
+    else if (joinDateSort) {
+        sortedUsers.sort((a, b) => {
+            const aDate = new Date(a.join_date || '1900-01-01');
+            const bDate = new Date(b.join_date || '1900-01-01');
+            
+            if (joinDateSort === 'asc') {
+                return aDate - bDate;
+            } else {
+                return bDate - aDate;
+            }
+        });
+    }
+    
+    // 정렬 표시기 업데이트
+    updateSortIndicators();
+    
+    return sortedUsers;
+}
+
+// 헤더 클릭으로 정렬 토글
+function toggleSort(field) {
+    if (field === 'employee_number') {
+        const current = document.getElementById('employee-number-sort').value;
+        const newValue = current === 'asc' ? 'desc' : 'asc';
+        document.getElementById('employee-number-sort').value = newValue;
+        document.getElementById('join-date-sort').value = '';
+    } else if (field === 'join_date') {
+        const current = document.getElementById('join-date-sort').value;
+        const newValue = current === 'asc' ? 'desc' : 'asc';
+        document.getElementById('join-date-sort').value = newValue;
+        document.getElementById('employee-number-sort').value = '';
+    }
+    performSearch();
+}
+
+// 정렬 표시기 업데이트
+function updateSortIndicators() {
+    const employeeNumberSort = document.getElementById('employee-number-sort').value;
+    const joinDateSort = document.getElementById('join-date-sort').value;
+    
+    const empIndicator = document.getElementById('employee-number-indicator');
+    const joinIndicator = document.getElementById('join-date-indicator');
+    
+    // 사번 표시기
+    if (employeeNumberSort === 'asc') {
+        empIndicator.innerHTML = '↑';
+        empIndicator.style.color = '#2563eb';
+    } else if (employeeNumberSort === 'desc') {
+        empIndicator.innerHTML = '↓';
+        empIndicator.style.color = '#2563eb';
+    } else {
+        empIndicator.innerHTML = '';
+        empIndicator.style.color = '#6b7280';
+    }
+    
+    // 입사일 표시기
+    if (joinDateSort === 'asc') {
+        joinIndicator.innerHTML = '↑';
+        joinIndicator.style.color = '#2563eb';
+    } else if (joinDateSort === 'desc') {
+        joinIndicator.innerHTML = '↓';
+        joinIndicator.style.color = '#2563eb';
+    } else {
+        joinIndicator.innerHTML = '';
+        joinIndicator.style.color = '#6b7280';
+    }
+}
+
+// 검색 함수들
+function performSearch() {
+    const searchQuery = document.getElementById('search-input').value.trim();
+    refreshUserList(searchQuery);
+}
+
+function clearSearch() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('employee-number-sort').value = '';
+    document.getElementById('join-date-sort').value = '';
+    refreshUserList();
+}
+
+function handleSearchKeyup(event) {
+    if (event.key === 'Enter') {
+        performSearch();
+    }
+}
+
+// 체크박스 이벤트 리스너 설정 함수
+function setupCheckboxListeners() {
     const selectAllCheckbox = document.getElementById('select-all');
     const userCheckboxes = document.querySelectorAll('.user-checkbox');
     const deleteSelectedBtn = document.getElementById('delete-selected-btn');
     
+    // 기존 이벤트 리스너 제거
+    selectAllCheckbox.replaceWith(selectAllCheckbox.cloneNode(true));
+    const newSelectAllCheckbox = document.getElementById('select-all');
+    
     // 전체 선택/해제 기능
-    selectAllCheckbox.addEventListener('change', function() {
+    newSelectAllCheckbox.addEventListener('change', function() {
         const isChecked = this.checked;
-        userCheckboxes.forEach(checkbox => {
+        document.querySelectorAll('.user-checkbox').forEach(checkbox => {
             checkbox.checked = isChecked;
         });
         toggleDeleteButton();
     });
     
     // 개별 체크박스 변경 시 전체 선택 상태 업데이트
-    userCheckboxes.forEach(checkbox => {
+    document.querySelectorAll('.user-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const checkedCount = document.querySelectorAll('.user-checkbox:checked').length;
-            selectAllCheckbox.checked = checkedCount === userCheckboxes.length;
-            selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < userCheckboxes.length;
+            const totalCount = document.querySelectorAll('.user-checkbox').length;
+            newSelectAllCheckbox.checked = checkedCount === totalCount;
+            newSelectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < totalCount;
             toggleDeleteButton();
         });
     });
@@ -611,11 +865,52 @@ document.addEventListener('DOMContentLoaded', function() {
         const checkedCount = document.querySelectorAll('.user-checkbox:checked').length;
         deleteSelectedBtn.style.display = checkedCount > 0 ? 'flex' : 'none';
     }
+}
+
+// 페이지 포커스 시 자동 새로고침
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        // 페이지가 다시 활성화되면 사용자 목록 새로고침
+        refreshUserList();
+    }
+});
+
+// 페이지 로드 완료 시 주기적 새로고침 설정 (선택사항)
+// setInterval(refreshUserList, 30000); // 30초마다 새로고침
+
+// 체크박스 관련 기능
+document.addEventListener('DOMContentLoaded', function() {
+    // 초기 체크박스 이벤트 설정
+    setupCheckboxListeners();
+    
+    // 정렬 표시기 초기화
+    updateSortIndicators();
+    
+    // 정렬 드롭다운 이벤트 리스너 추가
+    const employeeNumberSort = document.getElementById('employee-number-sort');
+    const joinDateSort = document.getElementById('join-date-sort');
+    
+    employeeNumberSort.addEventListener('change', function() {
+        if (this.value) {
+            // 사번 정렬이 선택되면 입사일 정렬 초기화
+            joinDateSort.value = '';
+        }
+        performSearch();
+    });
+    
+    joinDateSort.addEventListener('change', function() {
+        if (this.value) {
+            // 입사일 정렬이 선택되면 사번 정렬 초기화
+            employeeNumberSort.value = '';
+        }
+        performSearch();
+    });
     
     // 선택삭제 버튼 클릭 이벤트
+    const deleteSelectedBtn = document.getElementById('delete-selected-btn');
     deleteSelectedBtn.addEventListener('click', function() {
         const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
-        const userIds = Array.from(checkedBoxes).map(cb => cb.dataset.userId);
+        const userIds = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.userId));
         
         if (userIds.length === 0) {
             alert('삭제할 사용자를 선택해주세요.');
@@ -629,81 +924,118 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 다중 사용자 삭제 함수
     async function deleteMultipleUsers(userIds) {
-    try {
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken');
-        
-        // 선택된 모든 사용자를 순차적으로 삭제
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const userId of userIds) {
-            try {
-                // URL 직접 문자열로 교체 (템플릿 태그 충돌 방지)
-                const url = `/account/user/${userId}/delete/`;
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+        try {
+            const response = await fetch(`http://127.0.0.1:8001/api/users/`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ user_ids: userIds }),
+                mode: 'cors',
+                credentials: 'omit'
+            });
 
-                // JSON 응답 시도
-                let result = {};
-                try {
-                    result = await response.json();
-                } catch (err) {
-                    console.error('JSON 파싱 실패, 상태 코드:', response.status);
-                }
+            if (response.ok) {
+                const result = await response.json();
+                const successCount = result.success_count || 0;
+                const errorCount = result.error_count || 0;
 
-                if (response.ok && result.success !== false) {
-                    successCount++;
-                } else {
-                    errorCount++;
-                    console.error(`사용자 ${userId} 삭제 실패:`, result.error || '알 수 없는 오류');
-                }
-            } catch (error) {
-                errorCount++;
-                console.error(`사용자 ${userId} 삭제 중 오류:`, error);
+                alert(`${successCount}명의 사용자가 삭제되었습니다.${errorCount > 0 ? `\n${errorCount}명의 사용자 삭제 실패.` : ''}`);
+                refreshUserList();
+            } else {
+                const errorResult = await response.json();
+                alert(`삭제 실패: ${errorResult.detail || '알 수 없는 오류가 발생했습니다.'}`);
             }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('삭제 중 오류가 발생했습니다.');
         }
+    }
+    
+    // 페이지 로드 시 최초 사용자 목록 API 호출
+    refreshUserList();
+});
+
+// 개별 사용자 삭제 함수
+async function deleteSingleUser(userId) {
+    if (!confirm('정말 이 사용자를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`http://127.0.0.1:8001/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            mode: 'cors',
+            credentials: 'omit'
+        });
         
-        // 결과 메시지 표시
-        if (successCount > 0) {
-            alert(`${successCount}명의 사용자가 삭제되었습니다.${errorCount > 0 ? `\n${errorCount}명의 사용자 삭제 실패.` : ''}`);
-            location.reload();
+        if (response.ok) {
+            const result = await response.json();
+            alert('사용자가 성공적으로 삭제되었습니다.');
+            refreshUserList();
         } else {
-            alert('사용자 삭제에 실패했습니다.');
+            const errorResult = await response.json();
+            alert(`삭제 실패: ${errorResult.detail || '알 수 없는 오류가 발생했습니다.'}`);
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('사용자 삭제 오류:', error);
         alert('삭제 중 오류가 발생했습니다.');
     }
 }
 
-
-function resetPassword(userId) {
+async function resetPassword(userId) {
     if (confirm('이 사용자의 비밀번호를 초기화하시겠습니까? (초기화 후 비밀번호: 123)')) {
-        fetch(`/account/user/${userId}/password_reset/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken'),
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
+        try {
+            const response = await fetch(`/account/user/${userId}/password_reset/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers.get('content-type'));
+
+            if (response.ok) {
+                // 응답이 JSON인지 확인
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.success) {
+                        alert(data.message || '비밀번호가 "123"으로 초기화되었습니다.');
+                    } else {
+                        alert(data.message || '비밀번호 초기화에 실패했습니다.');
+                    }
+                } else {
+                    // JSON이 아닌 경우 (HTML 등)
+                    const text = await response.text();
+                    console.log('Non-JSON response:', text.substring(0, 200));
+                    alert('비밀번호 초기화 요청이 처리되었지만 응답 형식이 예상과 다릅니다.');
+                }
             } else {
-                alert('비밀번호 초기화 중 오류가 발생했습니다.');
+                // HTTP 에러 상태
+                let errorMessage = `서버 오류 (${response.status})`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorData.error || errorMessage;
+                } catch (jsonError) {
+                    console.error('JSON 파싱 실패:', jsonError);
+                    errorMessage = `서버 오류 (${response.status}): 응답을 해석할 수 없습니다.`;
+                }
+                alert(`비밀번호 초기화 실패: ${errorMessage}`);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('비밀번호 초기화 중 오류가 발생했습니다.');
-        });
+        } catch (error) {
+            console.error('비밀번호 초기화 오류:', error);
+            alert('비밀번호 초기화 중 네트워크 오류가 발생했습니다.');
+        }
     }
 }
 

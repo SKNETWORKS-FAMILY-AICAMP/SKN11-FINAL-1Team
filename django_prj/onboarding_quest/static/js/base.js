@@ -338,7 +338,14 @@ function createTestAlarm() {
 document.addEventListener('DOMContentLoaded', () => {
     // 알람 개수만 먼저 로드
     fetch('/django-api/api/alarms/count/')
-        .then(response => response.json())
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                throw new Error('응답이 JSON 형식이 아닙니다.');
+            }
+        })
         .then(data => {
             if (data.success) {
                 updateAlarmBadge(data.count);
@@ -351,7 +358,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // 주기적으로 알람 개수 업데이트 (30초마다)
     setInterval(() => {
         fetch('/django-api/api/alarms/count/')
-            .then(response => response.json())
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    throw new Error('응답이 JSON 형식이 아닙니다.');
+                }
+            })
             .then(data => {
                 if (data.success) {
                     updateAlarmBadge(data.count);

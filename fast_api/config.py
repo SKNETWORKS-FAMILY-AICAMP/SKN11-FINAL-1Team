@@ -16,7 +16,7 @@ def str2bool(v):
 class Settings(BaseSettings):
     # 서버 설정 (환경변수에서 가져오기)
     host: str = os.getenv("FASTAPI_HOST", "0.0.0.0")
-    port: int = int(os.getenv("FASTAPI_PORT", "8000"))
+    port: int = int(os.getenv("FASTAPI_PORT", "8001"))  # 8001로 변경
     
     # PostgreSQL 데이터베이스 설정 (환경변수에서 가져오기)
     db_host: str = os.getenv("DB_HOST", "localhost")
@@ -39,12 +39,14 @@ class Settings(BaseSettings):
     
     # CORS 설정
     allowed_origins: List[str] = [
+        "*",  # 개발 환경에서 모든 오리진 허용
         "http://localhost:3000",
         "http://localhost:8000",  # Django 서버
+        "http://localhost:8001",  # FastAPI 서버
         "http://localhost:8080", 
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",  # Django 서버
-        "http://127.0.0.1:8001"   # FastAPI 자체
+        "http://127.0.0.1:8001"   # FastAPI 서버
     ]
     
 

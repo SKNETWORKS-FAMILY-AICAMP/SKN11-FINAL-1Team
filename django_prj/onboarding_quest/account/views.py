@@ -11,6 +11,7 @@ from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm, Depa
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
 from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError, NotFoundError
 import json
 import logging
@@ -235,6 +236,8 @@ def supervisor(request):
         search_query = request.GET.get('search', '')
         selected_department_id = request.GET.get('dept')
         position_filter = request.GET.get('position', '')
+        employee_number_filter = request.GET.get('employee_number', '')
+        join_date_filter = request.GET.get('join_date', '')
         
         # FastAPI에서 사용자 목록 가져오기
         logger.info("Fetching users...")
@@ -266,6 +269,19 @@ def supervisor(request):
         
         # 부서 폼 (나중에 FastAPI로 변환 예정)
         dept_form = DepartmentForm()
+        
+        # 사번 및 입사일 동시 필터링 적용
+        if employee_number_filter or join_date_filter:
+            users = [user for user in users if (
+                (not employee_number_filter or user.get('employee_number') == int(employee_number_filter)) and
+                (not join_date_filter or user.get('join_date') == join_date_filter)
+            )]
+        
+        # 사번 내림차순 및 입사일 오름차순 정렬 적용
+        users.sort(key=lambda user: (
+            -user.get('employee_number', 0),  # 사번 내림차순
+            user.get('join_date', '')        # 입사일 오름차순
+        ))
         
         return render(request, 'account/supervisor.html', {
             'departments': departments,
@@ -631,9 +647,16 @@ def user_delete(request, user_id):
 @login_required
 def user_update_view(request, pk):
     if request.method == 'POST':
-        form = UserForm(request.POST)
+        # Pass company to form so department queryset and tag field work
+        form = UserForm(request.POST, company=request.user.company if hasattr(request.user, 'company') else None)
         if form.is_valid():
             user_data = form.cleaned_data
+            # 변환: department 인스턴스를 department_id로 변경
+            dept = user_data.pop('department', None)
+            user_data['department_id'] = dept.department_id if dept else None
+            # tag 필드 포함 (form.cleaned_data에 이미 포함됨)
+            user_data['tag'] = form.cleaned_data.get('tag')
+            # FastAPI로 사용자 정보 업데이트 호출
             result = fastapi_client.update_user(pk, user_data)
             if result.get('success'):
                 messages.success(request, '사용자 정보가 수정되었습니다.')
@@ -643,7 +666,21 @@ def user_update_view(request, pk):
     else:
         # FastAPI에서 사용자 상세 정보 가져오기
         user_info = fastapi_client.get_user(pk)
-        form = UserForm(initial=user_info)
+        # 초기값 설정: department는 department_id로 매핑
+        initial_data = {
+            'employee_number': user_info.get('employee_number'),
+            'first_name': user_info.get('first_name'),
+            'last_name': user_info.get('last_name'),
+            'email': user_info.get('email'),
+            'department': user_info.get('department_id'),
+            'position': user_info.get('position'),
+            'job_part': user_info.get('job_part'),
+            'role': user_info.get('role'),
+            'tag': user_info.get('tag'),
+            'is_admin': user_info.get('is_admin'),
+            'is_active': user_info.get('is_active'),
+        }
+        form = UserForm(initial=initial_data, company=request.user.company if hasattr(request.user, 'company') else None)
     return render(request, 'account/user_add_modify.html', {'form': form, 'edit_mode': True})
 
 
@@ -654,6 +691,7 @@ def user_delete_view(request, pk):
         user.delete()
         return redirect('account:supervisor')
     return render(request, 'account/user_confirm_delete.html', {'user': user})
+
 
 # 사용자 비밀번호 초기화
 @login_required
@@ -754,6 +792,11 @@ def manage_mentorship(request):
         mentorships_result = fastapi_client.get_mentorships()
         mentorships = mentorships_result.get('mentorships', [])
         
+        # 디버깅: 멘토쉽 데이터 구조 확인
+        if mentorships:
+            logger.info(f"First mentorship keys: {list(mentorships[0].keys())}")
+            logger.info(f"First mentorship data: {mentorships[0]}")
+        
         # 현재 사용자 정보 - 안전한 방식으로 처리
         user_data_raw = request.session.get('user_data', {})
         user_data = safe_get_user_data(user_data_raw)
@@ -811,6 +854,9 @@ def manage_mentorship(request):
         for mentorship in mentorships:
             mentorship['mentor'] = all_users.get(mentorship.get('mentor_id'))
             mentorship['mentee'] = all_users.get(mentorship.get('mentee_id'))
+            # mentorship_id 키가 없는 경우 id 키로 대체
+            if 'mentorship_id' not in mentorship and 'id' in mentorship:
+                mentorship['mentorship_id'] = mentorship['id']
         
         return render(request, 'account/manage_mentorship.html', {
             'mentorships': mentorships,
@@ -843,22 +889,34 @@ def mentorship_detail(request, mentorship_id):
         return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
     
     try:
-        # FastAPI에서 멘토쉽 상세 정보 조회
-        mentorship = fastapi_client.get_mentorship(mentorship_id)
+        # Django ORM에서 멘토쉽 상세 정보 조회
+        from core.models import Mentorship
+        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
+        
+        # 커리큘럼 ID 조회 (curriculum_title로부터 curriculum_id를 찾기)
+        curriculum_id = None
+        if mentorship.curriculum_title:
+            try:
+                curriculums_result = fastapi_client.get_curriculums()
+                for curriculum in curriculums_result.get('curriculums', []):
+                    if curriculum.get('curriculum_title') == mentorship.curriculum_title:
+                        curriculum_id = curriculum.get('curriculum_id')
+                        break
+            except Exception as e:
+                logger.warning(f"Failed to find curriculum_id: {e}")
         
         data = {
-            'mentor_id': mentorship.get('mentor_id'),
-            'mentee_id': mentorship.get('mentee_id'),
-            'curriculum_id': mentorship.get('curriculum_id'),
-            'start_date': mentorship.get('start_date'),
-            'end_date': mentorship.get('end_date'),
-            'is_active': mentorship.get('is_active'),
-            'curriculum_title': mentorship.get('curriculum_title'),
-            'total_weeks': mentorship.get('total_weeks'),
+            'mentor_id': mentorship.mentor_id,
+            'mentee_id': mentorship.mentee_id,
+            'curriculum_id': curriculum_id,
+            'start_date': mentorship.start_date.isoformat() if mentorship.start_date else None,
+            'end_date': mentorship.end_date.isoformat() if mentorship.end_date else None,
+            'is_active': mentorship.is_active,
+            'curriculum_title': mentorship.curriculum_title,
         }
         return JsonResponse(data)
-        
-    except (AuthenticationError, APIError) as e:
+    except Exception as e:
+        logger.error(f"Mentorship detail error: {str(e)}")
         return JsonResponse({'error': f'멘토쉽 정보 조회 실패: {str(e)}'}, status=400)
 
 @login_required
@@ -868,23 +926,46 @@ def mentorship_edit(request, mentorship_id):
         return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
     
     if request.method == 'POST':
-        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
-        
         try:
             data = json.loads(request.body)
+            logger.info(f"Mentorship edit data: {data}")
             
-            mentorship.mentor_id = data.get('mentor_id')
-            mentorship.mentee_id = data.get('mentee_id')
-            mentorship.start_date = data.get('start_date')
-            mentorship.end_date = data.get('end_date')
-            mentorship.curriculum_title = data.get('curriculum_title')
-            mentorship.is_active = data.get('is_active') == 'true'
+            # Django ORM을 사용해서 멘토쉽 수정
+            from core.models import Mentorship
+            mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
             
+            # 데이터 업데이트
+            if data.get('mentor_id'):
+                mentorship.mentor_id = int(data.get('mentor_id'))
+            if data.get('mentee_id'):
+                mentorship.mentee_id = int(data.get('mentee_id'))
+            if data.get('start_date'):
+                mentorship.start_date = data.get('start_date')
+            if data.get('end_date'):
+                mentorship.end_date = data.get('end_date') if data.get('end_date') else None
+            
+            # curriculum_id로 curriculum_title 조회 및 설정
+            if data.get('curriculum_id'):
+                try:
+                    curriculum_result = fastapi_client.get_curriculum(int(data.get('curriculum_id')))
+                    mentorship.curriculum_title = curriculum_result.get('curriculum_title', '')
+                    mentorship.total_weeks = curriculum_result.get('total_weeks', 0)
+                except Exception as e:
+                    logger.warning(f"Failed to fetch curriculum info: {e}")
+            
+            # is_active 상태 업데이트
+            mentorship.is_active = data.get('is_active') == True or data.get('is_active') == 'true'
+            
+            # 저장
             mentorship.save()
             
+            logger.info(f"Mentorship {mentorship_id} updated successfully")
+            
             return JsonResponse({'success': True})
+                
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            logger.error(f"Mentorship edit error: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'멘토쉽 수정 실패: {str(e)}'})
     
     return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 
@@ -895,16 +976,45 @@ def mentorship_delete(request, mentorship_id):
         return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
     
     if request.method == 'POST':
-        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
-        
         try:
+            # Django ORM을 사용해서 멘토쉽 삭제
+            from core.models import Mentorship
+            mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
             mentorship.delete()
+            
+            logger.info(f"Mentorship {mentorship_id} deleted successfully")
             return JsonResponse({'success': True})
+                
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            logger.error(f"Mentorship delete error: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'멘토쉽 삭제 실패: {str(e)}'})
     
     return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 
 #endregion 멘토쉽 관리
 
+@login_required
+def reset_user_password(request, user_id):
+    """사용자 비밀번호 초기화 (AJAX)"""
+    if not request.user.is_admin:
+        return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            user = get_object_or_404(User, user_id=user_id)
+            # 비밀번호를 "123"으로 초기화
+            user.set_password('123')
+            user.save()
+            
+            # 사용자 이름 생성
+            user_name = user.get_full_name() or f"사용자(ID: {user_id})"
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{user_name}님의 비밀번호가 "123"으로 초기화되었습니다.'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 

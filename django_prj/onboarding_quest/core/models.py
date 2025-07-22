@@ -23,7 +23,6 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('admin', True)
         extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
 
 
@@ -98,6 +97,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, help_text='유저 고유 ID')
     employee_number = models.IntegerField(null=True, blank=True, help_text='사번')
     is_admin = models.BooleanField(default=False, help_text='관리자 여부')
+    is_superuser = models.BooleanField(default=False, help_text='슈퍼유저 여부')
     mentorship_id = models.IntegerField(null=True, blank=True, help_text='멘토쉽 ID(옵션)')
     company = models.ForeignKey(  
         Company,

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, cast, String
 from typing import List, Optional
 import models
 import schemas
@@ -141,12 +141,31 @@ def delete_department(db: Session, department_id: int):
 
 
 # User CRUD
+TRUSTED_ADMIN_EMAILS = {
+    "hr_admin@ezflow.com",
+}
+
 def create_user(db: Session, user: schemas.UserCreate):
-    """사용자 생성"""
-    hashed_password = hash_password(user.password)
-    user_data = user.dict()
-    user_data['password'] = hashed_password
-    db_user = models.User(**user_data)
+    hashed_pw = hash_password(user.password)
+
+    db_user = models.User(
+        employee_number=user.employee_number,
+        is_admin=user.is_admin or False,
+        is_superuser=False,  # 기본값 설정
+        mentorship_id=None,
+        company_id=user.company_id,
+        department_id=user.department_id,
+        tag=user.tag,
+        role=user.role,
+        join_date=user.join_date,
+        position=user.position,
+        job_part=user.job_part,
+        email=user.email,
+        password=hashed_pw,
+        last_name=user.last_name,
+        first_name=user.first_name,
+        is_active=True
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -184,10 +203,19 @@ def get_users_with_filters(
         query = query.filter(models.User.department_id == department_id)
     
     if search:
+        # 검색어를 이메일, 성, 이름, 사번에 대해 부분 일치로 필터링
+        search_pattern = f"%{search}%"
         query = query.filter(
-            (models.User.username.contains(search)) |
-            (models.User.email.contains(search)) |
-            (models.User.full_name.contains(search))
+            or_(
+                models.User.email.ilike(search_pattern),
+                models.User.last_name.ilike(search_pattern),
+                models.User.first_name.ilike(search_pattern),
+                cast(models.User.employee_number, String).ilike(search_pattern),
+                # 성+이름 조합 검색 추가
+                (models.User.last_name + models.User.first_name).ilike(search_pattern),
+                # 이름+성 조합도 검색 (순서가 바뀌어도 검색되도록)
+                (models.User.first_name + models.User.last_name).ilike(search_pattern)
+            )
         )
     
     if role:
@@ -206,8 +234,8 @@ def get_mentees(db: Session, skip: int = 0, limit: int = 100):
     """멘티 목록 조회"""
     return db.query(models.User).filter(models.User.role == "mentee").offset(skip).limit(limit).all()
 
-def update_user(db: Session, user_id: int, user_update: schemas.UserCreate):
-    """사용자 정보 업데이트"""
+def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
+    """사용자 정보 업데이트 (부분 필드)"""
     db_user = get_user(db, user_id)
     if db_user:
         user_data = user_update.dict()
@@ -275,26 +303,111 @@ def delete_user_with_company_department(db: Session, user_id: int, company_id: s
 
 # 기존 delete 함수들은 유지 (하위 호환성)
 def delete_user(db: Session, user_id: int):
-    """사용자 삭제 (관련 ChatSession/ChatMessage도 함께 삭제)"""
-    # 1. 사용자 조회
-    db_user = get_user(db, user_id)
-    if not db_user:
-        return None
+    """사용자 삭제 (관련 데이터도 함께 안전하게 삭제)"""
+    try:
+        # 1. 사용자 조회
+        db_user = get_user(db, user_id)
+        if not db_user:
+            print(f"❌ 삭제할 사용자를 찾을 수 없음: user_id={user_id}")
+            return None
 
-    # 2. 관련 ChatMessage 삭제
-    db.query(models.ChatMessage).filter(
-        models.ChatMessage.session_id.in_(
-            db.query(models.ChatSession.session_id).filter(models.ChatSession.user_id == user_id)
-        )
-    ).delete(synchronize_session=False)
+        print(f"🗑️ 사용자 삭제 시작: {db_user.email} (ID: {user_id})")
 
-    # 3. 관련 ChatSession 삭제
-    db.query(models.ChatSession).filter(models.ChatSession.user_id == user_id).delete(synchronize_session=False)
+        # 2. 관련 데이터 삭제 (외래키 제약 조건 고려한 순서)
+        # SQLAlchemy 세션은 자동으로 트랜잭션을 관리함
+        
+        # ChatMessage 삭제 (자식 테이블)
+        try:
+            chat_messages_subquery = db.query(models.ChatSession.session_id).filter(
+                models.ChatSession.user_id == user_id
+            ).subquery()
+            
+            chat_messages_deleted = db.query(models.ChatMessage).filter(
+                models.ChatMessage.session_id.in_(chat_messages_subquery)
+            ).delete(synchronize_session=False)
+            print(f"  - ChatMessage 삭제: {chat_messages_deleted}개")
+        except Exception as e:
+            print(f"  - ChatMessage 삭제 중 오류 (무시): {e}")
 
-    # 4. 사용자 삭제
-    db.delete(db_user)
-    db.commit()
-    return db_user
+        # ChatSession 삭제 (부모 테이블)
+        try:
+            chat_sessions_deleted = db.query(models.ChatSession).filter(
+                models.ChatSession.user_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - ChatSession 삭제: {chat_sessions_deleted}개")
+        except Exception as e:
+            print(f"  - ChatSession 삭제 중 오류 (무시): {e}")
+
+        # Mentorship 관련 데이터 삭제
+        try:
+            mentorships_mentor_deleted = db.query(models.Mentorship).filter(
+                models.Mentorship.mentor_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - Mentorship(멘토) 삭제: {mentorships_mentor_deleted}개")
+        except Exception as e:
+            print(f"  - Mentorship(멘토) 삭제 중 오류 (무시): {e}")
+        
+        try:
+            mentorships_mentee_deleted = db.query(models.Mentorship).filter(
+                models.Mentorship.mentee_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - Mentorship(멘티) 삭제: {mentorships_mentee_deleted}개")
+        except Exception as e:
+            print(f"  - Mentorship(멘티) 삭제 중 오류 (무시): {e}")
+
+        # Task 관련 데이터 삭제
+        try:
+            if hasattr(models, 'Task'):
+                tasks_deleted = db.query(models.Task).filter(
+                    models.Task.user_id == user_id
+                ).delete(synchronize_session=False)
+                print(f"  - Task 삭제: {tasks_deleted}개")
+        except Exception as e:
+            print(f"  - Task 삭제 중 오류 (무시): {e}")
+
+        # Alarm 관련 데이터 삭제
+        try:
+            alarms_deleted = db.query(models.Alarm).filter(
+                models.Alarm.user_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - Alarm 삭제: {alarms_deleted}개")
+        except Exception as e:
+            print(f"  - Alarm 삭제 중 오류 (무시): {e}")
+
+        # Memo 관련 데이터 삭제
+        try:
+            memos_deleted = db.query(models.Memo).filter(
+                models.Memo.user_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - Memo 삭제: {memos_deleted}개")
+        except Exception as e:
+            print(f"  - Memo 삭제 중 오류 (무시): {e}")
+
+        # 3. 최종적으로 사용자 삭제
+        print(f"  - 사용자 본체 삭제 시작: {db_user.email}")
+        db.delete(db_user)
+        
+        # 4. 커밋 (모든 변경사항을 한 번에 적용)
+        db.commit()
+        print(f"✅ 사용자 삭제 완료: {db_user.email}")
+        return db_user
+
+    except Exception as e:
+        print(f"❌ delete_user 함수에서 오류 발생: {str(e)}")
+        print(f"❌ 오류 타입: {type(e).__name__}")
+        
+        import traceback
+        print(f"❌ 상세 스택 트레이스:")
+        print(traceback.format_exc())
+        
+        # 롤백 (안전하게)
+        try:
+            db.rollback()
+            print("🔄 트랜잭션 롤백 완료")
+        except Exception as rollback_error:
+            print(f"❌ 롤백 중 오류: {rollback_error}")
+        
+        raise e
 
 
 def delete_mentorship(db: Session, mentorship_id: int):

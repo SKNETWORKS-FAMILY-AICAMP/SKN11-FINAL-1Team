@@ -58,12 +58,12 @@ function editMentorship(mentorshipId) {
             return response.json();
         })
         .then(data => {
-            document.getElementById('edit-mentor').value = data.mentor_id;
-            document.getElementById('edit-mentee').value = data.mentee_id;
-            document.getElementById('edit-start-date').value = data.start_date;
-            document.getElementById('edit-end-date').value = data.end_date;
-            document.getElementById('edit-curriculum').value = data.curriculum_title;
-            document.getElementById('edit-status').value = data.is_active.toString();
+            document.getElementById('edit-mentor').value = data.mentor_id || '';
+            document.getElementById('edit-mentee').value = data.mentee_id || '';
+            document.getElementById('edit-start-date').value = data.start_date || '';
+            document.getElementById('edit-end-date').value = data.end_date || '';
+            document.getElementById('edit-curriculum').value = data.curriculum_id || '';
+            document.getElementById('edit-status').value = data.is_active ? 'true' : 'false';
             
             document.getElementById('edit-modal').classList.remove('hidden');
         })
@@ -82,10 +82,10 @@ function saveMentorship() {
     const formData = {
         mentor_id: document.getElementById('edit-mentor').value,
         mentee_id: document.getElementById('edit-mentee').value,
+        curriculum_id: document.getElementById('edit-curriculum').value,
         start_date: document.getElementById('edit-start-date').value,
         end_date: document.getElementById('edit-end-date').value,
-        curriculum_title: document.getElementById('edit-curriculum').value,
-        is_active: document.getElementById('edit-status').value
+        is_active: document.getElementById('edit-status').value === 'true'
     };
     
     fetch(`/account/mentorship/${currentMentorshipId}/edit/`, {
@@ -105,6 +105,7 @@ function saveMentorship() {
     })
     .then(data => {
         if (data.success) {
+            alert('멘토쉽이 성공적으로 수정되었습니다.');
             location.reload();
         } else {
             alert('저장 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
@@ -133,6 +134,7 @@ function deleteMentorship(mentorshipId) {
         })
         .then(data => {
             if (data.success) {
+                alert('멘토쉽이 성공적으로 삭제되었습니다.');
                 location.reload();
             } else {
                 alert('삭제 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));

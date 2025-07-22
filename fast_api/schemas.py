@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, validator, Field
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import date, datetime
 from fastapi import Form, UploadFile, File
 
@@ -100,12 +100,20 @@ class UserBase(BaseModel):
         return v
 
 class UserCreate(UserBase):
+    employee_number: int
+    first_name: str
+    last_name: str
+    email: str
+    company_id: Optional[int] = None 
     password: str
-    department_id: Optional[int] = None  # Integer로 다시 변경
-    company_id: Optional[str] = None
-    employee_number: Optional[int] = None
-    is_admin: Optional[bool] = False
+    department_id: Optional[int]
+    join_date: date
+    role: str
+    position: str
+    job_part: str
     tag: Optional[str] = None
+    is_admin: Optional[bool] = False
+    
 
 class User(UserBase):
     user_id: int
@@ -378,6 +386,41 @@ class UserFormData(BaseModel):
     role: str
     employee_number: Optional[int] = None
     is_admin: Optional[bool] = False
+    # For create, join_date and password are required; update schema omits these
+
+class UserUpdate(BaseModel):
+    employee_number: Optional[Union[int, str]] = None  # 문자열도 허용
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    department_id: Optional[int] = None
+    position: Optional[str] = None
+    job_part: Optional[str] = None
+    role: Optional[str] = None
+    tag: Optional[str] = None
+    is_admin: Optional[bool] = None
+    is_active: Optional[Union[bool, str]] = None  # "on" 문자열도 허용
+    mentorship_id: Optional[int] = None
+    profile_image: Optional[str] = None
+    company_id: Optional[str] = None
+
+    @validator('employee_number', pre=True)
+    def employee_number_must_be_positive(cls, v):
+        if isinstance(v, str):
+            v = int(v)  # 문자열을 정수로 변환
+        if v is not None and v <= 0:
+            raise ValueError('사번은 양수여야 합니다')
+        return v
+
+    @validator('is_active', pre=True)
+    def is_active_to_bool(cls, v):
+        if isinstance(v, str):
+            return v.lower() == "on"  # "on"을 True로 변환
+        return v
+
+    class Config:
+        allow_population_by_field_name = True
+        from_attributes = True
     department_id: Optional[int] = None  # Integer로 다시 변경
     company_id: Optional[str] = None
 

@@ -214,7 +214,7 @@
                         <select id="edit-curriculum" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">커리큘럼 선택</option>
                             {% for curriculum in curriculums %}
-                            <option value="{{ curriculum.curriculum_title }}">{{ curriculum.curriculum_title }}</option>
+                            <option value="{{ curriculum.curriculum_id }}">{{ curriculum.curriculum_title }}</option>
                             {% endfor %}
                         </select>
                     </div>
