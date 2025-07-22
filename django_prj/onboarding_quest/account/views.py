@@ -1085,26 +1085,6 @@ def mentorship_detail(request, mentorship_id):
             'is_active': mentorship.is_active,
             'curriculum_title': mentorship.curriculum_title,
         }
-        
-        # effective_is_active 계산 로직 추가 (manage_mentorship와 동일)
-        try:
-            # 멘토와 멘티 정보 조회
-            mentor = fastapi_client.get_user(mentorship.mentor_id) if mentorship.mentor_id else None
-            mentee = fastapi_client.get_user(mentorship.mentee_id) if mentorship.mentee_id else None
-            
-            # 각각의 활성 상태 확인
-            mentor_active = mentor and mentor.get('is_active', False) if mentor else False
-            mentee_active = mentee and mentee.get('is_active', False) if mentee else False
-            mentorship_active = mentorship.is_active
-            
-            # 실제 활성화 상태 계산
-            data['effective_is_active'] = mentor_active and mentee_active and mentorship_active
-            
-            logger.info(f"Mentorship detail - ID: {mentorship_id}, mentor_active: {mentor_active}, mentee_active: {mentee_active}, mentorship_active: {mentorship_active}, effective_is_active: {data['effective_is_active']}")
-        except Exception as e:
-            logger.warning(f"Failed to calculate effective_is_active: {e}")
-            data['effective_is_active'] = mentorship.is_active  # 폴백
-        
         return JsonResponse(data)
     except Exception as e:
         logger.error(f"Mentorship detail error: {str(e)}")
@@ -1235,7 +1215,8 @@ def reset_user_password(request, user_id):
             user.save()
             
             # 사용자 이름 생성
-            user_name = user.get_full_name() or f"사용자(ID: {user_id})"
+            # user_name = user.get_full_name() or f"사용자(ID: {user_id})"
+            user_name = f"{user.last_name}{user.first_name}"
             
             return JsonResponse({
                 'success': True,

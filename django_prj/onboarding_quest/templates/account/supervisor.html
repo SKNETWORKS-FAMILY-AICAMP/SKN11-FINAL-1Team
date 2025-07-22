@@ -242,6 +242,15 @@
             background: #e5e7eb;
         }
         
+        .action-btn-report {
+            background: #f0f9ff;
+            color: #0369a1;
+        }
+        
+        .action-btn-report:hover {
+            background: #e0f2fe;
+        }
+        
         .action-btn-delete {
             background: #fef2f2;
             color: #dc2626;
@@ -580,6 +589,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L5.232 11.232a2 2 0 010-2.828L9 13z"/>
                                     </svg>
                                 </a>
+                                <button onclick="viewMenteeReport({{ u.user_id }})" class="action-btn action-btn-report" title="멘티 보고서" style="background: #f0f9ff; color: #0369a1;">
+                                    <svg class="action-icon" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </button>
                                 <button onclick="resetPassword({{ u.user_id }})" class="action-btn action-btn-reset" title="비밀번호 초기화">
                                     <svg class="action-icon" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m0 0a2 2 0 01-2 2m2-2h3M9 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-5m-9-9L12 3l4 4"/>
@@ -691,6 +705,11 @@ function updateUserTable(users) {
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L5.232 11.232a2 2 0 010-2.828L9 13z"/>
                         </svg>
                     </a>
+                    <button onclick="viewMenteeReport(${user.user_id})" class="action-btn action-btn-report" title="멘티 보고서" style="background: #f0f9ff; color: #0369a1;">
+                        <svg class="action-icon" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </button>
                     <button onclick="resetPassword(${user.user_id})" class="action-btn action-btn-reset" title="비밀번호 초기화">
                         <svg class="action-icon" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m0 0a2 2 0 01-2 2m2-2h3M9 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-5m-9-9L12 3l4 4"/>
@@ -1085,6 +1104,107 @@ function showDeptEditForm(deptId, deptName, deptDesc) {
     // 입력 필드에 포커스
     const nameInput = formContainer.querySelector('input[name="department_name"]');
     nameInput?.focus();
+}
+
+// 멘티 보고서 보기 함수
+async function viewMenteeReport(userId) {
+    try {
+        // 보고서 데이터를 가져옵니다
+        const response = await fetch(`http://127.0.0.1:8001/api/mentorship/reports/${userId}`, {
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            mode: 'cors',
+            credentials: 'omit'
+        });
+        
+        if (response.ok) {
+            const reportData = await response.json();
+            showReportModal(reportData);
+        } else if (response.status === 404) {
+            alert('해당 멘티의 보고서가 없습니다.');
+        } else {
+            console.error('보고서 조회 실패:', response.status);
+            alert('보고서를 불러오는 중 오류가 발생했습니다.');
+        }
+    } catch (error) {
+        console.error('보고서 조회 오류:', error);
+        alert('보고서 조회 중 네트워크 오류가 발생했습니다.');
+    }
+}
+
+// 보고서 모달 표시 함수
+function showReportModal(reportData) {
+    // 기존 모달이 있으면 제거
+    const existingModal = document.getElementById('report-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 모달 HTML 생성
+    const modalHTML = `
+        <div id="report-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; display: flex; justify-content: center; align-items: center;">
+            <div style="background: white; border-radius: 12px; padding: 32px; max-width: 800px; width: 90%; max-height: 80%; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px;">
+                    <h2 style="font-size: 24px; font-weight: 600; color: #1f2937; margin: 0;">멘티 보고서</h2>
+                    <button onclick="closeReportModal()" style="background: none; border: none; color: #6b7280; cursor: pointer; padding: 8px; border-radius: 6px; transition: background 0.2s;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="report-content">
+                    <div style="text-align: center; padding: 40px; color: #6b7280;">
+                        보고서를 불러오는 중...
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 모달을 body에 추가
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 보고서 내용 표시
+    const contentDiv = document.getElementById('report-content');
+    if (reportData && reportData.length > 0) {
+        const reportsHTML = reportData.map(report => `
+            <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 16px; background: #f9fafb;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin: 0;">${report.title || '제목 없음'}</h3>
+                    <span style="font-size: 14px; color: #6b7280;">${report.created_at ? new Date(report.created_at).toLocaleDateString('ko-KR') : ''}</span>
+                </div>
+                <div style="color: #4b5563; line-height: 1.6; margin-bottom: 16px;">
+                    ${report.content ? report.content.replace(/\n/g, '<br>') : '내용이 없습니다.'}
+                </div>
+                ${report.mentor_feedback ? `
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 16px; margin-top: 16px;">
+                        <div style="font-weight: 500; color: #1e40af; margin-bottom: 8px;">멘토 피드백</div>
+                        <div style="color: #1e40af;">${report.mentor_feedback.replace(/\n/g, '<br>')}</div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+        contentDiv.innerHTML = reportsHTML;
+    } else {
+        contentDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #6b7280;">
+                <svg style="width: 64px; height: 64px; margin-bottom: 16px; color: #d1d5db;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <p>등록된 보고서가 없습니다.</p>
+            </div>
+        `;
+    }
+}
+
+// 보고서 모달 닫기 함수
+function closeReportModal() {
+    const modal = document.getElementById('report-modal');
+    if (modal) {
+        modal.remove();
+    }
 }
 </script>
 {% endblock %}
