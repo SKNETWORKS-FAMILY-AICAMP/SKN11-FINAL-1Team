@@ -23,6 +23,46 @@
     color: #1976d2;
     font-weight: bold;
   }
+  /* 커리큘럼 제목 입력 디자인 개선 */
+  .tasklist-search {
+    width: 100%;
+    border: 1.5px solid #90caf9;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 1.08em;
+    color: #222;
+    background: #f7fbff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(144,202,249,0.08);
+    outline: none;
+  }
+  .tasklist-search:focus {
+    border-color: #1976d2;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.12);
+    background: #fff;
+  }
+  /* 커리큘럼 설명 textarea 디자인 개선 */
+  #curriculum-desc,
+  #curriculum-textarea {
+    width: 100%;
+    border: 1.5px solid #90caf9;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 1.05em;
+    color: #222;
+    background: #f7fbff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(144,202,249,0.08);
+    outline: none;
+    resize: vertical;
+    min-height: 180px;
+  }
+  #curriculum-desc:focus,
+  #curriculum-textarea:focus {
+    border-color: #1976d2;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.12);
+    background: #fff;
+  }
   .week-section {
     background: #e3f2fd;
     border-radius: 10px;
@@ -39,7 +79,7 @@
   }
   .template-left {
     flex: 1;
-    padding: 24px 0 24px 24px;
+    padding: 15px 15px 15px 15px;
     background: #fafbfc;
     border-radius: 12px 0 0 12px;
     min-width: 340px;
@@ -141,7 +181,7 @@
     flex: 2;
     background: #fff;
     border-radius: 0 16px 16px 0;
-    padding: 36px 48px 32px 48px;
+    padding: 25px 25px 25px 25px;
     min-width: 600px;
     max-height: 90vh;
     overflow-y: auto;
@@ -212,6 +252,32 @@
       padding: 18px 48px 18px 48px;
       z-index: 10000;
     }
+    
+    /* 로딩 스피너 스타일 */
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .btn-loading {
+      display: none;
+      align-items: center;
+    }
+    
+    .template-btn:disabled {
+      background: #999 !important;
+      cursor: not-allowed;
+    }
   </style>
 {% endblock %}
 
@@ -227,18 +293,30 @@
       </div>
       <div class="template-form-row">
         <label class="template-form-label">커리큘럼 제목</label>
-        <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력" style="font-size: 1.05em;">
+        <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력" style="font-size: 14px;">
       </div>
       <div class="template-form-row">
         <label class="template-form-label">커리큘럼 설명</label>
-        <textarea class="template-form-textarea" id="curriculum-desc" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
+        <textarea class="template-form-textarea" id="curriculum-desc" placeholder="예시 : 
+
+설명 : 신입 AI 엔지니어를 위한 6주 온보딩으로, 실습 중심이며 프로젝트 기반으로 구성됨.
+직무 : AI 엔지니어
+주차 : 6
+목적 : 신입사원의 기술 적응과 프로젝트 수행 역량 평가하기 위함" style="min-height: 250px; font-size: 14px;"></textarea>
         <div style="display: flex; justify-content: flex-end;">
-          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">✨AI 커리큘럼 생성</button>
+          <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">
+            <span class="btn-text">✨AI 커리큘럼 생성</span>
+            <span class="btn-loading" style="display: none;">
+              <div class="loading-spinner"></div>
+              생성중...
+            </span>
+          </button>
         </div>
       </div>
       <div class="template-form-row" id="draft-section">
         <label class="template-form-label">주차별 커리큘럼 일정</label>
-        <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;" placeholder="예시:
+        <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 400px; font-size:15px; white-space:pre-line;" placeholder="예시:
+
 # week1 조직문화 이해 및 관찰
 # week2 조직문화 실천 체험
 # week3 조직문화 실천 체험 발표 및 피드백
@@ -247,7 +325,13 @@
 
 위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
         <div style="display: flex; justify-content: flex-end;">
-          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">✨AI 세부 Task 생성</button>
+          <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">
+            <span class="btn-text">✨AI 세부 Task 생성</span>
+            <span class="btn-loading" style="display: none;">
+              <div class="loading-spinner"></div>
+              생성중...
+            </span>
+          </button>
         </div>
       </div>
     </form>
@@ -375,38 +459,58 @@ function showMessage(message, type = 'success') {
 document.addEventListener('DOMContentLoaded', function() {
   // 커리큘럼 초안 생성 버튼에 AJAX 기능 추가
   document.getElementById('generate-draft-btn').addEventListener('click', async function() {
-    const btnText = this.querySelector('.btn-text');
-    const btnLoading = this.querySelector('.btn-loading');
-    const description = document.getElementById('curriculum-desc').value.trim();
-    
-    if (!description) {
-      showMessage('커리큘럼 설명을 입력해주세요.', 'error');
+    const titleInput = document.querySelector('.tasklist-search');
+    const descInput = document.getElementById('curriculum-desc');
+
+    // 입력값 가져오기
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+
+    if (!title || !description) {
+      showMessage('커리큘럼 제목과 설명을 입력해주세요.', 'error');
       return;
     }
-    
+
     // 로딩 상태 시작
+    const btnText = this.querySelector('.btn-text');
+    const btnLoading = this.querySelector('.btn-loading');
+    
     btnText.style.display = 'none';
     btnLoading.style.display = 'inline-flex';
     this.disabled = true;
-    
+
     try {
-      // 실제로는 AI API를 호출하거나 서버에서 초안을 생성할 수 있지만
-      // 현재는 기본 초안 템플릿을 사용
-      setTimeout(() => {
-        generateDraftContent();
-        showMessage('커리큘럼 초안이 생성되었습니다!');
-        
-        // 로딩 상태 종료
-        btnText.style.display = 'inline';
-        btnLoading.style.display = 'none';
-        this.disabled = false;
-      }, 1500); // 1.5초 대기로 로딩 효과 시연
+      // API 호출 - FastAPI로 직접 요청
+      const response = await fetch('http://localhost:8001/api/tasks/generate_draft/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title,
+          description: description,
+          job_role: '신입사원',
+          weeks: 12,
+          goal: '신입사원의 성공적인 온보딩과 조직 적응'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.text();
       
+      // 결과값을 textarea에 삽입
+      const draftTextarea = document.getElementById('curriculum-textarea');
+      draftTextarea.value = result;
+
+      showMessage('커리큘럼 초안이 성공적으로 생성되었습니다.');
     } catch (error) {
-      console.error('초안 생성 오류:', error);
-      showMessage('초안 생성 중 오류가 발생했습니다.', 'error');
-      
-      // 로딩 상태 종료
+      console.error('Error:', error);
+      showMessage(`커리큘럼 초안 생성 중 오류가 발생했습니다: ${error.message}`, 'error');
+    } finally {
+      // 로딩 상태 해제
       btnText.style.display = 'inline';
       btnLoading.style.display = 'none';
       this.disabled = false;
@@ -415,9 +519,17 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // 세부 Task 생성 버튼에 AJAX 기능 추가
   document.getElementById('generate-task-btn').addEventListener('click', async function() {
-    const btnText = this.querySelector('.btn-text');
-    const btnLoading = this.querySelector('.btn-loading');
+    const titleInput = document.querySelector('.tasklist-search');
+    const descInput = document.getElementById('curriculum-desc');
     const weekSchedule = document.getElementById('curriculum-textarea').value.trim();
+    
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+    
+    if (!title || !description) {
+      showMessage('커리큘럼 제목과 설명을 입력해주세요.', 'error');
+      return;
+    }
     
     if (!weekSchedule) {
       showMessage('주차별 커리큘럼 일정을 입력해주세요.', 'error');
@@ -425,27 +537,53 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 로딩 상태 시작
+    const btnText = this.querySelector('.btn-text');
+    const btnLoading = this.querySelector('.btn-loading');
+    
     btnText.style.display = 'none';
     btnLoading.style.display = 'inline-flex';
     this.disabled = true;
     
     try {
-      // 실제로는 AI API를 호출하여 세부 Task를 생성할 수 있지만
-      // 현재는 주차별 기본 Task를 생성
-      setTimeout(() => {
-        generateTasksFromSchedule(weekSchedule);
-        showMessage('세부 Task가 생성되었습니다!');
-        
-        // 로딩 상태 종료
-        btnText.style.display = 'inline';
-        btnLoading.style.display = 'none';
-        this.disabled = false;
-      }, 2000); // 2초 대기로 로딩 효과 시연
+      // API 호출하여 세부 Task 생성 - FastAPI로 직접 요청
+      const response = await fetch('http://localhost:8001/api/tasks/generate_tasks_from_draft/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title,
+          description: description,
+          job_role: '신입사원',
+          weeks: 12,
+          goal: '신입사원의 성공적인 온보딩과 조직 적응'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // 에러 응답인지 확인
+      if (result.error) {
+        throw new Error(`API Error: ${result.error}`);
+      }
+      
+      const tasks = result.tasks;
+      
+      // 생성된 tasks를 window.tasks_json에 저장
+      window.tasks_json = tasks;
+      
+      // Task 목록 렌더링
+      renderTasksByWeek(tasks);
+      showMessage('세부 Task가 성공적으로 생성되었습니다!');
       
     } catch (error) {
       console.error('Task 생성 오류:', error);
-      showMessage('Task 생성 중 오류가 발생했습니다.', 'error');
-      
+      showMessage(`Task 생성 중 오류가 발생했습니다: ${error.message}`, 'error');
+    } finally {
       // 로딩 상태 종료
       btnText.style.display = 'inline';
       btnLoading.style.display = 'none';
@@ -574,6 +712,12 @@ function toggleTaskSection() {
   } else {
     taskList.style.display = 'none';
   }
+}
+
+// Task 섹션을 확실히 보이게 하는 함수
+function showTaskSection() {
+  const taskList = document.getElementById('task-list');
+  taskList.style.display = 'flex';
 }
 
 // Drag & Drop for task list (주차별 이동 및 주차 내 순서만 변경)
@@ -971,14 +1115,15 @@ document.getElementById('save-curriculum-btn').onclick = async function() {
     document.getElementById('curriculum-desc').value = window.curriculum.curriculum_description || '';
     document.getElementById('curriculum-textarea').value = window.curriculum.week_schedule || '';
 
+    // 편집 모드에서는 Task 섹션을 바로 보이게 함
+    showTaskSection();
+
     if (Array.isArray(window.tasks_json) && window.tasks_json.length > 0) {
       renderTasksByWeek(window.tasks_json);
-      toggleTaskSection(); // Task 섹션 보이기
     } else {
       // Task가 없어도 기본 1주차는 표시하고 Task 섹션도 보이게
       window.tasks_json = [];
       renderTasksByWeek(window.tasks_json);
-      toggleTaskSection(); // Task 섹션 보이기
     }
     initTaskListDnD();
   } else {
