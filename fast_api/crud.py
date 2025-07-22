@@ -227,18 +227,25 @@ def get_users_with_filters(
     return query.offset(skip).limit(limit).all()
 
 def get_mentors(db: Session, skip: int = 0, limit: int = 100):
-    """멘토 목록 조회"""
-    return db.query(models.User).filter(models.User.role == "mentor").offset(skip).limit(limit).all()
+    """멘토 목록 조회 - 활성 멘토만 반환"""
+    return db.query(models.User).filter(
+        models.User.role == "mentor",
+        models.User.is_active == True
+    ).offset(skip).limit(limit).all()
 
 def get_mentees(db: Session, skip: int = 0, limit: int = 100):
-    """멘티 목록 조회"""
-    return db.query(models.User).filter(models.User.role == "mentee").offset(skip).limit(limit).all()
+    """멘티 목록 조회 - 활성 멘티만 반환"""
+    return db.query(models.User).filter(
+        models.User.role == "mentee",
+        models.User.is_active == True
+    ).offset(skip).limit(limit).all()
 
 def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
     """사용자 정보 업데이트 (부분 필드)"""
     db_user = get_user(db, user_id)
     if db_user:
-        user_data = user_update.dict()
+        # None 값을 제외하고 업데이트할 필드만 추출
+        user_data = user_update.dict(exclude_unset=True, exclude_none=True)
         if 'password' in user_data:
             user_data['password'] = hash_password(user_data['password'])
         for key, value in user_data.items():
@@ -545,8 +552,19 @@ def delete_task_assign(db: Session, task_id: int):
 
 # Mentorship CRUD
 def create_mentorship(db: Session, mentorship: schemas.MentorshipCreate):
-    """멘토링 생성"""
-    db_mentorship = models.Mentorship(**mentorship.dict())
+    """멘토링 생성 - 멘토와 멘티의 활성 상태 확인"""
+    # 멘토와 멘티의 활성 상태 확인
+    mentor = get_user(db, user_id=mentorship.mentor_id) if mentorship.mentor_id else None
+    mentee = get_user(db, user_id=mentorship.mentee_id) if mentorship.mentee_id else None
+    
+    # 멘토쉽 생성
+    mentorship_data = mentorship.dict()
+    
+    # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
+    if (mentor and not mentor.is_active) or (mentee and not mentee.is_active):
+        mentorship_data['is_active'] = False
+    
+    db_mentorship = models.Mentorship(**mentorship_data)
     db.add(db_mentorship)
     db.commit()
     db.refresh(db_mentorship)
@@ -693,11 +711,23 @@ def update_mentorship_status(db: Session, mentorship_id: int, is_active: bool):
 
 
 def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schemas.MentorshipCreate):
-    """멘토십 정보 업데이트"""
+    """멘토십 정보 업데이트 - 멘토와 멘티의 활성 상태 확인"""
     db_mentorship = get_mentorship(db, mentorship_id)
     if db_mentorship:
+        # 멘토와 멘티의 활성 상태 확인
+        mentor = get_user(db, user_id=db_mentorship.mentor_id) if db_mentorship.mentor_id else None
+        mentee = get_user(db, user_id=db_mentorship.mentee_id) if db_mentorship.mentee_id else None
+        
+        # 멘토십 정보 업데이트
         for key, value in mentorship_update.dict().items():
             setattr(db_mentorship, key, value)
+        
+        # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
+        if mentor and not mentor.is_active:
+            db_mentorship.is_active = False
+        if mentee and not mentee.is_active:
+            db_mentorship.is_active = False
+            
         db.commit()
         db.refresh(db_mentorship)
     return db_mentorship

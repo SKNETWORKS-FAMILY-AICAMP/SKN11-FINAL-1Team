@@ -832,6 +832,8 @@ document.addEventListener('DOMContentLoaded', function() {
         title: editTitle.value,
         guideline: editGuideline.value,
         description: editDescription.value,
+        start_date: startDate,
+        end_date: endDate,
         priority: editPriority.value,
         scheduled_end_date: editEndDate.value
       };

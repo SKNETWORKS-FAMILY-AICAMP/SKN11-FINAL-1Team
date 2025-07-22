@@ -95,8 +95,8 @@ class Department(models.Model):
     
 class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, help_text='유저 고유 ID')
-    employee_number = models.IntegerField(null=True, blank=True, help_text='사번')
-    is_admin = models.BooleanField(default=False, help_text='관리자 여부')
+    employee_number = models.IntegerField(null=True, blank=True)
+    is_admin = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False, help_text='슈퍼유저 여부')
     mentorship_id = models.IntegerField(null=True, blank=True, help_text='멘토쉽 ID(옵션)')
     company = models.ForeignKey(  
@@ -111,26 +111,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         Department,
         on_delete=models.SET_NULL,
         null=True,
-        help_text='소속 부서'
     )
-    tag = models.CharField(max_length=255, null=True, blank=True, help_text='유저 태그')
+    tag = models.CharField(max_length=255, null=True, blank=True)
     ROLE_CHOICES = (
         ('mentee', 'Mentee'),
         ('mentor', 'Mentor')
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, help_text='역할(멘티/멘토)')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     join_date = models.DateField(auto_now_add=True, null=True, blank=True, help_text='입사일')
-    position = models.CharField(max_length=50, help_text='직위')
-    job_part = models.CharField(max_length=50, help_text='직무')
-    email = models.EmailField(unique=True, help_text='이메일(로그인 ID)')
+    position = models.CharField(max_length=50)
+    job_part = models.CharField(max_length=50)
+    email = models.EmailField(unique=True)
     password = models.CharField(max_length=128, help_text='비밀번호')
 
-    last_name = models.CharField(max_length=50, help_text='성')
-    first_name = models.CharField(max_length=50, help_text='이름')
+    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50)
     last_login = models.DateTimeField(auto_now=True, null=True, blank=True, help_text='마지막 로그인 시각')
     profile_image = models.ImageField(upload_to='profile_img/', null=True, blank=True, help_text='프로필 이미지')
 
-    is_active = models.BooleanField(default=True, help_text='활성화 여부')
+    is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False, help_text='스태프 여부')
 
     USERNAME_FIELD = 'email'
@@ -190,7 +189,7 @@ class Curriculum(models.Model):
     curriculum_id = models.AutoField(primary_key=True, help_text='커리큘럼 고유 ID')
     curriculum_description = models.TextField(null=True, blank=True, help_text='커리큘럼 설명')
     curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, help_text='소속 부서')
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
     common = models.BooleanField(default=False, help_text='공용 커리큘럼 여부')
     total_weeks = models.IntegerField(default=0, help_text='총 주차 수')
     week_schedule = models.TextField(null=True, blank=True, help_text='주차별 온보딩 일정(1주차: ~\n2주차: ~\n3주차: ~ 형식)')

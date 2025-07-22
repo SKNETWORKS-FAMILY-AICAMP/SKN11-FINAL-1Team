@@ -741,6 +741,17 @@ def mentee(request):
                 for task in tasks[:3]:  # 최대 3개만 표시
                     print(f"  - ID: {task.get('task_assign_id')}, 제목: {task.get('title')}, D-day: {task.get('dday_text')}, 클래스: {task.get('dday_class')}")
         
+        # 멘토십 기간 정보 추가
+        if mentorship_id:
+            mentorship = Mentorship.objects.filter(mentorship_id=int(mentorship_id)).first()
+            if mentorship:
+                start_date = mentorship.scheduled_start_date.strftime('%Y-%m-%d') if mentorship.scheduled_start_date else 'N/A'
+                end_date = mentorship.scheduled_end_date.strftime('%Y-%m-%d') if mentorship.scheduled_end_date else 'N/A'
+                period = f"{start_date} ~ {end_date}"
+                context.update({
+                    'mentorship_period': period,
+                })
+        
         return render(request, 'mentee/mentee.html', context)
         
     except Exception as e:

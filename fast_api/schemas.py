@@ -257,6 +257,7 @@ class MentorshipResponse(BaseModel):
     curriculum_id: Optional[int] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    is_active: Optional[bool] = True
     status: Optional[str] = "active"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

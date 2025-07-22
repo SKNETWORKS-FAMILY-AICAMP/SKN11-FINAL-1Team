@@ -13,6 +13,21 @@
     <form method="post" autocomplete="off">
       {% csrf_token %}
       {% for field in form.visible_fields %}
+        {% if field.name == 'tag' %}
+        <div class="form-row">
+          <label for="{{ field.id_for_label }}">
+            {{ field.label }}
+          </label>
+          <div class="form-input-col">
+            <input type="text" id="tag-input" name="tag" value="{{ field.value|default_if_none:'' }}" placeholder="#태그1, #태그2, ..." class="form-control" autocomplete="off">
+            <div id="tag-list" class="tag-list"></div>
+            <div class="help-text">태그를 입력하고 Enter 키를 누르거나 쉼표로 구분하여 여러 태그를 추가할 수 있습니다.</div>
+            {% for error in field.errors %}
+              <div class="error-text">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
         <div class="form-row">
           <label for="{{ field.id_for_label }}">
             {{ field.label }}
@@ -27,6 +42,7 @@
             {% endfor %}
           </div>
         </div>
+        {% endif %}
       {% endfor %}
       <div class="button-row">
         <button class="btn-create" type="submit" id="submit-btn">
@@ -43,6 +59,7 @@
 
 <script>
 // CSRF 토큰 가져오기
+// 태그 입력 및 UI 처리
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -101,6 +118,108 @@ document.addEventListener('DOMContentLoaded', function() {
     const editMode = {{ edit_mode|yesno:"true,false" }};
     
     if (userForm) {
+        // 태그 스타일 (파란색 배경, 흰색 글씨, 진한 테두리)
+        const tagStyle = document.createElement('style');
+        tagStyle.textContent = `
+        .tag-list { margin-top: 8px; }
+        .tag-item {
+          display: inline-block;
+          background: #DBEAFE;
+          color: #2563EB;
+          border-radius: 16px;
+          padding: 4px 12px;
+          margin-right: 6px;
+          margin-bottom: 4px;
+          font-size: 14px;
+          position: relative;
+          font-weight: 500;
+          border: 1.5px solid #2563eb;
+          box-shadow: 0 1px 4px rgba(37,99,235,0.08);
+        }
+        .tag-remove {
+          background: none;
+          border: none;
+          color: #fff;
+          margin-left: 6px;
+          font-size: 14px;
+          cursor: pointer;
+          font-weight: bold;
+        }
+        .tag-remove:hover {
+          color: #f87171;
+        }
+        `;
+        document.head.appendChild(tagStyle);
+
+        // 태그 입력 기능
+        const tagInput = document.getElementById('tag-input');
+        const tagList = document.getElementById('tag-list');
+        let tags = [];
+
+        // 기존 태그값이 있으면 파싱
+        if (tagInput.value) {
+            const existingTags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+            tags = [...existingTags];
+            renderTags();
+        }
+
+        function renderTags() {
+            tagList.innerHTML = '';
+            tags.forEach((tag, index) => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag-item';
+                tagElement.innerHTML = `
+                    ${tag}
+                    <button type="button" class="tag-remove" onclick="removeTag(${index})">×</button>
+                `;
+                tagList.appendChild(tagElement);
+            });
+            // hidden input에 태그 저장
+            tagInput.value = tags.join(', ');
+        }
+
+        // 태그 제거 함수 (전역으로 등록)
+        window.removeTag = function(index) {
+            tags.splice(index, 1);
+            renderTags();
+        };
+
+        // 태그 추가 함수
+        function addTag(tagText) {
+            const cleanTag = tagText.trim();
+            if (cleanTag && !tags.includes(cleanTag)) {
+                tags.push(cleanTag);
+                renderTags();
+            }
+        }
+
+        // 입력 이벤트 처리
+        tagInput.addEventListener('input', function(e) {
+            const value = e.target.value;
+            if (value.includes(',')) {
+                const newTags = value.split(',');
+                const lastTag = newTags.pop(); // 마지막 부분은 아직 완성되지 않은 태그
+                
+                // 완성된 태그들 추가
+                newTags.forEach(tag => addTag(tag));
+                
+                // 입력창에는 마지막 미완성 태그만 남김
+                e.target.value = lastTag;
+            }
+        });
+
+        // Enter 키 처리
+        tagInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const value = e.target.value.trim();
+                if (value) {
+                    addTag(value);
+                    e.target.value = '';
+                }
+            }
+        });
+
         userForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -129,11 +248,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
                 
+                // is_active 체크박스 상태를 명확하게 true/false로 포함
+                const isActiveCheckbox = document.getElementById('id_is_active');
+                if (isActiveCheckbox) {
+                    formObject['is_active'] = isActiveCheckbox.checked;
+                } else {
+                    formObject['is_active'] = false;
+                }
                 // UserCreate 스키마에 맞춰 필수 필드 설정
                 if (!editMode) {
                     // 생성 모드일 때만 필수 필드 검증 및 기본값 설정
                     if (!formObject.password) {
-                        formObject.password = 'temp123!'; // 임시 비밀번호
+                        formObject.password = '123'; // 임시 비밀번호
                     }
                     if (!formObject.join_date) {
                         formObject.join_date = new Date().toISOString().split('T')[0]; // 오늘 날짜
@@ -160,6 +286,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         const timestamp = Date.now();
                         formObject.email = `user${timestamp}@temp.com`;
                     }
+                } else {
+                    // 수정 모드에서는 password 필드 제거
+                    if ('password' in formObject) {
+                        delete formObject.password;
+                    }
                 }
                 
                 // 빈 문자열을 null로 변환
@@ -171,48 +302,91 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 console.log('Sending data:', formObject); // 디버깅용
                 
-                // FastAPI 서버 URL과 엔드포인트 (포트 8001에서 실행)
-                const baseUrl = 'http://127.0.0.1:8001'; // FastAPI 서버 주소
+                // Django 서버를 통한 API 호출 (CORS 문제 해결)
                 let apiUrl;
                 
                 if (editMode) {
                     // 수정 모드: URL에서 사용자 ID 추출
                     const pathParts = window.location.pathname.split('/');
-                    // URL segments example: ["", "account", "user", "123", "modify", ""]
-                    // userId is the segment before "modify"
-                    const userId = pathParts[pathParts.length - 3];
-                    apiUrl = `${baseUrl}/api/users/${userId}`;
+                    // URL segments example: ["", "account", "user", "123", "edit", ""] 또는 ["", "account", "user", "123", "update", ""]
+                    let userId = null;
+                    for (let i = 0; i < pathParts.length; i++) {
+                        if (pathParts[i] === 'user' && i + 1 < pathParts.length) {
+                            userId = pathParts[i + 1];
+                            break;
+                        }
+                    }
+                    
+                    if (!userId) {
+                        throw new Error('사용자 ID를 찾을 수 없습니다.');
+                    }
+                    
+                    // Django URL을 통한 수정 API
+                    apiUrl = `/account/user/${userId}/update/`;
                 } else {
-                    // 생성 모드
-                    apiUrl = `${baseUrl}/api/users/`;
+                    // 생성 모드 - Django URL을 통한 생성 API
+                    apiUrl = `/account/user/add/`;
                 }
                 
                 console.log('API URL:', apiUrl); // 디버깅용
                 
                 const response = await fetch(apiUrl, {
-                    method: editMode ? 'PUT' : 'POST',
+                    method: 'POST', // Django에서는 POST로 통일
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify(formObject)
                 });
                 
-                console.log('Response status:', response.status); // 디버깅용
                 
                 if (response.ok) {
                     const result = await response.json();
                     console.log('Success result:', result); // 디버깅용
-                    
                     // FastAPI 응답 형태에 따른 성공 판단
                     if (result.user_id || result.id || result.success !== false) {
-                        const successMsg = editMode ? '사용자 정보가 성공적으로 수정되었습니다!' : '사용자가 성공적으로 생성되었습니다!';
-                        showMessage(successMsg);
+                        const successMsg = editMode ? '사용자 정보가 정상적으로 수정되었습니다!' : '사용자가 성공적으로 생성되었습니다!';
                         
-                        // 생성 성공 후 약간의 지연을 두고 페이지 이동 (데이터 동기화 대기)
+                        // 수정 모드일 때 부모 창의 테이블 업데이트
+                        if (editMode && window.opener && !window.opener.closed) {
+                            try {
+                                // URL에서 사용자 ID 추출
+                                const pathParts = window.location.pathname.split('/');
+                                const userId = pathParts.find((part, index) => 
+                                    pathParts[index - 1] === 'user' && !isNaN(parseInt(part))
+                                );
+                                
+                                if (userId) {
+                                    const parentDoc = window.opener.document;
+                                    const userRow = parentDoc.querySelector(`tr[data-user-id="${userId}"]`);
+                                    
+                                    if (userRow && formObject.is_active !== undefined) {
+                                        // 활성화 상태 컬럼 업데이트 (7번째 컬럼, 인덱스 7)
+                                        const statusCell = userRow.children[7];
+                                        if (statusCell) {
+                                            const isActive = formObject.is_active;
+                                            const statusClass = isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                                            const statusText = isActive ? '활성' : '비활성';
+                                            
+                                            statusCell.innerHTML = `
+                                                <span class="px-3 py-1.5 text-base font-semibold rounded-md ${statusClass}">
+                                                    ${statusText}
+                                                </span>
+                                            `;
+                                        }
+                                    }
+                                }
+                            } catch (error) {
+                                console.log('부모 창 테이블 업데이트 중 오류:', error);
+                            }
+                        }
+                        
+                        showMessage(successMsg);
                         setTimeout(() => {
                             window.location.href = '/account/supervisor/?refresh=' + Date.now();
-                        }, 2000); // 2초 지연
+                        }, 2000);
                     } else {
                         throw new Error(result.detail || result.message || '처리 중 오류가 발생했습니다.');
                     }
