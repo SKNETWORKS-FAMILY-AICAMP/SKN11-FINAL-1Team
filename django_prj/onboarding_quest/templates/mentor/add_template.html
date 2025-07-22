@@ -23,6 +23,46 @@
     color: #1976d2;
     font-weight: bold;
   }
+  /* 커리큘럼 제목 입력 디자인 개선 */
+  .tasklist-search {
+    width: 100%;
+    border: 1.5px solid #90caf9;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 1.08em;
+    color: #222;
+    background: #f7fbff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(144,202,249,0.08);
+    outline: none;
+  }
+  .tasklist-search:focus {
+    border-color: #1976d2;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.12);
+    background: #fff;
+  }
+  /* 커리큘럼 설명 textarea 디자인 개선 */
+  #curriculum-desc,
+  #curriculum-textarea {
+    width: 100%;
+    border: 1.5px solid #90caf9;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 1.05em;
+    color: #222;
+    background: #f7fbff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(144,202,249,0.08);
+    outline: none;
+    resize: vertical;
+    min-height: 180px;
+  }
+  #curriculum-desc:focus,
+  #curriculum-textarea:focus {
+    border-color: #1976d2;
+    box-shadow: 0 2px 8px rgba(25,118,210,0.12);
+    background: #fff;
+  }
   .week-section {
     background: #e3f2fd;
     border-radius: 10px;
@@ -39,7 +79,7 @@
   }
   .template-left {
     flex: 1;
-    padding: 24px 0 24px 24px;
+    padding: 15px 15px 15px 15px;
     background: #fafbfc;
     border-radius: 12px 0 0 12px;
     min-width: 340px;
@@ -141,7 +181,7 @@
     flex: 2;
     background: #fff;
     border-radius: 0 16px 16px 0;
-    padding: 36px 48px 32px 48px;
+    padding: 25px 25px 25px 25px;
     min-width: 600px;
     max-height: 90vh;
     overflow-y: auto;
@@ -253,11 +293,16 @@
       </div>
       <div class="template-form-row">
         <label class="template-form-label">커리큘럼 제목</label>
-        <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력" style="font-size: 1.05em;">
+        <input type="text" class="tasklist-search" placeholder="커리큘럼 제목 입력" style="font-size: 14px;">
       </div>
       <div class="template-form-row">
         <label class="template-form-label">커리큘럼 설명</label>
-        <textarea class="template-form-textarea" id="curriculum-desc" placeholder="커리큘럼 설명을 입력하세요..." style="min-height: 120px;"></textarea>
+        <textarea class="template-form-textarea" id="curriculum-desc" placeholder="예시 : 
+
+설명 : 신입 AI 엔지니어를 위한 6주 온보딩으로, 실습 중심이며 프로젝트 기반으로 구성됨.
+직무 : AI 엔지니어
+주차 : 6
+목적 : 신입사원의 기술 적응과 프로젝트 수행 역량 평가하기 위함" style="min-height: 250px; font-size: 14px;"></textarea>
         <div style="display: flex; justify-content: flex-end;">
           <button type="button" class="template-btn" id="generate-draft-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">
             <span class="btn-text">✨AI 커리큘럼 생성</span>
@@ -270,7 +315,8 @@
       </div>
       <div class="template-form-row" id="draft-section">
         <label class="template-form-label">주차별 커리큘럼 일정</label>
-        <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 220px; font-size:15px; white-space:pre-line;" placeholder="예시:
+        <textarea class="template-form-textarea" id="curriculum-textarea" style="min-height: 400px; font-size:15px; white-space:pre-line;" placeholder="예시:
+
 # week1 조직문화 이해 및 관찰
 # week2 조직문화 실천 체험
 # week3 조직문화 실천 체험 발표 및 피드백

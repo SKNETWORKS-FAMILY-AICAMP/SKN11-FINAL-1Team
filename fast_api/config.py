@@ -114,13 +114,3 @@ class Settings(BaseSettings):
 
 # 설정 인스턴스 생성
 settings = Settings()
-
-# 설정 검증 및 디버그 정보
-if settings.debug:
-    print(f"🔧 FastAPI Settings Loaded:")
-    print(f"   - Host: {settings.host}:{settings.port}")
-    print(f"   - Database: {settings.db_name}@{settings.db_host}")
-    print(f"   - Debug Mode: {settings.debug}")
-    print(f"   - RAG Available: {bool(settings.openai_api_key)}")
-    print(f"   - Upload Dir: {settings.upload_base_dir}")
-    print(f"   - Log Level: {settings.log_level}") 
