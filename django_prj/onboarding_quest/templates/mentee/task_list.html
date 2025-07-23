@@ -41,6 +41,20 @@
       </select>
     </div>
   </div>
+
+   <!-- ✅ 최종 평가 보고서: 반복문 밖에 둠 -->
+  {% if final_report %}
+  <div class="task-card final-report-card done" style="background: #fefefe; margin-bottom: 16px;">
+    <div class="task-card-header">
+      <span class="status-badge done">최종</span>
+      <span class="task-title">최종 평가 보고서</span>
+    </div>
+    <div class="task-desc-row">
+      <div class="task-desc" style="white-space: pre-wrap;">{{ final_report }}</div>
+    </div>
+  </div>
+  {% endif %}
+
   {% for week, tasks in week_tasks.items %}
     <div style="font-weight:bold; margin:18px 0 8px 0; color:#000000; font-size:18px;">{{ week }}주차</div>
     {% for task in tasks %}
@@ -67,6 +81,8 @@
         <div class="task-desc-row">
           <div class="task-desc">{{ task.description }}</div>
         </div>
+
+        
         
         <!-- 🔧 하위 태스크 토글 및 리스트 -->
         {# 직접적인 하위 테스크만 필터링 #}

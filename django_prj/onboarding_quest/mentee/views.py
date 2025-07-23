@@ -775,6 +775,13 @@ def task_list(request):
             messages.error(request, '사용자 정보를 찾을 수 없습니다.')
             return redirect('account:login')
         
+        from core.models import Mentorship
+        final_report = None
+        mentorship_obj = Mentorship.objects.filter(mentee_id=user_id).first()
+        if mentorship_obj and mentorship_obj.is_active == False:
+            # 온보딩 종료 시 레포트 가져오기
+            final_report = getattr(mentorship_obj, 'report', None)
+        
         # 🔧 mentorship_id가 있을 때 is_active 및 사용자 권한 검증
         if mentorship_id:
             try:
@@ -862,6 +869,7 @@ def task_list(request):
             'week_tasks': dict(week_tasks),
             'selected_task': selected_task,
             'mentorship_id': mentorship_id,
+            'final_report': final_report,
         }
         return render(request, 'mentee/task_list.html', context)
         
