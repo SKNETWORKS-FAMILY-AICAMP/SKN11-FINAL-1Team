@@ -765,48 +765,68 @@ def task_list(request):
         week_tasks = defaultdict(list)
         selected_task = None
         
-        # 🔧 현재 사용자 ID 가져오기
+        # 🔧 현재 사용자 ID와 역할 가져오기
         user_id = getattr(request.user, 'user_id', None)
+        user_role = getattr(request.user, 'role', None)
         if not user_id:
             user_data = request.session.get('user_data', {})
             user_id = user_data.get('user_id')
+            user_role = user_data.get('role')
         
         if not user_id:
             messages.error(request, '사용자 정보를 찾을 수 없습니다.')
             return redirect('account:login')
         
-        # 🔧 mentorship_id가 있을 때 is_active 및 사용자 권한 검증
+        # 🔧 mentorship_id가 있을 때 권한 검증 (멘토 또는 멘티)
         if mentorship_id:
             try:
                 from core.models import Mentorship
-                mentorship_obj = Mentorship.objects.filter(
-                    mentorship_id=int(mentorship_id),
-                    mentee_id=user_id,
-                    is_active=True  # 🔧 is_active=True 체크 필수
-                ).first()
                 
-                if not mentorship_obj:
-                    print(f"⚠️ WARNING - task_list에서 접근 시도된 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십이 아님")
+                # 멘토인 경우: mentor_id로 검증
+                if user_role == 'mentor':
+                    mentorship_obj = Mentorship.objects.filter(
+                        mentorship_id=int(mentorship_id),
+                        mentor_id=user_id,
+                        is_active=True
+                    ).first()
                     
-                    # 사용자의 실제 활성 멘토십을 찾아서 리다이렉트
-                    active_mentorship = Mentorship.objects.filter(
+                    if not mentorship_obj:
+                        print(f"⚠️ WARNING - 멘토({user_id})가 접근 시도한 mentorship_id={mentorship_id}는 해당 멘토의 멘토십이 아님")
+                        messages.error(request, '해당 멘토십에 접근할 권한이 없습니다.')
+                        return redirect('mentor:mentor')
+                    else:
+                        print(f"✅ INFO - 멘토({user_id})가 mentorship_id={mentorship_id}에 정상 접근")
+                
+                # 멘티인 경우: mentee_id로 검증 (기존 로직)
+                else:
+                    mentorship_obj = Mentorship.objects.filter(
+                        mentorship_id=int(mentorship_id),
                         mentee_id=user_id,
                         is_active=True
                     ).first()
                     
-                    if active_mentorship:
-                        redirect_url = f"{request.path}?mentorship_id={active_mentorship.mentorship_id}"
-                        print(f"🚀 DEBUG - task_list에서 올바른 활성 멘토십으로 리다이렉트: {redirect_url}")
-                        messages.warning(request, '비활성 멘토십에 접근할 수 없습니다. 활성 멘토십으로 이동합니다.')
-                        return redirect(redirect_url)
+                    if not mentorship_obj:
+                        print(f"⚠️ WARNING - task_list에서 접근 시도된 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십이 아님")
+                        
+                        # 사용자의 실제 활성 멘토십을 찾아서 리다이렉트
+                        active_mentorship = Mentorship.objects.filter(
+                            mentee_id=user_id,
+                            is_active=True
+                        ).first()
+                        
+                        if active_mentorship:
+                            redirect_url = f"{request.path}?mentorship_id={active_mentorship.mentorship_id}"
+                            print(f"🚀 DEBUG - task_list에서 올바른 활성 멘토십으로 리다이렉트: {redirect_url}")
+                            messages.warning(request, '비활성 멘토십에 접근할 수 없습니다. 활성 멘토십으로 이동합니다.')
+                            return redirect(redirect_url)
+                        else:
+                            messages.error(request, '활성화된 멘토십이 없습니다.')
+                            return render(request, 'mentee/task_list.html', {
+                                'week_tasks': {},
+                                'mentorship_id': None
+                            })
                     else:
-                        messages.error(request, '활성화된 멘토십이 없습니다.')
-                        return render(request, 'mentee/task_list.html', {
-                            'week_tasks': {},
-                            'mentorship_id': None
-                        })
-                else:
-                    print(f"✅ INFO - task_list에서 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십으로 확인됨")
+                        print(f"✅ INFO - task_list에서 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십으로 확인됨")
                     
             except Exception as validation_error:
                 print(f"⚠️ ERROR - task_list에서 멘토십 검증 중 오류: {validation_error}")
@@ -862,6 +882,7 @@ def task_list(request):
             'week_tasks': dict(week_tasks),
             'selected_task': selected_task,
             'mentorship_id': mentorship_id,
+            'user_role': user_role,  # 멘토/멘티 구분을 위한 역할 정보
         }
         return render(request, 'mentee/task_list.html', context)
         

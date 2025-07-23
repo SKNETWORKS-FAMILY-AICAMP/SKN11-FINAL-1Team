@@ -46,6 +46,75 @@ function searchMentorships() {
     window.location.href = `?${params.toString()}`;
 }
 
+// 실시간 필터링 함수
+function applyFilters() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const statusFilter = document.getElementById('status-filter').value;
+    const departmentFilter = document.getElementById('department-filter').value;
+    
+    const tableRows = document.querySelectorAll('#mentorship-table tbody tr');
+    
+    tableRows.forEach(row => {
+        let shouldShow = true;
+        
+        // 이름 검색 필터
+        if (searchTerm) {
+            const mentorName = row.cells[1].textContent.trim().toLowerCase();
+            const menteeName = row.cells[2].textContent.trim().toLowerCase();
+            
+            if (!mentorName.includes(searchTerm) && !menteeName.includes(searchTerm)) {
+                shouldShow = false;
+            }
+        }
+        
+        // 상태 필터
+        if (statusFilter && shouldShow) {
+            const statusCell = row.cells[5]; // 상태 컬럼
+            const statusText = statusCell.textContent.trim();
+            
+            if (statusFilter === 'active' && !statusText.includes('활성')) {
+                shouldShow = false;
+            } else if (statusFilter === 'inactive' && !statusText.includes('비활성')) {
+                shouldShow = false;
+            }
+        }
+        
+        // 부서 필터
+        if (departmentFilter && shouldShow) {
+            const mentorDept = row.cells[1].querySelector('div:last-child')?.textContent.trim() || '';
+            const menteeDept = row.cells[2].querySelector('div:last-child')?.textContent.trim() || '';
+            
+            // 선택된 부서명을 찾기
+            const selectedDeptOption = document.querySelector(`#department-filter option[value="${departmentFilter}"]`);
+            const selectedDeptName = selectedDeptOption ? selectedDeptOption.textContent : '';
+            
+            if (!mentorDept.includes(selectedDeptName) && !menteeDept.includes(selectedDeptName)) {
+                shouldShow = false;
+            }
+        }
+        
+        // 행 표시/숨김
+        row.style.display = shouldShow ? '' : 'none';
+    });
+    
+    // 필터링 결과 업데이트
+    updateFilterResults();
+}
+
+// 필터링 결과 통계 업데이트
+function updateFilterResults() {
+    const tableRows = document.querySelectorAll('#mentorship-table tbody tr');
+    const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
+    
+    console.log(`필터링 결과: ${visibleRows.length}/${tableRows.length} 개의 멘토십이 표시됩니다.`);
+}
+
+// 페이지 로드 시 초기 필터 적용
+document.addEventListener('DOMContentLoaded', function() {
+    // 초기 필터 적용 (URL 파라미터가 있는 경우)
+    applyFilters();
+});
+
 function editMentorship(mentorshipId) {
     currentMentorshipId = mentorshipId;
     
