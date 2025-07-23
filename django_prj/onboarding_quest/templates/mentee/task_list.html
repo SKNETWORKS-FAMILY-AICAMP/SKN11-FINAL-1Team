@@ -27,9 +27,9 @@
 
       <select id="task-filter-status" style="padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; flex: 1; height: 40px;">
         <option value="all">전체 상태</option>
-        <option value="진행전">진행 전</option>
-        <option value="진행중">진행 중</option>
-        <option value="검토요청">검토 요청</option>
+        <option value="진행전">진행전</option>
+        <option value="진행중">진행중</option>
+        <option value="검토요청">검토요청</option>
         <option value="완료">완료</option>
       </select>
       
@@ -252,6 +252,7 @@ let currentSelectedTaskId = null; // 현재 선택된 태스크 ID
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Task List 초기화 시작');
     
+    
     try {
         // 태스크 카드 클릭 이벤트 설정
         initializeTaskCards();
@@ -277,17 +278,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        
 
-        // 첫 번째 태스크 자동 선택 및 상세 표시
-        setTimeout(() => {
-            const firstTaskCard = document.querySelector('.task-card');
-            if (firstTaskCard) {
-                const taskId = firstTaskCard.dataset.taskId || firstTaskCard.getAttribute('data-task-id');
-                firstTaskCard.classList.add('selected');
-                selectTask(firstTaskCard, taskId, false); // 애니메이션 없이 상세 표시
+        // URL에서 task_id 파라미터 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskIdFromUrl = urlParams.get('task_id');
+
+        if (taskIdFromUrl) {
+            // URL에 task_id가 있으면 해당 태스크 선택
+            const targetCard = document.querySelector(`.task-card[data-task-id="${taskIdFromUrl}"]`);
+            if (targetCard) {
+                targetCard.classList.add('selected');
+                selectTask(targetCard, taskIdFromUrl, false);
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        }, 100);
+        } else {
+            // URL에 task_id 없으면 첫 번째 태스크 선택
+            setTimeout(() => {
+                const firstTaskCard = document.querySelector('.task-card');
+                if (firstTaskCard) {
+                    const taskId = firstTaskCard.dataset.taskId || firstTaskCard.getAttribute('data-task-id');
+                    firstTaskCard.classList.add('selected');
+                    selectTask(firstTaskCard, taskId, false);
+                }
+            }, 100);
+        }
 
         console.log('✅ Task List 초기화 완료');
     } catch (error) {

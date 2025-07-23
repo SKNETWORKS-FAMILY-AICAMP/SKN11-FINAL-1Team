@@ -396,7 +396,7 @@ body, html {
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
                    draggable="true" 
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
                   <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
@@ -436,7 +436,7 @@ body, html {
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
                    draggable="true" 
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
                   <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
@@ -477,7 +477,7 @@ body, html {
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
                    draggable="true" 
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
                   <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
@@ -674,6 +674,13 @@ function addCardEventListeners(card) {
             showTaskDetail(card.dataset.taskId);
         }
     });
+}
+
+
+function goToTaskDetail(taskId) {
+    const mentorshipId = new URLSearchParams(window.location.search).get('mentorship_id');
+    // 태스크 목록 페이지로 이동
+    window.location.href = `/mentee/task_list/?mentorship_id=${mentorshipId}&task_id=${taskId}`;
 }
 
 // 오류 카드 렌더링
