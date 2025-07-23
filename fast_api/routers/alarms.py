@@ -7,7 +7,7 @@ from database import get_db
 from auth import get_current_user
 
 router = APIRouter(
-    prefix="/alarms",
+    prefix="/api/alarms",
     tags=["alarms"],
     responses={404: {"description": "Not found"}},
 )
@@ -47,6 +47,15 @@ def read_alarms(
     alarms = crud.get_alarms(db, skip=skip, limit=limit)
     return alarms
 
+
+@router.get("/count")
+def get_alarm_count(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_user)
+):
+    """내 활성 알람 개수 조회"""
+    count = crud.get_active_alarm_count_by_user(db, user_id=current_user.user_id)
+    return {"success": True, "count": count}
 
 @router.get("/my", response_model=List[schemas.Alarm])
 def read_my_alarms(
