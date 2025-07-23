@@ -368,7 +368,7 @@ async def get_user_sessions_rag(user_id: int, db: Session = Depends(get_db)):
         result = []
         for session in sessions:
             # 첫 번째 사용자 메시지 조회
-            messages = crud.get_chat_messages(db, session.session_id, limit=1)
+            messages = crud.get_chat_messages(db, session.session_id, limit=2)
             first_user_message = None
             for msg in messages:
                 if msg.message_type == "user":

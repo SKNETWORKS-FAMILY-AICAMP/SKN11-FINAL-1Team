@@ -63,7 +63,10 @@ logging.basicConfig(level=logging.INFO)
 # LangChain 구성
 client = QdrantClient(url=QDRANT_URL)
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-large")
-llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
+# llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
+llm_fast = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-3.5-turbo")
+llm_smart = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
+
 
 WINDOW_SIZE = 10
 
@@ -183,6 +186,9 @@ def classify_question_type(question: str) -> str:
 
 # 개선된 답변 품질 평가 함수
 def judge_answer_improved(state: AgentState) -> AgentState:
+    start = time.time()
+    logger.info("🟢 judge_answer_improved 시작")
+    logger.info("📊 judge_answer_improved 실행")
     """구체적인 평가 기준으로 답변 품질을 평가"""
     context = "\n---\n".join(state.get("contexts", []))
     question = state['question']
@@ -242,7 +248,8 @@ def judge_answer_improved(state: AgentState) -> AgentState:
     개선방향: (부족한 경우만) ...
     """
     
-    reflection = llm.invoke(evaluation_prompt)
+    # reflection = llm.invoke(evaluation_prompt)
+    reflection = llm_fast.invoke(evaluation_prompt)
     
     # 점수 추출
     score_match = re.search(r'총점:\s*(\d+)', reflection.content)
@@ -254,6 +261,8 @@ def judge_answer_improved(state: AgentState) -> AgentState:
     
     # 재작성 필요 여부 판단
     needs_rewrite = quality_metrics.should_rewrite(evaluation_score)
+    elapsed = time.time() - start
+    logger.info(f"🟢 judge_answer_improved 완료 - ⏱️ {elapsed:.2f}초")
     
     return {
         **state, 
@@ -266,6 +275,9 @@ def judge_answer_improved(state: AgentState) -> AgentState:
 
 # 개선된 질문 재작성 함수
 def reformulate_question_improved(state: AgentState) -> AgentState:
+    start = time.time()
+    logger.info("🟢 reformulate_question_improved 시작")
+    logger.info("✏️ reformulate_question_improved 실행")
     """평가 결과를 바탕으로 질문을 개선하여 재작성"""
     question = state.get('question')
     contexts = state.get('contexts', [])
@@ -325,7 +337,9 @@ def reformulate_question_improved(state: AgentState) -> AgentState:
     **재작성된 질문:**
     """
     
-    new_question = llm.invoke(reformulate_prompt).content.strip()
+    new_question = llm_fast.invoke(reformulate_prompt).content.strip()
+    elapsed = time.time() - start
+    logger.info(f"🟢 reformulate_question_improved 완료 - ⏱️ {elapsed:.2f}초")
     
     return {
         **state, 
@@ -333,20 +347,36 @@ def reformulate_question_improved(state: AgentState) -> AgentState:
         "rewrite_count": state.get("rewrite_count", 0) + 1
     }
 
-# 개선된 판단 함수
-def decide_to_reflect_improved(state: AgentState) -> str:
-    """점수 기반으로 재작성 여부 결정"""
-    if state.get("rewrite_count", 0) >= 2:
-        return "summarize"
+# # 개선된 판단 함수
+# def decide_to_reflect_improved(state: AgentState) -> str:
+#     """점수 기반으로 재작성 여부 결정"""
+#     if state.get("rewrite_count", 0) >= 2:
+#         return "summarize"
     
-    # 평가 점수 기반 판단
-    if state.get("needs_rewrite", False):
-        return "rewrite"
-    else:
-        return "summarize"
+#     # 평가 점수 기반 판단
+#     if state.get("needs_rewrite", False):
+#         return "rewrite"
+#     else:
+#         return "summarize"
+
+def decide_to_reflect_improved(state: AgentState) -> str:
+    start = time.time()
+    logger.info("🟢 decide_to_reflect_improved 시작")
+    logger.info(f"🧭 decide_to_reflect_improved 실행 - score={state.get('evaluation_score')}, count={state.get('rewrite_count')}")
+    if state.get("evaluation_score", 20) >= 14:
+        return "summarize"  # 점수 높으면 바로 종료
+    if state.get("rewrite_count", 0) >= 1:
+        return "summarize"  # 이미 한 번 재작성 했으면 그만
+    elapsed = time.time() - start
+    logger.info(f"🟢 decide_to_reflect_improved 완료 - ⏱️ {elapsed:.2f}초")
+    return "rewrite"  # 그 외에만 재작성
+
 
 
 def search_documents_with_rerank(state: AgentState) -> AgentState:
+    start = time.time()
+    logger.info("🟢 search_documents_with_rerank 시작")
+    logger.info("🔎 search_documents_with_rerank 실행")
     query = state.get("rewritten_question") or state["question"]
     user_department_id = state.get("user_department_id")
 
@@ -405,7 +435,7 @@ def search_documents_with_rerank(state: AgentState) -> AgentState:
 다른 설명은 하지 마세요.
 """
 
-    response = llm.invoke(rerank_prompt).content.strip()
+    response = llm_fast.invoke(rerank_prompt).content.strip()
     selected_nums = [int(x.strip()) for x in re.findall(r'\d+', response)]
 
     contexts = []
@@ -427,12 +457,17 @@ def search_documents_with_rerank(state: AgentState) -> AgentState:
                     contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
             else:
                 contexts.append(f"[{title}] (출처: {file_name})\n{text}")
+    elapsed = time.time() - start
+    logger.info(f"🟢 search_documents_with_rerank 완료 - ⏱️ {elapsed:.2f}초")
 
     return {**state, "contexts": contexts}
 
 
 # 세션 요약 함수 (PostgreSQL 버전)
 def summarize_session(state: AgentState) -> AgentState:
+    start = time.time()
+    logger.info("🟢 summarize_session 시작")
+    logger.info("📝 summarize_session 실행")
     """단일 연결에서 모든 작업 처리"""
     session_id = state.get("session_id")
     if not session_id:
@@ -473,14 +508,15 @@ def summarize_session(state: AgentState) -> AgentState:
             HumanMessage(content=f"대화 내용:\n{combined}\n\n요약:")
         ]
         
-        summary = llm.invoke(messages_for_llm).content.strip()
+        summary = llm_fast.invoke(messages_for_llm).content.strip()
         
         # 같은 연결에서 요약 업데이트
         cursor.execute(
             "UPDATE core_chatsession SET summary = %s WHERE session_id = %s",
             (summary, session_id)
         )
-    
+    elapsed = time.time() - start
+    logger.info(f"🟢 summarize_session 완료 - ⏱️ {elapsed:.2f}초")
     return {**state, "summary": summary}
 
 # 기존 함수들 (필터링으로 변경)
@@ -490,7 +526,8 @@ def decide_use_rag(state: AgentState) -> AgentState:
 
 def get_use_rag_condition(state: AgentState) -> str:
     question = state["question"]
-
+    start = time.time()
+    logger.info("🟢 get_use_rag_condition 시작")
     logger.info("🔥 get_use_rag_condition() 함수 호출됨!")
 
     prompt = f"""
@@ -506,16 +543,21 @@ def get_use_rag_condition(state: AgentState) -> str:
 다른 말은 절대 하지 마.
 """
 
-    result = llm.invoke(prompt).content.strip().lower()
+    result = llm_fast.invoke(prompt).content.strip().lower()
     # ✅ 로그 찍기
     logger.info(f"[RAG 판단] 질문: {question}")
     logger.info(f"[RAG 판단] LLM 응답: {result}")
     logger.info(f"[RAG 판단] 결과: {'✅ use_rag' if 'use_rag' in result else '❌ skip_rag'}")
+    elapsed = time.time() - start
+    logger.info(f"🟢 get_use_rag_condition 완료 - ⏱️ {elapsed:.2f}초")
     return "use_rag" if "use_rag" in result else "skip_rag"
 
 
 
 def generate_answer(state: AgentState) -> AgentState:
+    start = time.time()
+    logger.info("🟢 generate_answer 시작")
+    logger.info("💬 generate_answer 실행")
     context = "\n---\n".join(state.get("contexts", []))
     question = state.get("rewritten_question") or state["question"]
     full_history = state.get("chat_history", [])
@@ -557,7 +599,8 @@ Context:
 정확하고 친절한 답변:
 """
 
-    response = llm.invoke(prompt)
+    # response = llm_smart.invoke(prompt)
+    response = llm_smart.invoke(prompt)
     answer_text = response.content.strip()
 
     # 참고 문서 표시 추가 (파일명별로 계층+제목 리스트, 완전 중복 제거)
@@ -579,6 +622,8 @@ Context:
         answer_text += "\n\n" + "\n".join(ref_lines)
 
     updated_history = full_history + [f"Q: {question}\nA: {answer_text}"]
+    elapsed = time.time() - start
+    logger.info(f"🟢 generate_answer 완료 - ⏱️ {elapsed:.2f}초")
 
     return {**state, "answer": answer_text, "chat_history": updated_history}
 
@@ -597,7 +642,7 @@ Question: {question}
 
 Answer:"""
     
-    response = llm.invoke(prompt)
+    response = llm_fast.invoke(prompt)
     updated_history = state.get("chat_history", []) + [f"Q: {question}\nA: {response.content}"]
     
     return {**state, "answer": response.content, "chat_history": updated_history}
