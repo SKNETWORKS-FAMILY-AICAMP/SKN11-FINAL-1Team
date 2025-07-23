@@ -92,7 +92,7 @@ function closeAlarmPanel() {
 // 알람 목록 로드
 function loadAlarms() {
     // AJAX로 알람 목록을 가져와서 표시
-    fetch('/django-api/api/alarms/')
+    fetch('/api/alarms/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -181,7 +181,7 @@ function displayAlarms(alarms) {
 
 // 알람 상태 토글
 function toggleAlarmStatus(alarmId, isActive) {
-    fetch(`/django-api/api/alarms/${alarmId}/toggle/`, {
+    fetch(`/api/alarms/${alarmId}/toggle/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -210,7 +210,7 @@ function deleteAlarm(alarmId) {
         return;
     }
     
-    fetch(`/django-api/api/alarms/${alarmId}/delete/`, {
+    fetch(`/api/alarms/${alarmId}/delete/`, {
         method: 'DELETE',
         headers: {
             'X-CSRFToken': getCookie('csrftoken')
@@ -233,7 +233,7 @@ function deleteAlarm(alarmId) {
 
 // 모든 알람 읽음 처리
 function markAllAlarmsRead() {
-    fetch('/django-api/api/alarms/mark-all-read/', {
+    fetch('/api/alarms/mark-all-read/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCookie('csrftoken')
@@ -310,7 +310,7 @@ function createTestAlarm() {
     ];
     const randomMessage = messages[Math.floor(Math.random() * messages.length)];
     
-    fetch('/django-api/api/alarms/create/', {
+    fetch('/api/alarms/create/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -337,15 +337,8 @@ function createTestAlarm() {
 // 페이지 로드 시 알람 개수 확인
 document.addEventListener('DOMContentLoaded', () => {
     // 알람 개수만 먼저 로드
-    fetch('/django-api/api/alarms/count/')
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                throw new Error('응답이 JSON 형식이 아닙니다.');
-            }
-        })
+    fetch('/api/alarms/count/')
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 updateAlarmBadge(data.count);
@@ -357,15 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 주기적으로 알람 개수 업데이트 (30초마다)
     setInterval(() => {
-        fetch('/django-api/api/alarms/count/')
-            .then(response => {
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    return response.json();
-                } else {
-                    throw new Error('응답이 JSON 형식이 아닙니다.');
-                }
-            })
+        fetch('/api/alarms/count/')
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     updateAlarmBadge(data.count);

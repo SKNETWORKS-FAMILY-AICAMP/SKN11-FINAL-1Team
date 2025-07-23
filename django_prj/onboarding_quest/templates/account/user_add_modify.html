@@ -36,9 +36,6 @@
           </label>
           <div class="form-input-col">
             {{ field }}
-            {% if field.help_text %}
-              <div class="help-text">{{ field.help_text }}</div>
-            {% endif %}
             {% for error in field.errors %}
               <div class="error-text">{{ error }}</div>
             {% endfor %}

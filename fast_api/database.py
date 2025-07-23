@@ -10,7 +10,7 @@ DATABASE_URL = settings.database_url
 # SQLAlchemy 엔진 생성
 engine = create_engine(
     DATABASE_URL,
-    echo=True,  # SQL 쿼리 로깅 (개발 환경에서만 사용)
+    echo=False,  # SQL 쿼리 로깅 (개발 환경에서만 사용)
     # pool_pre_ping=True,
     # pool_recycle=300
 )

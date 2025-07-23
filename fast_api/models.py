@@ -37,26 +37,25 @@ class User(Base):
     """사용자 테이블"""
     __tablename__ = "core_user"
     
-    user_id = Column(Integer, primary_key=True, index=True)
-    employee_number = Column(Integer)
-    is_admin = Column(Boolean, default=False)
-    is_superuser = Column(Boolean, default=False)
-    mentorship_id = Column(Integer)
-    company_id = Column(String(12), ForeignKey("core_company.company_id"))
-    department_id = Column(Integer, ForeignKey("core_department.department_id"))
-    tag = Column(String(255))
-    role = Column(String(20), nullable=False)
-    join_date = Column(Date)
-    position = Column(String(50), nullable=False)
-    job_part = Column(String(50), nullable=False)
-    email = Column(String(255), nullable=False, unique=True)
-    password = Column(String(128), nullable=False)
-    last_name = Column(String(50), nullable=False)
-    first_name = Column(String(50), nullable=False)
-    last_login = Column(DateTime)
-    profile_image = Column(String(255))
-    is_active = Column(Boolean, default=True)
-    is_staff = Column(Boolean, default=False)
+    user_id = Column(Integer, primary_key=True, index=True, comment="유저 고유 ID")
+    employee_number = Column(Integer, comment="사번")
+    is_admin = Column(Boolean, default=False, comment="관리자 여부")
+    is_superuser = Column(Boolean, default=False, nullable=False, comment="최고 관리자 여부")
+    company_id = Column(String(12), ForeignKey("core_company.company_id"), comment="소속 회사")
+    department_id = Column(Integer, ForeignKey("core_department.department_id"), comment="소속 부서")
+    tag = Column(String(255), comment="유저 태그")
+    role = Column(String(20), nullable=False, comment="역할(멘티/멘토)")
+    join_date = Column(Date, comment="입사일")
+    position = Column(String(50), nullable=False, comment="직위")
+    job_part = Column(String(50), nullable=False, comment="직무")
+    email = Column(String(255), nullable=False, unique=True, comment="이메일(로그인 ID)")
+    password = Column(String(128), nullable=False, comment="비밀번호")
+    last_name = Column(String(50), nullable=False, comment="성")
+    first_name = Column(String(50), nullable=False, comment="이름")
+    last_login = Column(DateTime, comment="마지막 로그인 시각")
+    profile_image = Column(String(255), comment="프로필 이미지")
+    is_active = Column(Boolean, default=True, comment="활성화 여부")
+    is_staff = Column(Boolean, default=False, comment="스태프 여부")
     
     # 관계 설정
     department = relationship("Department", back_populates="users")
@@ -185,6 +184,7 @@ class ChatSession(Base):
     session_id = Column(Integer, primary_key=True, index=True, comment="채팅 세션 고유 ID")
     user_id = Column(Integer, ForeignKey("core_user.user_id", ondelete="CASCADE"), nullable=False, comment="사용자")
     summary = Column(String(255), comment="세션 요약")
+    is_active = Column(Boolean, default=True, comment="세션 활성화 여부")
     
     # 관계 설정
     user = relationship("User", back_populates="chat_sessions")
@@ -199,6 +199,7 @@ class ChatMessage(Base):
     message_type = Column(String(10), nullable=False, comment="메시지 타입(user/chatbot)")
     message_text = Column(String(1000), comment="메시지 내용")
     create_time = Column(Date, comment="메시지 생성일")
+    is_active = Column(Boolean, default=True, comment="메시지 활성화 여부")
     session_id = Column(
         Integer,
         ForeignKey("core_chatsession.session_id", ondelete="CASCADE"),  # ← CASCADE 추가
@@ -221,6 +222,7 @@ class Docs(Base):
     create_time = Column(DateTime, default=func.now(), comment="생성일")
     common_doc = Column(Boolean, default=False, comment="공용 문서 여부")
     department_id = Column(Integer, ForeignKey("core_department.department_id"), nullable=False, comment="소속 부서")
+    original_file_name = Column(String(255), comment="원본 파일명")
     
     # 관계 설정
     department = relationship("Department", back_populates="docs") 

@@ -23,6 +23,7 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('admin', True)
         extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
 
 
@@ -95,10 +96,8 @@ class Department(models.Model):
     
 class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, help_text='유저 고유 ID')
-    employee_number = models.IntegerField(null=True, blank=True)
-    is_admin = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False, help_text='슈퍼유저 여부')
-    mentorship_id = models.IntegerField(null=True, blank=True, help_text='멘토쉽 ID(옵션)')
+    employee_number = models.IntegerField(null=True, blank=True, help_text='사번')
+    is_admin = models.BooleanField(default=False, help_text='관리자 여부')
     company = models.ForeignKey(  
         Company,
         on_delete=models.SET_NULL,
@@ -111,25 +110,26 @@ class User(AbstractBaseUser, PermissionsMixin):
         Department,
         on_delete=models.SET_NULL,
         null=True,
+        help_text='소속 부서'
     )
-    tag = models.CharField(max_length=255, null=True, blank=True)
+    tag = models.CharField(max_length=255, null=True, blank=True, help_text='유저 태그')
     ROLE_CHOICES = (
         ('mentee', 'Mentee'),
         ('mentor', 'Mentor')
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, help_text='역할(멘티/멘토)')
     join_date = models.DateField(auto_now_add=True, null=True, blank=True, help_text='입사일')
-    position = models.CharField(max_length=50)
-    job_part = models.CharField(max_length=50)
-    email = models.EmailField(unique=True)
+    position = models.CharField(max_length=50, help_text='직위')
+    job_part = models.CharField(max_length=50, help_text='직무')
+    email = models.EmailField(unique=True, help_text='이메일(로그인 ID)')
     password = models.CharField(max_length=128, help_text='비밀번호')
 
-    last_name = models.CharField(max_length=50)
-    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50, help_text='성')
+    first_name = models.CharField(max_length=50, help_text='이름')
     last_login = models.DateTimeField(auto_now=True, null=True, blank=True, help_text='마지막 로그인 시각')
     profile_image = models.ImageField(upload_to='profile_img/', null=True, blank=True, help_text='프로필 이미지')
 
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, help_text='활성화 여부')
     is_staff = models.BooleanField(default=False, help_text='스태프 여부')
 
     USERNAME_FIELD = 'email'
@@ -158,6 +158,7 @@ class ChatSession(models.Model):
     session_id = models.AutoField(primary_key=True, help_text='채팅 세션 고유 ID')
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text='사용자')
     summary = models.CharField(max_length=255, null=True, blank=True, help_text='세션 요약')
+    is_active = models.BooleanField(default=True, help_text='세션 활성 여부')
 
 class ChatMessage(models.Model):
     message_id = models.AutoField(primary_key=True, help_text='메시지 고유 ID')
@@ -175,6 +176,7 @@ class ChatMessage(models.Model):
     message_text = models.TextField(null=True, blank=True, help_text='메시지 내용')
     create_time = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='메시지 생성일시')
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, help_text='채팅 세션')
+    is_active = models.BooleanField(default=True, help_text='메시지 활성 여부')
 
 class Docs(models.Model):
     docs_id = models.AutoField(primary_key=True, help_text='문서 고유 ID')
@@ -184,12 +186,14 @@ class Docs(models.Model):
     file_path = models.CharField(max_length=255, help_text='파일 경로')
     create_time = models.DateTimeField(auto_now_add=True, help_text='생성일')
     common_doc = models.BooleanField(default=False, help_text='공용 문서 여부')
+    original_file_name = models.CharField(max_length=255, null=True, blank=True, help_text='업로드 시 원래 파일명')
+
 
 class Curriculum(models.Model):
     curriculum_id = models.AutoField(primary_key=True, help_text='커리큘럼 고유 ID')
     curriculum_description = models.TextField(null=True, blank=True, help_text='커리큘럼 설명')
     curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True, help_text='소속 부서')
     common = models.BooleanField(default=False, help_text='공용 커리큘럼 여부')
     total_weeks = models.IntegerField(default=0, help_text='총 주차 수')
     week_schedule = models.TextField(null=True, blank=True, help_text='주차별 온보딩 일정(1주차: ~\n2주차: ~\n3주차: ~ 형식)')

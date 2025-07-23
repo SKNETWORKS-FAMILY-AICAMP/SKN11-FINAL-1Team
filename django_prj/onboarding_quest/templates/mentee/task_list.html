@@ -6,6 +6,13 @@
 <link rel="stylesheet" href="{% static 'css/common/mentee_task_list.css' %}">
 {% endblock %}
 {% block content %}
+
+<script>
+    // 사용자 역할(멘토/멘티)을 JS 변수로 전달
+    window.userRole = "{{ user.role }}";  // "mentor" 또는 "mentee"
+</script>
+
+
 <div class="tasklist-container">
   <!-- 좌측: Task 목록 -->
 <div class="tasklist-left" id="tasklist-left">
@@ -223,7 +230,7 @@
       <!-- 버튼 영역 -->
       <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px; padding-top:16px; border-top:1px solid #e0e0e0;">
         <button type="button" id="subtask-cancel-btn" style="padding:10px 20px; border:1px solid #ddd; border-radius:6px; background:white; color:#666; font-size:14px; cursor:pointer; font-weight:500;">취소</button>
-        <button type="submit" id="subtask-create-btn" style="padding:10px 20px; border:none; border-radius:6px; background:#28a745; color:white; font-size:14px; cursor:pointer; font-weight:500;">생성</button>
+        <button type="submit" id="subtask-create-btn" style="padding:10px 20px; border:none; border-radius:6px; background:#1976d2; color:white; font-size:14px; cursor:pointer; font-weight:500;">생성</button>
       </div>
     </form>
   </div>
@@ -261,6 +268,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // 🔧 하위 태스크 모달 초기화
         initSubtaskModal();
 
+        // **멘토/멘티별 '완료' 옵션 제어**
+        const statusSelect = document.getElementById('edit-status');
+        if (statusSelect && window.userRole === 'mentee') {
+            Array.from(statusSelect.options).forEach(option => {
+                if (option.value === '완료') {
+                    option.remove();
+                }
+            });
+        }
+        
+
         // 첫 번째 태스크 자동 선택 및 상세 표시
         setTimeout(() => {
             const firstTaskCard = document.querySelector('.task-card');
@@ -297,7 +315,7 @@ function initializeTaskCards() {
             if (e.target.closest('.subtask-item')) {
                 const subtaskItem = e.target.closest('.subtask-item');
                 const subtaskId = subtaskItem.dataset.taskId;
-                selectTask(card, subtaskId); // 하위 태스크 ID 전달
+                selectTask(subtaskItem, subtaskId); // 하위 태스크 ID 전달
                 return;
             }
             
@@ -330,6 +348,8 @@ function initializeDetailPanelButtons() {
             
             console.log(`🔧 우측 패널 하위 테스크 생성 버튼 클릭: ${parentTitle} (ID: ${parentId})`);
             
+
+            console.log(`하위 태스크 생성: ${parentTitle} (ID: ${parentId})`);
             // 하위 태스크 생성 모달 열기
             openSubtaskModal(parentId, parentTitle);
         });
@@ -419,6 +439,19 @@ async function selectTask(taskCard, taskId, animate = true) {
         
         // 4. 우측 패널 업데이트
         await updateTaskDetailPanel(taskId);
+
+        // selectTask() 내부
+        const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+        if (subtaskBtn) {
+            if (taskCard.classList.contains('subtask-item')) {
+                subtaskBtn.style.display = 'none';
+            } else {
+                subtaskBtn.style.display = 'inline-block';
+            }
+        }
+
+
+        
         
         console.log(`✅ 태스크 ${taskId} 선택 완료`);
         
@@ -479,6 +512,19 @@ async function updateTaskDetailPanel(taskId) {
                 order: task.order,
                 parent_id: task.parent_id
             };
+
+            // 하위 태스크 생성 버튼 토글
+            const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+            if (subtaskBtn) {
+                if (task.parent_id) {
+                    // parent_id가 존재하면 하위 태스크이므로 버튼 숨김
+                    subtaskBtn.style.display = 'none';
+                } else {
+                    // 상위 태스크면 버튼 표시
+                    subtaskBtn.style.display = 'inline-block';
+                }
+            }
+
             
             console.log(`✅ 태스크 ${taskId} 상세 정보 로드 완료 (메모 ${task.memos ? task.memos.length : 0}개)`);
             
@@ -556,19 +602,18 @@ function updateMemoList(memos) {
             const memoElement = document.createElement('div');
             memoElement.className = 'memo-item';
             memoElement.style.cssText = `
-                margin-bottom: 12px;
-                padding: 10px;
-                background: white;
-                border-radius: 8px;
-                border-left: 3px solid #007bff;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            `;
+            margin-bottom: 16px;       /* 댓글 간격 증가 */
+            padding: 16px 20px;        /* 내부 여백을 더 크게 */
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        `;
+            
             // 작성자, 생성시간, 내용 분리해서 표시
-            // core_memo DB에서 온 데이터 구조에 맞게 작성자 정보 추출
             let displayUser = '익명';
             let displayDate = '';
             let displayComment = '';
-            // user가 객체일 때 last_name+first_name, string일 때는 그대로
+            
             if (memo.user && typeof memo.user === 'object') {
                 const lastName = memo.user.last_name || '';
                 const firstName = memo.user.first_name || '';
@@ -578,26 +623,25 @@ function updateMemoList(memos) {
             } else if (typeof memo.user === 'string' && memo.user.trim() !== '') {
                 displayUser = memo.user;
             }
-            // 'YYYY년 MM월 DD일 HH시 mm분 ss초' 형식으로 표시
+            
             if (memo.create_date) {
-                // ISO 포맷 파싱
                 const dateObj = new Date(memo.create_date);
                 if (!isNaN(dateObj.getTime())) {
                     const y = dateObj.getFullYear();
                     const m = String(dateObj.getMonth() + 1).padStart(2, '0');
                     const d = String(dateObj.getDate()).padStart(2, '0');
-                    const hh = String(dateObj.getHours()).padStart(2, '0'); // 24시간제
+                    const hh = String(dateObj.getHours()).padStart(2, '0');
                     const mm = String(dateObj.getMinutes()).padStart(2, '0');
                     const ss = String(dateObj.getSeconds()).padStart(2, '0');
                     displayDate = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
                 } else {
                     displayDate = memo.create_date;
                 }
-            } else {
-                displayDate = '';
             }
+            
             displayComment = memo.comment || '';
             console.log('🔍 메모 데이터:', { user: memo.user, create_date: memo.create_date, comment: memo.comment });
+            
             memoElement.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-weight: bold; color: #1976d2; font-size: 15px;">${displayUser}</span>
@@ -607,10 +651,9 @@ function updateMemoList(memos) {
             `;
             messagesContainer.appendChild(memoElement);
         });
-        // 스크롤을 최신 메모로 이동
+        
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } else {
-        // 메모가 없을 때
         messagesContainer.innerHTML = `
             <div style="text-align: center; color: #999; font-style: italic; padding: 20px;">
                 아직 메모가 없습니다.
@@ -619,6 +662,7 @@ function updateMemoList(memos) {
     }
     console.log(`✅ 메모 목록 업데이트 완료 (${memos.length}개)`);
 }
+
 
 // 📤 메시지 전송 함수
 async function sendMessage() {
@@ -872,18 +916,19 @@ function openSubtaskModal(parentTaskId, parentTaskTitle) {
     let displayTitle = parentTaskTitle || '선택된 태스크';
     
     // currentTask에서 parent 정보가 있으면 parent의 title을 표시
-    if (currentTask && currentTask.parent_title) {
-        displayTitle = currentTask.parent_title;
-    } else if (currentTask && currentTask.title) {
-        displayTitle = currentTask.title;
-    }
+    // if (currentTask && currentTask.parent_title) {
+    //     displayTitle = currentTask.parent_title;
+    // } else if (currentTask && currentTask.title) {
+    //     displayTitle = currentTask.title;
+    // }
+
+    document.getElementById('subtask-form').reset();
     
     document.getElementById('parent-task-title').value = displayTitle;
     document.getElementById('parent-task-id').value = parentTaskId || '';
     document.getElementById('parent-mentorship-id').value = window.mentorshipId || '';
     
     // 폼 초기화
-    document.getElementById('subtask-form').reset();
     document.getElementById('subtask-title').focus();
     
     // 상위 태스크의 정보를 가져와서 기본값 설정

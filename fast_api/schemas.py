@@ -79,6 +79,7 @@ class UserBase(BaseModel):
     role: str
     employee_number: Optional[int] = None
     is_admin: Optional[bool] = False
+    is_superuser: Optional[bool] = False
     profile_image: Optional[str] = None
     
     @validator('first_name', 'last_name', 'job_part', 'role', 'position')
@@ -104,7 +105,7 @@ class UserCreate(UserBase):
     first_name: str
     last_name: str
     email: str
-    company_id: Optional[int] = None 
+    company_id: Optional[str] = None 
     password: str
     department_id: Optional[int]
     join_date: date
@@ -113,17 +114,18 @@ class UserCreate(UserBase):
     job_part: str
     tag: Optional[str] = None
     is_admin: Optional[bool] = False
+    is_superuser: Optional[bool] = False
     
 
 class User(UserBase):
     user_id: int
     department_id: Optional[int] = None  # Integer로 다시 변경
     company_id: Optional[str] = None
-    mentorship_id: Optional[int] = None
     last_login: Optional[datetime] = None
     profile_image: Optional[str] = None
     is_active: Optional[bool] = True
     is_staff: Optional[bool] = False
+    is_superuser: Optional[bool] = False
     department: Optional[Department] = None
     company: Optional[Company] = None
     
@@ -295,6 +297,7 @@ class Memo(MemoBase):
 
 class ChatSessionBase(BaseModel):
     summary: Optional[str] = None
+    is_active: Optional[bool] = True
 
 class ChatSessionCreate(ChatSessionBase):
     user_id: int
@@ -312,6 +315,7 @@ class ChatMessageBase(BaseModel):
     message_type: str
     message_text: Optional[str] = None
     create_time: Optional[date] = None
+    is_active: Optional[bool] = True
 
 class ChatMessageCreate(ChatMessageBase):
     session_id: int
@@ -333,11 +337,13 @@ class DocsBase(BaseModel):
 
 class DocsCreate(DocsBase):
     department_id: int  # Integer로 다시 변경
+    original_file_name: Optional[str] = None
 
 class Docs(DocsBase):
     docs_id: int
     create_time: datetime
     department_id: int  # Integer로 다시 변경
+    original_file_name: Optional[str] = None
     department: Optional[Department] = None
     
     class Config:
@@ -387,6 +393,7 @@ class UserFormData(BaseModel):
     role: str
     employee_number: Optional[int] = None
     is_admin: Optional[bool] = False
+    is_superuser: Optional[bool] = False
     # For create, join_date and password are required; update schema omits these
 
 class UserUpdate(BaseModel):
@@ -400,6 +407,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     tag: Optional[str] = None
     is_admin: Optional[bool] = None
+    is_superuser: Optional[bool] = None
     is_active: Optional[Union[bool, str]] = None  # "on" 문자열도 허용
     mentorship_id: Optional[int] = None
     profile_image: Optional[str] = None
@@ -467,3 +475,48 @@ class FileUploadResponse(BaseModel):
     file_size: int
     content_type: str
     upload_time: datetime
+
+
+# RAG 관련 스키마
+class RagChatRequest(BaseModel):
+    question: str
+    session_id: Optional[int] = None
+    user_id: int
+    department_id: int
+
+class RagChatResponse(BaseModel):
+    answer: str
+    session_id: int
+    contexts: List[str] = []
+    summary: Optional[str] = None
+    used_rag: bool = False
+    success: bool = True
+
+class DocumentUploadRequest(BaseModel):
+    department_id: int
+    common_doc: bool = False
+    original_file_name: str = ""
+    description: str = ""
+
+class DocumentUploadResponse(BaseModel):
+    success: bool
+    chunks_uploaded: Optional[int] = None
+    original_file: Optional[str] = None
+    saved_path: Optional[str] = None
+    docs_id: Optional[int] = None
+    error: Optional[str] = None
+
+class SessionListResponse(BaseModel):
+    success: bool
+    sessions: List[dict] = []
+    error: Optional[str] = None
+
+class MessageListResponse(BaseModel):
+    success: bool
+    messages: List[dict] = []
+    error: Optional[str] = None
+
+class DocumentListResponse(BaseModel):
+    success: bool
+    docs: List[dict] = []
+    error: Optional[str] = None

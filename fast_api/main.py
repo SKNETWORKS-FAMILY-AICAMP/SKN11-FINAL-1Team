@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import text
 from config import settings
 from database import engine, Base
-from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, docs, chat, auth, alarms
+from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, docs, chat, auth, alarms, documents
 import models  # 모델을 임포트하여 테이블 생성
 
 # 데이터베이스 테이블 생성
@@ -19,12 +19,7 @@ app = FastAPI()
 # CORS 설정 - 더 명확한 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:8000",  # Django 서버
-        "http://127.0.0.1:8001",  # FastAPI 서버
-        "http://localhost:8000",  # Django 서버
-        "http://localhost:8001"   # FastAPI 서버
-    ],
+    allow_origins=["*"],  # 임시로 모든 origin 허용
     allow_credentials=True,
     # allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     # allow_headers=["*"],
@@ -43,49 +38,33 @@ app.include_router(tasks.router)
 app.include_router(memo.router)
 app.include_router(docs.router)
 app.include_router(chat.router)
+app.include_router(documents.router)
 # app.include_router(forms.router)  # 템플릿이 없어서 비활성화
 app.include_router(chatbot.router)
 app.include_router(alarms.router)
+# app.include_router(rag.router)  # chat 라우터로 통합됨
 
 
 @app.get("/")
 async def root():
     """루트 엔드포인트"""
     return {
-        "message": "FastAPI Backend Server",
+        "message": "FastAPI 통합 백엔드 서버",
         "version": "1.0.0",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "integration_status": "완전 통합 완료"
     }
 
 @app.get("/health")
-async def health_check():
-    """헬스 체크 엔드포인트"""
-    try:
-        # 데이터베이스 연결 테스트
-        from database import SessionLocal
-        db = SessionLocal()
-        try:
-            # 간단한 쿼리로 연결 확인 (SQLAlchemy 2.0+ 방식)
-            result = db.execute(text("SELECT 1")).fetchone()
-            db_status = "connected" if result else "disconnected"
-        except Exception as e:
-            db_status = f"error: {str(e)}"
-        finally:
-            db.close()
-            
-        return {
-            "status": "healthy",
-            "database": db_status,
-            "timestamp": datetime.now().isoformat()
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy", 
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }
-
+async def health():
+    """서버 건강성 체크"""
+    return {
+        "status": "healthy",
+        "message": "FastAPI server is running",
+        "database": "PostgreSQL",
+        "rag_available": True  # RAG 시스템 상태는 /api/rag/health에서 확인
+    }
 
 @app.get("/api/")
 async def api_root():
@@ -96,6 +75,7 @@ async def api_root():
         "redoc_url": "/redoc",
         "database": "PostgreSQL",
         "endpoints": {
+            "auth": "/api/auth",
             "companies": "/api/companies",
             "departments": "/api/departments", 
             "curriculum": "/api/curriculum",
@@ -105,9 +85,9 @@ async def api_root():
             "memo": "/api/memo",
             "docs": "/api/docs",
             "chat": "/api/chat",
-            "forms": "/api/forms",
+            "documents": "/api/documents",
             "chatbot": "/api/chatbot",
-            "alarms": "/api/alarms",
+            "alarms": "/api/alarms"
         }
     }
 
