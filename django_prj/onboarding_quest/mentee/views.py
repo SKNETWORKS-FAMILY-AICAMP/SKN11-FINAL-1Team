@@ -285,6 +285,13 @@ def task_update(request, task_assign_id):
         
         # FastAPI로 태스크 업데이트
         result = fastapi_client.update_task_assign(task_assign_id, update_data)
+
+         # 🔔 검토요청 상태일 때 알람 생성
+        if new_status == '검토요청':
+            try:
+                create_review_request_alarm(task_info.get('mentorship_id'), task_info.get('title'))
+            except Exception as e:
+                print(f"검토요청 알람 생성 실패: {e}")
         
         return JsonResponse({'success': True, 'message': '태스크가 업데이트되었습니다.'})
         
@@ -751,8 +758,6 @@ def mentee(request):
         return render(request, 'mentee/mentee.html', {'mentorship': None})
     
     
-
-
 @login_required
 def task_list(request):
     try:
@@ -1193,25 +1198,10 @@ def update_task_status(request, task_id):
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
-                        from core.models import Mentorship, Alarm
-                        mentorship_obj = Mentorship.objects.filter(
-                            mentorship_id=mentorship_id,
-                            is_active=True
-                        ).first()
-                        if mentorship_obj:
-                            mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
-                            mentee = User.objects.get(user_id=mentorship_obj.mentee_id)
-                            full_name = f"{mentee.last_name}{mentee.first_name}"  
-                            Alarm.objects.create(
-                                user=mentor,
-                                message=f"{full_name} 멘티가 '{task_result.get('title')}' 태스크를 검토요청했습니다.",
-                                is_active=True
-                            )
-                            logger.info(f"🔔 검토요청 알람 생성 완료 - mentor_id={mentor.user_id}")
+                        create_review_request_alarm(mentorship_id, task_result.get('title'))
                     except Exception as alarm_error:
                         logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
-                        old_status = task_result.get('status')
-
+                        
                 return JsonResponse({
                     'success': True,
                     'old_status': old_status,
@@ -1271,7 +1261,9 @@ def update_task_status(request, task_id):
             'error': f'서버 오류가 발생했습니다: {str(e)}'
         }, status=500)
     
-def create_review_request_alarm(mentorship_id, task_title, mentee_full_name):
+
+    
+def create_review_request_alarm(mentorship_id, task_title):
     try:
         from core.models import Mentorship, Alarm, User
         mentorship_obj = Mentorship.objects.filter(
@@ -1279,16 +1271,19 @@ def create_review_request_alarm(mentorship_id, task_title, mentee_full_name):
             is_active=True
         ).first()
         if mentorship_obj:
+            mentee = User.objects.get(user_id=mentorship_obj.mentee_id)
             mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
+            full_name = f"{mentee.last_name}{mentee.first_name}"
             Alarm.objects.create(
                 user=mentor,
-                message=f"{mentee_full_name} 멘티가 '{task_title}' 태스크를 검토요청했습니다.",
+                message=f"{full_name} 멘티가 '{task_title}' 태스크를 검토요청했습니다.",
                 is_active=True
             )
             return True
     except Exception as e:
         logger.error(f"검토요청 알람 생성 실패: {e}")
     return False
+
 
 
 @login_required 
