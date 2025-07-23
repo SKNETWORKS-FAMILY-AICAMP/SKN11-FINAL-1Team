@@ -775,12 +775,16 @@ def task_list(request):
             messages.error(request, '사용자 정보를 찾을 수 없습니다.')
             return redirect('account:login')
         
+        # 여기 추가
         from core.models import Mentorship
         final_report = None
-        mentorship_obj = Mentorship.objects.filter(mentee_id=user_id).first()
-        if mentorship_obj and mentorship_obj.is_active == False:
-            # 온보딩 종료 시 레포트 가져오기
-            final_report = getattr(mentorship_obj, 'report', None)
+        ended_mentorship = Mentorship.objects.filter(
+            mentee_id=user_id,
+            is_active=False
+        ).first()
+
+        if ended_mentorship:
+            final_report = ended_mentorship.report
         
         # 🔧 mentorship_id가 있을 때 is_active 및 사용자 권한 검증
         if mentorship_id:
@@ -876,6 +880,24 @@ def task_list(request):
     except Exception as e:
         messages.error(request, f'태스크 목록을 불러오는 중 오류가 발생했습니다: {str(e)}')
         return render(request, 'mentee/task_list.html', {'week_tasks': {}, 'selected_task': None})
+    
+
+
+@login_required
+def final_report_detail(request, mentorship_id):
+    from core.models import Mentorship  
+    mentorship = Mentorship.objects.filter(  
+        mentorship_id=mentorship_id,
+        is_active=False
+    ).first()
+
+    if not mentorship or not mentorship.report:
+        return JsonResponse({"success": False, "error": "보고서를 불러올 수 없습니다."})
+    
+    return JsonResponse({
+        "success": True,
+        "report": mentorship.report
+    })
 
 
 # AJAX용 Task 상세정보 API

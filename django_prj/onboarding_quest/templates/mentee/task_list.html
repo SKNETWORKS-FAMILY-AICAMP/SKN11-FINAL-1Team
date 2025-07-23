@@ -42,18 +42,22 @@
     </div>
   </div>
 
-   <!-- ✅ 최종 평가 보고서: 반복문 밖에 둠 -->
-  {% if final_report %}
-  <div class="task-card final-report-card done" style="background: #fefefe; margin-bottom: 16px;">
-    <div class="task-card-header">
-      <span class="status-badge done">최종</span>
-      <span class="task-title">최종 평가 보고서</span>
-    </div>
-    <div class="task-desc-row">
-      <div class="task-desc" style="white-space: pre-wrap;">{{ final_report }}</div>
+   {% if final_report %}
+<div class="task-card final-report-card done"
+     onclick="updateFinalReportPanel({{ mentorship_id }})">
+  <div class="task-card-header">
+    <span class="status-badge done">최종</span>
+    <span class="task-title">최종 평가 보고서</span>
+  </div>
+  <div class="task-desc-row">
+    <div class="task-desc" style="white-space: pre-wrap;">
+      {{ final_report|truncatechars:50 }}
     </div>
   </div>
-  {% endif %}
+</div>
+{% endif %}
+
+
 
   {% for week, tasks in week_tasks.items %}
     <div style="font-weight:bold; margin:18px 0 8px 0; color:#000000; font-size:18px;">{{ week }}주차</div>
@@ -491,6 +495,8 @@ async function selectTask(taskCard, taskId, animate = true) {
     }
 }
 
+
+
 // 🔄 우측 패널 업데이트 (API 호출)
 async function updateTaskDetailPanel(taskId) {
     try {
@@ -567,6 +573,36 @@ async function updateTaskDetailPanel(taskId) {
         showErrorState();
     } finally {
         hideLoadingState();
+    }
+}
+
+// 최종 평가 보고서 업데이트
+async function updateFinalReportPanel(mentorshipId) {
+    try {
+        console.log(`🔄 최종 평가 보고서 로드: mentorship_id=${mentorshipId}`);
+        const response = await fetch(`/mentee/final_report/${mentorshipId}/`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error('HTTP 오류');
+
+        const data = await response.json();
+        if (data.success) {
+            const detailPanel = document.querySelector('.tasklist-right');
+            detailPanel.innerHTML = `
+                <div style="padding: 24px;">
+                    <h2 style="font-size: 24px; font-weight: bold;">최종 평가 보고서</h2>
+                    <div style="white-space: pre-wrap; line-height: 1.6;">
+                        ${data.report}
+                    </div>
+                </div>
+            `;
+        } else {
+            alert(data.error);
+        }
+    } catch (err) {
+        console.error('최종 보고서 로드 실패:', err);
     }
 }
 

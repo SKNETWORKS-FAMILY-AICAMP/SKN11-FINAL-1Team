@@ -166,6 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
 });
 
+
+
 document.addEventListener('click', function(e) {
   const filterDropdown = document.querySelector('.filter-dropdown');
   const filterMenu = document.getElementById('filter-menu');
