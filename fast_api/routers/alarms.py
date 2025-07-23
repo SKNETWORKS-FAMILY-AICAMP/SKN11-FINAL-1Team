@@ -122,6 +122,7 @@ def update_alarm(
     return crud.update_alarm(db=db, alarm_id=alarm_id, alarm_update=alarm)
 
 
+
 @router.patch("/{alarm_id}/status")
 def update_alarm_status(
     alarm_id: int,

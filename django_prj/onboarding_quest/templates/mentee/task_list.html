@@ -1303,14 +1303,20 @@ setTimeout(() => {
             try {
                 console.log('🚀 FastAPI로 태스크 업데이트 시작:', currentTask.id);
                 
-                const resp = await fetch(`http://localhost:8001/api/tasks/assign/${currentTask.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
+                const resp = await fetch(`/mentee/update_task_status/${currentTask.id}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    status: payload.status,
+                    mentorship_id: parseInt(window.mentorshipId)
+                }),
+                credentials: 'same-origin'
+            });
                 
                 if (!resp.ok) {
                     const errorText = await resp.text();
