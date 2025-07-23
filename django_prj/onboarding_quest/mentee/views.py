@@ -1197,9 +1197,10 @@ def update_task_status(request, task_id):
                         if mentorship_obj:
                             mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
                             mentee = User.objects.get(user_id=mentorship_obj.mentee_id)
+                            full_name = f"{mentee.last_name}{mentee.first_name}"  
                             Alarm.objects.create(
                                 user=mentor,
-                                message=f"{mentee.first_name} 멘티가 '{task_result.get('title')}' 태스크를 검토요청했습니다.",
+                                message=f"{full_name} 멘티가 '{task_result.get('title')}' 태스크를 검토요청했습니다.",
                                 is_active=True
                             )
                             logger.info(f"🔔 검토요청 알람 생성 완료 - mentor_id={mentor.user_id}")
