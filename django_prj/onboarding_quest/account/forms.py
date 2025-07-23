@@ -20,8 +20,8 @@ class UserForm(forms.ModelForm):
         model = User
         fields = [
             'employee_number',
-            'first_name',
             'last_name',
+            'first_name',
             'email',
             'department',
             'position',
@@ -33,8 +33,8 @@ class UserForm(forms.ModelForm):
         ]
         labels = {
             'employee_number': '사번',
-            'first_name': '이름',
             'last_name': '성',
+            'first_name': '이름',
             'email': '이메일',
             'department': '부서',
             'position': '직급',
@@ -46,8 +46,8 @@ class UserForm(forms.ModelForm):
         }
         widgets = {
             'employee_number': forms.NumberInput(attrs={'placeholder': '사번', 'class': 'form-control'}),
-            'first_name': forms.TextInput(attrs={'placeholder': '이름', 'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'placeholder': '성', 'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'placeholder': '이름', 'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'placeholder': '이메일', 'class': 'form-control'}),
             'company': forms.Select(attrs={'class': 'form-control'}),
             'department': forms.Select(attrs={'class': 'form-control'}),
@@ -114,7 +114,7 @@ class CustomPasswordChangeForm(forms.Form):
 class UserEditForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email']
+        fields = ['last_name', 'first_name', 'email']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control', 'readonly': True, 'disabled': True}),
             'last_name': forms.TextInput(attrs={'class': 'form-control', 'readonly': True, 'disabled': True}),

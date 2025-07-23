@@ -27,9 +27,8 @@ urlpatterns = [
     path('user/add/', views.user_create, name='user_create'),
     path('user/<int:user_id>/edit/', views.user_edit, name='user_edit'),
     path('user/<int:user_id>/delete/', views.user_delete, name='user_delete'),
-    path('user/<int:user_id>/password_reset/', views.user_password_reset, name='password_reset'),
+    path('user/<int:user_id>/password_reset/', views.reset_user_password, name='password_reset'),
     path('user/<int:pk>/update/', views.user_update_view, name='user_update'),
-    path('user/<int:user_id>/password_reset/', views.user_password_reset, name='password_reset'),
 
     # 멘토쉽 관리
     path('manage_mentorship/', views.manage_mentorship, name='manage_mentorship'),

@@ -109,7 +109,7 @@ async function loadMentorships() {
         console.log('멘토십 로딩 시작...');
         console.log('멘토 ID:', mentorId);
         
-        const url = `/api/mentorship/?mentor_id=${mentorId}`;
+        const url = `/fastapi/mentorship/?mentor_id=${mentorId}`;
         console.log('요청 URL:', url);
         
         const response = await fetch(url, {
@@ -307,7 +307,7 @@ async function searchMentees() {
     try {
         showLoading(true);
         
-        const url = `/api/mentorship/?mentor_id=${mentorId}${query ? `&search=${encodeURIComponent(query)}` : ''}`;
+        const url = `/fastapi/mentorship/?mentor_id=${mentorId}${query ? `&search=${encodeURIComponent(query)}` : ''}`;
         console.log('검색 URL:', url);
         
         const response = await fetch(url, {
