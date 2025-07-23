@@ -1,3 +1,6 @@
+# 문서 임베딩/로더 필수 패키지 (포맷별)
+docx2txt==1.0
+# pypdf, unstructured, beautifulsoup4는 이미 포함되어 있으므로 중복 추가하지 않음
 aiofiles==24.1.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.14

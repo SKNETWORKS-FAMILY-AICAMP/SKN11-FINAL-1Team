@@ -382,15 +382,9 @@ def search_documents_with_rerank(state: AgentState) -> AgentState:
     # GPT rerank 프롬프트 구성
     prompt_chunks = ""
     for i, r in enumerate(results, 1):
-        meta = r.payload.get("metadata", {})
-        title = meta.get("title", f"청크 {i}")
+        title = r.payload.get("metadata", {}).get("title", f"청크 {i}")
         chunk = r.payload.get("text", "")
-        # 계층 경로가 있으면 프롬프트에 함께 표시
-        hierarchy_path = meta.get("hierarchy_path")
-        if hierarchy_path:
-            prompt_chunks += f"\n청크 {i} ({hierarchy_path} | {title}):\n{chunk}\n"
-        else:
-            prompt_chunks += f"\n청크 {i} ({title}):\n{chunk}\n"
+        prompt_chunks += f"\n청크 {i} ({title}):\n{chunk}\n"
 
     rerank_prompt = f"""
 다음 질문과 가장 관련 있는 청크를 3개 이내로 선택해 주세요.
@@ -412,21 +406,13 @@ def search_documents_with_rerank(state: AgentState) -> AgentState:
     for idx in selected_nums:
         if 1 <= idx <= len(results):
             r = results[idx - 1]
-            meta = r.payload.get("metadata", {})
-            title = meta.get("title", "무제")
+            title = r.payload.get("metadata", {}).get("title", "무제")
             text = r.payload.get("text", "")
-            file_name = meta.get("original_file_name") or meta.get("file_name", "알 수 없음")
-            hierarchy_path = meta.get("hierarchy_path")
-            # hierarchy_path가 있고, title이 hierarchy_path의 마지막 계층과 같으면 전체 계층만 표기
-            if hierarchy_path:
-                # 마지막 계층 추출
-                last_level = hierarchy_path.split('>')[-1].strip()
-                if last_level == title:
-                    contexts.append(f"[{hierarchy_path}] (출처: {file_name})\n{text}")
-                else:
-                    contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
-            else:
-                contexts.append(f"[{title}] (출처: {file_name})\n{text}")
+            file_name = (
+                r.payload.get("metadata", {}).get("original_file_name") or
+                r.payload.get("metadata", {}).get("file_name", "알 수 없음")
+            )
+            contexts.append(f"[{title}] (출처: {file_name})\n{text}")
 
     return {**state, "contexts": contexts}
 
@@ -522,25 +508,21 @@ def generate_answer(state: AgentState) -> AgentState:
     recent_history = full_history[-WINDOW_SIZE:]
     history_text = "\n".join(recent_history)
     
-    # 출처 정보: 파일명별로 (hierarchy_path, title) 튜플을 set으로 집계 (완전 중복 제거)
-    ref_map = {}  # {file_name: set((hierarchy_path, title))}
+    titles = []
+    ref_files = set()
+
     for c in state.get("contexts", []):
         if c.startswith("["):
-            first_line = c.split("\n")[0]
-            if "(출처: " in first_line:
-                file_name = first_line.split("(출처: ")[-1].split(")")[0].strip()
-                left = first_line.split("]")[0].strip("[")
-                # hierarchy_path와 title 분리
-                if "|" in left:
-                    hierarchy_path, title = left.split("|", 1)
-                    hierarchy_path = hierarchy_path.strip()
-                    title = title.strip()
-                else:
-                    hierarchy_path = ""
-                    title = left.strip()
-                ref_map.setdefault(file_name, set()).add((hierarchy_path, title))
+            lines = c.split("\n")
+            if lines:
+                titles.append(lines[0].strip("[]"))
+            if "(출처: " in c:
+                file_name = c.split("(출처: ")[1].split(")")[0].strip()
+                ref_files.add(file_name)
 
-    # 답변 프롬프트(출처 정보 없음)
+    ref_titles = ", ".join(titles)
+    ref_file_list = ", ".join(sorted(ref_files))  # 중복 제거된 파일명들
+    
     prompt = f"""
 지금까지의 대화 기록:
 {history_text}
@@ -548,6 +530,12 @@ def generate_answer(state: AgentState) -> AgentState:
 아래 질문에 대해 context에 충실하게, 정확하고 자연스럽게 답변하세요.
 
 💡 규칙:
+- context에 관련 조항이 명확히 포함된 경우에만 "제X조 조항명에 따르면 ..." 형식을 사용하세요.
+- context에 직접적인 관련이 없을 경우 "해당 내용은 명시된 조항에서 확인되지 않았습니다"라고 답하세요.
+- context에 없는 정보를 임의로 생성하지 마세요.
+- 질문과 관련된 context 조항이 여러 개라면, 모두 인용하고 내용을 비교하여 설명하세요.
+
+📚 참고 조항: {ref_titles}
 
 Context:
 {context}
@@ -556,27 +544,13 @@ Context:
 
 정확하고 친절한 답변:
 """
-
+    
     response = llm.invoke(prompt)
     answer_text = response.content.strip()
 
-    # 참고 문서 표시 추가 (파일명별로 계층+제목 리스트, 완전 중복 제거)
-    if ref_map:
-        ref_lines = []
-        for file_name, hier_set in ref_map.items():
-            ref_lines.append(f"📄 참고 문서: {file_name}")
-            for hierarchy_path, title in sorted(hier_set, key=lambda x: (x[0], x[1])):
-                # hierarchy_path의 마지막 계층이 title과 같으면 title만 표기
-                if hierarchy_path:
-                    # 마지막 계층 추출 (맨 뒤 > 기준으로 분리, 없으면 전체)
-                    last_level = hierarchy_path.split('>')[-1].strip()
-                    if last_level == title:
-                        ref_lines.append(f" - {title}")
-                    else:
-                        ref_lines.append(f" - {hierarchy_path} | {title}")
-                else:
-                    ref_lines.append(f" - {title}")
-        answer_text += "\n\n" + "\n".join(ref_lines)
+    # 참고 문서 표시 추가
+    if ref_file_list:
+        answer_text += f"\n\n📄 참고 문서: {ref_file_list}"
 
     updated_history = full_history + [f"Q: {question}\nA: {answer_text}"]
 
