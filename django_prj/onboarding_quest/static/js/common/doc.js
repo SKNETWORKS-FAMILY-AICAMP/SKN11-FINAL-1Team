@@ -94,8 +94,16 @@ uploadBtn?.addEventListener('click', async () => {
         body: formData
       });
 
-      const result = await response.json();
-      if (!result.success) throw new Error(result.message || '업로드 실패');
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        // JSON 파싱 실패 시 텍스트로 받아서 에러 표시
+        const errorText = await response.text();
+        throw new Error(`서버 응답 파싱 오류 (${response.status}): ${errorText}`);
+      }
+
+      if (!result.success) throw new Error(result.error || result.message || '업로드 실패');
     }
 
     alert('모든 파일이 성공적으로 업로드되었습니다.');
@@ -211,18 +219,28 @@ function confirmDelete() {
   fetch(`http://localhost:8001/api/docs/rag/${deleteDocId}`, {
     method: 'DELETE'
   })
-    .then(res => res.json())
+    .then(async res => {
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonError) {
+        // JSON 파싱 실패 시 텍스트로 받아서 에러 표시
+        const errorText = await res.text();
+        throw new Error(`서버 응답 파싱 오류 (${res.status}): ${errorText}`);
+      }
+      return data;
+    })
     .then(data => {
       if (data.success) {
         alert('삭제되었습니다.');
         location.reload();
       } else {
-        alert('삭제 실패: ' + data.error);
+        alert('삭제 실패: ' + (data.error || data.message || '알 수 없는 오류'));
       }
     })
     .catch(err => {
       console.error('삭제 오류:', err);
-      alert('삭제 중 오류가 발생했습니다.');
+      alert('삭제 중 오류가 발생했습니다: ' + err.message);
     });
 
   closeDeleteModal();

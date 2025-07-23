@@ -11,7 +11,10 @@ from account.forms import UserForm, CustomPasswordChangeForm, UserEditForm, Depa
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
 from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError, NotFoundError
+import json
+import logging
 import json
 import logging
 
@@ -235,6 +238,8 @@ def supervisor(request):
         search_query = request.GET.get('search', '')
         selected_department_id = request.GET.get('dept')
         position_filter = request.GET.get('position', '')
+        employee_number_filter = request.GET.get('employee_number', '')
+        join_date_filter = request.GET.get('join_date', '')
         
         # FastAPI에서 사용자 목록 가져오기
         logger.info("Fetching users...")
@@ -266,6 +271,19 @@ def supervisor(request):
         
         # 부서 폼 (나중에 FastAPI로 변환 예정)
         dept_form = DepartmentForm()
+        
+        # 사번 및 입사일 동시 필터링 적용
+        if employee_number_filter or join_date_filter:
+            users = [user for user in users if (
+                (not employee_number_filter or user.get('employee_number') == int(employee_number_filter)) and
+                (not join_date_filter or user.get('join_date') == join_date_filter)
+            )]
+        
+        # 사번 내림차순 및 입사일 오름차순 정렬 적용
+        users.sort(key=lambda user: (
+            -user.get('employee_number', 0),  # 사번 내림차순
+            user.get('join_date', '')        # 입사일 오름차순
+        ))
         
         return render(request, 'account/supervisor.html', {
             'departments': departments,
@@ -496,13 +514,52 @@ def department_delete(request, department_id):
 @login_required
 def user_create(request):
     if request.method == "POST":
+        # AJAX/JSON 요청 처리
+        if request.content_type == 'application/json':
+            import json
+            try:
+                json_data = json.loads(request.body)
+                user_data = {
+                    'first_name': json_data.get('first_name'),
+                    'last_name': json_data.get('last_name'),
+                    'email': json_data.get('email'),
+                    'password': json_data.get('password', '123'),
+                    'job_part': json_data.get('job_part'),
+                    'position': json_data.get('position'),
+                    'join_date': json_data.get('join_date'),
+                    'tag': json_data.get('tag', ''),
+                    'role': json_data.get('role'),
+                    'employee_number': int(json_data.get('employee_number')) if json_data.get('employee_number') else None,
+                    'is_admin': json_data.get('is_admin') == True,
+                    'department_id': int(json_data.get('department_id')) if json_data.get('department_id') else None,
+                    'is_active': json_data.get('is_active', False),
+                }
+                user_data_session = request.session.get('user_data', {})
+                company_id = user_data_session.get('company_id')
+                if company_id:
+                    try:
+                        user_data['company_id'] = int(company_id)
+                    except Exception:
+                        pass  # company_id가 int가 아니면 전달하지 않음
+                result = fastapi_client.create_user(user_data)
+                return JsonResponse({
+                    'success': True,
+                    'user_id': result.get('user_id'),
+                    'message': f"사용자 '{user_data['first_name']} {user_data['last_name']}'가 성공적으로 생성되었습니다."
+                })
+            except AuthenticationError:
+                return JsonResponse({'success': False, 'error': '인증이 만료되었습니다. 다시 로그인해주세요.'}, status=401)
+            except APIError as e:
+                return JsonResponse({'success': False, 'error': f'사용자 생성 중 오류가 발생했습니다: {str(e)}'}, status=400)
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'사용자 생성 중 예상치 못한 오류가 발생했습니다: {str(e)}'}, status=500)
+        # 기존 폼 처리
         try:
-            # 폼 데이터 수집
             user_data = {
                 'first_name': request.POST.get('first_name'),
                 'last_name': request.POST.get('last_name'),
                 'email': request.POST.get('email'),
-                'password': '123',  # 기본 비밀번호
+                'password': '123',
                 'job_part': request.POST.get('job_part'),
                 'position': request.POST.get('position'),
                 'join_date': request.POST.get('join_date'),
@@ -511,19 +568,18 @@ def user_create(request):
                 'employee_number': int(request.POST.get('employee_number')) if request.POST.get('employee_number') else None,
                 'is_admin': request.POST.get('is_admin') == 'on',
                 'department_id': int(request.POST.get('department_id')) if request.POST.get('department_id') else None,
+                'is_active': request.POST.get('is_active') == 'on',
             }
-            
-            # 현재 사용자의 회사 ID 추가
             user_data_session = request.session.get('user_data', {})
             company_id = user_data_session.get('company_id')
             if company_id:
-                user_data['company_id'] = company_id
-            
-            # FastAPI로 사용자 생성
+                try:
+                    user_data['company_id'] = int(company_id)
+                except Exception:
+                    pass
             result = fastapi_client.create_user(user_data)
             messages.success(request, f"사용자 '{user_data['first_name']} {user_data['last_name']}'가 성공적으로 생성되었습니다.")
             return redirect('account:supervisor')
-            
         except AuthenticationError:
             messages.error(request, '인증이 만료되었습니다. 다시 로그인해주세요.')
             return redirect('account:login')
@@ -531,8 +587,6 @@ def user_create(request):
             messages.error(request, f'사용자 생성 중 오류가 발생했습니다: {str(e)}')
         except Exception as e:
             messages.error(request, f'사용자 생성 중 예상치 못한 오류가 발생했습니다: {str(e)}')
-    
-    # GET 요청이거나 에러 발생 시 폼 렌더링
     form = UserForm(company=request.user.company if hasattr(request.user, 'company') else None)
     return render(request, 'account/user_add_modify.html', {'form': form})
 
@@ -555,7 +609,18 @@ def user_edit(request, user_id):
                 user_data['department_id'] = int(request.POST.get('department_id'))
             
             user_data['is_admin'] = request.POST.get('is_admin') == 'on'
-            
+            # is_active 처리 (체크 안하면 False, None도 False로)
+            is_active_val = request.POST.get('is_active')
+            user_data['is_active'] = True if is_active_val == 'on' or is_active_val is True else False
+
+            # company_id 추가 (user_create와 동일하게)
+            user_data_session = request.session.get('user_data', {})
+            company_id = user_data_session.get('company_id')
+            if company_id:
+                try:
+                    user_data['company_id'] = int(company_id)
+                except Exception:
+                    pass
             # FastAPI로 사용자 수정
             result = fastapi_client.update_user(user_id, user_data)
             messages.success(request, '프로필 정보가 저장되었습니다.')
@@ -631,9 +696,87 @@ def user_delete(request, user_id):
 @login_required
 def user_update_view(request, pk):
     if request.method == 'POST':
-        form = UserForm(request.POST)
+        # AJAX/JSON 요청 처리
+        if request.content_type == 'application/json':
+            try:
+                json_data = json.loads(request.body)
+                logger.info(f"Received JSON data: {json_data}")
+                
+                user_data = {}
+                for field in ['first_name', 'last_name', 'email', 'job_part', 'position', 'join_date', 'tag', 'role']:
+                    value = json_data.get(field)
+                    if value is not None and str(value).strip():
+                        user_data[field] = str(value).strip()
+                
+                # is_active 처리 (체크 안하면 False)
+                user_data['is_active'] = bool(json_data.get('is_active', False))
+                logger.info(f"is_active set to: {user_data['is_active']}")
+                
+                # 숫자 필드 처리 (빈 문자열, None, 0 등을 안전하게 처리)
+                employee_number = json_data.get('employee_number')
+                if employee_number is not None and str(employee_number).strip():
+                    try:
+                        user_data['employee_number'] = int(employee_number)
+                        logger.info(f"employee_number set to: {user_data['employee_number']}")
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Failed to convert employee_number '{employee_number}': {e}")
+                
+                department_id = json_data.get('department_id')
+                if department_id is not None and str(department_id).strip():
+                    try:
+                        user_data['department_id'] = int(department_id)
+                        logger.info(f"department_id set to: {user_data['department_id']}")
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Failed to convert department_id '{department_id}': {e}")
+                
+                if 'is_admin' in json_data:
+                    user_data['is_admin'] = bool(json_data.get('is_admin'))
+                
+                # company_id 추가 (user_create와 동일하게)
+                user_data_session = request.session.get('user_data', {})
+                company_id = user_data_session.get('company_id')
+                if company_id:
+                    try:
+                        user_data['company_id'] = int(company_id)
+                        logger.info(f"company_id set to: {user_data['company_id']}")
+                    except Exception as e:
+                        logger.warning(f"Failed to convert company_id '{company_id}': {e}")
+                
+                # FastAPI로 사용자 수정, 예외가 없으면 성공으로 간주
+                logger.info(f"Updating user {pk} with data: {user_data}")
+                try:
+                    fastapi_client.update_user(pk, user_data)
+                    logger.info(f"User {pk} updated successfully")
+                    return JsonResponse({
+                        'success': True,
+                        'user_id': pk,
+                        'message': '사용자 정보가 성공적으로 수정되었습니다.'
+                    })
+                except Exception as update_error:
+                    logger.error(f"FastAPI update_user failed: {str(update_error)}")
+                    logger.error(f"Update error type: {type(update_error)}")
+                    raise
+            except AuthenticationError:
+                logger.error("Authentication error in user_update_view")
+                return JsonResponse({'success': False, 'error': '인증이 만료되었습니다. 다시 로그인해주세요.'}, status=401)
+            except APIError as e:
+                logger.error(f"API error in user_update_view: {str(e)}")
+                return JsonResponse({'success': False, 'error': f'사용자 수정 중 오류가 발생했습니다: {str(e)}'}, status=400)
+            except Exception as e:
+                logger.error(f"Unexpected error in user_update_view: {str(e)}")
+                logger.error(f"Exception type: {type(e)}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
+                return JsonResponse({'success': False, 'error': f'사용자 수정 중 예상치 못한 오류가 발생했습니다: {str(e)}'}, status=500)
+        # 기존 폼 처리
+        form = UserForm(request.POST, company=request.user.company if hasattr(request.user, 'company') else None)
         if form.is_valid():
             user_data = form.cleaned_data
+            dept = user_data.pop('department', None)
+            user_data['department_id'] = dept.department_id if dept else None
+            user_data['tag'] = form.cleaned_data.get('tag')
+            # is_active 처리 (체크 안하면 False)
+            user_data['is_active'] = request.POST.get('is_active') == 'on'
             result = fastapi_client.update_user(pk, user_data)
             if result.get('success'):
                 messages.success(request, '사용자 정보가 수정되었습니다.')
@@ -641,9 +784,21 @@ def user_update_view(request, pk):
                 messages.error(request, '수정 실패: ' + result.get('error', '알 수 없는 오류'))
             return redirect('account:supervisor')
     else:
-        # FastAPI에서 사용자 상세 정보 가져오기
         user_info = fastapi_client.get_user(pk)
-        form = UserForm(initial=user_info)
+        initial_data = {
+            'employee_number': user_info.get('employee_number'),
+            'first_name': user_info.get('first_name'),
+            'last_name': user_info.get('last_name'),
+            'email': user_info.get('email'),
+            'department': user_info.get('department_id'),
+            'position': user_info.get('position'),
+            'job_part': user_info.get('job_part'),
+            'role': user_info.get('role'),
+            'tag': user_info.get('tag'),
+            'is_admin': user_info.get('is_admin'),
+            'is_active': user_info.get('is_active'),
+        }
+        form = UserForm(initial=initial_data, company=request.user.company if hasattr(request.user, 'company') else None)
     return render(request, 'account/user_add_modify.html', {'form': form, 'edit_mode': True})
 
 
@@ -654,6 +809,7 @@ def user_delete_view(request, pk):
         user.delete()
         return redirect('account:supervisor')
     return render(request, 'account/user_confirm_delete.html', {'user': user})
+
 
 # 사용자 비밀번호 초기화
 @login_required
@@ -754,6 +910,11 @@ def manage_mentorship(request):
         mentorships_result = fastapi_client.get_mentorships()
         mentorships = mentorships_result.get('mentorships', [])
         
+        # 디버깅: 멘토쉽 데이터 구조 확인
+        if mentorships:
+            logger.info(f"First mentorship keys: {list(mentorships[0].keys())}")
+            logger.info(f"First mentorship data: {mentorships[0]}")
+        
         # 현재 사용자 정보 - 안전한 방식으로 처리
         user_data_raw = request.session.get('user_data', {})
         user_data = safe_get_user_data(user_data_raw)
@@ -762,6 +923,28 @@ def manage_mentorship(request):
         # 사용자 목록 조회
         users_result = fastapi_client.get_users(company_id=company_id)
         all_users = {user['user_id']: user for user in users_result.get('users', [])}
+        
+        # 디버깅: 사용자 데이터 확인
+        logger.info(f"Total users retrieved: {len(all_users)}")
+        for user_id, user_data in list(all_users.items())[:3]:  # 처음 3명만 로그
+            logger.info(f"User {user_id}: is_active={user_data.get('is_active')}, role={user_data.get('role')}, name={user_data.get('last_name')}{user_data.get('first_name')}")
+        
+        # 디버깅: 활성 vs 비활성 사용자 수 확인
+        active_users = [u for u in all_users.values() if u.get('is_active', False)]
+        inactive_users = [u for u in all_users.values() if not u.get('is_active', False)]
+        logger.info(f"Active users: {len(active_users)}, Inactive users: {len(inactive_users)}")
+        
+        # 디버깅: 멘토와 멘티 역할별 활성 사용자 수
+        active_mentors = [u for u in active_users if u.get('role') == 'mentor']
+        active_mentees = [u for u in active_users if u.get('role') == 'mentee']
+        logger.info(f"Active mentors: {len(active_mentors)}, Active mentees: {len(active_mentees)}")
+        
+        # 디버깅: 멘토쉽 데이터 구조 상세 확인
+        logger.info(f"Total mentorships: {len(mentorships)}")
+        if mentorships:
+            logger.info(f"Sample mentorship keys: {list(mentorships[0].keys())}")
+            for i, m in enumerate(mentorships[:2]):  # 처음 2개 멘토쉽만 로그
+                logger.info(f"Mentorship {i+1}: id={m.get('id')}, mentorship_id={m.get('mentorship_id')}, is_active={m.get('is_active')}, mentor_id={m.get('mentor_id')}, mentee_id={m.get('mentee_id')}")
         
         # 검색 조건 적용 (프론트엔드에서 필터링)
         if search_query:
@@ -776,22 +959,61 @@ def manage_mentorship(request):
                     filtered_mentorships.append(mentorship)
             mentorships = filtered_mentorships
         
-        # 상태 필터 적용
+        # 멘토쉽에 사용자 정보 추가 및 활성화 상태 계산
+        for mentorship in mentorships:
+            mentor = all_users.get(mentorship.get('mentor_id'))
+            mentee = all_users.get(mentorship.get('mentee_id'))
+            
+            mentorship['mentor'] = mentor
+            mentorship['mentee'] = mentee
+            
+            # 멘토쉽 ID 키가 없는 경우 id 키로 대체
+            if 'mentorship_id' not in mentorship and 'id' in mentorship:
+                mentorship['mentorship_id'] = mentorship['id']
+            
+            # 멘토쉽 활성화 상태: 멘토와 멘티 모두 is_active=True이고 멘토쉽 자체도 is_active=True인 경우에만 활성화
+            mentor_active = mentor and mentor.get('is_active', False) if mentor else False
+            mentee_active = mentee and mentee.get('is_active', False) if mentee else False
+            # is_active 값이 없으면 기본값 True 사용 (DB 기본값과 동일)
+            mentorship_active = mentorship.get('is_active', True)
+            
+            # 디버깅: 멘토쉽 데이터 키 확인
+            mentorship_id_display = mentorship.get('mentorship_id', mentorship.get('id'))
+            logger.info(f"=== Mentorship {mentorship_id_display} Analysis ===")
+            logger.info(f"Mentorship keys: {list(mentorship.keys())}")
+            logger.info(f"Raw mentorship.is_active: {mentorship.get('is_active')} (type: {type(mentorship.get('is_active'))})")
+            logger.info(f"Processed mentorship_active: {mentorship_active}")
+            
+            if mentor:
+                logger.info(f"Mentor {mentor.get('user_id')} ({mentor.get('last_name')}{mentor.get('first_name')}): is_active={mentor.get('is_active')} → mentor_active={mentor_active}")
+            else:
+                logger.info(f"Mentor: None → mentor_active={mentor_active}")
+                
+            if mentee:
+                logger.info(f"Mentee {mentee.get('user_id')} ({mentee.get('last_name')}{mentee.get('first_name')}): is_active={mentee.get('is_active')} → mentee_active={mentee_active}")
+            else:
+                logger.info(f"Mentee: None → mentee_active={mentee_active}")
+            
+            # 실제 활성화 상태 계산
+            mentorship['effective_is_active'] = mentor_active and mentee_active and mentorship_active
+            
+            logger.info(f"Final calculation: {mentor_active} AND {mentee_active} AND {mentorship_active} = {mentorship['effective_is_active']}")
+            logger.info(f"=== End Analysis ===\n")
+
+        # 상태 필터 적용 (effective_is_active 기준)
         if status_filter == 'active':
-            mentorships = [m for m in mentorships if m.get('is_active', True)]
+            mentorships = [m for m in mentorships if m.get('effective_is_active', False)]
         elif status_filter == 'inactive':
-            mentorships = [m for m in mentorships if not m.get('is_active', True)]
+            mentorships = [m for m in mentorships if not m.get('effective_is_active', False)]
         
         # 부서 필터 적용
         if department_filter:
             filtered_mentorships = []
             for mentorship in mentorships:
-                mentor = all_users.get(mentorship.get('mentor_id'))
-                mentee = all_users.get(mentorship.get('mentee_id'))
-                
-                if (mentor and mentor.get('department_id') == int(department_filter)) or \
-                   (mentee and mentee.get('department_id') == int(department_filter)):
+                if (mentorship.get('mentor') and mentorship['mentor'].get('department_id') == int(department_filter)) or \
+                   (mentorship.get('mentee') and mentorship['mentee'].get('department_id') == int(department_filter)):
                     filtered_mentorships.append(mentorship)
+            mentorships = filtered_mentorships
         
         # 부서 목록 조회 (모달용)
         departments_result = fastapi_client.get_departments(company_id=company_id)
@@ -806,11 +1028,6 @@ def manage_mentorship(request):
         # 커리큘럼 목록 가져오기
         curriculums_result = fastapi_client.get_curriculums()
         curriculums = curriculums_result.get('curriculums', [])
-        
-        # 멘토쉽에 사용자 정보 추가
-        for mentorship in mentorships:
-            mentorship['mentor'] = all_users.get(mentorship.get('mentor_id'))
-            mentorship['mentee'] = all_users.get(mentorship.get('mentee_id'))
         
         return render(request, 'account/manage_mentorship.html', {
             'mentorships': mentorships,
@@ -843,49 +1060,121 @@ def mentorship_detail(request, mentorship_id):
         return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
     
     try:
-        # FastAPI에서 멘토쉽 상세 정보 조회
-        mentorship = fastapi_client.get_mentorship(mentorship_id)
+        # Django ORM에서 멘토쉽 상세 정보 조회
+        from core.models import Mentorship
+        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
+        
+        # 커리큘럼 ID 조회 (curriculum_title로부터 curriculum_id를 찾기)
+        curriculum_id = None
+        if mentorship.curriculum_title:
+            try:
+                curriculums_result = fastapi_client.get_curriculums()
+                for curriculum in curriculums_result.get('curriculums', []):
+                    if curriculum.get('curriculum_title') == mentorship.curriculum_title:
+                        curriculum_id = curriculum.get('curriculum_id')
+                        break
+            except Exception as e:
+                logger.warning(f"Failed to find curriculum_id: {e}")
         
         data = {
-            'mentor_id': mentorship.get('mentor_id'),
-            'mentee_id': mentorship.get('mentee_id'),
-            'curriculum_id': mentorship.get('curriculum_id'),
-            'start_date': mentorship.get('start_date'),
-            'end_date': mentorship.get('end_date'),
-            'is_active': mentorship.get('is_active'),
-            'curriculum_title': mentorship.get('curriculum_title'),
-            'total_weeks': mentorship.get('total_weeks'),
+            'mentor_id': mentorship.mentor_id,
+            'mentee_id': mentorship.mentee_id,
+            'curriculum_id': curriculum_id,
+            'start_date': mentorship.start_date.isoformat() if mentorship.start_date else None,
+            'end_date': mentorship.end_date.isoformat() if mentorship.end_date else None,
+            'is_active': mentorship.is_active,
+            'curriculum_title': mentorship.curriculum_title,
         }
         return JsonResponse(data)
-        
-    except (AuthenticationError, APIError) as e:
+    except Exception as e:
+        logger.error(f"Mentorship detail error: {str(e)}")
         return JsonResponse({'error': f'멘토쉽 정보 조회 실패: {str(e)}'}, status=400)
 
 @login_required
 def mentorship_edit(request, mentorship_id):
     """멘토쉽 수정 (AJAX)"""
+    logger.info(f"mentorship_edit called with ID: {mentorship_id}, method: {request.method}")
+    
     if not request.user.is_admin:
+        logger.warning(f"Non-admin user {request.user} attempted to edit mentorship")
         return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
     
     if request.method == 'POST':
-        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
-        
         try:
             data = json.loads(request.body)
+            logger.info(f"Mentorship edit data received: {data}")
             
-            mentorship.mentor_id = data.get('mentor_id')
-            mentorship.mentee_id = data.get('mentee_id')
-            mentorship.start_date = data.get('start_date')
-            mentorship.end_date = data.get('end_date')
-            mentorship.curriculum_title = data.get('curriculum_title')
-            mentorship.is_active = data.get('is_active') == 'true'
+            # Django ORM을 사용해서 멘토쉽 수정
+            from core.models import Mentorship
+            mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
+            logger.info(f"Found mentorship: {mentorship}")
             
+            # 데이터 업데이트 및 활성 상태 검증
+            if data.get('mentor_id'):
+                mentor_id = int(data.get('mentor_id'))
+                try:
+                    # FastAPI를 통해 멘토 정보 확인
+                    mentor = fastapi_client.get_user(mentor_id)
+                    if not mentor.get('is_active'):
+                        return JsonResponse({'success': False, 'error': '비활성화된 멘토로는 멘토쉽을 수정할 수 없습니다.'})
+                    if mentor.get('role') != 'mentor':
+                        return JsonResponse({'success': False, 'error': '지정된 사용자가 멘토가 아닙니다.'})
+                    mentorship.mentor_id = mentor_id
+                    logger.info(f"Updated mentor_id to: {mentorship.mentor_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to validate mentor: {e}")
+                    return JsonResponse({'success': False, 'error': '멘토 정보를 확인할 수 없습니다.'})
+            
+            if data.get('mentee_id'):
+                mentee_id = int(data.get('mentee_id'))
+                try:
+                    # FastAPI를 통해 멘티 정보 확인
+                    mentee = fastapi_client.get_user(mentee_id)
+                    if not mentee.get('is_active'):
+                        return JsonResponse({'success': False, 'error': '비활성화된 멘티로는 멘토쉽을 수정할 수 없습니다.'})
+                    if mentee.get('role') != 'mentee':
+                        return JsonResponse({'success': False, 'error': '지정된 사용자가 멘티가 아닙니다.'})
+                    mentorship.mentee_id = mentee_id
+                    logger.info(f"Updated mentee_id to: {mentorship.mentee_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to validate mentee: {e}")
+                    return JsonResponse({'success': False, 'error': '멘티 정보를 확인할 수 없습니다.'})
+            
+            if data.get('start_date'):
+                mentorship.start_date = data.get('start_date')
+                logger.info(f"Updated start_date to: {mentorship.start_date}")
+            if data.get('end_date'):
+                mentorship.end_date = data.get('end_date') if data.get('end_date') else None
+                logger.info(f"Updated end_date to: {mentorship.end_date}")
+            
+            # curriculum_id로 curriculum_title 조회 및 설정
+            if data.get('curriculum_id'):
+                try:
+                    curriculum_result = fastapi_client.get_curriculum(int(data.get('curriculum_id')))
+                    mentorship.curriculum_title = curriculum_result.get('curriculum_title', '')
+                    mentorship.total_weeks = curriculum_result.get('total_weeks', 0)
+                    logger.info(f"Updated curriculum_title to: {mentorship.curriculum_title}")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch curriculum info: {e}")
+            
+            # is_active 상태 업데이트
+            mentorship.is_active = data.get('is_active') == True or data.get('is_active') == 'true'
+            logger.info(f"Updated is_active to: {mentorship.is_active}")
+            
+            # 저장
             mentorship.save()
             
+            logger.info(f"Mentorship {mentorship_id} updated successfully")
+            
             return JsonResponse({'success': True})
+                
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            logger.error(f"Mentorship edit error: {str(e)}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return JsonResponse({'success': False, 'error': f'멘토쉽 수정 실패: {str(e)}'})
     
+    logger.warning(f"Invalid request method: {request.method}")
     return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 
 @login_required
@@ -895,16 +1184,46 @@ def mentorship_delete(request, mentorship_id):
         return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
     
     if request.method == 'POST':
-        mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
-        
         try:
+            # Django ORM을 사용해서 멘토쉽 삭제
+            from core.models import Mentorship
+            mentorship = get_object_or_404(Mentorship, mentorship_id=mentorship_id)
             mentorship.delete()
+            
+            logger.info(f"Mentorship {mentorship_id} deleted successfully")
             return JsonResponse({'success': True})
+                
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            logger.error(f"Mentorship delete error: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'멘토쉽 삭제 실패: {str(e)}'})
     
     return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 
 #endregion 멘토쉽 관리
 
+@login_required
+def reset_user_password(request, user_id):
+    """사용자 비밀번호 초기화 (AJAX)"""
+    if not request.user.is_admin:
+        return JsonResponse({'error': '접근 권한이 없습니다.'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            user = get_object_or_404(User, user_id=user_id)
+            # 비밀번호를 "123"으로 초기화
+            user.set_password('123')
+            user.save()
+            
+            # 사용자 이름 생성
+            # user_name = user.get_full_name() or f"사용자(ID: {user_id})"
+            user_name = f"{user.last_name}{user.first_name}"
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{user_name}님의 비밀번호가 "123"으로 초기화되었습니다.'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 

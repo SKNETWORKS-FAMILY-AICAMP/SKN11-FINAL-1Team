@@ -20,15 +20,11 @@ def initialize_rag_system():
     global RAG_AVAILABLE, client, COLLECTION_NAME, advanced_embed_and_upsert, get_existing_point_ids
     
     try:
-        # 절대 경로로 모듈 임포트
-        import sys
-        sys.path.append(r'c:\Users\Playdata\Desktop\final_prj\django_prj\onboarding_quest')
-        
         from qdrant_client import QdrantClient
         import embed_and_upsert as embed_module
         
         # Qdrant 클라이언트 설정
-        client = QdrantClient("localhost", port=6333)
+        client = QdrantClient("localhost", port=6333, check_compatibility=False)
         COLLECTION_NAME = "documents"
         
         # 필요한 함수들 가져오기
@@ -221,15 +217,10 @@ async def upload_document_with_rag(
                 # 문서 임베딩 및 벡터 DB 저장
                 chunk_count = advanced_embed_and_upsert(
                     file_path=file_path,
-                    original_filename=file.filename,
-                    metadata={
-                        "docs_id": db_docs.docs_id,
-                        "title": db_docs.title,
-                        "description": db_docs.description,
-                        "department_id": department_id,
-                        "common_doc": common_doc,
-                        "upload_timestamp": timestamp
-                    }
+                    existing_ids=get_existing_point_ids(),
+                    department_id=department_id,
+                    common_doc=common_doc,
+                    original_file_name=file.filename
                 )
                 
                 rag_result = {

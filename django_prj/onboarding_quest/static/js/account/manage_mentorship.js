@@ -58,12 +58,16 @@ function editMentorship(mentorshipId) {
             return response.json();
         })
         .then(data => {
-            document.getElementById('edit-mentor').value = data.mentor_id;
-            document.getElementById('edit-mentee').value = data.mentee_id;
-            document.getElementById('edit-start-date').value = data.start_date;
-            document.getElementById('edit-end-date').value = data.end_date;
-            document.getElementById('edit-curriculum').value = data.curriculum_title;
-            document.getElementById('edit-status').value = data.is_active.toString();
+            document.getElementById('edit-mentor').value = data.mentor_id || '';
+            document.getElementById('edit-mentee').value = data.mentee_id || '';
+            document.getElementById('edit-start-date').value = data.start_date || '';
+            document.getElementById('edit-end-date').value = data.end_date || '';
+            document.getElementById('edit-curriculum').value = data.curriculum_id || '';
+            // effective_is_active 값을 사용하여 실제 활성 상태 표시
+            document.getElementById('edit-status').value = data.effective_is_active ? 'true' : 'false';
+            
+            console.log('Setting modal status to:', data.effective_is_active, '(effective_is_active)');
+            console.log('Raw mentorship is_active:', data.is_active);
             
             document.getElementById('edit-modal').classList.remove('hidden');
         })
@@ -79,14 +83,30 @@ function closeEditModal() {
 }
 
 function saveMentorship() {
+    // 로딩 상태 표시
+    const saveBtn = document.getElementById('save-btn');
+    const saveText = saveBtn.querySelector('.save-text');
+    const loadingSpinner = saveBtn.querySelector('.loading-spinner');
+    
+    saveBtn.disabled = true;
+    saveText.style.display = 'none';
+    loadingSpinner.style.display = 'inline';
+    
     const formData = {
         mentor_id: document.getElementById('edit-mentor').value,
         mentee_id: document.getElementById('edit-mentee').value,
+        curriculum_id: document.getElementById('edit-curriculum').value,
         start_date: document.getElementById('edit-start-date').value,
         end_date: document.getElementById('edit-end-date').value,
-        curriculum_title: document.getElementById('edit-curriculum').value,
-        is_active: document.getElementById('edit-status').value
+        is_active: document.getElementById('edit-status').value === 'true'
+        
     };
+    
+    console.log('Sending mentorship update request:', {
+        mentorshipId: currentMentorshipId,
+        url: `/account/mentorship/${currentMentorshipId}/edit/`,
+        data: formData
+    });
     
     fetch(`/account/mentorship/${currentMentorshipId}/edit/`, {
         method: 'POST',
@@ -98,21 +118,38 @@ function saveMentorship() {
         body: JSON.stringify(formData)
     })
     .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
+        console.log('Response data:', data);
         if (data.success) {
-            location.reload();
+            alert('멘토쉽이 성공적으로 수정되었습니다.');
+            // 모달 닫기
+            closeEditModal();
+            
+            // 페이지 새로고침으로 변경사항 즉시 반영
+            window.location.reload();
         } else {
             alert('저장 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
         }
     })
     .catch(error => {
         console.error('Error saving mentorship:', error);
-        alert('저장 중 오류가 발생했습니다.');
+        alert('저장 중 오류가 발생했습니다: ' + error.message);
+        
+        // 로딩 상태 해제
+        const saveBtn = document.getElementById('save-btn');
+        const saveText = saveBtn.querySelector('.save-text');
+        const loadingSpinner = saveBtn.querySelector('.loading-spinner');
+        
+        saveBtn.disabled = false;
+        saveText.style.display = 'inline';
+        loadingSpinner.style.display = 'none';
     });
 }
 
@@ -133,7 +170,9 @@ function deleteMentorship(mentorshipId) {
         })
         .then(data => {
             if (data.success) {
-                location.reload();
+                alert('멘토쉽이 성공적으로 삭제되었습니다.');
+                // 페이지 새로고침으로 변경사항 즉시 반영
+                window.location.reload();
             } else {
                 alert('삭제 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
             }
@@ -156,4 +195,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-}); 
+});
