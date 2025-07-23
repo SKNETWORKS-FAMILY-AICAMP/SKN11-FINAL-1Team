@@ -374,8 +374,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
       const btn = document.getElementById("bulk-delete-btn");
       if (btn) {
-        btn.classList.toggle("show", anyChecked);
-
+        btn.style.display = anyChecked ? "inline-block" : "none";
       }
 
       if (e.target.id === "select-all-docs") {

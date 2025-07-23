@@ -15,21 +15,11 @@ function renderUploadList() {
   addedFiles.forEach((f, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-  <td style="width:5%;"></td> <!-- 체크박스 열 자리 맞춤 -->
-  <td style="width:25%;">${f.name}</td>
-  <td style="width:40%;">
-    <input type="text" placeholder="설명 입력" value="${f.description}" 
-           onchange="updateFileInfo(${idx}, 'description', this.value)">
-  </td>
-  <td style="width:15%;">
-    <input type="checkbox" ${f.common_doc ? 'checked' : ''} 
-           onchange="updateFileInfo(${idx}, 'common_doc', this.checked)">
-  </td>
-  <td style="width:15%;">
-    <button class="remove-file-btn" onclick="removeFile(${idx})">제거</button>
-  </td>
-`;
-
+      <td style="width:25%;">${f.name}</td>
+      <td style="width:40%;"><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
+      <td style="width:15%;"><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
+      <td style="width:20%;"><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
+    `;
     uploadListTbody.appendChild(tr);
   });
 
@@ -326,33 +316,6 @@ async function loadDocumentList(departmentId) {
       container.innerHTML = `<tr><td colspan="4">문서 목록을 불러오는 중 오류가 발생했습니다.</td></tr>`;
     }
   }
-  // 리스트 렌더링 완료 후 버튼 이벤트 다시 연결
-  const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
-  if (bulkDeleteBtn) {
-    bulkDeleteBtn.onclick = async () => {
-      const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
-      if (selected.length === 0) return;
-
-      if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
-
-      for (const cb of selected) {
-        const docId = cb.dataset.docId;
-        try {
-          const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
-          const result = await res.json();
-          if (!result.success) {
-            console.warn("삭제 실패:", result.message);
-          }
-        } catch (err) {
-          console.error("삭제 오류:", err);
-        }
-      }
-
-      alert("삭제가 완료되었습니다.");
-      loadDocumentList(CURRENT_DEPARTMENT_ID);
-    };
-  }
-
 }
 
 function downloadDocument(docsId) {
@@ -372,23 +335,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.classList.contains("doc-checkbox") || e.target.id === "select-all-docs") {
       const checkboxes = document.querySelectorAll(".doc-checkbox");
       const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-      const btn = document.getElementById("bulk-delete-btn");
-      if (btn) {
-        btn.classList.toggle("show", anyChecked);
-
-      }
+      document.getElementById("bulk-delete-btn").style.display = anyChecked ? "inline-block" : "none";
 
       if (e.target.id === "select-all-docs") {
-        checkboxes.forEach(cb => {
-          cb.checked = e.target.checked;
-          // ✅ 수동으로 change 이벤트를 발생시켜 버튼 갱신
-          cb.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        checkboxes.forEach(cb => cb.checked = e.target.checked);
       }
     }
   });
-
-
 
   document.getElementById("bulk-delete-btn")?.addEventListener("click", async () => {
     const selected = [...document.querySelectorAll(".doc-checkbox:checked")];

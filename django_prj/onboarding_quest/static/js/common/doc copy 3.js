@@ -374,20 +374,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
       const btn = document.getElementById("bulk-delete-btn");
       if (btn) {
-        btn.classList.toggle("show", anyChecked);
-
+        btn.style.display = anyChecked ? "inline-block" : "none";
       }
 
       if (e.target.id === "select-all-docs") {
-        checkboxes.forEach(cb => {
-          cb.checked = e.target.checked;
-          // ✅ 수동으로 change 이벤트를 발생시켜 버튼 갱신
-          cb.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        checkboxes.forEach(cb => cb.checked = e.target.checked);
       }
     }
   });
-
 
 
   document.getElementById("bulk-delete-btn")?.addEventListener("click", async () => {

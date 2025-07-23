@@ -150,44 +150,6 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* #bulk-delete-container { */
-  /* height: 42px; /* 버튼의 높이 + 여백만큼 고정 */
-  /* display: flex; */
-  /* justify-content: flex-end; */
-  /* align-items: center; */
-  /* margin-bottom: 10px; */
-/* } */
-#bulk-delete-container {
-  position: relative;
-  height: 0;
-  margin-bottom: 36px; /* 테이블과의 간격 확보 */
-}
-
-/* #bulk-delete-btn {
-  display: none;
-} */
-
-#bulk-delete-btn {
-  position: absolute;
-  top: -48px; /* 위로 띄워 테이블과 간격 줌 */
-  right: 40px;   /* 오른쪽 정렬 */
-  display: none;
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: bold;
-  font-size: 0.9rem;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-#bulk-delete-btn.show {
-  display: inline-block;
-}
-
-
 .doc-upload-list-table input[type="checkbox"] {
   width: 1.25rem;
   height: 1.25rem;
@@ -484,8 +446,8 @@ body {
       <div class="doc-title">파일 목록</div>
     
       <!-- ✅ 선택 삭제 버튼은 테이블 위쪽에 위치 -->
-      <div id="bulk-delete-container">
-        <button id="bulk-delete-btn" class="doc-delete-btn">
+      <div style="text-align: right; margin-bottom: 10px;">
+        <button id="bulk-delete-btn" class="doc-delete-btn" style="display: none;">
           선택 삭제
         </button>
       </div>
