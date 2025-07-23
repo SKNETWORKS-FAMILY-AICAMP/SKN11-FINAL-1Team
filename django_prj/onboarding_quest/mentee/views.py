@@ -686,6 +686,7 @@ def mentee(request):
             
             print(f"DEBUG - 처리된 태스크 수: {len(processed_tasks)}")
             
+            
             # 상위 태스크만 필터링 (진행률 계산용)
             main_tasks = [t for t in processed_tasks if t.get('parent') is None]
             print(f"DEBUG - 상위 태스크 수: {len(main_tasks)}")
@@ -741,23 +742,15 @@ def mentee(request):
                 print(f"DEBUG - {status} 태스크들:")
                 for task in tasks[:3]:  # 최대 3개만 표시
                     print(f"  - ID: {task.get('task_assign_id')}, 제목: {task.get('title')}, D-day: {task.get('dday_text')}, 클래스: {task.get('dday_class')}")
-        
-        # 멘토십 기간 정보 추가
-        if mentorship_id:
-            mentorship = Mentorship.objects.filter(mentorship_id=int(mentorship_id)).first()
-            if mentorship:
-                start_date = mentorship.scheduled_start_date.strftime('%Y-%m-%d') if mentorship.scheduled_start_date else 'N/A'
-                end_date = mentorship.scheduled_end_date.strftime('%Y-%m-%d') if mentorship.scheduled_end_date else 'N/A'
-                period = f"{start_date} ~ {end_date}"
-                context.update({
-                    'mentorship_period': period,
-                })
+
         
         return render(request, 'mentee/mentee.html', context)
         
     except Exception as e:
         messages.error(request, f'데이터를 불러오는 중 오류가 발생했습니다: {str(e)}')
         return render(request, 'mentee/mentee.html', {'mentorship': None})
+    
+    
 
 
 @login_required
@@ -1277,6 +1270,26 @@ def update_task_status(request, task_id):
             'success': False, 
             'error': f'서버 오류가 발생했습니다: {str(e)}'
         }, status=500)
+    
+def create_review_request_alarm(mentorship_id, task_title, mentee_full_name):
+    try:
+        from core.models import Mentorship, Alarm, User
+        mentorship_obj = Mentorship.objects.filter(
+            mentorship_id=mentorship_id,
+            is_active=True
+        ).first()
+        if mentorship_obj:
+            mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
+            Alarm.objects.create(
+                user=mentor,
+                message=f"{mentee_full_name} 멘티가 '{task_title}' 태스크를 검토요청했습니다.",
+                is_active=True
+            )
+            return True
+    except Exception as e:
+        logger.error(f"검토요청 알람 생성 실패: {e}")
+    return False
+
 
 @login_required 
 def change_task_status_for_test(request):
@@ -1416,3 +1429,5 @@ def test_task_list(request):
     except Exception as e:
         print(f"test_task_list 오류: {e}")
         return render(request, 'mentee/task_list_test.html', {'week_tasks': {}, 'mentorship_id': 2})
+    
+    

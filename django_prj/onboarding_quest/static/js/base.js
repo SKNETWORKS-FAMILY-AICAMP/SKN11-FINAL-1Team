@@ -54,6 +54,7 @@ if (alarmToggle) {
     });
 }
 
+
 // 알람 패널 닫기
 if (alarmClose) {
     alarmClose.addEventListener('click', closeAlarmPanel);
@@ -89,12 +90,11 @@ function closeAlarmPanel() {
     }
 }
 
-// 알람 목록 로드
 function loadAlarms() {
-    // AJAX로 알람 목록을 가져와서 표시
-    fetch('/api/alarms/')
+    fetch('/common/api/alarms/')
         .then(response => response.json())
         .then(data => {
+            console.log("알람 응답:", data);  // 여기서 alarms 배열이 비어있는지 확인
             if (data.success) {
                 displayAlarms(data.alarms);
                 updateAlarmBadge(data.count);
@@ -114,8 +114,12 @@ function loadAlarms() {
         });
 }
 
+
+
+
 // 알람 목록 표시
 function displayAlarms(alarms) {
+    console.log("displayAlarms 호출됨:", alarms);
     if (!alarmList) return;
     
     if (alarms.length === 0) {
@@ -181,7 +185,7 @@ function displayAlarms(alarms) {
 
 // 알람 상태 토글
 function toggleAlarmStatus(alarmId, isActive) {
-    fetch(`/api/alarms/${alarmId}/toggle/`, {
+    fetch(`/common/api/alarms/${alarmId}/toggle/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -210,7 +214,7 @@ function deleteAlarm(alarmId) {
         return;
     }
     
-    fetch(`/api/alarms/${alarmId}/delete/`, {
+    fetch(`/common/api/alarms/${alarmId}/delete/`, {
         method: 'DELETE',
         headers: {
             'X-CSRFToken': getCookie('csrftoken')
@@ -233,7 +237,7 @@ function deleteAlarm(alarmId) {
 
 // 모든 알람 읽음 처리
 function markAllAlarmsRead() {
-    fetch('/api/alarms/mark-all-read/', {
+    fetch('/common/api/alarms/mark-all-read/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCookie('csrftoken')
@@ -310,7 +314,7 @@ function createTestAlarm() {
     ];
     const randomMessage = messages[Math.floor(Math.random() * messages.length)];
     
-    fetch('/api/alarms/create/', {
+    fetch('/common/api/alarms/create/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -337,7 +341,7 @@ function createTestAlarm() {
 // 페이지 로드 시 알람 개수 확인
 document.addEventListener('DOMContentLoaded', () => {
     // 알람 개수만 먼저 로드
-    fetch('/api/alarms/count/')
+    fetch('/common/api/alarms/count/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -350,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 주기적으로 알람 개수 업데이트 (30초마다)
     setInterval(() => {
-        fetch('/api/alarms/count/')
+        fetch('/common/api/alarms/count/')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
