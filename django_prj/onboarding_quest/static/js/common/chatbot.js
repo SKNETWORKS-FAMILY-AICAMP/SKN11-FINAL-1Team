@@ -20,6 +20,8 @@ class ChatBot {
         this.loadingMessageElement = null;
         this.renderLock = false;  // ✅ 메시지 중복 렌더링 방지
         this.loadSessionsFromAPI();  // ✅ 기존 refreshSessionList() 대신
+        this.userScrolling = false;
+
     }
 
     async loadMessagesFromAPI(sessionId) {
@@ -144,6 +146,11 @@ class ChatBot {
                 if (e.target.closest('.delete-session-btn')) return;
                 this.handleSessionClick(e, item);
             });
+        });
+
+        this.chatArea.addEventListener('scroll', () => {
+            const nearBottom = this.chatArea.scrollHeight - this.chatArea.scrollTop - this.chatArea.clientHeight < 30;
+            this.userScrolling = !nearBottom;
         });
 
         const chatForm = document.getElementById('chatbot-form');
@@ -303,7 +310,10 @@ class ChatBot {
             }
 
             element.innerHTML = converter.makeHtml(currentText);
-            this.chatArea.scrollTop = this.chatArea.scrollHeight;
+            // this.chatArea.scrollTop = this.chatArea.scrollHeight;
+            if (!this.userScrolling) {
+                this.chatArea.scrollTop = this.chatArea.scrollHeight;
+            }
 
             if (i < total) {
                 requestAnimationFrame(loop);
@@ -430,7 +440,11 @@ class ChatBot {
 
         messageRow.appendChild(messageContent);
         this.chatArea.appendChild(messageRow);
-        this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        // this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        if (!this.userScrolling) {
+            this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        }
+
     }
 
 
