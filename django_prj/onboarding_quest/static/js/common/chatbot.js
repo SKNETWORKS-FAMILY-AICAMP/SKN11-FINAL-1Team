@@ -168,6 +168,8 @@ class ChatBot {
 
         this.isSubmitting = true;
 
+        input.value = '';
+
         // ✅ 사용자 메시지 즉시 출력 (UX)
         this.addMessageToChat('user', message);
 
@@ -222,7 +224,7 @@ class ChatBot {
             alert('메시지 전송 중 오류가 발생했습니다.');
         }
 
-        input.value = '';
+        // input.value = '';
         this.isSubmitting = false;
     }
 
@@ -260,26 +262,57 @@ class ChatBot {
     //         await new Promise(res => setTimeout(res, 15));
     //     }
     // }
-    async typeText(element, text) {
+    // async typeText(element, text) {
+    //     const converter = new showdown.Converter({
+    //         simpleLineBreaks: true,
+    //         tables: true
+    //     });
+
+    //     let currentText = '';
+    //     for (let i = 0; i < text.length; i++) {
+    //         currentText += text[i];
+
+    //         // 실시간으로 Markdown 변환 및 렌더링
+    //         element.innerHTML = converter.makeHtml(currentText);
+
+    //         // 스크롤을 자동으로 가장 아래로 이동
+    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
+
+    //         // 글자 출력 속도 조절 (15ms마다 1글자씩 출력)
+    //         await new Promise(res => setTimeout(res, 15));
+    //     }
+    // }
+    async typeText(element, fullText, speed = 15) {
         const converter = new showdown.Converter({
             simpleLineBreaks: true,
             tables: true
         });
 
+        let i = 0;
         let currentText = '';
-        for (let i = 0; i < text.length; i++) {
-            currentText += text[i];
+        const total = fullText.length;
+        const start = performance.now();
 
-            // 실시간으로 Markdown 변환 및 렌더링
+        const loop = (now) => {
+            const elapsed = now - start;
+            const expectedChars = Math.floor(elapsed / speed);
+
+            while (i < expectedChars && i < total) {
+                currentText += fullText[i];
+                i++;
+            }
+
             element.innerHTML = converter.makeHtml(currentText);
-
-            // 스크롤을 자동으로 가장 아래로 이동
             this.chatArea.scrollTop = this.chatArea.scrollHeight;
 
-            // 글자 출력 속도 조절 (15ms마다 1글자씩 출력)
-            await new Promise(res => setTimeout(res, 15));
-        }
+            if (i < total) {
+                requestAnimationFrame(loop);
+            }
+        };
+
+        requestAnimationFrame(loop);
     }
+
 
 
     updateSessionMessagesInDOM(type, text) {
