@@ -63,7 +63,10 @@ logging.basicConfig(level=logging.INFO)
 # LangChain 구성
 client = QdrantClient(url=QDRANT_URL)
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-large")
-llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
+# llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
+llm_fast = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-3.5-turbo")
+llm_smart = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
+
 
 WINDOW_SIZE = 10
 
@@ -245,7 +248,8 @@ def judge_answer_improved(state: AgentState) -> AgentState:
     개선방향: (부족한 경우만) ...
     """
     
-    reflection = llm.invoke(evaluation_prompt)
+    # reflection = llm.invoke(evaluation_prompt)
+    reflection = llm_fast.invoke(evaluation_prompt)
     
     # 점수 추출
     score_match = re.search(r'총점:\s*(\d+)', reflection.content)
@@ -333,7 +337,7 @@ def reformulate_question_improved(state: AgentState) -> AgentState:
     **재작성된 질문:**
     """
     
-    new_question = llm.invoke(reformulate_prompt).content.strip()
+    new_question = llm_fast.invoke(reformulate_prompt).content.strip()
     elapsed = time.time() - start
     logger.info(f"🟢 reformulate_question_improved 완료 - ⏱️ {elapsed:.2f}초")
     
@@ -431,7 +435,7 @@ def search_documents_with_rerank(state: AgentState) -> AgentState:
 다른 설명은 하지 마세요.
 """
 
-    response = llm.invoke(rerank_prompt).content.strip()
+    response = llm_fast.invoke(rerank_prompt).content.strip()
     selected_nums = [int(x.strip()) for x in re.findall(r'\d+', response)]
 
     contexts = []
@@ -504,7 +508,7 @@ def summarize_session(state: AgentState) -> AgentState:
             HumanMessage(content=f"대화 내용:\n{combined}\n\n요약:")
         ]
         
-        summary = llm.invoke(messages_for_llm).content.strip()
+        summary = llm_fast.invoke(messages_for_llm).content.strip()
         
         # 같은 연결에서 요약 업데이트
         cursor.execute(
@@ -539,7 +543,7 @@ def get_use_rag_condition(state: AgentState) -> str:
 다른 말은 절대 하지 마.
 """
 
-    result = llm.invoke(prompt).content.strip().lower()
+    result = llm_fast.invoke(prompt).content.strip().lower()
     # ✅ 로그 찍기
     logger.info(f"[RAG 판단] 질문: {question}")
     logger.info(f"[RAG 판단] LLM 응답: {result}")
@@ -595,7 +599,8 @@ Context:
 정확하고 친절한 답변:
 """
 
-    response = llm.invoke(prompt)
+    # response = llm_smart.invoke(prompt)
+    response = llm_smart.invoke(prompt)
     answer_text = response.content.strip()
 
     # 참고 문서 표시 추가 (파일명별로 계층+제목 리스트, 완전 중복 제거)
@@ -637,7 +642,7 @@ Question: {question}
 
 Answer:"""
     
-    response = llm.invoke(prompt)
+    response = llm_fast.invoke(prompt)
     updated_history = state.get("chat_history", []) + [f"Q: {question}\nA: {response.content}"]
     
     return {**state, "answer": response.content, "chat_history": updated_history}
