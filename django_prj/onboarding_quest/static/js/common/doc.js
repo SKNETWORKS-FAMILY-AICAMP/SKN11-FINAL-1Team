@@ -327,31 +327,31 @@ async function loadDocumentList(departmentId) {
     }
   }
   // 리스트 렌더링 완료 후 버튼 이벤트 다시 연결
-  const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
-  if (bulkDeleteBtn) {
-    bulkDeleteBtn.onclick = async () => {
-      const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
-      if (selected.length === 0) return;
+  // const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+  // if (bulkDeleteBtn) {
+  //   bulkDeleteBtn.onclick = async () => {
+  //     const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
+  //     if (selected.length === 0) return;
 
-      if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
+  //     if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
 
-      for (const cb of selected) {
-        const docId = cb.dataset.docId;
-        try {
-          const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
-          const result = await res.json();
-          if (!result.success) {
-            console.warn("삭제 실패:", result.message);
-          }
-        } catch (err) {
-          console.error("삭제 오류:", err);
-        }
-      }
+  //     for (const cb of selected) {
+  //       const docId = cb.dataset.docId;
+  //       try {
+  //         const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+  //         const result = await res.json();
+  //         if (!result.success) {
+  //           console.warn("삭제 실패:", result.message);
+  //         }
+  //       } catch (err) {
+  //         console.error("삭제 오류:", err);
+  //       }
+  //     }
 
-      alert("삭제가 완료되었습니다.");
-      loadDocumentList(CURRENT_DEPARTMENT_ID);
-    };
-  }
+  //     alert("삭제가 완료되었습니다.");
+  //     loadDocumentList(CURRENT_DEPARTMENT_ID);
+  //   };
+  // }
 
 }
 
