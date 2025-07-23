@@ -12,6 +12,15 @@ import sys
 # FastAPI 내부 임포트
 from database import get_db
 from fastapi import Depends
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+UPLOAD_BASE_DIR = os.getenv("UPLOAD_BASE_DIR", "uploaded_docs")
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", "media")
+
+UPLOAD_BASE = os.path.abspath(os.path.join(MEDIA_ROOT, UPLOAD_BASE_DIR))
 
 # RAG 시스템 임포트
 RAG_AVAILABLE = False
@@ -65,7 +74,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 # 업로드 기본 경로
-UPLOAD_BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "django_prj", "onboarding_quest", "uploaded_docs")
+# UPLOAD_BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "django_prj", "onboarding_quest", "uploaded_docs")
 
 @router.post("/upload")
 async def upload_document(
@@ -150,6 +159,11 @@ async def delete_document(
                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
             file_path = row["file_path"]
             abs_path = os.path.abspath(file_path)
+            # normalized_source = os.path.relpath(abs_path, start=UPLOAD_BASE).replace("\\", "/")
+            normalized_source = f"documents/{os.path.basename(abs_path)}"
+            logger.info(f"🧨 Qdrant 삭제 필터: source = {normalized_source}, dept = {department_id}")
+
+
 
             # 실제 파일 삭제
             if os.path.exists(abs_path):
@@ -158,10 +172,11 @@ async def delete_document(
             # Qdrant에서 삭제
             from qdrant_client.models import Filter, FieldCondition, MatchValue
             delete_filter = Filter(must=[
-                FieldCondition(key="metadata.source", match=MatchValue(value=abs_path)),
-                FieldCondition(key="metadata.department_id", match=MatchValue(value=department_id))
+                FieldCondition(key="metadata.source", match=MatchValue(normalized_source)),
+                FieldCondition(key="metadata.department_id", match=MatchValue(value=int(department_id)))
             ])
-            client.delete(collection_name=COLLECTION_NAME, points_selector=delete_filter)
+            # client.delete(collection_name=COLLECTION_NAME, points_selector=delete_filter)
+            client.delete(collection_name=COLLECTION_NAME, filter=delete_filter)
 
             # DB에서 삭제
             cursor.execute("DELETE FROM core_docs WHERE docs_id = ? AND department_id = ?", (docs_id, department_id))

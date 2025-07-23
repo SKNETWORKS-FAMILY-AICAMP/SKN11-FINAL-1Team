@@ -11,15 +11,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from loaders import load_documents
 import uuid
 from sklearn.feature_extraction.text import TfidfVectorizer
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
 
-UPLOAD_BASE_DIR = os.getenv("UPLOAD_BASE_DIR", "uploaded_docs")
-MEDIA_ROOT = os.getenv("MEDIA_ROOT", "media")
-
-UPLOAD_BASE = os.path.abspath(os.path.join(MEDIA_ROOT, UPLOAD_BASE_DIR))
 
 # 로깅 설정
 os.makedirs("log", exist_ok=True)
@@ -172,14 +165,10 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
             
             # 메타데이터 확장 (부서 ID, 공통 문서 여부, 파일명 추가)
             # doc.metadata["source"] = file_path
-            # doc.metadata["source"] = os.path.normpath(os.path.abspath(file_path))
-            # doc.metadata["source"] = os.path.relpath(file_path, start=UPLOAD_BASE).replace("\\", "/")
-            doc.metadata["source"] = f"documents/{os.path.basename(file_path)}"
-
+            doc.metadata["source"] = os.path.normpath(os.path.abspath(file_path))
 
             doc.metadata["chunk_id"] = i
-            # doc.metadata["department_id"] = department_id  # 부서 ID 추가
-            doc.metadata["department_id"] = int(department_id) if department_id is not None else None
+            doc.metadata["department_id"] = department_id  # 부서 ID 추가
             doc.metadata["common_doc"] = common_doc        # 공통 문서 여부 추가
             doc.metadata["file_name"] = os.path.basename(file_path)  # 파일명 추가
             doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름

@@ -1,0 +1,183 @@
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from sqlalchemy.orm import Session
+from typing import List, Optional
+import crud
+import schemas
+from database import get_db
+import os
+import logging
+from datetime import datetime
+from embed_and_upsert import advanced_embed_and_upsert, get_existing_point_ids
+from qdrant_client import QdrantClient
+from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+# 환경 변수 및 경로 설정
+UPLOAD_BASE_DIR = os.getenv("UPLOAD_BASE_DIR", "uploaded_docs")
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", "media")
+UPLOAD_BASE = os.path.abspath(os.path.join(MEDIA_ROOT, UPLOAD_BASE_DIR))
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+COLLECTION_NAME = "rag_multiformat"
+
+# Qdrant 클라이언트
+client = QdrantClient(url=QDRANT_URL)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/docs", tags=["docs"])
+
+@router.post("/rag/upload")
+async def upload_document_with_rag(
+    file: UploadFile = File(...),
+    department_id: Optional[int] = Form(None),
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    common_doc: bool = Form(False),
+    db: Session = Depends(get_db)
+):
+    """문서 업로드 + DB 저장 + Qdrant 임베딩"""
+    try:
+        # 부서 검증
+        if department_id:
+            db_department = crud.get_department(db, department_id=department_id)
+            if db_department is None:
+                raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
+
+        # 파일 저장
+        os.makedirs(UPLOAD_BASE, exist_ok=True)
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+        save_path = os.path.join(UPLOAD_BASE, unique_filename)
+        file_content = await file.read()
+        with open(save_path, "wb") as f:
+            f.write(file_content)
+        logger.info(f"📄 업로드 파일 저장 완료: {save_path}")
+
+        # DB 저장
+        docs_data = schemas.DocsCreate(
+            title=title or file.filename,
+            description=description,
+            file_path=save_path,
+            common_doc=common_doc,
+            department_id=department_id,
+            original_file_name=file.filename
+        )
+        db_docs = crud.create_docs(db=db, docs=docs_data)
+
+        # Qdrant 임베딩
+        existing_ids = get_existing_point_ids()
+        chunk_count = advanced_embed_and_upsert(
+            save_path,
+            existing_ids,
+            department_id=department_id,
+            common_doc=common_doc,
+            original_file_name=file.filename
+        )
+        logger.info(f"문서 임베딩 완료: {file.filename} -> {chunk_count} chunks")
+
+        return {
+            "success": True,
+            "message": "문서가 성공적으로 업로드 및 임베딩되었습니다.",
+            "docs": {
+                "docs_id": db_docs.docs_id,
+                "title": db_docs.title,
+                "filename": unique_filename,
+                "original_filename": file.filename,
+                "file_path": save_path,
+                "file_size": len(file_content)
+            },
+            "chunks_uploaded": chunk_count
+        }
+    except Exception as e:
+        logger.error(f"문서 업로드/임베딩 중 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"문서 업로드/임베딩 중 오류: {str(e)}")
+
+@router.delete("/rag/{docs_id}")
+async def delete_document_with_rag(docs_id: int, db: Session = Depends(get_db)):
+    """문서 삭제 + Qdrant 청크 삭제"""
+    logger.info(f"[DELETE] /api/docs/rag/{{docs_id}} 진입: docs_id={docs_id}")
+    file_deleted = False
+    db_deleted = False
+    rag_result = {"removed_from_vector_db": False}
+    try:
+        db_docs = crud.get_docs(db, docs_id=docs_id)
+        if db_docs is None:
+            logger.error(f"삭제 요청된 docs_id={docs_id} 문서를 찾을 수 없습니다.")
+            raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+
+        # 파일 삭제
+        if db_docs.file_path and os.path.exists(db_docs.file_path):
+            try:
+                os.remove(db_docs.file_path)
+                file_deleted = True
+                logger.info(f"파일 삭제 완료: {db_docs.file_path}")
+            except Exception as e:
+                logger.exception(f"파일 삭제 중 오류: {db_docs.file_path}")
+        else:
+            logger.warning(f"삭제 시도 파일이 존재하지 않음: {db_docs.file_path}")
+
+        # Qdrant 청크 삭제
+        try:
+            # source 메타데이터는 임베딩 시 'documents/파일명'으로 저장됨 (embed_and_upsert.py 참고)
+            normalized_source = f"documents/{os.path.basename(db_docs.file_path)}"
+            filter_must = [
+                FieldCondition(key="metadata.source", match=MatchValue(value=normalized_source))
+            ]
+            if db_docs.department_id is not None:
+                filter_must.append(FieldCondition(key="metadata.department_id", match=MatchValue(value=int(db_docs.department_id))))
+            logger.info(f"Qdrant 청크 삭제 시도: source={normalized_source}, dept={db_docs.department_id}")
+            delete_filter = Filter(must=filter_must)
+            delete_result = client.delete(collection_name=COLLECTION_NAME, points_selector=delete_filter)
+            logger.info(f"Qdrant 청크 삭제 요청 결과: {delete_result}")
+            rag_result = {"removed_from_vector_db": True, "delete_result": str(delete_result)}
+        except Exception as e:
+            logger.exception(f"Qdrant 청크 삭제 중 오류: {db_docs.file_path}, dept={db_docs.department_id}")
+            rag_result = {"removed_from_vector_db": False, "error": str(e)}
+
+        # DB 삭제
+        try:
+            crud.delete_docs(db, docs_id=docs_id)
+            db_deleted = True
+            logger.info(f"DB에서 문서 삭제 완료: docs_id={docs_id}")
+        except Exception as e:
+            logger.exception(f"DB 삭제 중 오류: docs_id={docs_id}")
+
+        return {
+            "success": True,
+            "message": "문서 및 벡터DB 청크가 성공적으로 삭제되었습니다.",
+            "file_deleted": file_deleted,
+            "db_deleted": db_deleted,
+            "rag": rag_result
+        }
+    except Exception as e:
+        logger.exception(f"문서 삭제 중 오류: docs_id={docs_id}")
+        raise HTTPException(status_code=500, detail=f"문서 삭제 중 오류: {str(e)}")
+
+@router.get("/", response_model=List[schemas.Docs])
+async def get_all_docs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """문서 목록 조회"""
+    return crud.get_all_docs(db, skip=skip, limit=limit)
+
+@router.get("/{docs_id}", response_model=schemas.Docs)
+async def get_docs(docs_id: int, db: Session = Depends(get_db)):
+    """특정 문서 조회"""
+    db_docs = crud.get_docs(db, docs_id=docs_id)
+    if db_docs is None:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+    return db_docs
+
+@router.get("/department/{department_id}", response_model=List[schemas.Docs])
+async def get_docs_by_department(department_id: int, db: Session = Depends(get_db)):
+    """부서별 문서 조회"""
+    db_department = crud.get_department(db, department_id=department_id)
+    if db_department is None:
+        raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
+    return crud.get_docs_by_department(db, department_id=department_id)
+
+@router.get("/common/", response_model=List[schemas.Docs])
+async def get_common_docs(db: Session = Depends(get_db)):
+    """공용 문서 조회"""
+    return crud.get_common_docs(db)
+
+@router.get("/rag/health")
+async def rag_docs_health():
+    return {"rag_available": True, "status": "healthy", "message": "RAG 문서 처리가 활성화됨"}

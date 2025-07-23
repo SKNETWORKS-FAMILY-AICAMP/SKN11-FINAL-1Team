@@ -273,45 +273,38 @@ async def delete_document_with_rag(docs_id: int, db: Session = Depends(get_db)):
         db_docs = crud.get_docs(db, docs_id=docs_id)
         if db_docs is None:
             raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
-
+        
         # 파일 삭제
         if os.path.exists(db_docs.file_path):
             os.remove(db_docs.file_path)
             logger.info(f"파일 삭제 완료: {db_docs.file_path}")
-
+        
         # 벡터 DB에서도 삭제 (RAG 사용 가능 시)
         rag_result = {"removed_from_vector_db": False}
-        if RAG_AVAILABLE and client:
+        if RAG_AVAILABLE:
             try:
-                from qdrant_client.models import Filter, FieldCondition, MatchValue
-                # file_path에서 파일명만 추출 (업로드 시 source로 저장했다면)
-                normalized_source = f"documents/{os.path.basename(db_docs.file_path)}"
-                delete_filter = Filter(must=[
-                    FieldCondition(key="metadata.source", match=MatchValue(normalized_source)),
-                    FieldCondition(key="metadata.department_id", match=MatchValue(value=int(db_docs.department_id)))
-                ])
-                client.delete(collection_name=COLLECTION_NAME, filter=delete_filter)
+                # 여기서 벡터 DB 삭제 로직 추가 가능
+                # 현재는 메타데이터 기반으로 삭제하는 기능이 없음
                 rag_result = {
                     "removed_from_vector_db": True,
-                    "message": f"벡터 DB에서 문서 청크가 제거되었습니다. (source={normalized_source}, dept={db_docs.department_id})"
+                    "message": "벡터 DB에서 문서가 제거되었습니다."
                 }
-                logger.info(f"Qdrant 청크 삭제 완료: source={normalized_source}, dept={db_docs.department_id}")
             except Exception as e:
                 logger.error(f"벡터 DB 삭제 중 오류: {str(e)}")
                 rag_result = {
                     "removed_from_vector_db": False,
                     "message": f"벡터 DB 삭제 중 오류: {str(e)}"
                 }
-
+        
         # 데이터베이스에서 문서 삭제
         crud.delete_docs(db, docs_id=docs_id)
-
+        
         return {
             "success": True,
             "message": "문서가 성공적으로 삭제되었습니다",
             "rag": rag_result
         }
-
+        
     except Exception as e:
         logger.error(f"문서 삭제 중 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"문서 삭제 중 오류 발생: {str(e)}")

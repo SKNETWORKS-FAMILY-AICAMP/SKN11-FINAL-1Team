@@ -638,41 +638,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 문서 삭제 AJAX 처리
-async function deleteDoc(docId) {
-    if (!confirm('이 문서를 삭제하시겠습니까?')) return;
-    
-    try {
-        const response = await fetch(`/common/doc/${docId}/delete/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-                showMessage('문서가 성공적으로 삭제되었습니다!');
-                
-                // 해당 행 제거
-                const row = document.querySelector(`tr[data-doc-id="${docId}"]`);
-                if (row) {
-                    row.style.opacity = '0';
-                    row.style.transform = 'translateX(-100%)';
-                    setTimeout(() => row.remove(), 300);
-                }
-            } else {
-                throw new Error(result.error || '문서 삭제에 실패했습니다.');
-            }
-        } else {
-            throw new Error('서버 오류가 발생했습니다.');
-        }
-    } catch (error) {
-        console.error('문서 삭제 오류:', error);
-        showMessage(error.message || '문서 삭제 중 오류가 발생했습니다.', 'error');
-    }
+// FastAPI용 삭제 모달 트리거 함수 (doc.js와 동일한 이름)
+function deleteDocModal(docId) {
+  deleteDocId = docId;
+  document.getElementById('deleteModal').style.display = 'flex';
 }
 
 // 로딩 스피너 스타일 추가
