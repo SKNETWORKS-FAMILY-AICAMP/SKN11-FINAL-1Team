@@ -70,6 +70,7 @@
                     <th class="w-48">커리큘럼</th>
                     <th>기간</th>
                     <th>상태</th>
+                    <th>보고서</th>
                     <th>작업</th>
                 </tr>
             </thead>
@@ -140,6 +141,16 @@
                             <span class="px-3 py-1.5 text-base font-semibold rounded-md bg-red-100 text-red-800">
                                 비활성
                             </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        {% if mentorship.mentee %}
+                            <button onclick="viewMenteeReport('{{ mentorship.mentee.user_id }}')"
+                                    class="px-3 py-1 bg-blue-100 text-blue-800 rounded-md text-sm hover:bg-blue-200 transition-colors">
+                                보고서
+                            </button>
+                        {% else %}
+                            <span class="text-gray-400">-</span>
                         {% endif %}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-base font-medium">
@@ -253,8 +264,109 @@
         </div>
     </div>
 </div>
+
+<!-- 보고서 모달 -->
+<div id="report-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-10 mx-auto p-5 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">멘티 보고서</h3>
+                <button onclick="closeReportModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="report-content" class="max-h-96 overflow-y-auto">
+                <div class="text-center py-8 text-gray-500">
+                    보고서를 불러오는 중...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/account/manage_mentorship.js' %}"></script>
+<script>
+// 멘티 보고서 보기 함수
+async function viewMenteeReport(userId) {
+    try {
+        // 보고서 모달 표시
+        document.getElementById('report-modal').classList.remove('hidden');
+        
+        // 보고서 데이터를 가져옵니다
+        const response = await fetch(`http://127.0.0.1:8001/api/mentorship/reports/${userId}`, {
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            mode: 'cors',
+            credentials: 'omit'
+        });
+        
+        if (response.ok) {
+            const reportData = await response.json();
+            showReportContent(reportData);
+        } else if (response.status === 404) {
+            showReportContent([]);
+        } else {
+            console.error('보고서 조회 실패:', response.status);
+            document.getElementById('report-content').innerHTML = `
+                <div class="text-center py-8 text-red-500">
+                    보고서를 불러오는 중 오류가 발생했습니다.
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('보고서 조회 오류:', error);
+        document.getElementById('report-content').innerHTML = `
+            <div class="text-center py-8 text-red-500">
+                보고서 조회 중 네트워크 오류가 발생했습니다.
+            </div>
+        `;
+    }
+}
+
+// 보고서 내용 표시 함수
+function showReportContent(reportData) {
+    const contentDiv = document.getElementById('report-content');
+    
+    if (reportData && reportData.length > 0) {
+        const reportsHTML = reportData.map(report => `
+            <div class="border border-gray-200 rounded-lg p-6 mb-4 bg-gray-50">
+                <div class="flex justify-between items-start mb-4">
+                    <h4 class="text-lg font-semibold text-gray-900">${report.title || '제목 없음'}</h4>
+                    <span class="text-sm text-gray-500">${report.created_at ? new Date(report.created_at).toLocaleDateString('ko-KR') : ''}</span>
+                </div>
+                <div class="text-gray-700 leading-relaxed mb-4">
+                    ${report.content ? report.content.replace(/\n/g, '<br>') : '내용이 없습니다.'}
+                </div>
+                ${report.mentor_feedback ? `
+                    <div class="bg-blue-50 border border-blue-200 rounded-md p-4 mt-4">
+                        <div class="font-medium text-blue-900 mb-2">멘토 피드백</div>
+                        <div class="text-blue-800">${report.mentor_feedback.replace(/\n/g, '<br>')}</div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+        contentDiv.innerHTML = reportsHTML;
+    } else {
+        contentDiv.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <p>등록된 보고서가 없습니다.</p>
+            </div>
+        `;
+    }
+}
+
+// 보고서 모달 닫기 함수
+function closeReportModal() {
+    document.getElementById('report-modal').classList.add('hidden');
+}
+</script>
 {% endblock %}

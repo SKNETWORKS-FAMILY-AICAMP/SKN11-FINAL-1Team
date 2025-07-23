@@ -19,8 +19,10 @@
             {{ field.label }}
           </label>
           <div class="form-input-col">
-            <input type="text" id="tag-input" name="tag" value="{{ field.value|default_if_none:'' }}" placeholder="#태그1, #태그2, ..." class="form-control" autocomplete="off">
-            <div id="tag-list" class="tag-list"></div>
+            <div class="tag-input-container">
+              <input type="text" id="tag-input" name="tag" value="{{ field.value|default_if_none:'' }}" placeholder="예: Python, 웹개발, 의욕뿜뿜, 인사팀 멋쟁이" class="form-control" autocomplete="off">
+              <div id="tag-preview" class="tag-preview"></div>
+            </div>
             <div class="help-text">태그를 입력하고 Enter 키를 누르거나 쉼표로 구분하여 여러 태그를 추가할 수 있습니다.</div>
             {% for error in field.errors %}
               <div class="error-text">{{ error }}</div>
@@ -118,110 +120,122 @@ document.addEventListener('DOMContentLoaded', function() {
     const editMode = {{ edit_mode|yesno:"true,false" }};
     
     if (userForm) {
-        // 태그 스타일 (파란색 배경, 흰색 글씨, 진한 테두리)
+        // 태그 스타일 추가
         const tagStyle = document.createElement('style');
         tagStyle.textContent = `
-        .tag-list { margin-top: 8px; }
+        .tag-input-container {
+            width: 100%;
+        }
+        .tag-input-container input[type="text"] {
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+        .tag-preview { 
+            margin-top: 8px; 
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
         .tag-item {
-          display: inline-block;
-          background: #DBEAFE;
-          color: #2563EB;
-          border-radius: 16px;
-          padding: 4px 12px;
-          margin-right: 6px;
-          margin-bottom: 4px;
-          font-size: 14px;
-          position: relative;
-          font-weight: 500;
-          border: 1.5px solid #2563eb;
-          box-shadow: 0 1px 4px rgba(37,99,235,0.08);
+            display: inline-flex;
+            align-items: center;
+            background: #dbeafe;
+            color: #2563eb;
+            border-radius: 16px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #93c5fd;
         }
         .tag-remove {
-          background: none;
-          border: none;
-          color: #fff;
-          margin-left: 6px;
-          font-size: 14px;
-          cursor: pointer;
-          font-weight: bold;
+            background: none;
+            border: none;
+            color: #2563eb;
+            margin-left: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            line-height: 1;
         }
         .tag-remove:hover {
-          color: #f87171;
+            color: #dc2626;
         }
         `;
         document.head.appendChild(tagStyle);
 
-        // 태그 입력 기능
+        // 태그 입력 기능 (profile.html 방식)
         const tagInput = document.getElementById('tag-input');
-        const tagList = document.getElementById('tag-list');
-        let tags = [];
-
-        // 기존 태그값이 있으면 파싱
-        if (tagInput.value) {
-            const existingTags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-            tags = [...existingTags];
-            renderTags();
+        const tagPreview = document.getElementById('tag-preview');
+        
+        function createTagElement(tag) {
+            const tagElement = document.createElement('span');
+            tagElement.className = 'tag-item';
+            tagElement.innerHTML = `
+                ${tag}
+                <button type="button" class="tag-remove" onclick="removeTag(this)">×</button>
+            `;
+            return tagElement;
         }
-
-        function renderTags() {
-            tagList.innerHTML = '';
-            tags.forEach((tag, index) => {
-                const tagElement = document.createElement('span');
-                tagElement.className = 'tag-item';
-                tagElement.innerHTML = `
-                    ${tag}
-                    <button type="button" class="tag-remove" onclick="removeTag(${index})">×</button>
-                `;
-                tagList.appendChild(tagElement);
+        
+        function updateTagPreview() {
+            const tags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+            tagPreview.innerHTML = '';
+            tags.forEach(tag => {
+                if (tag) {
+                    tagPreview.appendChild(createTagElement(tag));
+                }
             });
-            // hidden input에 태그 저장
-            tagInput.value = tags.join(', ');
         }
-
-        // 태그 제거 함수 (전역으로 등록)
-        window.removeTag = function(index) {
-            tags.splice(index, 1);
-            renderTags();
+        
+        window.removeTag = function(button) {
+            const tagElement = button.parentElement;
+            const tagText = tagElement.textContent.replace('×', '').trim();
+            const currentTags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+            const newTags = currentTags.filter(tag => tag !== tagText);
+            tagInput.value = newTags.join(', ');
+            updateTagPreview();
         };
-
-        // 태그 추가 함수
-        function addTag(tagText) {
-            const cleanTag = tagText.trim();
-            if (cleanTag && !tags.includes(cleanTag)) {
-                tags.push(cleanTag);
-                renderTags();
+        
+        tagInput.addEventListener('input', function() {
+            // 실시간으로 태그 형식 정리
+            let value = tagInput.value;
+            // 연속된 쉼표나 공백 정리
+            value = value.replace(/,+/g, ',').replace(/,\s*,/g, ',');
+            if (tagInput.value !== value) {
+                tagInput.value = value;
             }
-        }
-
-        // 입력 이벤트 처리
-        tagInput.addEventListener('input', function(e) {
-            const value = e.target.value;
-            if (value.includes(',')) {
-                const newTags = value.split(',');
-                const lastTag = newTags.pop(); // 마지막 부분은 아직 완성되지 않은 태그
-                
-                // 완성된 태그들 추가
-                newTags.forEach(tag => addTag(tag));
-                
-                // 입력창에는 마지막 미완성 태그만 남김
-                e.target.value = lastTag;
-            }
+            updateTagPreview();
         });
-
-        // Enter 키 처리
-        tagInput.addEventListener('keydown', function(e) {
+        
+        tagInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const value = e.target.value.trim();
-                if (value) {
-                    addTag(value);
-                    e.target.value = '';
+                // Enter 키를 누르면 현재 입력된 내용을 정리
+                let value = tagInput.value.trim();
+                if (value && !value.endsWith(',')) {
+                    tagInput.value = value + ', ';
                 }
+                updateTagPreview();
             }
         });
+        
+        // 폼 제출 전에 태그 값 정리
+        userForm.addEventListener('submit', function(e) {
+            const tags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+            tagInput.value = tags.join(', ');
+        });
+        
+        // 초기 태그 미리보기
+        updateTagPreview();
 
         userForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // 폼 제출 전에 태그 값 정리
+            if (tagInput) {
+                const tags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                tagInput.value = tags.join(', ');
+            }
             
             // 로딩 상태 시작
             btnText.style.display = 'none';
