@@ -35,10 +35,10 @@ urlpatterns = [
     path('common/', include('common.urls')),
     
     # 알람 API 직접 연결 (별도 네임스페이스)
-    path('django-api/', include(('common.urls', 'common_api'), namespace='django_api')),
+    path('api/', include(('common.urls', 'common_api'), namespace='django_api')),
 
     # API 프록시 (FastAPI로 전달) - 가장 마지막에 배치
-    re_path(r'^api/(?P<path>.*)$', core_views.fastapi_proxy, name='fastapi_proxy'),
+    re_path(r'^fastapi/(?P<path>.*)$', core_views.fastapi_proxy, name='fastapi_proxy'),
 
 ]
 

@@ -592,6 +592,7 @@ def mentee(request):
                     print(f"DEBUG - Django ORM 태스크 fallback도 실패: {task_orm_error}")
                     all_tasks = []
                     use_django_orm = False
+
             
             # 🔧 task_list와 동일한 태스크 데이터 처리 로직
             print(f"DEBUG - 전체 태스크 수: {len(all_tasks)}")
@@ -1185,7 +1186,28 @@ def update_task_status(request, task_id):
             try:
                 result = fastapi_client.update_task_assign(task_id, update_data)
                 logger.info(f"✅ FastAPI 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
-                
+                # ✅ 검토요청 알람 생성
+                if new_status == '검토요청':
+                    try:
+                        from core.models import Mentorship, Alarm
+                        mentorship_obj = Mentorship.objects.filter(
+                            mentorship_id=mentorship_id,
+                            is_active=True
+                        ).first()
+                        if mentorship_obj:
+                            mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
+                            mentee = User.objects.get(user_id=mentorship_obj.mentee_id)
+                            full_name = f"{mentee.last_name}{mentee.first_name}"  
+                            Alarm.objects.create(
+                                user=mentor,
+                                message=f"{full_name} 멘티가 '{task_result.get('title')}' 태스크를 검토요청했습니다.",
+                                is_active=True
+                            )
+                            logger.info(f"🔔 검토요청 알람 생성 완료 - mentor_id={mentor.user_id}")
+                    except Exception as alarm_error:
+                        logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
+                        old_status = task_result.get('status')
+
                 return JsonResponse({
                     'success': True,
                     'old_status': old_status,
