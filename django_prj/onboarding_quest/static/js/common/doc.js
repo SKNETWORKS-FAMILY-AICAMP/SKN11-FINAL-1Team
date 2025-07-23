@@ -15,11 +15,21 @@ function renderUploadList() {
   addedFiles.forEach((f, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="width:25%;">${f.name}</td>
-      <td style="width:40%;"><input type="text" placeholder="설명 입력" value="${f.description}" onchange="updateFileInfo(${idx}, 'description', this.value)"></td>
-      <td style="width:15%;"><input type="checkbox" ${f.common_doc ? 'checked' : ''} onchange="updateFileInfo(${idx}, 'common_doc', this.checked)"></td>
-      <td style="width:20%;"><button class="remove-file-btn" onclick="removeFile(${idx})">제거</button></td>
-    `;
+  <td style="width:5%;"></td> <!-- 체크박스 열 자리 맞춤 -->
+  <td style="width:25%;">${f.name}</td>
+  <td style="width:40%;">
+    <input type="text" placeholder="설명 입력" value="${f.description}" 
+           onchange="updateFileInfo(${idx}, 'description', this.value)">
+  </td>
+  <td style="width:15%;">
+    <input type="checkbox" ${f.common_doc ? 'checked' : ''} 
+           onchange="updateFileInfo(${idx}, 'common_doc', this.checked)">
+  </td>
+  <td style="width:15%;">
+    <button class="remove-file-btn" onclick="removeFile(${idx})">제거</button>
+  </td>
+`;
+
     uploadListTbody.appendChild(tr);
   });
 
@@ -41,14 +51,32 @@ function removeFile(idx) {
   renderUploadList();
 }
 
+// function handleFiles(files) {
+//   Array.from(files).forEach(file => {
+//     if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+//       addedFiles.push({ file, name: file.name, description: '', common_doc: false });
+//     }
+//   });
+//   renderUploadList();
+// }
+
+function isDuplicate(file) {
+  return addedFiles.some(f =>
+    f.file.name === file.name &&
+    f.file.size === file.size &&
+    f.file.lastModified === file.lastModified
+  );
+}
+
 function handleFiles(files) {
   Array.from(files).forEach(file => {
-    if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+    if (!isDuplicate(file)) {
       addedFiles.push({ file, name: file.name, description: '', common_doc: false });
     }
   });
   renderUploadList();
 }
+
 
 if (dropArea && fileInput) {
   ['dragenter', 'dragover'].forEach(evt => {
@@ -71,7 +99,12 @@ if (dropArea && fileInput) {
   });
 
   dropArea.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  // fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  fileInput.addEventListener('change', e => {
+    handleFiles(e.target.files);
+    fileInput.value = '';  // 같은 파일을 다시 선택할 수 있도록 초기화
+  });
+
 }
 
 uploadBtn?.addEventListener('click', async () => {
@@ -288,23 +321,25 @@ async function loadDocumentList(departmentId) {
       const canEdit = doc.department_id === CURRENT_DEPARTMENT_ID;
 
       tr.innerHTML = `
-      <td>
-        <a href="http://localhost:8001/api/documents/download/${doc.docs_id}" target="_blank">
-          📄 ${doc.title || "이름없음"}
-        </a>
-      </td>
-      <td>${doc.description || "-"}</td>
-      <td>${doc.department ? doc.department.department_name : "-"}</td>
-      <td>
-        ${canEdit
+  <td><input type="checkbox" class="doc-checkbox" data-doc-id="${doc.docs_id}"></td>
+  <td>
+    <a href="http://localhost:8001/api/docs/documents/download/${doc.docs_id}">
+      📄 ${doc.title || "이름없음"}
+    </a>
+  </td>
+  <td>${doc.description || "-"}</td>
+  <td>${doc.department ? doc.department.department_name : "-"}</td>
+  <td>
+    ${canEdit
           ? `
-            <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
-            <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>
-          `
+        <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
+        <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>
+      `
           : `<span style="color:#999;">-</span>`
         }
-      </td>
-    `;
+  </td>
+`;
+
       container.appendChild(tr);
     });
   } catch (error) {
@@ -314,6 +349,33 @@ async function loadDocumentList(departmentId) {
       container.innerHTML = `<tr><td colspan="4">문서 목록을 불러오는 중 오류가 발생했습니다.</td></tr>`;
     }
   }
+  // 리스트 렌더링 완료 후 버튼 이벤트 다시 연결
+  // const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+  // if (bulkDeleteBtn) {
+  //   bulkDeleteBtn.onclick = async () => {
+  //     const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
+  //     if (selected.length === 0) return;
+
+  //     if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
+
+  //     for (const cb of selected) {
+  //       const docId = cb.dataset.docId;
+  //       try {
+  //         const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+  //         const result = await res.json();
+  //         if (!result.success) {
+  //           console.warn("삭제 실패:", result.message);
+  //         }
+  //       } catch (err) {
+  //         console.error("삭제 오류:", err);
+  //       }
+  //     }
+
+  //     alert("삭제가 완료되었습니다.");
+  //     loadDocumentList(CURRENT_DEPARTMENT_ID);
+  //   };
+  // }
+
 }
 
 function downloadDocument(docsId) {
@@ -328,6 +390,52 @@ document.addEventListener("DOMContentLoaded", () => {
   // 업로드 이벤트 등록
   document.body.addEventListener("dragover", preventDefaults, false);
   document.body.addEventListener("drop", handleDrop, false);
+
+  document.addEventListener("change", function (e) {
+    if (e.target.classList.contains("doc-checkbox") || e.target.id === "select-all-docs") {
+      const checkboxes = document.querySelectorAll(".doc-checkbox");
+      const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+      const btn = document.getElementById("bulk-delete-btn");
+      if (btn) {
+        btn.classList.toggle("show", anyChecked);
+
+      }
+
+      if (e.target.id === "select-all-docs") {
+        checkboxes.forEach(cb => {
+          cb.checked = e.target.checked;
+          // ✅ 수동으로 change 이벤트를 발생시켜 버튼 갱신
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      }
+    }
+  });
+
+
+
+  document.getElementById("bulk-delete-btn")?.addEventListener("click", async () => {
+    const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
+    if (selected.length === 0) return;
+
+    if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
+
+    for (const cb of selected) {
+      const docId = cb.dataset.docId;
+      try {
+        const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+        const result = await res.json();
+        if (!result.success) {
+          console.warn("삭제 실패:", result.message);
+        }
+      } catch (err) {
+        console.error("삭제 오류:", err);
+      }
+    }
+
+    alert("삭제가 완료되었습니다.");
+    loadDocumentList(CURRENT_DEPARTMENT_ID);
+  });
+
 });
 
 
