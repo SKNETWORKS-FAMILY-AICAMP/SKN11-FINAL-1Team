@@ -967,6 +967,15 @@ def get_alarms_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 10
     """사용자별 알람 목록 조회"""
     return db.query(models.Alarm).filter(models.Alarm.user_id == user_id).offset(skip).limit(limit).all()
 
+
+def get_active_alarm_count_by_user(db: Session, user_id: int) -> int:
+    """특정 유저의 활성 알람 개수 반환"""
+    return db.query(models.Alarm).filter(
+        models.Alarm.user_id == user_id,
+        models.Alarm.is_active == True
+    ).count()
+
+
 def get_active_alarms_by_user(db: Session, user_id: int):
     """사용자의 활성 알람 조회"""
     return db.query(models.Alarm).filter(
