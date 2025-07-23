@@ -300,7 +300,7 @@ async function loadDocumentList(departmentId) {
       tr.innerHTML = `
   <td><input type="checkbox" class="doc-checkbox" data-doc-id="${doc.docs_id}"></td>
   <td>
-    <a href="http://localhost:8001/api/documents/download/${doc.docs_id}" target="_blank">
+    <a href="http://localhost:8001/api/docs/documents/download/${doc.docs_id}">
       📄 ${doc.title || "이름없음"}
     </a>
   </td>

@@ -10,6 +10,7 @@ from datetime import datetime
 from embed_and_upsert import advanced_embed_and_upsert, get_existing_point_ids
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
+from fastapi.responses import FileResponse
 
 # 환경 변수 및 경로 설정
 UPLOAD_BASE_DIR = os.getenv("UPLOAD_BASE_DIR", "uploaded_docs")
@@ -181,3 +182,68 @@ async def get_common_docs(db: Session = Depends(get_db)):
 @router.get("/rag/health")
 async def rag_docs_health():
     return {"rag_available": True, "status": "healthy", "message": "RAG 문서 처리가 활성화됨"}
+
+# @router.get("/download/{docs_id}")
+# async def download_document(docs_id: int):
+#     """문서 다운로드"""
+#     if not RAG_AVAILABLE:
+#         raise HTTPException(status_code=500, detail="RAG 시스템이 로드되지 않았습니다.")
+    
+#     try:
+#         with get_db_connection() as conn:
+#             cursor = conn.cursor()
+#             cursor.execute("""
+#                 SELECT file_path, original_file_name 
+#                 FROM core_docs 
+#                 WHERE docs_id = ?
+#             """, (docs_id,))
+#             row = cursor.fetchone()
+
+#             if not row:
+#                 raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
+
+#             file_path = row["file_path"]
+#             original_name = row["original_file_name"] or "downloaded_file"
+
+#             abs_path = os.path.abspath(file_path)
+#             if not os.path.exists(abs_path):
+#                 raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다.")
+
+#             # 확장자 보완
+#             if not os.path.splitext(original_name)[1]:
+#                 ext = os.path.splitext(abs_path)[1]
+#                 if ext:
+#                     original_name += ext
+
+#             # 한글 포함 대응
+#             encoded_filename = quote(original_name)
+
+#             return FileResponse(
+#                 path=abs_path,
+#                 media_type='application/octet-stream',
+#                 headers={
+#                     "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+#                 }
+#             )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/documents/download/{docs_id}")
+async def download_document(docs_id: int, db: Session = Depends(get_db)):
+    """문서 다운로드 API"""
+    db_docs = crud.get_docs(db, docs_id=docs_id)
+    if db_docs is None or not db_docs.file_path:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+
+    if not os.path.exists(db_docs.file_path):
+        raise HTTPException(status_code=404, detail="파일이 존재하지 않습니다")
+
+    # 원래 파일명 (Content-Disposition용)
+    filename = db_docs.original_file_name or os.path.basename(db_docs.file_path)
+
+    return FileResponse(
+        path=db_docs.file_path,
+        media_type='application/octet-stream',
+        filename=filename
+    )
