@@ -33,36 +33,13 @@ function renderUploadList() {
     uploadListTbody.appendChild(tr);
   });
 
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //   }
-  // }
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //     document.getElementById('doc-reset-btn')?.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //     document.getElementById('doc-reset-btn')?.classList.remove('show');
-  //   }
-  // }
-  const btnGroup = document.getElementById('doc-btn-group');
-  const uploadBtn = document.getElementById('doc-upload-btn');
-  const resetBtn = document.getElementById('doc-reset-btn');
-
-  if (addedFiles.length > 0) {
-    btnGroup?.classList.remove('hidden');
-    uploadBtn?.classList.add('show');
-    resetBtn?.classList.add('show');
-  } else {
-    btnGroup?.classList.add('hidden');
-    uploadBtn?.classList.remove('show');
-    resetBtn?.classList.remove('show');
+  if (uploadBtn) {
+    if (addedFiles.length > 0) {
+      uploadBtn.classList.add('show');
+    } else {
+      uploadBtn.classList.remove('show');
+    }
   }
-
 }
 
 function updateFileInfo(idx, field, value) {
@@ -455,18 +432,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    
-
-
     alert("삭제가 완료되었습니다.");
     loadDocumentList(CURRENT_DEPARTMENT_ID);
-  });
-
-  document.getElementById('doc-reset-btn')?.addEventListener('click', () => {
-    if (confirm("업로드 목록을 초기화하시겠습니까?")) {
-      addedFiles = [];
-      renderUploadList();
-    }
   });
 
 });
