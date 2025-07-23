@@ -18,7 +18,7 @@ def load_documents(file_path):
         loader = Docx2txtLoader(file_path)
 
     elif ext in [".txt", ".md"]:
-        loader = TextLoader(file_path)
+        loader = TextLoader(file_path, encoding="utf-8-sig")
 
     elif ext in [".html", ".htm"]:
         try:

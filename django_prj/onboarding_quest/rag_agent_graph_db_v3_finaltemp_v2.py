@@ -333,17 +333,25 @@ def reformulate_question_improved(state: AgentState) -> AgentState:
         "rewrite_count": state.get("rewrite_count", 0) + 1
     }
 
-# 개선된 판단 함수
-def decide_to_reflect_improved(state: AgentState) -> str:
-    """점수 기반으로 재작성 여부 결정"""
-    if state.get("rewrite_count", 0) >= 2:
-        return "summarize"
+# # 개선된 판단 함수
+# def decide_to_reflect_improved(state: AgentState) -> str:
+#     """점수 기반으로 재작성 여부 결정"""
+#     if state.get("rewrite_count", 0) >= 2:
+#         return "summarize"
     
-    # 평가 점수 기반 판단
-    if state.get("needs_rewrite", False):
-        return "rewrite"
-    else:
-        return "summarize"
+#     # 평가 점수 기반 판단
+#     if state.get("needs_rewrite", False):
+#         return "rewrite"
+#     else:
+#         return "summarize"
+
+def decide_to_reflect_improved(state: AgentState) -> str:
+    if state.get("evaluation_score", 20) >= 14:
+        return "summarize"  # 점수 높으면 바로 종료
+    if state.get("rewrite_count", 0) >= 1:
+        return "summarize"  # 이미 한 번 재작성 했으면 그만
+    return "rewrite"  # 그 외에만 재작성
+
 
 
 def search_documents_with_rerank(state: AgentState) -> AgentState:

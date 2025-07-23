@@ -44,14 +44,36 @@ async def upload_document_with_rag(
                 raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
 
         # 파일 저장
+        # os.makedirs(UPLOAD_BASE, exist_ok=True)
+        # file_ext = os.path.splitext(file.filename)[1]
+        # unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+        # save_path = os.path.join(UPLOAD_BASE, unique_filename)
+        # file_content = await file.read()
+        # with open(save_path, "wb") as f:
+        #     f.write(file_content)
+        # logger.info(f"📄 업로드 파일 저장 완료: {save_path}")
+        # 파일 저장
         os.makedirs(UPLOAD_BASE, exist_ok=True)
-        file_ext = os.path.splitext(file.filename)[1]
+        file_ext = os.path.splitext(file.filename)[1].lower()
         unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
         save_path = os.path.join(UPLOAD_BASE, unique_filename)
         file_content = await file.read()
         with open(save_path, "wb") as f:
             f.write(file_content)
+
         logger.info(f"📄 업로드 파일 저장 완료: {save_path}")
+
+        # ✅ 텍스트 파일이라면 BOM 제거 후 재저장
+        if file_ext in [".txt", ".md"]:
+            try:
+                with open(save_path, "r", encoding="utf-8-sig") as f:
+                    text = f.read()
+                with open(save_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                logger.info(f"📎 BOM 제거 및 UTF-8 재저장 완료: {save_path}")
+            except Exception as e:
+                logger.warning(f"⚠ BOM 제거 중 오류: {e}")
+
 
         # DB 저장
         docs_data = schemas.DocsCreate(
