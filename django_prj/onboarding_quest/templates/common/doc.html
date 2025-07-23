@@ -150,6 +150,44 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+/* #bulk-delete-container { */
+  /* height: 42px; /* 버튼의 높이 + 여백만큼 고정 */
+  /* display: flex; */
+  /* justify-content: flex-end; */
+  /* align-items: center; */
+  /* margin-bottom: 10px; */
+/* } */
+#bulk-delete-container {
+  position: relative;
+  height: 0;
+  margin-bottom: 36px; /* 테이블과의 간격 확보 */
+}
+
+/* #bulk-delete-btn {
+  display: none;
+} */
+
+#bulk-delete-btn {
+  position: absolute;
+  top: -48px; /* 위로 띄워 테이블과 간격 줌 */
+  right: 40px;   /* 오른쪽 정렬 */
+  display: none;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#bulk-delete-btn.show {
+  display: inline-block;
+}
+
+
 .doc-upload-list-table input[type="checkbox"] {
   width: 1.25rem;
   height: 1.25rem;
@@ -418,13 +456,14 @@ body {
         <table class="doc-upload-list-table">
           <thead>
             <tr>
+              <th style="width:5%;"></th> <!-- 체크박스 자리에 빈칸 -->
               <th style="width:25%;">파일명</th>
               <th style="width:40%;">설명</th>
-              
               <th style="width:15%;">공통문서</th>
-              <th style="width:20%;">제거</th>
+              <th style="width:15%;">제거</th>
             </tr>
           </thead>
+
           <tbody id="doc-upload-list-tbody">
             <!-- 동적으로 추가됨 -->
           </tbody>
@@ -443,22 +482,31 @@ body {
     <!-- 등록된 파일 목록 -->
     <div class="doc-file-list">
       <div class="doc-title">파일 목록</div>
+    
+      <!-- ✅ 선택 삭제 버튼은 테이블 위쪽에 위치 -->
+      <div id="bulk-delete-container">
+        <button id="bulk-delete-btn" class="doc-delete-btn">
+          선택 삭제
+        </button>
+      </div>
+    
+      <!-- ✅ 단일 테이블 시작 -->
       <table class="doc-file-list-table">
         <thead>
           <tr>
+            <th style="width:5%;"><input type="checkbox" id="select-all-docs" /></th>
             <th style="width:25%;">파일명</th>
             <th style="width:40%;">설명</th>
-            
             <th style="width:15%;">관리부서</th>
-            <th style="width:20%;">관리</th>
+            <th style="width:15%;">관리</th>
           </tr>
         </thead>
         <tbody id="doc-list">
           <!-- JS로 동적 문서 리스트 삽입됨 -->
         </tbody>
-
       </table>
     </div>
+
   </div>
 </div>
 
@@ -638,41 +686,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 문서 삭제 AJAX 처리
-async function deleteDoc(docId) {
-    if (!confirm('이 문서를 삭제하시겠습니까?')) return;
-    
-    try {
-        const response = await fetch(`/common/doc/${docId}/delete/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-                showMessage('문서가 성공적으로 삭제되었습니다!');
-                
-                // 해당 행 제거
-                const row = document.querySelector(`tr[data-doc-id="${docId}"]`);
-                if (row) {
-                    row.style.opacity = '0';
-                    row.style.transform = 'translateX(-100%)';
-                    setTimeout(() => row.remove(), 300);
-                }
-            } else {
-                throw new Error(result.error || '문서 삭제에 실패했습니다.');
-            }
-        } else {
-            throw new Error('서버 오류가 발생했습니다.');
-        }
-    } catch (error) {
-        console.error('문서 삭제 오류:', error);
-        showMessage(error.message || '문서 삭제 중 오류가 발생했습니다.', 'error');
-    }
+// FastAPI용 삭제 모달 트리거 함수 (doc.js와 동일한 이름)
+function deleteDocModal(docId) {
+  deleteDocId = docId;
+  document.getElementById('deleteModal').style.display = 'flex';
 }
 
 // 로딩 스피너 스타일 추가

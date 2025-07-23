@@ -17,6 +17,9 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langchain_core.messages import SystemMessage, HumanMessage
 import threading
 from contextlib import contextmanager
+
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
@@ -59,7 +62,7 @@ logging.basicConfig(level=logging.INFO)
 
 # LangChain 구성
 client = QdrantClient(url=QDRANT_URL)
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-large")
 llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4o-mini")
 
 WINDOW_SIZE = 10
@@ -342,61 +345,91 @@ def decide_to_reflect_improved(state: AgentState) -> str:
     else:
         return "summarize"
 
-# 사용자별 필터링 검색 함수
-def search_documents_filtered(state: AgentState) -> AgentState:
-    """사용자 부서별 문서 필터링 검색"""
+
+def search_documents_with_rerank(state: AgentState) -> AgentState:
     query = state.get("rewritten_question") or state["question"]
     user_department_id = state.get("user_department_id")
-    
+
     query_vec = embeddings.embed_query(query)
-    
-    # 사용자 부서 문서 + 공통 문서만 검색
+
+    # 부서별 필터
     if user_department_id:
         search_filter = Filter(
             should=[
-                FieldCondition(
-                    key="metadata.department_id",
-                    match=MatchValue(value=user_department_id)
-                ),
-                FieldCondition(
-                    key="metadata.common_doc",
-                    match=MatchValue(value=True)
-                )
+                FieldCondition(key="metadata.department_id", match=MatchValue(value=user_department_id)),
+                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
             ]
         )
     else:
-        # 부서 정보가 없으면 공통 문서만 검색
         search_filter = Filter(
             must=[
-                FieldCondition(
-                    key="metadata.common_doc",
-                    match=MatchValue(value=True)
-                )
+                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
             ]
         )
-    
+
+    # Qdrant에서 유사도 기반 top-10 검색
     results = client.search(
         collection_name=COLLECTION_NAME,
         query_vector=query_vec,
         query_filter=search_filter,
-        limit=3,
+        limit=10,
         with_payload=True
     )
 
-    logger.info(f"[🔍 Qdrant 검색 결과 수] {len(results)}")
-    
+    if not results:
+        return {**state, "contexts": []}
+
+    # GPT rerank 프롬프트 구성
+    prompt_chunks = ""
+    for i, r in enumerate(results, 1):
+        meta = r.payload.get("metadata", {})
+        title = meta.get("title", f"청크 {i}")
+        chunk = r.payload.get("text", "")
+        # 계층 경로가 있으면 프롬프트에 함께 표시
+        hierarchy_path = meta.get("hierarchy_path")
+        if hierarchy_path:
+            prompt_chunks += f"\n청크 {i} ({hierarchy_path} | {title}):\n{chunk}\n"
+        else:
+            prompt_chunks += f"\n청크 {i} ({title}):\n{chunk}\n"
+
+    rerank_prompt = f"""
+다음 질문과 가장 관련 있는 청크를 3개 이내로 선택해 주세요.
+
+질문:
+{query}
+
+후보 청크:
+{prompt_chunks}
+
+선택한 청크의 번호를 쉼표로 구분해서 출력하세요 (예: 1,3,5).
+다른 설명은 하지 마세요.
+"""
+
+    response = llm.invoke(rerank_prompt).content.strip()
+    selected_nums = [int(x.strip()) for x in re.findall(r'\d+', response)]
+
     contexts = []
-    for r in results:
-        title = r.payload.get("metadata", {}).get("title", "무제")
-        text = r.payload.get("text", "")
-        # file_name = r.payload.get("metadata", {}).get("file_name", "알 수 없음")
-        file_name = (
-    r.payload.get("metadata", {}).get("original_file_name") or
-    r.payload.get("metadata", {}).get("file_name", "알 수 없음")
-)
-        contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-    
+    for idx in selected_nums:
+        if 1 <= idx <= len(results):
+            r = results[idx - 1]
+            meta = r.payload.get("metadata", {})
+            title = meta.get("title", "무제")
+            text = r.payload.get("text", "")
+            file_name = meta.get("original_file_name") or meta.get("file_name", "알 수 없음")
+            hierarchy_path = meta.get("hierarchy_path")
+            # hierarchy_path가 있고, title이 hierarchy_path의 마지막 계층과 같으면 전체 계층만 표기
+            if hierarchy_path:
+                # 마지막 계층 추출
+                last_level = hierarchy_path.split('>')[-1].strip()
+                if last_level == title:
+                    contexts.append(f"[{hierarchy_path}] (출처: {file_name})\n{text}")
+                else:
+                    contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
+            else:
+                contexts.append(f"[{title}] (출처: {file_name})\n{text}")
+
     return {**state, "contexts": contexts}
+
 
 # 세션 요약 함수 (PostgreSQL 버전)
 def summarize_session(state: AgentState) -> AgentState:
@@ -454,16 +487,6 @@ def summarize_session(state: AgentState) -> AgentState:
 def decide_use_rag(state: AgentState) -> AgentState:
     return state
 
-# def get_use_rag_condition(state: AgentState) -> str:
-#     question = state["question"]
-#     prompt = f"""다음 질문을 읽고, 사내 문서나 규정과 같은 참고 문서가 필요한 질문인지 판단하세요.
-
-# 질문: "{question}"
-
-# 문서가 필요하면 "use_rag", 아니면 "skip_rag"만 출력하세요."""
-    
-#     result = llm.invoke(prompt).content.strip().lower()
-#     return "use_rag" if "use" in result else "skip_rag"
 
 def get_use_rag_condition(state: AgentState) -> str:
     question = state["question"]
@@ -499,43 +522,61 @@ def generate_answer(state: AgentState) -> AgentState:
     recent_history = full_history[-WINDOW_SIZE:]
     history_text = "\n".join(recent_history)
     
-    titles = []
-    ref_files = set()
-
+    # 출처 정보: 파일명별로 (hierarchy_path, title) 튜플을 set으로 집계 (완전 중복 제거)
+    ref_map = {}  # {file_name: set((hierarchy_path, title))}
     for c in state.get("contexts", []):
         if c.startswith("["):
-            lines = c.split("\n")
-            if lines:
-                titles.append(lines[0].strip("[]"))
-            if "(출처: " in c:
-                file_name = c.split("(출처: ")[1].split(")")[0].strip()
-                ref_files.add(file_name)
+            first_line = c.split("\n")[0]
+            if "(출처: " in first_line:
+                file_name = first_line.split("(출처: ")[-1].split(")")[0].strip()
+                left = first_line.split("]")[0].strip("[")
+                # hierarchy_path와 title 분리
+                if "|" in left:
+                    hierarchy_path, title = left.split("|", 1)
+                    hierarchy_path = hierarchy_path.strip()
+                    title = title.strip()
+                else:
+                    hierarchy_path = ""
+                    title = left.strip()
+                ref_map.setdefault(file_name, set()).add((hierarchy_path, title))
 
-    ref_titles = ", ".join(titles)
-    ref_file_list = ", ".join(sorted(ref_files))  # 중복 제거된 파일명들
-    
+    # 답변 프롬프트(출처 정보 없음)
     prompt = f"""
 지금까지의 대화 기록:
 {history_text}
 
-아래 질문에 대해 context에 충실하게 자세히 답변하세요.
-→ 반드시 형식: "제X조 조항명 에 따르면 ..."
+아래 질문에 대해 context에 충실하게, 정확하고 자연스럽게 답변하세요.
 
-참고 조항: {ref_titles}
+💡 규칙:
 
 Context:
 {context}
 
-Question: {question}
+질문: {question}
 
-Answer:"""
-    
+정확하고 친절한 답변:
+"""
+
     response = llm.invoke(prompt)
     answer_text = response.content.strip()
 
-    # 참고 문서 표시 추가
-    if ref_file_list:
-        answer_text += f"\n\n📄 참고 문서: {ref_file_list}"
+    # 참고 문서 표시 추가 (파일명별로 계층+제목 리스트, 완전 중복 제거)
+    if ref_map:
+        ref_lines = []
+        for file_name, hier_set in ref_map.items():
+            ref_lines.append(f"📄 참고 문서: {file_name}")
+            for hierarchy_path, title in sorted(hier_set, key=lambda x: (x[0], x[1])):
+                # hierarchy_path의 마지막 계층이 title과 같으면 title만 표기
+                if hierarchy_path:
+                    # 마지막 계층 추출 (맨 뒤 > 기준으로 분리, 없으면 전체)
+                    last_level = hierarchy_path.split('>')[-1].strip()
+                    if last_level == title:
+                        ref_lines.append(f" - {title}")
+                    else:
+                        ref_lines.append(f" - {hierarchy_path} | {title}")
+                else:
+                    ref_lines.append(f" - {title}")
+        answer_text += "\n\n" + "\n".join(ref_lines)
 
     updated_history = full_history + [f"Q: {question}\nA: {answer_text}"]
 
@@ -565,7 +606,9 @@ Answer:"""
 builder = StateGraph(AgentState)
 builder.add_node("decide", decide_use_rag)
 builder.add_node("judge_rag", get_use_rag_condition)
-builder.add_node("search", search_documents_filtered)  # 필터링 검색으로 변경
+# builder.add_node("search", search_documents_filtered)  # 필터링 검색으로 변경
+builder.add_node("search", search_documents_with_rerank)
+
 builder.add_node("answer", generate_answer)
 builder.add_node("judge", judge_answer_improved)  # 개선된 함수 사용
 builder.add_node("rewrite", reformulate_question_improved)  # 개선된 함수 사용

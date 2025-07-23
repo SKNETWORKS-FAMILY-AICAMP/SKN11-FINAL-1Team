@@ -10,6 +10,37 @@ import time
 import sys
 import os
 
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+#     handlers=[logging.StreamHandler()]
+# )
+
+# logger = logging.getLogger("chat_logger")
+
+# chat.py 제일 상단에 (import 아래에 바로 삽입)
+
+import logging
+
+# 1. 기존 루트 로거 비활성화
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
+# 2. 사용자 정의 로거만 활성화
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler()]
+)
+
+# 3. Chat 전용 로거 생성
+logger = logging.getLogger("chat_logger")
+
+# 4. SQLAlchemy의 엔진 로거 끄기
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+
+
 # RAG 시스템 전역 변수
 graph = None
 client = None
@@ -48,9 +79,9 @@ def initialize_rag_system():
 # 초기화 시도
 initialize_rag_system()
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# # 로깅 설정
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 

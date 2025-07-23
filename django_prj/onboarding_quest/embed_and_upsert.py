@@ -10,6 +10,16 @@ from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from loaders import load_documents
 import uuid
+from sklearn.feature_extraction.text import TfidfVectorizer
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+UPLOAD_BASE_DIR = os.getenv("UPLOAD_BASE_DIR", "uploaded_docs")
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", "media")
+
+UPLOAD_BASE = os.path.abspath(os.path.join(MEDIA_ROOT, UPLOAD_BASE_DIR))
 
 # 로깅 설정
 os.makedirs("log", exist_ok=True)
@@ -27,39 +37,43 @@ load_dotenv()
 QDRANT_URL = os.getenv("QDRANT_URL")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 COLLECTION_NAME = "rag_multiformat"
-VECTOR_SIZE = 1536
+VECTOR_SIZE = 3072
 
 # Qdrant 클라이언트 및 임베딩 모델 초기화
 client = QdrantClient(url=QDRANT_URL)
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-small")
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY, model="text-embedding-3-large")
 
 # 조항 패턴 목록 (멀티 포맷 대응)
 SECTION_PATTERNS = [
-    r"(제\s*\d+\s*조\s*[^\n]*)",  # 제1조 목적
+    r"(제\s*\d+\s*장[^\n]*)",      # 제1장 총칙
+    r"(제\s*\d+\s*절[^\n]*)",      # 제1절 목적
+    r"(제\s*\d+\s*조[^\n]*)",      # 제1조 목적
     r"^\s*\d+\.\s*[^\n]+",        # 1. 개요
     r"^\s*\[\s*.+?\s*\]",         # [목적]
-    r"^\s*제?\w+\s*조\s+[^\n]+"  # 제일조 목적
+    r"^\s*제?\w+\s*조\s+[^\n]+"   # 제일조 목적
 ]
 
 # 조항 단위로 섹션 분리
 def extract_sections_with_titles(text):
+    # 모든 패턴을 하나의 리스트로 통합하여, 모든 계층(장/절/조 등)에서 섹션을 분리
+    all_matches = []
     for pattern in SECTION_PATTERNS:
-        matches = list(re.finditer(pattern, text, re.MULTILINE))
-        if len(matches) >= 3:  # 최소 3개 이상 조항 감지되면 성공
-            logging.info(f"패턴 매치 성공: {pattern} / {len(matches)}개")
-            sections = []
-            for i, match in enumerate(matches):
-                start = match.start()
-                end = matches[i+1].start() if i+1 < len(matches) else len(text)
-                title = match.group(1).strip() if match.groups() else match.group().strip()
-                body = text[start + len(title):end].strip()
-                sections.append((title, body))
-            return sections
-        else:
-            logging.info(f"패턴 매치 실패: {pattern}")
-    
-    logging.warning("조항 패턴 매치 실패. 전체 문서를 단일 청크로 처리합니다.")
-    return [("전체본문", text)]
+        all_matches.extend(list(re.finditer(pattern, text, re.MULTILINE)))
+    # 시작 위치 기준 정렬
+    all_matches.sort(key=lambda m: m.start())
+    if len(all_matches) >= 3:
+        logging.info(f"패턴 매치 성공: {len(all_matches)}개 섹션 감지")
+        sections = []
+        for i, match in enumerate(all_matches):
+            start = match.start()
+            end = all_matches[i+1].start() if i+1 < len(all_matches) else len(text)
+            title = match.group(1).strip() if match.groups() else match.group().strip()
+            body = text[start + len(title):end].strip()
+            sections.append((title, body))
+        return sections
+    else:
+        logging.warning("조항 패턴 매치 실패. 전체 문서를 단일 청크로 처리합니다.")
+        return [("전체본문", text)]
 
 # Qdrant에 컬렉션 생성
 def create_collection_if_not_exists():
@@ -107,6 +121,10 @@ def get_existing_point_ids():
             existing_ids.add(f"{file}-{chunk_id}")
     return existing_ids
 
+
+
+
+
 # 문서 임베딩 및 Qdrant 업로드 (개선된 버전)
 def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, common_doc=False, original_file_name=None) -> int:
     """
@@ -131,17 +149,53 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
         logging.info(f"조항 추출 개수: {len(sections)}")
         
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=512,
-            chunk_overlap=50,
+            chunk_size=768,
+            chunk_overlap=100,
             separators=["\n\n", "\n", ".", " ", ""],
         )
         
         split_docs = []
+        # 계층별 패턴 정의 (순서 중요)
+        hierarchy_levels = [
+            ("장", re.compile(r'(제\s*\d+\s*장|\d+장|[IVXLCDM]+\.|[A-Za-z]+\s*Chapter)', re.UNICODE)),
+            ("절", re.compile(r'(제\s*\d+\s*절|\d+절|Section)', re.UNICODE)),
+            ("조", re.compile(r'(제\s*\d+\s*조|\d+조|Article|\d+\.\d+\.\d+|\d+-\d+|\d+\.\d+)', re.UNICODE)),
+            ("항", re.compile(r'(제\s*\d+\s*항|\d+항)', re.UNICODE)),
+            ("목", re.compile(r'(제\s*\d+\s*목|\d+목)', re.UNICODE)),
+        ]
+        # 계층 상태: {level_name: last_title}
+        hierarchy_state = {level: None for level, _ in hierarchy_levels}
+
         for title, content in sections:
+            # 각 계층별로 해당 title이 해당 계층이면 상태 갱신
+            updated_level = None
+            for level, pattern in hierarchy_levels:
+                if pattern.search(title):
+                    hierarchy_state[level] = title.strip()
+                    # 하위 계층은 초기화
+                    found = False
+                    for l, _ in hierarchy_levels:
+                        if l == level:
+                            found = True
+                        elif found:
+                            hierarchy_state[l] = None
+                    updated_level = level
+                    break
+            # 계층이 하나도 매칭 안 되면, 가장 하위 계층에 title 저장
+            if not updated_level:
+                # 가장 마지막 계층에 title 저장
+                for l in reversed([lvl for lvl, _ in hierarchy_levels]):
+                    if hierarchy_state[l] is None:
+                        hierarchy_state[l] = title.strip()
+                        break
+
+            # hierarchy_path는 None이 아닌 계층만 연결 (순서대로)
+            hierarchy_path = " > ".join([hierarchy_state[l] for l, _ in hierarchy_levels if hierarchy_state[l]])
+
             chunks = text_splitter.split_text(content)
             for chunk in chunks:
-                combined_text = f"[{title}]\n{chunk}"
-                split_docs.append(Document(page_content=combined_text, metadata={"title": title}))
+                combined_text = f"이 내용은 '{title}'에 대한 설명입니다.\n\n{chunk}"
+                split_docs.append(Document(page_content=combined_text, metadata={"title": title, "hierarchy_path": hierarchy_path}))
         
         logging.info(f"최종 청크 개수: {len(split_docs)}")
         
@@ -156,14 +210,17 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
             
             # 메타데이터 확장 (부서 ID, 공통 문서 여부, 파일명 추가)
             # doc.metadata["source"] = file_path
-            doc.metadata["source"] = os.path.normpath(os.path.abspath(file_path))
+            # doc.metadata["source"] = os.path.normpath(os.path.abspath(file_path))
+            # doc.metadata["source"] = os.path.relpath(file_path, start=UPLOAD_BASE).replace("\\", "/")
+            doc.metadata["source"] = f"documents/{os.path.basename(file_path)}"
+
 
             doc.metadata["chunk_id"] = i
-            doc.metadata["department_id"] = department_id  # 부서 ID 추가
+            # doc.metadata["department_id"] = department_id  # 부서 ID 추가
+            doc.metadata["department_id"] = int(department_id) if department_id is not None else None
             doc.metadata["common_doc"] = common_doc        # 공통 문서 여부 추가
             doc.metadata["file_name"] = os.path.basename(file_path)  # 파일명 추가
-            if original_file_name:
-                doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
+            doc.metadata["original_file_name"] = original_file_name  # 원래 업로드된 이름
             
             new_points.append(
     PointStruct(
@@ -194,6 +251,10 @@ def advanced_embed_and_upsert(file_path, existing_ids, department_id=None, commo
     except Exception as e:
         logging.error(f"{file_path} 처리 중 오류 발생: {e}")
         return 0
+
+
+
+
 
 # 다중 파일 자동 처리 엔트리포인트
 if __name__ == "__main__":

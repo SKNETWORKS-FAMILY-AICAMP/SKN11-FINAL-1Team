@@ -20,6 +20,8 @@ class ChatBot {
         this.loadingMessageElement = null;
         this.renderLock = false;  // ✅ 메시지 중복 렌더링 방지
         this.loadSessionsFromAPI();  // ✅ 기존 refreshSessionList() 대신
+        this.userScrolling = false;
+
     }
 
     async loadMessagesFromAPI(sessionId) {
@@ -146,6 +148,11 @@ class ChatBot {
             });
         });
 
+        this.chatArea.addEventListener('scroll', () => {
+            const nearBottom = this.chatArea.scrollHeight - this.chatArea.scrollTop - this.chatArea.clientHeight < 30;
+            this.userScrolling = !nearBottom;
+        });
+
         const chatForm = document.getElementById('chatbot-form');
         if (chatForm) {
             chatForm.addEventListener('submit', (e) => this.handleMessageSubmit(e));
@@ -164,15 +171,25 @@ class ChatBot {
         const message = input.value.trim();
         if (!message) return;
 
+        const sendBtn = document.querySelector('.chatbot-send-btn');
+        const btnText = sendBtn?.querySelector('.btn-text');
+        const btnLoading = sendBtn?.querySelector('.btn-loading');
+
         console.log('📤 메시지 제출됨:', message);
 
         this.isSubmitting = true;
 
-        // ✅ 사용자 메시지 즉시 출력 (UX)
+        // ✅ 전송 버튼 로딩 표시
+        if (btnText && btnLoading) {
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            sendBtn.disabled = true;
+            input.disabled = true;
+        }
+
+        input.value = '';
+
         this.addMessageToChat('user', message);
-
-
-
         this.showLoadingAnimation();
 
         const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
@@ -195,14 +212,12 @@ class ChatBot {
             if (data.success) {
                 this.selectedSessionInput.value = data.session_id;
 
-                // ✅ 응답을 기존 자리에 타자 애니메이션으로 출력
                 if (this.loadingMessageElement) {
                     await this.typeText(this.loadingMessageElement, data.answer);
                     this.loadingMessageElement.parentElement.classList.remove('loading');
                     this.loadingMessageElement = null;
                 }
 
-                // ✅ 소스 정보 표시 (선택사항)
                 if (data.contexts && data.contexts.length > 0) {
                     const sourcesText = `\n\n📚 참고 문서: ${data.contexts.length}개 문서 참조`;
                     const sourcesSpan = document.createElement('span');
@@ -212,7 +227,6 @@ class ChatBot {
                     this.loadingMessageElement?.parentElement.appendChild(sourcesSpan);
                 }
 
-                // ✅ session-messages에 챗봇 메시지만 동기화
                 this.updateSessionMessagesInDOM('chatbot', data.answer);
             } else {
                 alert('오류: ' + (data.error || data.detail || '알 수 없는 오류'));
@@ -222,9 +236,91 @@ class ChatBot {
             alert('메시지 전송 중 오류가 발생했습니다.');
         }
 
-        input.value = '';
+        // ✅ 전송 버튼 상태 복원
+        if (btnText && btnLoading) {
+            btnText.style.display = 'inline';
+            btnLoading.style.display = 'none';
+            sendBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+
         this.isSubmitting = false;
     }
+
+
+
+    // async handleMessageSubmit(e) {
+    //     e.preventDefault();
+    //     if (this.isSubmitting) return;
+
+    //     const input = document.getElementById('chatbot-input');
+    //     const message = input.value.trim();
+    //     if (!message) return;
+
+    //     console.log('📤 메시지 제출됨:', message);
+
+    //     this.isSubmitting = true;
+
+    //     input.value = '';
+
+    //     // ✅ 사용자 메시지 즉시 출력 (UX)
+    //     this.addMessageToChat('user', message);
+
+
+
+    //     this.showLoadingAnimation();
+
+    //     const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
+
+    //     try {
+    //         const response = await fetch('http://127.0.0.1:8001/api/chat/rag', {
+    //             method: 'POST',
+    //             headers: {
+    //                 'Content-Type': 'application/json'
+    //             },
+    //             body: JSON.stringify({
+    //                 question: message,
+    //                 session_id: sessionId ? parseInt(sessionId) : null,
+    //                 user_id: parseInt(user_id),
+    //                 department_id: parseInt(department_id)
+    //             })
+    //         });
+
+    //         const data = await response.json();
+    //         if (data.success) {
+    //             this.selectedSessionInput.value = data.session_id;
+
+    //             // ✅ 응답을 기존 자리에 타자 애니메이션으로 출력
+    //             if (this.loadingMessageElement) {
+    //                 await this.typeText(this.loadingMessageElement, data.answer);
+    //                 this.loadingMessageElement.parentElement.classList.remove('loading');
+    //                 this.loadingMessageElement = null;
+    //             }
+
+    //             // ✅ 소스 정보 표시 (선택사항)
+    //             if (data.contexts && data.contexts.length > 0) {
+    //                 const sourcesText = `\n\n📚 참고 문서: ${data.contexts.length}개 문서 참조`;
+    //                 const sourcesSpan = document.createElement('span');
+    //                 sourcesSpan.style.fontSize = '12px';
+    //                 sourcesSpan.style.color = '#666';
+    //                 sourcesSpan.textContent = sourcesText;
+    //                 this.loadingMessageElement?.parentElement.appendChild(sourcesSpan);
+    //             }
+
+    //             // ✅ session-messages에 챗봇 메시지만 동기화
+    //             this.updateSessionMessagesInDOM('chatbot', data.answer);
+    //         } else {
+    //             alert('오류: ' + (data.error || data.detail || '알 수 없는 오류'));
+    //         }
+    //     } catch (err) {
+    //         console.error('에러 발생:', err);
+    //         alert('메시지 전송 중 오류가 발생했습니다.');
+    //     }
+
+    //     // input.value = '';
+    //     this.isSubmitting = false;
+    // }
 
 
     showLoadingAnimation() {
@@ -252,14 +348,69 @@ class ChatBot {
         this.loadingMessageElement = messageContent;
     }
 
-    async typeText(element, text) {
-        element.innerHTML = '';
-        for (let i = 0; i < text.length; i++) {
-            element.textContent += text[i];
-            this.chatArea.scrollTop = this.chatArea.scrollHeight;
-            await new Promise(res => setTimeout(res, 15));
-        }
+    // async typeText(element, text) {
+    //     element.innerHTML = '';
+    //     for (let i = 0; i < text.length; i++) {
+    //         element.textContent += text[i];
+    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    //         await new Promise(res => setTimeout(res, 15));
+    //     }
+    // }
+    // async typeText(element, text) {
+    //     const converter = new showdown.Converter({
+    //         simpleLineBreaks: true,
+    //         tables: true
+    //     });
+
+    //     let currentText = '';
+    //     for (let i = 0; i < text.length; i++) {
+    //         currentText += text[i];
+
+    //         // 실시간으로 Markdown 변환 및 렌더링
+    //         element.innerHTML = converter.makeHtml(currentText);
+
+    //         // 스크롤을 자동으로 가장 아래로 이동
+    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
+
+    //         // 글자 출력 속도 조절 (15ms마다 1글자씩 출력)
+    //         await new Promise(res => setTimeout(res, 15));
+    //     }
+    // }
+    async typeText(element, fullText, speed = 15) {
+        const converter = new showdown.Converter({
+            simpleLineBreaks: true,
+            tables: true
+        });
+
+        let i = 0;
+        let currentText = '';
+        const total = fullText.length;
+        const start = performance.now();
+
+        const loop = (now) => {
+            const elapsed = now - start;
+            const expectedChars = Math.floor(elapsed / speed);
+
+            while (i < expectedChars && i < total) {
+                currentText += fullText[i];
+                i++;
+            }
+
+            element.innerHTML = converter.makeHtml(currentText);
+            // this.chatArea.scrollTop = this.chatArea.scrollHeight;
+            if (!this.userScrolling) {
+                this.chatArea.scrollTop = this.chatArea.scrollHeight;
+            }
+
+            if (i < total) {
+                requestAnimationFrame(loop);
+            }
+        };
+
+        requestAnimationFrame(loop);
     }
+
+
 
     updateSessionMessagesInDOM(type, text) {
         const sessionId = this.selectedSessionInput.value;
@@ -283,6 +434,13 @@ class ChatBot {
     }
 
     handleSessionClick(e, item) {
+        if (this.isSubmitting) {
+            this.isSubmitting = false;
+            this.loadingMessageElement = null;
+
+            const loadingRow = this.chatArea.querySelector('.chatbot-msg-row.bot.loading');
+            if (loadingRow) loadingRow.remove();
+        }
         this.selectSession(item);
     }
 
@@ -362,22 +520,67 @@ class ChatBot {
                 tables: true
             });
 
-            // 📌 📄 참고 문서 앞에 두 줄 띄우기 (전처리)
-            // const patchedText = text.replace(/\n{1}(📄 참고 문서:)/g, "\n\n$1");
-            // const patchedText = text.replace(/(📄 참고 문서:)/g, "\n\n$1");
+            // 📌 참고 문서 앞에 줄 바꿈 추가
             const patchedText = text.replace(/(📄 참고 문서:)/g, "<br>$1");
-
-
             const html = converter.makeHtml(patchedText);
             messageContent.innerHTML = html;
+
+            // ✅ 한 줄짜리 응답이면 single-line 스타일 적용
+            const lineCount = (html.match(/<p>/g) || []).length;
+            const isList = html.includes('<ul') || html.includes('<ol');
+            const hasBreaks = html.includes('<br');
+
+            if (lineCount <= 1 && !isList && !hasBreaks) {
+                messageContent.classList.add('single-line');
+            }
         } else {
             messageContent.textContent = text;
         }
 
         messageRow.appendChild(messageContent);
         this.chatArea.appendChild(messageRow);
-        this.chatArea.scrollTop = this.chatArea.scrollHeight;
+
+        if (!this.userScrolling) {
+            this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        }
     }
+
+
+    // addMessageToChat(type, text) {
+    //     const messageRow = document.createElement('div');
+    //     messageRow.className = `chatbot-msg-row ${type === 'user' ? 'user' : 'bot'}`;
+
+    //     const messageContent = document.createElement('div');
+    //     messageContent.className = `chatbot-msg-${type === 'user' ? 'user' : 'chabot'}`;
+
+    //     if (type === 'bot') {
+    //         const converter = new showdown.Converter({
+    //             simpleLineBreaks: true,
+    //             tables: true
+    //         });
+
+    //         // 📌 📄 참고 문서 앞에 두 줄 띄우기 (전처리)
+    //         // const patchedText = text.replace(/\n{1}(📄 참고 문서:)/g, "\n\n$1");
+    //         // const patchedText = text.replace(/(📄 참고 문서:)/g, "\n\n$1");
+    //         const patchedText = text.replace(/(📄 참고 문서:)/g, "<br>$1");
+
+
+    //         const html = converter.makeHtml(patchedText);
+    //         messageContent.innerHTML = html;
+
+            
+    //     } else {
+    //         messageContent.textContent = text;
+    //     }
+
+    //     messageRow.appendChild(messageContent);
+    //     this.chatArea.appendChild(messageRow);
+    //     // this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    //     if (!this.userScrolling) {
+    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    //     }
+
+    // }
 
 
 
