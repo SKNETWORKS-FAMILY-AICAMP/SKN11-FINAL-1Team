@@ -51,14 +51,32 @@ function removeFile(idx) {
   renderUploadList();
 }
 
+// function handleFiles(files) {
+//   Array.from(files).forEach(file => {
+//     if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+//       addedFiles.push({ file, name: file.name, description: '', common_doc: false });
+//     }
+//   });
+//   renderUploadList();
+// }
+
+function isDuplicate(file) {
+  return addedFiles.some(f =>
+    f.file.name === file.name &&
+    f.file.size === file.size &&
+    f.file.lastModified === file.lastModified
+  );
+}
+
 function handleFiles(files) {
   Array.from(files).forEach(file => {
-    if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
+    if (!isDuplicate(file)) {
       addedFiles.push({ file, name: file.name, description: '', common_doc: false });
     }
   });
   renderUploadList();
 }
+
 
 if (dropArea && fileInput) {
   ['dragenter', 'dragover'].forEach(evt => {
@@ -81,7 +99,12 @@ if (dropArea && fileInput) {
   });
 
   dropArea.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  // fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  fileInput.addEventListener('change', e => {
+    handleFiles(e.target.files);
+    fileInput.value = '';  // 같은 파일을 다시 선택할 수 있도록 초기화
+  });
+
 }
 
 uploadBtn?.addEventListener('click', async () => {
