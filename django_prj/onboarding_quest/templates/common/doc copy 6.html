@@ -194,53 +194,32 @@ body {
   accent-color: var(--primary-blue);
 }
 
-.doc-upload-btn-group {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.doc-upload-btn,
-.doc-reset-btn {
-  display: none;
-  align-items: center;
-  justify-content: center;
+.doc-upload-btn {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--light-blue) 100%);
+  color: white;
+  border: none;
   padding: 0.875rem 2rem;
-  border-radius: 9999px;
+  border-radius: 8px;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: none;
-  color: white;
+  box-shadow: var(--shadow-sm);
+  display: none; /* 처음에는 숨김 */
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
 }
 
-.doc-upload-btn.show,
-.doc-reset-btn.show {
-  display: flex;
+.doc-upload-btn.show {
+  display: flex; /* 파일이 추가되면 보이게 함 */
 }
 
-.doc-upload-btn {
-  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-}
-
-.doc-reset-btn {
-  background: #9ca3af;
-}
-
-.doc-reset-btn:hover {
-  background: #6b7280;
+.doc-upload-btn:hover {
+  background: linear-gradient(135deg, var(--blue-700) 0%, var(--blue-600) 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
-
-.hidden {
-  display: none !important;
-}
-
 
 .doc-upload-btn:active {
   transform: translateY(0);
@@ -446,11 +425,7 @@ body {
   .modal-content {
     margin: 1rem;
   }
-
 }
-
-
-
 </style>
 {% endblock %}
 
@@ -484,8 +459,8 @@ body {
               <th style="width:5%;"></th> <!-- 체크박스 자리에 빈칸 -->
               <th style="width:25%;">파일명</th>
               <th style="width:40%;">설명</th>
-              <th style="width:15%; text-align: center;">공통문서</th>
-              <th style="width:15%; text-align: center;">제거</th>
+              <th style="width:15%;">공통문서</th>
+              <th style="width:15%;">제거</th>
             </tr>
           </thead>
 
@@ -495,22 +470,13 @@ body {
         </table>
       </div>
 
-      <div class="doc-upload-btn-group hidden" id="doc-btn-group">
-
-        <button class="doc-upload-btn" id="doc-upload-btn">
-          <span class="btn-text">업로드</span>
-          <span class="btn-loading" style="display: none;">
-            <div class="loading-spinner"></div>
-            업로드중...
-          </span>
-        </button>
-      
-        <button class="doc-reset-btn" id="doc-reset-btn">
-          초기화
-        </button>
-      </div>
-
-
+      <button class="doc-upload-btn" id="doc-upload-btn">
+        <span class="btn-text">업로드</span>
+        <span class="btn-loading" style="display: none;">
+          <div class="loading-spinner"></div>
+          업로드중...
+        </span>
+      </button>
     </div>
 
     <!-- 등록된 파일 목록 -->
@@ -531,8 +497,8 @@ body {
             <th style="width:5%;"><input type="checkbox" id="select-all-docs" /></th>
             <th style="width:25%;">파일명</th>
             <th style="width:40%;">설명</th>
-            <th style="width:15%; text-align: center;">관리부서</th>
-            <th style="width:15%; text-align: center;">관리</th>
+            <th style="width:15%;">관리부서</th>
+            <th style="width:15%;">관리</th>
           </tr>
         </thead>
         <tbody id="doc-list">
