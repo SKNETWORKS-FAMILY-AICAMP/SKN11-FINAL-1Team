@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
+from datetime import datetime
+from sqlalchemy import text
 from config import settings
 from database import engine, Base
 from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, chat, auth, alarms
@@ -43,8 +45,10 @@ async def log_all_requests(request: Request, call_next):
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=["*"],  # 임시로 모든 origin 허용
     allow_credentials=True,
+    # allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    # allow_headers=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -66,6 +70,7 @@ app.include_router(docs_merged.router)
 app.include_router(chatbot.router)
 app.include_router(alarms.router)
 # app.include_router(rag.router)  # chat 라우터로 통합됨
+
 
 @app.get("/")
 async def root():
@@ -120,4 +125,5 @@ if __name__ == "__main__":
         port=settings.port,
         reload=settings.debug,
         log_level=settings.log_level.lower()
-    ) 
+    )
+

@@ -3,6 +3,8 @@ function toggleFilterMenu() {
   document.getElementById('filter-menu').classList.toggle('show');
 }
 
+
+
 function selectFilter(filterType, displayText) {
   document.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
   event.target.classList.add('selected');
@@ -73,9 +75,98 @@ function initializeKanbanCards() {
 }
 
 // DOM 로드 후 초기화
-document.addEventListener('DOMContentLoaded', function() {
-  initializeKanbanCards();
+// document.addEventListener('DOMContentLoaded', function() {
+//   initializeKanbanCards();
+// });
+
+// 주차별 그룹화 렌더링 함수
+function renderTaskListGrouped(tasks) {
+    const container = document.getElementById('tasklist-left');
+    container.innerHTML = '';
+
+    // 주차별 그룹화
+    const groupedTasks = {};
+    tasks.forEach(task => {
+        const week = task.week || 0;
+        if (!groupedTasks[week]) groupedTasks[week] = [];
+        groupedTasks[week].push(task);
+    });
+
+    // 주차별 섹션 생성
+    Object.keys(groupedTasks).sort((a, b) => a - b).forEach(week => {
+        const weekSection = document.createElement('div');
+        weekSection.className = 'week-section';
+        weekSection.innerHTML = `<h3>${week}주차</h3>`;
+
+        groupedTasks[week].forEach(task => {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            card.dataset.status = task.status;
+            card.dataset.priority = task.priority;
+            card.dataset.date = task.scheduled_end_date || '';
+            card.dataset.week = task.week || '';
+
+            card.innerHTML = `
+                <div class="task-card-header">
+                    <span class="status-badge">${task.status}</span>
+                    <span class="task-title">${task.title}</span>
+                </div>
+                <div class="task-desc">${task.description || ''}</div>
+            `;
+            weekSection.appendChild(card);
+        });
+
+        container.appendChild(weekSection);
+    });
+
+    console.log(`✅ 태스크 ${tasks.length}개 주차별 렌더링 완료`);
+}
+
+function initializeFilterAndSort(mentorshipId) {
+    const sortSelect = document.getElementById('task-sort');
+    const statusSelect = document.getElementById('task-filter-status');
+    const prioritySelect = document.getElementById('task-filter-priority');
+
+    async function fetchTaskList() {
+        const sortOption = sortSelect.value;
+        const statusOption = statusSelect.value;
+        const priorityOption = prioritySelect.value;
+
+        let url = `http://127.0.0.1:8001/api/tasks/assigns?mentorship_id=${mentorshipId}`;
+        if (statusOption !== 'all') url += `&status=${encodeURIComponent(statusOption)}`;
+        if (priorityOption !== 'all') url += `&priority=${encodeURIComponent(priorityOption)}`;
+        url += `&sort=${sortOption}`;
+
+        console.log("▶ API 호출:", url);
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('태스크 목록 불러오기 실패');
+            let data = await response.json();
+            console.log("받은 데이터:", data);
+
+            renderTaskListGrouped(data);
+        } catch (err) {
+            console.error('❌ API 호출 오류:', err);
+        }
+    }
+
+    sortSelect.addEventListener('change', fetchTaskList);
+    statusSelect.addEventListener('change', fetchTaskList);
+    prioritySelect.addEventListener('change', fetchTaskList);
+
+    fetchTaskList();
+    console.log('✅ 필터/정렬 기능 설정 완료');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const mentorshipId = document.getElementById('tasklist-left')?.dataset.mentorshipId;
+    console.log("mentorshipId:", mentorshipId);
+    initializeFilterAndSort(mentorshipId);
+    
 });
+
+
 
 document.addEventListener('click', function(e) {
   const filterDropdown = document.querySelector('.filter-dropdown');

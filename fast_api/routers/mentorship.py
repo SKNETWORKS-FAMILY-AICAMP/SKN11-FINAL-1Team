@@ -122,6 +122,12 @@ async def create_mentorship(mentorship: schemas.MentorshipCreate, db: Session = 
     if mentee.role != 'mentee':
         raise HTTPException(status_code=400, detail="지정된 사용자가 멘티가 아닙니다")
     
+    # 멘토/멘티 활성 상태 확인
+    if not mentor.is_active:
+        raise HTTPException(status_code=400, detail="비활성화된 멘토로는 멘토쉽을 생성할 수 없습니다")
+    if not mentee.is_active:
+        raise HTTPException(status_code=400, detail="비활성화된 멘티로는 멘토쉽을 생성할 수 없습니다")
+    
     return crud.create_mentorship(db=db, mentorship=mentorship)
 
 
@@ -156,6 +162,18 @@ async def get_mentorships(
         tasks = crud.get_tasks_by_mentorship(db, mentorship_id=mentorship.mentorship_id)
         completed_tasks = [task for task in tasks if task.status == 'completed']
         
+        # 멘토쉽 활성화 상태: 한번 비활성화된 멘토쉽은 계속 비활성화 유지
+        mentor_active = mentor and mentor.is_active if mentor else False
+        mentee_active = mentee and mentee.is_active if mentee else False
+        mentorship_active = mentorship.is_active
+        
+        # 기존 로직: effective_is_active = mentor_active and mentee_active and mentorship_active
+        # 수정된 로직: 멘토쉽이 비활성화되어 있으면 사용자 상태와 관계없이 비활성화 유지
+        if not mentorship_active:
+            effective_is_active = False  # 멘토쉽이 비활성화되어 있으면 계속 비활성화 유지
+        else:
+            effective_is_active = mentor_active and mentee_active  # 멘토쉽이 활성화되어 있을 때만 사용자 상태 확인
+        
         enriched_mentorship = {
             "id": mentorship.mentorship_id,  # Django 모델의 기본키
             "mentor_id": mentorship.mentor_id,
@@ -163,7 +181,9 @@ async def get_mentorships(
             "curriculum_id": None,  # Django 모델에는 curriculum_id가 없음
             "start_date": mentorship.start_date,
             "end_date": mentorship.end_date,
-            "status": "active" if mentorship.is_active else "inactive",  # Django 모델 구조
+            "status": "active" if effective_is_active else "inactive",  # 실제 활성화 상태 반영
+            "is_active": effective_is_active,  # 계산된 활성화 상태
+            "original_is_active": mentorship_active,  # 원래 멘토쉽 활성화 상태
             "created_at": None,  # Django 모델에 없는 필드
             "updated_at": None,  # Django 모델에 없는 필드
             # 추가 정보
@@ -197,6 +217,26 @@ async def update_mentorship(mentorship_id: int, mentorship: schemas.MentorshipCr
     db_mentorship = crud.get_mentorship(db, mentorship_id=mentorship_id)
     if db_mentorship is None:
         raise HTTPException(status_code=404, detail="멘토십을 찾을 수 없습니다")
+    
+    # 수정하려는 멘토와 멘티의 활성 상태 확인
+    if mentorship.mentor_id:
+        mentor = crud.get_user(db, user_id=mentorship.mentor_id)
+        if mentor is None:
+            raise HTTPException(status_code=404, detail="멘토를 찾을 수 없습니다")
+        if mentor.role != 'mentor':
+            raise HTTPException(status_code=400, detail="지정된 사용자가 멘토가 아닙니다")
+        if not mentor.is_active:
+            raise HTTPException(status_code=400, detail="비활성화된 멘토로는 멘토쉽을 수정할 수 없습니다")
+    
+    if mentorship.mentee_id:
+        mentee = crud.get_user(db, user_id=mentorship.mentee_id)
+        if mentee is None:
+            raise HTTPException(status_code=404, detail="멘티를 찾을 수 없습니다")
+        if mentee.role != 'mentee':
+            raise HTTPException(status_code=400, detail="지정된 사용자가 멘티가 아닙니다")
+        if not mentee.is_active:
+            raise HTTPException(status_code=400, detail="비활성화된 멘티로는 멘토쉽을 수정할 수 없습니다")
+    
     return crud.update_mentorship(db=db, mentorship_id=mentorship_id, mentorship_update=mentorship)
 
 

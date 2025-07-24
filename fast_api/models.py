@@ -40,7 +40,7 @@ class User(Base):
     user_id = Column(Integer, primary_key=True, index=True, comment="유저 고유 ID")
     employee_number = Column(Integer, comment="사번")
     is_admin = Column(Boolean, default=False, comment="관리자 여부")
-    mentorship_id = Column(Integer, comment="멘토쉽 ID(옵션)")
+    is_superuser = Column(Boolean, default=False, nullable=False, comment="최고 관리자 여부")
     company_id = Column(String(12), ForeignKey("core_company.company_id"), comment="소속 회사")
     department_id = Column(Integer, ForeignKey("core_department.department_id"), comment="소속 부서")
     tag = Column(String(255), comment="유저 태그")

@@ -98,7 +98,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.AutoField(primary_key=True, help_text='유저 고유 ID')
     employee_number = models.IntegerField(null=True, blank=True, help_text='사번')
     is_admin = models.BooleanField(default=False, help_text='관리자 여부')
-    mentorship_id = models.IntegerField(null=True, blank=True, help_text='멘토쉽 ID(옵션)')
     company = models.ForeignKey(  
         Company,
         on_delete=models.SET_NULL,
@@ -144,6 +143,36 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_full_name(self):
         """전체 이름 반환"""
         return f'{self.last_name} {self.first_name}'
+    
+    def check_password(self, raw_password):
+        """비밀번호 검증 - Django와 passlib(bcrypt) 모두 지원"""
+        from django.contrib.auth.hashers import check_password as django_check_password
+        
+        # 먼저 Django 표준 방식으로 검증 시도
+        if django_check_password(raw_password, self.password):
+            return True
+        
+        # Django 방식이 실패하면 passlib bcrypt 방식으로 검증 시도
+        try:
+            import bcrypt
+            if self.password.startswith('$2b$') or self.password.startswith('$2a$') or self.password.startswith('$2y$'):
+                # bcrypt 해시인 경우
+                return bcrypt.checkpw(raw_password.encode('utf-8'), self.password.encode('utf-8'))
+        except ImportError:
+            # bcrypt가 설치되어 있지 않은 경우
+            pass
+        except Exception as e:
+            # 기타 예외 발생 시 로깅
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Password verification error: {e}")
+        
+        return False
+    
+    def set_password(self, raw_password):
+        """비밀번호 설정 - Django 표준 방식 사용"""
+        from django.contrib.auth.hashers import make_password
+        self.password = make_password(raw_password)
 
 class Alarm(models.Model):
     id = models.AutoField(primary_key=True)

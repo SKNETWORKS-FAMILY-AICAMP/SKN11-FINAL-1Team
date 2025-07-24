@@ -328,7 +328,7 @@ class FastAPIClient:
         params = {}
         if mentor_id:
             params["mentor_id"] = mentor_id
-        if mentee_id:
+        elif mentee_id:
             params["mentee_id"] = mentee_id
         if is_active is not None:
             params["is_active"] = is_active
