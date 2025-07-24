@@ -396,7 +396,7 @@ body, html {
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
                    draggable="true" 
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
                   <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
@@ -412,10 +412,6 @@ body, html {
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
                 <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
-              </div>
-            {% empty %}
-              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-                태스크가 없습니다.
               </div>
             {% endfor %}
           </div>
@@ -436,7 +432,7 @@ body, html {
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
                    draggable="true" 
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
                   <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
@@ -447,16 +443,11 @@ body, html {
                     {% endif %}
                     <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '하' %}diff-low{% else %}diff-mid{% endif %}">{{ task.priority|default:'중' }}</span>
                   </div>
-                  <div class="kanban-status-badge processing-badge">진행중</div>
                 </div>
                 <div class="kanban-card-row">
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
                 <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
-              </div>
-            {% empty %}
-              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-                태스크가 없습니다.
               </div>
             {% endfor %}
           </div>
@@ -477,7 +468,7 @@ body, html {
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
                    draggable="true" 
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
                   <div class="kanban-meta-left" style="display:flex;align-items:center;gap:8px;">
@@ -488,16 +479,11 @@ body, html {
                     {% endif %}
                     <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '하' %}diff-low{% else %}diff-mid{% endif %}">{{ task.priority|default:'중' }}</span>
                   </div>
-                  <div class="kanban-status-badge review-badge">검토요청</div>
                 </div>
                 <div class="kanban-card-row">
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
                 <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
-              </div>
-            {% empty %}
-              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-                태스크가 없습니다.
               </div>
             {% endfor %}
           </div>
@@ -529,16 +515,11 @@ body, html {
                     {% endif %}
                     <span class="kanban-diff {% if task.priority == '상' %}diff-high{% elif task.priority == '하' %}diff-low{% else %}diff-mid{% endif %}">{{ task.priority|default:'중' }}</span>
                   </div>
-                  <div class="kanban-status-badge success-badge">완료</div>
                 </div>
                 <div class="kanban-card-row">
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
                 <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
-              </div>
-            {% empty %}
-              <div style="text-align: center; color: #9ca3af; padding: 20px; font-style: italic;">
-                태스크가 없습니다.
               </div>
             {% endfor %}
           </div>
@@ -674,6 +655,13 @@ function addCardEventListeners(card) {
             showTaskDetail(card.dataset.taskId);
         }
     });
+}
+
+
+function goToTaskDetail(taskId) {
+    const mentorshipId = new URLSearchParams(window.location.search).get('mentorship_id');
+    // 태스크 목록 페이지로 이동
+    window.location.href = `/mentee/task_list/?mentorship_id=${mentorshipId}&task_id=${taskId}`;
 }
 
 // 오류 카드 렌더링
