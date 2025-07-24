@@ -369,9 +369,21 @@ body, html {
   <div class="main-content bg-gray-50 p-6 rounded-lg">
     <div class="welcome-section bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8 flex items-center gap-6">
       <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-200 bg-white shadow-sm" />
-      <div class="flex flex-col flex-1">
+      <div class="flex flex-col flex-1 justify-center">
+
+        
+
         <div class="flex items-center gap-3 mb-2">
           <span class="text-xl font-bold text-gray-900">완료율: <span id="userLevelTop">{{ completion_percentage|default:0 }}%</span></span>
+          <!-- ✅ 완료 버튼 -->
+        <div class="flex justify-end mb-2" style="flex:1;align-items:right;">
+          <button id="final-complete-btn" 
+                  class="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-all"
+                  style="display:none;"
+                  onclick="completeFinalTask()">
+            온보딩 종료 
+          </button>
+        </div>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
           <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: {{ completion_percentage|default:0 }}%"></div>
@@ -503,7 +515,7 @@ body, html {
                    data-status="{{ task.status|escapejs }}"
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}"
                    style="cursor: pointer;">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">

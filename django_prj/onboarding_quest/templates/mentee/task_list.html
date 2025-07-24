@@ -45,7 +45,7 @@
   </div>
 
    <!-- ✅ 최종 평가 보고서: 반복문 밖에 둠 -->
-{% if final_report %}
+  {% if final_report %}
 <div class="task-card done"
      data-task-id="final_report"
      onclick="updateTaskDetailPanel('final_report')">
@@ -673,17 +673,18 @@ function updateTaskInfo(task) {
     console.log('✅ 태스크 기본 정보 업데이트 완료');
 }
 
-// 📋 가이드라인 업데이트
+// 📋 가이드라인 업데이트 (수정 버전)
 function updateGuideline(guideline) {
     const guidelineElement = document.getElementById('guideline-content');
     if (guidelineElement) {
         if (guideline && guideline.trim()) {
             guidelineElement.textContent = guideline;
             guidelineElement.style.color = '#333';
+            guidelineElement.style.fontStyle = 'normal';
+            guidelineElement.style.display = 'block'; // 보이게
         } else {
-            guidelineElement.textContent = '가이드라인이 없습니다.';
-            guidelineElement.style.color = '#999';
-            guidelineElement.style.fontStyle = 'italic';
+            guidelineElement.textContent = '';        // 텍스트 제거
+            guidelineElement.style.display = 'none';  // 숨김
         }
     }
     
