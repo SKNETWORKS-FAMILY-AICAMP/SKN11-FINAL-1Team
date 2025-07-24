@@ -28,7 +28,7 @@ DEBUG = str2bool(os.getenv('DEBUG', 'False'))
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost', 
-    '13.124.104.189',  # 현재 EC2 공인 IP
+    '52.79.149.1',  # 현재 EC2 공인 IP
     '*',  # 모든 호스트 허용 (개발용, 운영에서는 권장하지 않음)
 ]
 # =================================
@@ -140,10 +140,10 @@ WSGI_APPLICATION = 'onboarding_quest.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'skndb',
+        'NAME': 'database-1',
         'USER': 'postgres',
         'PASSWORD': 'sungilbang',
-        'HOST': 'skndb.czcym4u8awpn.ap-northeast-2.rds.amazonaws.com',
+        'HOST': 'database-1.czcym4u8awpn.ap-northeast-2.rds.amazonaws.com',
         'PORT': '5432'
         
     }

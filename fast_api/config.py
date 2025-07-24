@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """PostgreSQL 연결 URL 생성"""
-        return "postgresql://postgres:sungilbang@skndb.czcym4u8awpn.ap-northeast-2.rds.amazonaws.com:5432/skndb"
+        return "postgresql://postgres:sungilbang@database-1.czcym4u8awpn.ap-northeast-2.rds.amazonaws.com:5432/database-1"
     
     # =================================
     # 🔒 보안 설정
