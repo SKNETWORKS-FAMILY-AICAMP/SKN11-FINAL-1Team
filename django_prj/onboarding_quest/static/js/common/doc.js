@@ -21,12 +21,12 @@ function renderUploadList() {
     <input type="text" placeholder="설명 입력" value="${f.description}" 
            onchange="updateFileInfo(${idx}, 'description', this.value)">
   </td>
-  <td style="width:15%;">
+  <td style="width:15%; text-align: center;">
     <input type="checkbox" ${f.common_doc ? 'checked' : ''} 
            onchange="updateFileInfo(${idx}, 'common_doc', this.checked)">
   </td>
-  <td style="width:15%;">
-    <button class="remove-file-btn" onclick="removeFile(${idx})">제거</button>
+  <td style="width:15%; text-align: center;">
+    <button class="remove-file-btn" onclick="removeFile(${idx})">❌</button>
   </td>
 `;
 
@@ -351,8 +351,8 @@ async function loadDocumentList(departmentId) {
     </a>
   </td>
   <td>${doc.description || "-"}</td>
-  <td>${doc.department ? doc.department.department_name : "-"}</td>
-  <td>
+  <td style="text-align: center;">${doc.department ? doc.department.department_name : "-"}</td>
+  <td style="text-align: center;">
     ${canEdit
           ? `
         <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
