@@ -530,7 +530,16 @@ def get_tasks_by_mentorship(db: Session, mentorship_id: int):
         models.TaskAssign.mentorship_id == mentorship_id
     ).all()
 
-def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: int = None, status: str = None, week: int = None, skip: int = 0, limit: int = 100):
+def get_task_assigns_filtered(
+    db: Session,
+    mentorship_id: int = None,
+    user_id: int = None,
+    status: str = None,
+    priority: str = None,   # priority 추가
+    week: int = None,
+    skip: int = 0,
+    limit: int = 100
+):
     """필터링된 태스크 할당 목록 조회"""
     query = db.query(models.TaskAssign)
     
@@ -548,11 +557,15 @@ def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: i
     
     if status:
         query = query.filter(models.TaskAssign.status == status)
+
+    if priority:  # priority 필터 추가
+        query = query.filter(models.TaskAssign.priority == priority)
     
     if week:
         query = query.filter(models.TaskAssign.week == week)
     
     return query.offset(skip).limit(limit).all()
+
 
 def get_task_assigns(db: Session, skip: int = 0, limit: int = 100):
     """태스크 할당 목록 조회"""
@@ -592,6 +605,32 @@ def delete_task_assign(db: Session, task_id: int):
         db.delete(db_task)
         db.commit()
     return db_task
+
+def get_task_memos(db: Session, task_assign_id: int):
+    """특정 태스크의 메모 목록 조회"""
+    return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
+
+def update_task_status(db: Session, task_id: int, status: str):
+    """태스크 상태 업데이트"""
+    db_task = get_task_assign(db, task_id)
+    if db_task:
+        db_task.status = status
+        db.commit()
+        db.refresh(db_task)
+    return db_task
+
+def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optional[int] = None):
+    """태스크에 메모(댓글) 추가"""
+    memo_data = {
+        "task_assign_id": task_assign_id,
+        "comment": comment,
+        "user_id": user_id if user_id else None
+    }
+    db_memo = models.Memo(**memo_data)
+    db.add(db_memo)
+    db.commit()
+    db.refresh(db_memo)
+    return db_memo
 
 
 # Mentorship CRUD
