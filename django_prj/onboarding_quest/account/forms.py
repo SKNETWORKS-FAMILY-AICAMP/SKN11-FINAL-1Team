@@ -88,6 +88,8 @@ class CustomPasswordChangeForm(forms.Form):
 
     def clean_current_password(self):
         current_password = self.cleaned_data.get('current_password')
+        
+        # 사용자 모델의 check_password 메서드 사용 (Django + bcrypt 지원)
         if not self.user.check_password(current_password):
             raise forms.ValidationError("현재 비밀번호가 올바르지 않습니다.")
         return current_password

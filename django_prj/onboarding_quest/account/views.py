@@ -865,21 +865,45 @@ def profile(request):
 # 비밀번호 변경
 @login_required
 def password_change(request):
+    """비밀번호 변경 처리"""
     from .forms import CustomPasswordChangeForm
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
     if request.method == 'POST':
+        logger.info(f"비밀번호 변경 시도 - 사용자: {request.user.email}")
+        logger.info(f"현재 사용자 비밀번호 해시 길이: {len(request.user.password)}")
+        logger.info(f"현재 사용자 비밀번호 해시 시작: {request.user.password[:30]}...")
+        
         form = CustomPasswordChangeForm(request.user, request.POST)
         if form.is_valid():
+            logger.info("폼 검증 성공")
             new_password = form.cleaned_data['new_password']
+            
+            # Django 표준 방식으로 비밀번호 설정
             request.user.set_password(new_password)
             request.user.save()
+            
+            logger.info(f"비밀번호 변경 완료 - 새 해시 길이: {len(request.user.password)}")
+            logger.info(f"새 비밀번호 해시 시작: {request.user.password[:30]}...")
+            
+            # 세션 무효화하고 로그아웃
             logout(request)
+            
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'redirect_url': '/account/login/'})
             else:
                 messages.success(request, '비밀번호가 성공적으로 변경되었습니다. 다시 로그인해 주세요.')
                 return redirect('account:login')
         else:
-            error_msgs = [str(e) for errs in form.errors.values() for e in errs]
+            logger.warning(f"폼 검증 실패: {form.errors}")
+            error_msgs = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_msgs.append(f"{field}: {error}")
+                    logger.warning(f"폼 오류 - {field}: {error}")
+            
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': error_msgs})
             else:

@@ -162,11 +162,17 @@ async def get_mentorships(
         tasks = crud.get_tasks_by_mentorship(db, mentorship_id=mentorship.mentorship_id)
         completed_tasks = [task for task in tasks if task.status == 'completed']
         
-        # 멘토쉽 활성화 상태: 멘토와 멘티 모두 is_active=True이고 멘토쉽 자체도 is_active=True인 경우에만 활성화
+        # 멘토쉽 활성화 상태: 한번 비활성화된 멘토쉽은 계속 비활성화 유지
         mentor_active = mentor and mentor.is_active if mentor else False
         mentee_active = mentee and mentee.is_active if mentee else False
         mentorship_active = mentorship.is_active
-        effective_is_active = mentor_active and mentee_active and mentorship_active
+        
+        # 기존 로직: effective_is_active = mentor_active and mentee_active and mentorship_active
+        # 수정된 로직: 멘토쉽이 비활성화되어 있으면 사용자 상태와 관계없이 비활성화 유지
+        if not mentorship_active:
+            effective_is_active = False  # 멘토쉽이 비활성화되어 있으면 계속 비활성화 유지
+        else:
+            effective_is_active = mentor_active and mentee_active  # 멘토쉽이 활성화되어 있을 때만 사용자 상태 확인
         
         enriched_mentorship = {
             "id": mentorship.mentorship_id,  # Django 모델의 기본키
