@@ -1201,7 +1201,23 @@ def update_task_status(request, task_id):
                         create_review_request_alarm(mentorship_id, task_result.get('title'))
                     except Exception as alarm_error:
                         logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
-                        
+                
+                # 🤖 Agent 시스템 통합: 상태 변화 이벤트 트리거
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+                    from agent_integration import agent_integrator
+                    agent_integrator.trigger_status_change_event(
+                        task_id=task_id,
+                        old_status=old_status,
+                        new_status=new_status,
+                        user_id=user_id
+                    )
+                    logger.info(f"🤖 Agent 시스템 이벤트 트리거 성공: {old_status} -> {new_status}")
+                except Exception as agent_error:
+                    logger.error(f"🤖 Agent 시스템 이벤트 트리거 실패: {agent_error}")
+                
                 return JsonResponse({
                     'success': True,
                     'old_status': old_status,
@@ -1237,11 +1253,34 @@ def update_task_status(request, task_id):
                 task_obj.save()
                 logger.info(f"✅ Django ORM 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
                 
+                # ✅ 검토요청 알람 생성
+                if new_status == '검토요청':
+                    try:
+                        create_review_request_alarm(mentorship_id, task_result.get('title'))
+                    except Exception as alarm_error:
+                        logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
+                
+                # 🤖 Agent 시스템 통합: 상태 변화 이벤트 트리거 (Django ORM)
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+                    from agent_integration import agent_integrator
+                    agent_integrator.trigger_status_change_event(
+                        task_id=task_id,
+                        old_status=old_status,
+                        new_status=new_status,
+                        user_id=user_id
+                    )
+                    logger.info(f"🤖 Agent 시스템 이벤트 트리거 성공 (Django ORM): {old_status} -> {new_status}")
+                except Exception as agent_error:
+                    logger.error(f"🤖 Agent 시스템 이벤트 트리거 실패 (Django ORM): {agent_error}")
+                
                 return JsonResponse({
-            'success': True,
-            'old_status': old_status,
-            'new_status': new_status,
-            'task_id': task_id,
+                    'success': True,
+                    'old_status': old_status,
+                    'new_status': new_status,
+                    'task_id': task_id,
                     'message': f'태스크 상태가 "{old_status}"에서 "{new_status}"로 변경되었습니다.',
                     'method': 'django_orm',
                     'notice': 'FastAPI 연동 문제로 Django ORM을 사용했습니다.'
@@ -1264,6 +1303,8 @@ def update_task_status(request, task_id):
 
     
 def create_review_request_alarm(mentorship_id, task_title):
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         from core.models import Mentorship, Alarm, User
         mentorship_obj = Mentorship.objects.filter(
