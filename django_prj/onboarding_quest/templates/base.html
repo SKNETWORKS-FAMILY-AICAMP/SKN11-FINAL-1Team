@@ -85,7 +85,8 @@
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2 mb-3">                
                 {% if request.user.role == 'mentee' %}
-                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 30%"></div>
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500"
+                    style="width: {{ completion_percentage|default:0 }}%"></div>
                 {% elif request.user.role == 'mentor' %}
                     <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
                 {% elif request.user.is_admin %}
@@ -178,5 +179,18 @@
     </div>
     <script src="{% static 'js/base.js' %}"></script>
     {% block extra_js %}{% endblock %}
+
+    <script>
+    function syncSidebarBar() {
+        const mainBar = document.getElementById('expBarTop');
+        const sideBar = document.getElementById('expBar');
+        if (mainBar && sideBar) {
+            sideBar.style.width = mainBar.style.width;
+        }
+    }
+    document.addEventListener('DOMContentLoaded', syncSidebarBar);
+</script>
+
+
 </body>
 </html>
