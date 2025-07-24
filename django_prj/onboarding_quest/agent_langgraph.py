@@ -25,9 +25,17 @@ llm = ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=openai_api_k
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': os.getenv('DB_PORT', '5432'),
-    'database': os.getenv('DB_NAME', 'onboarding_quest'),
+    'database': os.getenv('DB_NAME', 'onboarding_quest_db'),
     'user': os.getenv('DB_USER', 'postgres'),
     'password': os.getenv('DB_PASSWORD', 'password')
+}
+
+# Agent 스케줄 설정
+AGENT_CONFIG = {
+    'cycle_interval': int(os.getenv('AGENT_CYCLE_INTERVAL', 30)),  # 기본 30초
+    'hourly_check': int(os.getenv('AGENT_HOURLY_CHECK', 1)),     # 기본 1시간
+    'daily_check_hour': int(os.getenv('AGENT_DAILY_CHECK_HOUR', 9)),  # 기본 오전 9시
+    'enabled': os.getenv('AGENT_ENABLED', 'True').lower() == 'true'   # 기본 활성화
 }
 
 # ✅ 상태 정의
@@ -429,7 +437,7 @@ class ReportAgent:
         with self.get_connection() as conn:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             cur.execute("""
-                SELECT t.*, u_mentee.name as mentee_name, u_mentor.name as mentor_name
+                SELECT t.*, u_mentee.first_name as mentee_name, u_mentor.first_name as mentor_name
                 FROM core_task t
                 JOIN core_taskassign ta ON t.task_id = ta.task_id
                 JOIN core_user u_mentee ON ta.mentee_id = u_mentee.user_id
@@ -442,13 +450,13 @@ class ReportAgent:
 
             cur.execute("""
                 SELECT s.*, 
-                       GROUP_CONCAT(DISTINCT m.content) as memo_contents,
-                       GROUP_CONCAT(DISTINCT r.content) as review_contents,
+                       STRING_AGG(DISTINCT m.content, ',') as memo_contents,
+                       STRING_AGG(DISTINCT r.content, ',') as review_contents,
                        AVG(r.score) as avg_score
-                FROM subtask s
-                LEFT JOIN memo m ON s.subtask_id = m.subtask_id
-                LEFT JOIN review r ON s.subtask_id = r.subtask_id
-                WHERE s.task_id = ?
+                FROM core_subtask s
+                LEFT JOIN core_memo m ON s.subtask_id = m.subtask_id
+                LEFT JOIN core_review r ON s.subtask_id = r.subtask_id
+                WHERE s.task_id = %s
                 GROUP BY s.subtask_id
                 ORDER BY s.subtask_id
             """, (task_id,))
@@ -467,16 +475,16 @@ class ReportAgent:
                 })
 
             cur.execute("""
-                SELECT content, create_date FROM memo
-                WHERE task_id = ? AND subtask_id IS NULL
+                SELECT content, create_date FROM core_memo
+                WHERE task_id = %s AND subtask_id IS NULL
                 ORDER BY create_date
             """, (task_id,))
             task_memos = [{'content': r['content'], 'date': r['create_date']} for r in cur.fetchall()]
 
             cur.execute("""
                 SELECT content, score, summary, generated_by, create_date
-                FROM review
-                WHERE task_id = ? AND subtask_id IS NULL
+                FROM core_review
+                WHERE task_id = %s AND subtask_id IS NULL
                 ORDER BY create_date
             """, (task_id,))
             task_reviews = [{'content': r['content'], 'score': r['score'], 'summary': r['summary'],
@@ -496,8 +504,8 @@ class ReportAgent:
 
     def fetch_comprehensive_data(self, user_id: int) -> Optional[ComprehensiveReportData]:
         with self.get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT first_name, last_name, role FROM user WHERE user_id = ?", (user_id,))
+            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur.execute("SELECT first_name, last_name, role FROM core_user WHERE user_id = %s", (user_id,))
             user_row = cur.fetchone()
 
             if not user_row:
@@ -981,8 +989,12 @@ class AgentScheduler:
             print(f"❌ Agent 사이클 실행 실패: {e}")
 
     def scheduler_loop(self):
-        """스케줄러 메인 루프"""
-        print("🕐 백그라운드 스케줄러 시작...")
+        """스케줄러 메인 루프 (환경변수 기반 설정)"""
+        if not AGENT_CONFIG['enabled']:
+            print("⚠️ Agent가 비활성화되어 있습니다. (.env AGENT_ENABLED=False)")
+            return
+            
+        print(f"🕐 백그라운드 스케줄러 시작... (주기: {AGENT_CONFIG['cycle_interval']}초)")
         
         last_cycle_time = time.time()
         last_hourly_check = datetime.now().hour
@@ -994,20 +1006,20 @@ class AgentScheduler:
                 current_hour = datetime.now().hour
                 current_date = datetime.now().date()
                 
-                # 30초마다 실행
-                if current_time - last_cycle_time >= 30:
+                # 설정된 주기마다 실행
+                if current_time - last_cycle_time >= AGENT_CONFIG['cycle_interval']:
                     self.run_agent_cycle()
                     last_cycle_time = current_time
                 
-                # 매시 정각에 실행
-                elif current_hour != last_hourly_check:
-                    print("⏰ 정시 체크 실행")
+                # 매시 정각에 실행 (hourly_check 간격으로)
+                elif current_hour != last_hourly_check and current_hour % AGENT_CONFIG['hourly_check'] == 0:
+                    print(f"⏰ 정시 체크 실행 (매 {AGENT_CONFIG['hourly_check']}시간)")
                     self.run_agent_cycle()
                     last_hourly_check = current_hour
                 
-                # 매일 오전 9시에 실행
-                elif current_date != last_daily_check and current_hour == 9:
-                    print("🌅 일일 체크 실행")
+                # 매일 설정된 시간에 실행
+                elif current_date != last_daily_check and current_hour == AGENT_CONFIG['daily_check_hour']:
+                    print(f"🌅 일일 체크 실행 ({AGENT_CONFIG['daily_check_hour']}시)")
                     self.run_agent_cycle()
                     last_daily_check = current_date
                 
@@ -1025,8 +1037,17 @@ class AgentScheduler:
         if self.is_running:
             print("⚠️ Agent 시스템이 이미 실행 중입니다.")
             return
+        
+        if not AGENT_CONFIG['enabled']:
+            print("⚠️ Agent가 비활성화되어 있습니다. (.env AGENT_ENABLED=False)")
+            return
             
         print("🚀 LangGraph 통합 에이전트 백그라운드 실행 시작...")
+        print(f"📋 Agent 설정:")
+        print(f"   - 실행 주기: {AGENT_CONFIG['cycle_interval']}초")
+        print(f"   - 정시 체크: 매 {AGENT_CONFIG['hourly_check']}시간")
+        print(f"   - 일일 체크: 매일 {AGENT_CONFIG['daily_check_hour']}시")
+        print(f"   - PostgreSQL DB: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
         
         # 상태 초기화
         self.initialize_state()
@@ -1054,13 +1075,26 @@ class AgentScheduler:
         self.run_agent_cycle()
 
     def get_status(self):
-        """현재 Agent 상태 반환"""
+        """현재 Agent 상태 반환 (설정 정보 포함)"""
         return {
             "is_running": self.is_running,
-            "last_check": global_state.get("last_deadline_check"),
-            "reviewed_tasks": len(global_state.get("reviewed_task_ids", [])),
-            "completed_onboarding": len(global_state.get("completed_onboarding_ids", [])),
-            "generated_reports": len(global_state.get("report_generated_ids", []))
+            "enabled": AGENT_CONFIG['enabled'],
+            "config": {
+                "cycle_interval": AGENT_CONFIG['cycle_interval'],
+                "hourly_check": AGENT_CONFIG['hourly_check'],
+                "daily_check_hour": AGENT_CONFIG['daily_check_hour']
+            },
+            "database": {
+                "host": DB_CONFIG['host'],
+                "port": DB_CONFIG['port'],
+                "database": DB_CONFIG['database']
+            },
+            "stats": {
+                "last_check": global_state.get("last_deadline_check"),
+                "reviewed_tasks": len(global_state.get("reviewed_task_ids", [])),
+                "completed_onboarding": len(global_state.get("completed_onboarding_ids", [])),
+                "generated_reports": len(global_state.get("report_generated_ids", []))
+            }
         }
 
 # 전역 스케줄러 인스턴스
@@ -1069,6 +1103,9 @@ agent_scheduler = AgentScheduler()
 # 외부에서 사용할 수 있는 함수들
 def start_background_agent():
     """백그라운드 Agent 시작"""
+    if not AGENT_CONFIG['enabled']:
+        print("⚠️ Agent가 비활성화되어 있습니다. (.env AGENT_ENABLED=True로 설정하세요)")
+        return None
     return agent_scheduler.start()
 
 def stop_background_agent():
@@ -1077,6 +1114,9 @@ def stop_background_agent():
 
 def trigger_immediate_check():
     """즉시 체크 트리거"""
+    if not AGENT_CONFIG['enabled']:
+        print("⚠️ Agent가 비활성화되어 있습니다.")
+        return
     agent_scheduler.trigger_immediate_check()
 
 def get_agent_status():
