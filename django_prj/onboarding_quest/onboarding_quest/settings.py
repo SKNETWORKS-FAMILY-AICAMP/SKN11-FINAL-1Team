@@ -25,7 +25,12 @@ def parse_list(v, delimiter=','):
 # =================================
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here-change-in-production')
 DEBUG = str2bool(os.getenv('DEBUG', 'False'))
-ALLOWED_HOSTS = parse_list(os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1'))
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost', 
+    '54.180.82.143',  # 현재 EC2 공인 IP
+    '*',  # 모든 호스트 허용 (개발용, 운영에서는 권장하지 않음)
+]
 
 # =================================
 # 📋 로깅 설정
@@ -136,14 +141,11 @@ WSGI_APPLICATION = 'onboarding_quest.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'onboarding_quest_db'),
+        'NAME': os.getenv('DB_NAME', 'database-1'),
         'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'sungilbang'),
+        'HOST': os.getenv('DB_HOST', '52.79.149.1'),
         'PORT': os.getenv('DB_PORT', '5432'),
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
-        },
     }
 }
 
