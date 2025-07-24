@@ -51,7 +51,7 @@ def create_default_email_config(sender, **kwargs):
         if not EmailConfig.objects.filter(email='sinipezflow@gmail.com').exists():
             EmailConfig.objects.create(
                 email='sinipezflow@gmail.com',
-                password=make_password('jgdy jiwk fvez knvz'),
+                password='jgdy jiwk fvez knvz',
                 name='알림봇'
             )
 

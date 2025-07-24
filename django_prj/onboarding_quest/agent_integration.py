@@ -147,7 +147,7 @@ class OnboardingAgentIntegrator:
                 
             # 완료 상태로 변경된 경우 온보딩 완료 체크
             elif new_status == '완료':
-                self._check_onboarding_completion(user_id)
+                # self._check_onboarding_completion(user_id)
                 # LangGraph Agent에도 즉시 체크 트리거
                 self.trigger_langgraph_check()
                 
@@ -386,22 +386,16 @@ class OnboardingAgentIntegrator:
 """
     
     def _save_final_report(self, user_id: int, mentorship_id: int, report_content: str):
-        """최종 보고서 저장"""
+        """최종 보고서를 mentorship 테이블의 report 필드에 저장"""
         try:
-            # 보고서 파일로 저장
-            report_dir = os.path.join(os.path.dirname(__file__), 'reports')
-            os.makedirs(report_dir, exist_ok=True)
+            from core.models import Mentorship
             
-            filename = f"onboarding_report_{user_id}_{mentorship_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            filepath = os.path.join(report_dir, filename)
+            # 멘토십 조회 및 보고서 저장
+            mentorship = Mentorship.objects.get(mentorship_id=mentorship_id)
+            mentorship.report = report_content
+            mentorship.save()
             
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(report_content)
-            
-            self.logger.info(f"✅ 보고서 파일 저장 완료: {filepath}")
-            
-            # 추가로 데이터베이스에도 저장할 수 있음
-            # Report 모델이 있다면 여기서 저장
+            self.logger.info(f"✅ 보고서 저장 완료: mentorship_id={mentorship_id}")
             
         except Exception as e:
             self.logger.error(f"❌ 보고서 저장 실패: {e}")

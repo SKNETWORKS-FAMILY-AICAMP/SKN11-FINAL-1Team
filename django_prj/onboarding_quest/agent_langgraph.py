@@ -1123,6 +1123,8 @@ class AgentScheduler:
             }
         }
 
+
+
 # 전역 스케줄러 인스턴스
 agent_scheduler = AgentScheduler()
 
@@ -1148,17 +1150,3 @@ def trigger_immediate_check():
 def get_agent_status():
     """Agent 상태 조회"""
     return agent_scheduler.get_status()
-
-if __name__ == "__main__":
-    # 직접 실행 시 백그라운드 시작
-    agent_thread = start_background_agent()
-    
-    try:
-        # 메인 스레드 유지
-        while True:
-            time.sleep(60)  # 1분마다 상태 체크
-            status = get_agent_status()
-            print(f"📊 Agent 상태: {status}")
-    except KeyboardInterrupt:
-        print("🛑 프로그램 종료...")
-        stop_background_agent()
