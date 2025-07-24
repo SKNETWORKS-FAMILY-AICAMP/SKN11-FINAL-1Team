@@ -148,8 +148,17 @@ DATABASES = {
 }
 
 # =================================
-# 🔐 비밀번호 검증
+# 🔐 비밀번호 검증 및 해싱
 # =================================
+# 비밀번호 해셔 설정 - bcrypt와 Django 기본 해셔 모두 지원
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -220,13 +229,3 @@ QDRANT_COLLECTION_NAME = os.getenv('QDRANT_COLLECTION_NAME', 'rag_multiformat')
 # 🚀 기타 설정
 # =================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# 디버그 모드에서 설정 정보 출력
-if DEBUG:
-    print(f"🐍 Django Settings Loaded:")
-    print(f"   - Debug Mode: {DEBUG}")
-    print(f"   - Database: {DATABASES['default']['NAME']}@{DATABASES['default']['HOST']}")
-    print(f"   - FastAPI URL: {FASTAPI_BASE_URL}")
-    print(f"   - Media Root: {MEDIA_ROOT}")
-    print(f"   - RAG API: {RAG_API_URL}")
-    print(f"   - Log Level: {LOG_LEVEL}")

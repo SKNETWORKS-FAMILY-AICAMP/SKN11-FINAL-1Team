@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, cast, String
 from typing import List, Optional
 import models
 import schemas
@@ -141,12 +141,30 @@ def delete_department(db: Session, department_id: int):
 
 
 # User CRUD
+TRUSTED_ADMIN_EMAILS = {
+    "hr_admin@ezflow.com",
+}
+
 def create_user(db: Session, user: schemas.UserCreate):
-    """사용자 생성"""
-    hashed_password = hash_password(user.password)
-    user_data = user.dict()
-    user_data['password'] = hashed_password
-    db_user = models.User(**user_data)
+    hashed_pw = hash_password(user.password)
+
+    db_user = models.User(
+        employee_number=user.employee_number,
+        is_admin=user.is_admin or False,
+        is_superuser=user.is_superuser or False,
+        company_id=user.company_id,
+        department_id=user.department_id,
+        tag=user.tag,
+        role=user.role,
+        join_date=user.join_date,
+        position=user.position,
+        job_part=user.job_part,
+        email=user.email,
+        password=hashed_pw,
+        last_name=user.last_name,
+        first_name=user.first_name,
+        is_active=True
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -184,10 +202,19 @@ def get_users_with_filters(
         query = query.filter(models.User.department_id == department_id)
     
     if search:
+        # 검색어를 이메일, 성, 이름, 사번에 대해 부분 일치로 필터링
+        search_pattern = f"%{search}%"
         query = query.filter(
-            (models.User.username.contains(search)) |
-            (models.User.email.contains(search)) |
-            (models.User.full_name.contains(search))
+            or_(
+                models.User.email.ilike(search_pattern),
+                models.User.last_name.ilike(search_pattern),
+                models.User.first_name.ilike(search_pattern),
+                cast(models.User.employee_number, String).ilike(search_pattern),
+                # 성+이름 조합 검색 추가
+                (models.User.last_name + models.User.first_name).ilike(search_pattern),
+                # 이름+성 조합도 검색 (순서가 바뀌어도 검색되도록)
+                (models.User.first_name + models.User.last_name).ilike(search_pattern)
+            )
         )
     
     if role:
@@ -199,22 +226,58 @@ def get_users_with_filters(
     return query.offset(skip).limit(limit).all()
 
 def get_mentors(db: Session, skip: int = 0, limit: int = 100):
-    """멘토 목록 조회"""
-    return db.query(models.User).filter(models.User.role == "mentor").offset(skip).limit(limit).all()
+    """멘토 목록 조회 - 활성 멘토만 반환"""
+    return db.query(models.User).filter(
+        models.User.role == "mentor",
+        models.User.is_active == True
+    ).offset(skip).limit(limit).all()
 
 def get_mentees(db: Session, skip: int = 0, limit: int = 100):
-    """멘티 목록 조회"""
-    return db.query(models.User).filter(models.User.role == "mentee").offset(skip).limit(limit).all()
+    """멘티 목록 조회 - 활성 멘티만 반환"""
+    return db.query(models.User).filter(
+        models.User.role == "mentee",
+        models.User.is_active == True
+    ).offset(skip).limit(limit).all()
 
-def update_user(db: Session, user_id: int, user_update: schemas.UserCreate):
-    """사용자 정보 업데이트"""
+def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
+    """사용자 정보 업데이트 (부분 필드) - 멘토쉽 상태 자동 관리"""
     db_user = get_user(db, user_id)
     if db_user:
-        user_data = user_update.dict()
+        # 이전 활성 상태 저장
+        previous_is_active = db_user.is_active
+        
+        # None 값을 제외하고 업데이트할 필드만 추출
+        user_data = user_update.dict(exclude_unset=True, exclude_none=True)
         if 'password' in user_data:
             user_data['password'] = hash_password(user_data['password'])
         for key, value in user_data.items():
             setattr(db_user, key, value)
+        
+        # 사용자 상태가 변경된 경우 멘토쉽 상태 관리
+        if 'is_active' in user_data:
+            new_is_active = user_data['is_active']
+            
+            # 사용자가 비활성화되는 경우: 관련 멘토쉽들을 비활성화
+            if previous_is_active and not new_is_active:
+                # 멘토로 참여 중인 멘토쉽들 비활성화
+                mentor_mentorships = db.query(models.Mentorship).filter(
+                    models.Mentorship.mentor_id == user_id,
+                    models.Mentorship.is_active == True
+                ).all()
+                for mentorship in mentor_mentorships:
+                    mentorship.is_active = False
+                
+                # 멘티로 참여 중인 멘토쉽들 비활성화
+                mentee_mentorships = db.query(models.Mentorship).filter(
+                    models.Mentorship.mentee_id == user_id,
+                    models.Mentorship.is_active == True
+                ).all()
+                for mentorship in mentee_mentorships:
+                    mentorship.is_active = False
+            
+            # 사용자가 재활성화되는 경우: 멘토쉽은 자동으로 재활성화하지 않음
+            # (한번 비활성화된 멘토쉽은 수동으로만 재활성화 가능)
+        
         db.commit()
         db.refresh(db_user)
     return db_user
@@ -275,26 +338,125 @@ def delete_user_with_company_department(db: Session, user_id: int, company_id: s
 
 # 기존 delete 함수들은 유지 (하위 호환성)
 def delete_user(db: Session, user_id: int):
-    """사용자 삭제 (관련 ChatSession/ChatMessage도 함께 삭제)"""
-    # 1. 사용자 조회
-    db_user = get_user(db, user_id)
-    if not db_user:
-        return None
+    """사용자 삭제 (멘토링 관계 확인 후 안전하게 삭제)"""
+    try:
+        # 1. 사용자 조회
+        db_user = get_user(db, user_id)
+        if not db_user:
+            print(f"❌ 삭제할 사용자를 찾을 수 없음: user_id={user_id}")
+            return None
 
-    # 2. 관련 ChatMessage 삭제
-    db.query(models.ChatMessage).filter(
-        models.ChatMessage.session_id.in_(
-            db.query(models.ChatSession.session_id).filter(models.ChatSession.user_id == user_id)
-        )
-    ).delete(synchronize_session=False)
+        print(f"🗑️ 사용자 삭제 검토 시작: {db_user.email} (ID: {user_id})")
 
-    # 3. 관련 ChatSession 삭제
-    db.query(models.ChatSession).filter(models.ChatSession.user_id == user_id).delete(synchronize_session=False)
+        # 2. 멘토링 관계 확인 (삭제 차단 조건)
+        mentorship_as_mentor = db.query(models.Mentorship).filter(
+            models.Mentorship.mentor_id == user_id
+        ).first()
+        mentorship_as_mentee = db.query(models.Mentorship).filter(
+            models.Mentorship.mentee_id == user_id
+        ).first()
+        
+        if mentorship_as_mentor or mentorship_as_mentee:
+            mentor_count = db.query(models.Mentorship).filter(models.Mentorship.mentor_id == user_id).count()
+            mentee_count = db.query(models.Mentorship).filter(models.Mentorship.mentee_id == user_id).count()
+            
+            role_desc = []
+            if mentor_count > 0:
+                role_desc.append(f"멘토 {mentor_count}건")
+            if mentee_count > 0:
+                role_desc.append(f"멘티 {mentee_count}건")
+            
+            warning_msg = f"⚠️ 멘토링 관계가 있는 사용자는 삭제할 수 없습니다.\n" \
+                         f"📋 멘토링 현황: {', '.join(role_desc)}\n" \
+                         f"💡 해결 방법:\n" \
+                         f"  1. 먼저 해당 멘토링 관계를 종료하거나\n" \
+                         f"  2. 사용자를 '비활성' 상태로 변경하세요\n" \
+                         f"  3. 멘토링 데이터 보존을 위해 삭제 대신 비활성화를 권장합니다"
+            
+            print(warning_msg)
+            raise ValueError(warning_msg)
 
-    # 4. 사용자 삭제
-    db.delete(db_user)
-    db.commit()
-    return db_user
+        print(f"✅ 멘토링 관계 없음 - 삭제 진행 가능")
+
+        # 3. 관련 데이터 삭제 (외래키 제약 조건 고려한 순서)
+        # SQLAlchemy 세션은 자동으로 트랜잭션을 관리함
+        
+        
+        # ChatMessage 삭제 (자식 테이블)
+        try:
+            chat_messages_subquery = db.query(models.ChatSession.session_id).filter(
+                models.ChatSession.user_id == user_id
+            ).subquery()
+            
+            chat_messages_deleted = db.query(models.ChatMessage).filter(
+                models.ChatMessage.session_id.in_(chat_messages_subquery)
+            ).delete(synchronize_session=False)
+            print(f"  - ChatMessage 삭제: {chat_messages_deleted}개")
+        except Exception as e:
+            print(f"  - ChatMessage 삭제 중 오류 (무시): {e}")
+
+        # ChatSession 삭제 (부모 테이블)
+        try:
+            chat_sessions_deleted = db.query(models.ChatSession).filter(
+                models.ChatSession.user_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - ChatSession 삭제: {chat_sessions_deleted}개")
+        except Exception as e:
+            print(f"  - ChatSession 삭제 중 오류 (무시): {e}")
+
+        # Task 관련 데이터 삭제 (직접 연결된 Task만)
+        try:
+            if hasattr(models, 'Task'):
+                tasks_deleted = db.query(models.Task).filter(
+                    models.Task.user_id == user_id
+                ).delete(synchronize_session=False)
+                print(f"  - Task 삭제: {tasks_deleted}개")
+        except Exception as e:
+            print(f"  - Task 삭제 중 오류 (무시): {e}")
+
+        # Alarm 관련 데이터 삭제
+        try:
+            alarms_deleted = db.query(models.Alarm).filter(
+                models.Alarm.user_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - Alarm 삭제: {alarms_deleted}개")
+        except Exception as e:
+            print(f"  - Alarm 삭제 중 오류 (무시): {e}")
+
+        # 사용자가 직접 작성한 Memo 삭제 (TaskAssign과 무관한 개인 메모만)
+        try:
+            user_memos_deleted = db.query(models.Memo).filter(
+                models.Memo.user_id == user_id
+            ).delete(synchronize_session=False)
+            print(f"  - 사용자 작성 Memo 삭제: {user_memos_deleted}개")
+        except Exception as e:
+            print(f"  - 사용자 작성 Memo 삭제 중 오류 (무시): {e}")
+
+        # 3. 최종적으로 사용자 삭제
+        print(f"  - 사용자 본체 삭제 시작: {db_user.email}")
+        db.delete(db_user)
+        
+        # 4. 커밋 (모든 변경사항을 한 번에 적용)
+        db.commit()
+        print(f"✅ 사용자 삭제 완료: {db_user.email}")
+        return db_user
+
+    except Exception as e:
+        print(f"❌ delete_user 함수에서 오류 발생: {str(e)}")
+        print(f"❌ 오류 타입: {type(e).__name__}")
+        
+        import traceback
+        print(f"❌ 상세 스택 트레이스:")
+        print(traceback.format_exc())
+        
+        # 롤백 (안전하게)
+        try:
+            db.rollback()
+            print("🔄 트랜잭션 롤백 완료")
+        except Exception as rollback_error:
+            print(f"❌ 롤백 중 오류: {rollback_error}")
+        
+        raise e
 
 
 def delete_mentorship(db: Session, mentorship_id: int):
@@ -368,7 +530,16 @@ def get_tasks_by_mentorship(db: Session, mentorship_id: int):
         models.TaskAssign.mentorship_id == mentorship_id
     ).all()
 
-def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: int = None, status: str = None, week: int = None, skip: int = 0, limit: int = 100):
+def get_task_assigns_filtered(
+    db: Session,
+    mentorship_id: int = None,
+    user_id: int = None,
+    status: str = None,
+    priority: str = None,   # priority 추가
+    week: int = None,
+    skip: int = 0,
+    limit: int = 100
+):
     """필터링된 태스크 할당 목록 조회"""
     query = db.query(models.TaskAssign)
     
@@ -386,11 +557,15 @@ def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: i
     
     if status:
         query = query.filter(models.TaskAssign.status == status)
+
+    if priority:  # priority 필터 추가
+        query = query.filter(models.TaskAssign.priority == priority)
     
     if week:
         query = query.filter(models.TaskAssign.week == week)
     
     return query.offset(skip).limit(limit).all()
+
 
 def get_task_assigns(db: Session, skip: int = 0, limit: int = 100):
     """태스크 할당 목록 조회"""
@@ -411,6 +586,8 @@ def get_task_assigns_by_mentorship(db: Session, mentorship_id: int, skip: int = 
         models.TaskAssign.mentorship_id == mentorship_id
     ).offset(skip).limit(limit).all()
 
+
+
 def update_task_assign(db: Session, task_id: int, task_update: schemas.TaskAssignCreate):
     """태스크 할당 정보 업데이트"""
     db_task = get_task_assign(db, task_id)
@@ -429,11 +606,49 @@ def delete_task_assign(db: Session, task_id: int):
         db.commit()
     return db_task
 
+def get_task_memos(db: Session, task_assign_id: int):
+    """특정 태스크의 메모 목록 조회"""
+    return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
+
+def update_task_status(db: Session, task_id: int, status: str):
+    """태스크 상태 업데이트"""
+    db_task = get_task_assign(db, task_id)
+    if db_task:
+        db_task.status = status
+        db.commit()
+        db.refresh(db_task)
+    return db_task
+
+def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optional[int] = None):
+    """태스크에 메모(댓글) 추가"""
+    memo_data = {
+        "task_assign_id": task_assign_id,
+        "comment": comment,
+        "user_id": user_id if user_id else None
+    }
+    db_memo = models.Memo(**memo_data)
+    db.add(db_memo)
+    db.commit()
+    db.refresh(db_memo)
+    return db_memo
+
 
 # Mentorship CRUD
 def create_mentorship(db: Session, mentorship: schemas.MentorshipCreate):
-    """멘토링 생성"""
-    db_mentorship = models.Mentorship(**mentorship.dict())
+    """멘토링 생성 - 멘토와 멘티의 활성 상태 확인"""
+    # 멘토와 멘티의 활성 상태 확인
+    mentor = get_user(db, user_id=mentorship.mentor_id) if mentorship.mentor_id else None
+    mentee = get_user(db, user_id=mentorship.mentee_id) if mentorship.mentee_id else None
+    
+    # 멘토쉽 생성
+    mentorship_data = mentorship.dict()
+    
+    # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
+    # 한번 비활성화된 멘토쉽은 사용자 재활성화 시에도 자동으로 활성화되지 않음
+    if (mentor and not mentor.is_active) or (mentee and not mentee.is_active):
+        mentorship_data['is_active'] = False
+    
+    db_mentorship = models.Mentorship(**mentorship_data)
     db.add(db_mentorship)
     db.commit()
     db.refresh(db_mentorship)
@@ -476,6 +691,96 @@ def get_mentorships_with_filters(
         query = query.filter(search_filter)
     
     return query.offset(skip).limit(limit).all()
+
+def get_task_counts_by_mentorship(db: Session, mentorship_id: int) -> dict:
+    """
+    Retrieve total and completed task counts for a given mentorship.
+    """
+    # 디버깅을 위한 로그 추가
+    print(f"[DEBUG] get_task_counts_by_mentorship called with mentorship_id: {mentorship_id}")
+    
+    total_tasks = (
+        db.query(models.TaskAssign)
+        .filter(models.TaskAssign.mentorship_id == mentorship_id)
+        .count()
+    )
+    print(f"[DEBUG] Total tasks found: {total_tasks}")
+    
+    # 실제 상태값들 확인
+    all_statuses = (
+        db.query(models.TaskAssign.status)
+        .filter(models.TaskAssign.mentorship_id == mentorship_id)
+        .distinct()
+        .all()
+    )
+    status_list = [status[0] for status in all_statuses if status[0] is not None]
+    print(f"[DEBUG] All statuses in DB for mentorship {mentorship_id}: {status_list}")
+    
+    # 모든 태스크와 그 상태를 확인
+    all_tasks = (
+        db.query(models.TaskAssign.task_assign_id, models.TaskAssign.title, models.TaskAssign.status)
+        .filter(models.TaskAssign.mentorship_id == mentorship_id)
+        .all()
+    )
+    print(f"[DEBUG] All tasks for mentorship {mentorship_id}:")
+    for task in all_tasks:
+        print(f"  Task ID: {task[0]}, Title: {task[1]}, Status: {task[2]}")
+    
+    # 모델 주석에 따른 완료 상태: "진행전/진행중/검토요청/완료"
+    # 가능한 완료 상태들을 모두 포함
+    completed_tasks = (
+        db.query(models.TaskAssign)
+        .filter(
+            models.TaskAssign.mentorship_id == mentorship_id,
+            models.TaskAssign.status.in_(["완료", "완료됨", "COMPLETED", "completed", "Complete", "DONE", "done"])
+        )
+        .count()
+    )
+    
+    print(f"[DEBUG] Final completed tasks count: {completed_tasks}")
+    
+    result = {"total_tasks": total_tasks, "completed_tasks": completed_tasks}
+    print(f"[DEBUG] Returning result: {result}")
+    
+    return result
+
+def debug_task_statuses(db: Session, mentorship_id: int = None):
+    """
+    디버깅용: 실제 DB의 태스크 상태값들을 확인
+    """
+    print(f"[DEBUG] Checking all task statuses in database...")
+    
+    query = db.query(models.TaskAssign.status, models.TaskAssign.mentorship_id)
+    if mentorship_id:
+        query = query.filter(models.TaskAssign.mentorship_id == mentorship_id)
+        print(f"[DEBUG] Filtering by mentorship_id: {mentorship_id}")
+    
+    # 모든 상태값과 개수 확인
+    from sqlalchemy import func
+    status_counts = (
+        query.group_by(models.TaskAssign.status, models.TaskAssign.mentorship_id)
+        .with_entities(
+            models.TaskAssign.status, 
+            models.TaskAssign.mentorship_id,
+            func.count(models.TaskAssign.task_assign_id).label('count')
+        )
+        .all()
+    )
+    
+    print(f"[DEBUG] Status distribution:")
+    for status, m_id, count in status_counts:
+        print(f"  Mentorship {m_id}: Status '{status}' -> {count} tasks")
+    
+    # 전체 고유 상태값들
+    unique_statuses = (
+        db.query(models.TaskAssign.status)
+        .distinct()
+        .all()
+    )
+    unique_status_list = [status[0] for status in unique_statuses if status[0] is not None]
+    print(f"[DEBUG] All unique statuses in entire database: {unique_status_list}")
+    
+    return status_counts
 
 def get_mentorships(db: Session, skip: int = 0, limit: int = 100):
     """멘토링 목록 조회"""
@@ -580,11 +885,23 @@ def update_mentorship_status(db: Session, mentorship_id: int, is_active: bool):
 
 
 def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schemas.MentorshipCreate):
-    """멘토십 정보 업데이트"""
+    """멘토십 정보 업데이트 - 멘토와 멘티의 활성 상태 확인 (한번 비활성화되면 자동 재활성화 안됨)"""
     db_mentorship = get_mentorship(db, mentorship_id)
     if db_mentorship:
+        # 멘토와 멘티의 활성 상태 확인
+        mentor = get_user(db, user_id=db_mentorship.mentor_id) if db_mentorship.mentor_id else None
+        mentee = get_user(db, user_id=db_mentorship.mentee_id) if db_mentorship.mentee_id else None
+        
+        # 멘토십 정보 업데이트
         for key, value in mentorship_update.dict().items():
             setattr(db_mentorship, key, value)
+        
+        # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
+        # 단, 이미 비활성화된 멘토쉽은 사용자가 다시 활성화되어도 자동으로 재활성화되지 않음
+        if (mentor and not mentor.is_active) or (mentee and not mentee.is_active):
+            db_mentorship.is_active = False
+        # 주의: 멘토와 멘티가 모두 활성 상태여도 이미 비활성화된 멘토쉽은 자동으로 활성화하지 않음
+            
         db.commit()
         db.refresh(db_mentorship)
     return db_mentorship
@@ -810,6 +1127,15 @@ def get_alarms(db: Session, skip: int = 0, limit: int = 100):
 def get_alarms_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     """사용자별 알람 목록 조회"""
     return db.query(models.Alarm).filter(models.Alarm.user_id == user_id).offset(skip).limit(limit).all()
+
+
+def get_active_alarm_count_by_user(db: Session, user_id: int) -> int:
+    """특정 유저의 활성 알람 개수 반환"""
+    return db.query(models.Alarm).filter(
+        models.Alarm.user_id == user_id,
+        models.Alarm.is_active == True
+    ).count()
+
 
 def get_active_alarms_by_user(db: Session, user_id: int):
     """사용자의 활성 알람 조회"""

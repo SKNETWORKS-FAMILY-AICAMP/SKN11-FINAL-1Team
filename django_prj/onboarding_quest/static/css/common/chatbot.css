@@ -296,6 +296,13 @@
   border: 1px solid #e9ecef;
 }
 
+/* 1줄짜리 챗봇 응답이면 컴팩트하게 보이게 */
+.chatbot-msg-chabot.single-line {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.4;
+}
+
 .chatbot-msg-user {
   background: linear-gradient(135deg, #ffd600 0%, #ffed4e 100%);
   color: #222;

@@ -1,24 +1,54 @@
+# ...existing code...
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
+from datetime import datetime
+from sqlalchemy import text
 from config import settings
 from database import engine, Base
-from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, docs, chat, auth, alarms, documents
+from routers import users, tasks, chatbot, companies, departments, forms, curriculum, mentorship, memo, chat, auth, alarms
+from routers import docs_merged
 import models  # 모델을 임포트하여 테이블 생성
+import logging
+
+# SQLAlchemy 엔진 로거 레벨 조정
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 # 데이터베이스 테이블 생성
 models.Base.metadata.create_all(bind=engine)
 
+
+
 # FastAPI 앱 생성
 app = FastAPI()
+
+# 모든 요청을 로깅하는 미들웨어 (DELETE 요청 진입 여부 확인용)
+from starlette.requests import Request
+@app.middleware("http")
+async def log_all_requests(request: Request, call_next):
+    print(f"[REQ] {request.method} {request.url}")
+    response = await call_next(request)
+    print(f"[RES] {request.method} {request.url} -> {response.status_code}")
+    return response
+
+# 모든 요청을 로깅하는 미들웨어 (DELETE 요청 진입 여부 확인용)
+from starlette.requests import Request
+@app.middleware("http")
+async def log_all_requests(request: Request, call_next):
+    print(f"[REQ] {request.method} {request.url}")
+    response = await call_next(request)
+    print(f"[RES] {request.method} {request.url} -> {response.status_code}")
+    return response
 
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=["*"],  # 임시로 모든 origin 허용
     allow_credentials=True,
+    # allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    # allow_headers=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -32,13 +62,15 @@ app.include_router(mentorship.router)
 app.include_router(users.router)
 app.include_router(tasks.router)
 app.include_router(memo.router)
-app.include_router(docs.router)
+# app.include_router(docs.router)  # 병합됨
 app.include_router(chat.router)
-app.include_router(documents.router)
+# app.include_router(documents.router)  # 병합됨
+app.include_router(docs_merged.router)
 # app.include_router(forms.router)  # 템플릿이 없어서 비활성화
 app.include_router(chatbot.router)
 app.include_router(alarms.router)
 # app.include_router(rag.router)  # chat 라우터로 통합됨
+
 
 @app.get("/")
 async def root():
@@ -93,4 +125,5 @@ if __name__ == "__main__":
         port=settings.port,
         reload=settings.debug,
         log_level=settings.log_level.lower()
-    ) 
+    )
+

@@ -6,6 +6,15 @@
 <link rel="stylesheet" href="{% static 'css/common/mentee_task_list.css' %}">
 {% endblock %}
 {% block content %}
+
+<script>
+    // 사용자 역할(멘토/멘티)을 JS 변수로 전달
+    window.userRole = "{{ user.role }}";  // "mentor" 또는 "mentee"
+
+    const finalReport = "{{ final_report|default_if_none:''|escapejs }}";
+</script>
+
+
 <div class="tasklist-container">
   <!-- 좌측: Task 목록 -->
 <div class="tasklist-left" id="tasklist-left">
@@ -20,9 +29,9 @@
 
       <select id="task-filter-status" style="padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; flex: 1; height: 40px;">
         <option value="all">전체 상태</option>
-        <option value="진행전">진행 전</option>
-        <option value="진행중">진행 중</option>
-        <option value="검토요청">검토 요청</option>
+        <option value="진행전">진행전</option>
+        <option value="진행중">진행중</option>
+        <option value="검토요청">검토요청</option>
         <option value="완료">완료</option>
       </select>
       
@@ -34,6 +43,25 @@
       </select>
     </div>
   </div>
+
+   <!-- ✅ 최종 평가 보고서: 반복문 밖에 둠 -->
+  {% if final_report %}
+<div class="task-card done"
+     data-task-id="final_report"
+     onclick="updateTaskDetailPanel('final_report')">
+  <div class="task-card-header">
+    <span class="status-badge done">최종</span>
+    <span class="task-title">최종 평가 보고서</span>
+  </div>
+  <div class="task-desc-row">
+    <div class="task-desc" style="white-space: pre-wrap;">
+      {{ final_report|truncatechars:80 }}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
   {% for week, tasks in week_tasks.items %}
     <div style="font-weight:bold; margin:18px 0 8px 0; color:#000000; font-size:18px;">{{ week }}주차</div>
     {% for task in tasks %}
@@ -60,6 +88,8 @@
         <div class="task-desc-row">
           <div class="task-desc">{{ task.description }}</div>
         </div>
+
+        
         
         <!-- 🔧 하위 태스크 토글 및 리스트 -->
         {# 직접적인 하위 테스크만 필터링 #}
@@ -88,6 +118,12 @@
 </div>
   <!-- 우측: 상세 정보 -->
   <div class="tasklist-right">
+    <!-- 최종 평가 보고서 전용 영역 (기본 숨김) -->
+    <div id="report-detail-panel" style="display:none; padding:10px;">
+        <h3>최종 평가 보고서</h3>
+        <div id="report-content" style="white-space: pre-wrap; line-height:1.6;"></div>
+    </div> <!-- report-detail-panel 닫기 -->
+
     <div class="task-detail-header" id="detail-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
 
       <div style="display:flex; align-items:center; gap:12px;">
@@ -223,7 +259,7 @@
       <!-- 버튼 영역 -->
       <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px; padding-top:16px; border-top:1px solid #e0e0e0;">
         <button type="button" id="subtask-cancel-btn" style="padding:10px 20px; border:1px solid #ddd; border-radius:6px; background:white; color:#666; font-size:14px; cursor:pointer; font-weight:500;">취소</button>
-        <button type="submit" id="subtask-create-btn" style="padding:10px 20px; border:none; border-radius:6px; background:#28a745; color:white; font-size:14px; cursor:pointer; font-weight:500;">생성</button>
+        <button type="submit" id="subtask-create-btn" style="padding:10px 20px; border:none; border-radius:6px; background:#1976d2; color:white; font-size:14px; cursor:pointer; font-weight:500;">생성</button>
       </div>
     </form>
   </div>
@@ -245,6 +281,7 @@ let currentSelectedTaskId = null; // 현재 선택된 태스크 ID
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Task List 초기화 시작');
     
+    
     try {
         // 태스크 카드 클릭 이벤트 설정
         initializeTaskCards();
@@ -261,15 +298,39 @@ document.addEventListener('DOMContentLoaded', function() {
         // 🔧 하위 태스크 모달 초기화
         initSubtaskModal();
 
-        // 첫 번째 태스크 자동 선택 및 상세 표시
-        setTimeout(() => {
-            const firstTaskCard = document.querySelector('.task-card');
-            if (firstTaskCard) {
-                const taskId = firstTaskCard.dataset.taskId || firstTaskCard.getAttribute('data-task-id');
-                firstTaskCard.classList.add('selected');
-                selectTask(firstTaskCard, taskId, false); // 애니메이션 없이 상세 표시
+        // **멘토/멘티별 '완료' 옵션 제어**
+        const statusSelect = document.getElementById('edit-status');
+        if (statusSelect && window.userRole === 'mentee') {
+            Array.from(statusSelect.options).forEach(option => {
+                if (option.value === '완료') {
+                    option.remove();
+                }
+            });
+        }
+
+        // URL에서 task_id 파라미터 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskIdFromUrl = urlParams.get('task_id');
+
+        if (taskIdFromUrl) {
+            // URL에 task_id가 있으면 해당 태스크 선택
+            const targetCard = document.querySelector(`.task-card[data-task-id="${taskIdFromUrl}"]`);
+            if (targetCard) {
+                targetCard.classList.add('selected');
+                selectTask(targetCard, taskIdFromUrl, false);
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        }, 100);
+        } else {
+            // URL에 task_id 없으면 첫 번째 태스크 선택
+            setTimeout(() => {
+                const firstTaskCard = document.querySelector('.task-card');
+                if (firstTaskCard) {
+                    const taskId = firstTaskCard.dataset.taskId || firstTaskCard.getAttribute('data-task-id');
+                    firstTaskCard.classList.add('selected');
+                    selectTask(firstTaskCard, taskId, false);
+                }
+            }, 100);
+        }
 
         console.log('✅ Task List 초기화 완료');
     } catch (error) {
@@ -297,7 +358,7 @@ function initializeTaskCards() {
             if (e.target.closest('.subtask-item')) {
                 const subtaskItem = e.target.closest('.subtask-item');
                 const subtaskId = subtaskItem.dataset.taskId;
-                selectTask(card, subtaskId); // 하위 태스크 ID 전달
+                selectTask(subtaskItem, subtaskId); // 하위 태스크 ID 전달
                 return;
             }
             
@@ -330,6 +391,8 @@ function initializeDetailPanelButtons() {
             
             console.log(`🔧 우측 패널 하위 테스크 생성 버튼 클릭: ${parentTitle} (ID: ${parentId})`);
             
+
+            console.log(`하위 태스크 생성: ${parentTitle} (ID: ${parentId})`);
             // 하위 태스크 생성 모달 열기
             openSubtaskModal(parentId, parentTitle);
         });
@@ -419,6 +482,19 @@ async function selectTask(taskCard, taskId, animate = true) {
         
         // 4. 우측 패널 업데이트
         await updateTaskDetailPanel(taskId);
+
+        // selectTask() 내부
+        const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+        if (subtaskBtn) {
+            if (taskCard.classList.contains('subtask-item')) {
+                subtaskBtn.style.display = 'none';
+            } else {
+                subtaskBtn.style.display = 'inline-block';
+            }
+        }
+
+
+        
         
         console.log(`✅ 태스크 ${taskId} 선택 완료`);
         
@@ -435,7 +511,65 @@ async function updateTaskDetailPanel(taskId) {
         
         // 로딩 상태 표시
         showLoadingState();
-        
+
+            if (taskId === 'final_report') {
+                console.log('📄 최종 평가 보고서 로드');
+
+                // 기존 task UI 업데이트 (제목 + 설명만 사용)
+                updateTaskInfo({
+                    id: 'final_report',
+                    title: '최종 평가 보고서',
+                    description: finalReport || '최종 평가 보고서가 없습니다.',
+                    guideline: '',
+                    status: '',
+                    priority: '',
+                    scheduled_end_date: ''
+                });
+
+                // report 클릭 시 가이드라인, 우선순위(D-Day), 하위 테스크 버튼 숨김
+                const guidelineContent = document.getElementById('guideline-content');
+                const metaRow = document.getElementById('detail-meta-row');
+                const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+
+                if (guidelineContent) guidelineContent.style.display = 'none';
+                if (metaRow) metaRow.style.display = 'none';
+                if (subtaskBtn) {
+                    subtaskBtn.style.display = 'none';
+                    console.log('하위 테스크 버튼 숨김');
+                }
+
+                // **강제 숨김(비동기) - updateTaskInfo에서 덮어쓰는 경우 방지**
+                setTimeout(() => {
+                    const subtaskBtnForce = document.getElementById('task-detail-subtask-btn');
+                    if (subtaskBtnForce) {
+                        subtaskBtnForce.style.display = 'none';
+                        console.log('하위 테스크 버튼 강제 숨김 완료');
+                    }
+                }, 50);
+
+                // 메모 영역 초기화
+                updateMemoList([]);
+                currentTask = {
+                    id: 'final_report',
+                    title: '최종 평가 보고서',
+                    description: finalReport || ''
+                };
+
+                hideLoadingState();
+                return;
+            } else {
+                // 다른 태스크 클릭 시 숨겨진 요소 복원
+                const guidelineContent = document.getElementById('guideline-content');
+                const metaRow = document.getElementById('detail-meta-row');
+                const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+
+                if (guidelineContent) guidelineContent.style.display = '';
+                if (metaRow) metaRow.style.display = '';
+                if (subtaskBtn) subtaskBtn.style.display = 'inline-block';
+            }
+
+
+
         // API 호출
         const response = await fetch(`/mentee/task_detail/${taskId}/`, {
             method: 'GET',
@@ -479,6 +613,19 @@ async function updateTaskDetailPanel(taskId) {
                 order: task.order,
                 parent_id: task.parent_id
             };
+
+            // 하위 태스크 생성 버튼 토글
+            const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+            if (subtaskBtn) {
+                if (task.parent_id) {
+                    // parent_id가 존재하면 하위 태스크이므로 버튼 숨김
+                    subtaskBtn.style.display = 'none';
+                } else {
+                    // 상위 태스크면 버튼 표시
+                    subtaskBtn.style.display = 'inline-block';
+                }
+            }
+
             
             console.log(`✅ 태스크 ${taskId} 상세 정보 로드 완료 (메모 ${task.memos ? task.memos.length : 0}개)`);
             
@@ -526,17 +673,18 @@ function updateTaskInfo(task) {
     console.log('✅ 태스크 기본 정보 업데이트 완료');
 }
 
-// 📋 가이드라인 업데이트
+// 📋 가이드라인 업데이트 (수정 버전)
 function updateGuideline(guideline) {
     const guidelineElement = document.getElementById('guideline-content');
     if (guidelineElement) {
         if (guideline && guideline.trim()) {
             guidelineElement.textContent = guideline;
             guidelineElement.style.color = '#333';
+            guidelineElement.style.fontStyle = 'normal';
+            guidelineElement.style.display = 'block'; // 보이게
         } else {
-            guidelineElement.textContent = '가이드라인이 없습니다.';
-            guidelineElement.style.color = '#999';
-            guidelineElement.style.fontStyle = 'italic';
+            guidelineElement.textContent = '';        // 텍스트 제거
+            guidelineElement.style.display = 'none';  // 숨김
         }
     }
     
@@ -556,19 +704,18 @@ function updateMemoList(memos) {
             const memoElement = document.createElement('div');
             memoElement.className = 'memo-item';
             memoElement.style.cssText = `
-                margin-bottom: 12px;
-                padding: 10px;
-                background: white;
-                border-radius: 8px;
-                border-left: 3px solid #007bff;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            `;
+            margin-bottom: 16px;       /* 댓글 간격 증가 */
+            padding: 16px 20px;        /* 내부 여백을 더 크게 */
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        `;
+            
             // 작성자, 생성시간, 내용 분리해서 표시
-            // core_memo DB에서 온 데이터 구조에 맞게 작성자 정보 추출
             let displayUser = '익명';
             let displayDate = '';
             let displayComment = '';
-            // user가 객체일 때 last_name+first_name, string일 때는 그대로
+            
             if (memo.user && typeof memo.user === 'object') {
                 const lastName = memo.user.last_name || '';
                 const firstName = memo.user.first_name || '';
@@ -578,26 +725,25 @@ function updateMemoList(memos) {
             } else if (typeof memo.user === 'string' && memo.user.trim() !== '') {
                 displayUser = memo.user;
             }
-            // 'YYYY년 MM월 DD일 HH시 mm분 ss초' 형식으로 표시
+            
             if (memo.create_date) {
-                // ISO 포맷 파싱
                 const dateObj = new Date(memo.create_date);
                 if (!isNaN(dateObj.getTime())) {
                     const y = dateObj.getFullYear();
                     const m = String(dateObj.getMonth() + 1).padStart(2, '0');
                     const d = String(dateObj.getDate()).padStart(2, '0');
-                    const hh = String(dateObj.getHours()).padStart(2, '0'); // 24시간제
+                    const hh = String(dateObj.getHours()).padStart(2, '0');
                     const mm = String(dateObj.getMinutes()).padStart(2, '0');
                     const ss = String(dateObj.getSeconds()).padStart(2, '0');
                     displayDate = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
                 } else {
                     displayDate = memo.create_date;
                 }
-            } else {
-                displayDate = '';
             }
+            
             displayComment = memo.comment || '';
             console.log('🔍 메모 데이터:', { user: memo.user, create_date: memo.create_date, comment: memo.comment });
+            
             memoElement.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-weight: bold; color: #1976d2; font-size: 15px;">${displayUser}</span>
@@ -607,10 +753,9 @@ function updateMemoList(memos) {
             `;
             messagesContainer.appendChild(memoElement);
         });
-        // 스크롤을 최신 메모로 이동
+        
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } else {
-        // 메모가 없을 때
         messagesContainer.innerHTML = `
             <div style="text-align: center; color: #999; font-style: italic; padding: 20px;">
                 아직 메모가 없습니다.
@@ -619,6 +764,7 @@ function updateMemoList(memos) {
     }
     console.log(`✅ 메모 목록 업데이트 완료 (${memos.length}개)`);
 }
+
 
 // 📤 메시지 전송 함수
 async function sendMessage() {
@@ -872,18 +1018,19 @@ function openSubtaskModal(parentTaskId, parentTaskTitle) {
     let displayTitle = parentTaskTitle || '선택된 태스크';
     
     // currentTask에서 parent 정보가 있으면 parent의 title을 표시
-    if (currentTask && currentTask.parent_title) {
-        displayTitle = currentTask.parent_title;
-    } else if (currentTask && currentTask.title) {
-        displayTitle = currentTask.title;
-    }
+    // if (currentTask && currentTask.parent_title) {
+    //     displayTitle = currentTask.parent_title;
+    // } else if (currentTask && currentTask.title) {
+    //     displayTitle = currentTask.title;
+    // }
+
+    document.getElementById('subtask-form').reset();
     
     document.getElementById('parent-task-title').value = displayTitle;
     document.getElementById('parent-task-id').value = parentTaskId || '';
     document.getElementById('parent-mentorship-id').value = window.mentorshipId || '';
     
     // 폼 초기화
-    document.getElementById('subtask-form').reset();
     document.getElementById('subtask-title').focus();
     
     // 상위 태스크의 정보를 가져와서 기본값 설정
@@ -1258,14 +1405,20 @@ setTimeout(() => {
             try {
                 console.log('🚀 FastAPI로 태스크 업데이트 시작:', currentTask.id);
                 
-                const resp = await fetch(`http://localhost:8001/api/tasks/assign/${currentTask.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
+                const resp = await fetch(`/mentee/update_task_status/${currentTask.id}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    status: payload.status,
+                    mentorship_id: parseInt(window.mentorshipId)
+                }),
+                credentials: 'same-origin'
+            });
                 
                 if (!resp.ok) {
                     const errorText = await resp.text();

@@ -85,7 +85,8 @@
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2 mb-3">                
                 {% if request.user.role == 'mentee' %}
-                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 30%"></div>
+                    <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500"
+                    style="width: {{ completion_percentage|default:0 }}%"></div>
                 {% elif request.user.role == 'mentor' %}
                     <div id="expBar" class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
                 {% elif request.user.is_admin %}
@@ -131,7 +132,7 @@
     </div>
     
     <!-- 알람 사이드 패널 -->
-    <div id="alarmPanel" class="fixed top-0 w-72 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden" style="left: 18rem;">
+    <div id="alarmPanel" class="fixed top-0 w-72 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden flex flex-col" style="left: 18rem;">
         <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
             <span class="font-bold text-lg text-gray-900 flex items-center gap-2">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +147,7 @@
             </button>
         </div>
         
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto min-h-0">
             <div id="alarmList" class="p-4 space-y-3">
                 <!-- 알람 목록이 여기에 동적으로 로드됩니다 -->
                 <div class="text-center text-gray-500 py-8">
@@ -178,5 +179,18 @@
     </div>
     <script src="{% static 'js/base.js' %}"></script>
     {% block extra_js %}{% endblock %}
+
+    <script>
+    function syncSidebarBar() {
+        const mainBar = document.getElementById('expBarTop');
+        const sideBar = document.getElementById('expBar');
+        if (mainBar && sideBar) {
+            sideBar.style.width = mainBar.style.width;
+        }
+    }
+    document.addEventListener('DOMContentLoaded', syncSidebarBar);
+</script>
+
+
 </body>
 </html>

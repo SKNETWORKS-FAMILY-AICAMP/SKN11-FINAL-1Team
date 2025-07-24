@@ -1,0 +1,45 @@
+1. 설치 
+
+1-1. https://github.com/qdrant/qdrant/releases  접속
+
+1-2. 가장 최신버전 Assets에서 자신의 기기에 맞는 버전 다운로드
+(윈도우의 경우 qdrant-x86_64-pc-windows-msvc.zip)
+
+1-3. qdrant-x86_64-pc-windows-msvc.zip 파일 압축 해제 
+
+1-4. 시스템 환경변수 Path에 qdrant.exe 가 있는 경로 추가
+	- ~~~~\qdrant.exe가 아닌 exe가 있는 폴더명까지만
+	예시)
+		C:\DEV\qdrant-x86_64-pc-windows-msvc
+
+1-5. qdrant.exe 실행하고 즐기세요 
+	- 참고 : 여기에 뜨는 http://localhost:6333 는 최신버전에서는 제공되지 않음
+		   접속 안됨
+
+
+
+2. 웹 기반 Dashboard
+* Node.js 설치 (v18이상 권장)
+
+2-1.  https://github.com/qdrant/qdrant-web-ui 접속
+
+2-2. 저장소 클론
+
+2-3. 의존성 설치 
+	- npm install
+
+2-4. 실행
+	- 해당 경로에서 npm run start
+	예시) (fffinal_env) C:\DEV\qdrant-web-ui>npm run start
+
+2-5. Dashboard 접속
+예시)
+> qdrant-web-ui@0.1.41 start
+> vite
+
+
+  VITE v6.3.5  ready in 903 ms
+
+  ➜  Local:   http://localhost:5173/       <--- 클릭
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help

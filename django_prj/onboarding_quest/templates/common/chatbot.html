@@ -41,11 +41,13 @@
 
     .chatbot-left {
         flex: none;
-        width: 550px;
+        min-width: 320px;
+        width: 100%;
         background: white;
         border-radius: 12px;
         padding: 24px;
         overflow-y: auto;
+        overflow-x: hidden;
         height: 100%;
         box-sizing: border-box;
         display: flex;
@@ -120,6 +122,8 @@
     .chatbot-session-list {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 5px;
     }
 
     .chatbot-session-item {
@@ -573,7 +577,13 @@
             {% csrf_token %}
             <input type="hidden" name="session_id" id="selected-session-id" value="{% if current_session_id %}{{ current_session_id }}{% elif chat_sessions %}{{ chat_sessions.0.session.session_id }}{% endif %}">
             <input type="text" name="message" placeholder="무엇을 도와드릴까요? 궁금한 것을 자유롭게 물어보세요..." class="chatbot-input" id="chatbot-input" required>
-            <button type="submit" class="chatbot-send-btn">전송</button>
+            <button type="submit" class="chatbot-send-btn" id="chatbot-send-btn">
+                <span class="btn-text">전송</span>
+                <span class="btn-loading" style="display: none;">
+                    <span class="loading-spinner"></span>
+                </span>
+            </button>
+
         </form>
     </div>
 </div>

@@ -285,6 +285,13 @@ def task_update(request, task_assign_id):
         
         # FastAPI로 태스크 업데이트
         result = fastapi_client.update_task_assign(task_assign_id, update_data)
+
+         # 🔔 검토요청 상태일 때 알람 생성
+        if new_status == '검토요청':
+            try:
+                create_review_request_alarm(task_info.get('mentorship_id'), task_info.get('title'))
+            except Exception as e:
+                print(f"검토요청 알람 생성 실패: {e}")
         
         return JsonResponse({'success': True, 'message': '태스크가 업데이트되었습니다.'})
         
@@ -592,6 +599,7 @@ def mentee(request):
                     print(f"DEBUG - Django ORM 태스크 fallback도 실패: {task_orm_error}")
                     all_tasks = []
                     use_django_orm = False
+
             
             # 🔧 task_list와 동일한 태스크 데이터 처리 로직
             print(f"DEBUG - 전체 태스크 수: {len(all_tasks)}")
@@ -685,6 +693,7 @@ def mentee(request):
             
             print(f"DEBUG - 처리된 태스크 수: {len(processed_tasks)}")
             
+            
             # 상위 태스크만 필터링 (진행률 계산용)
             main_tasks = [t for t in processed_tasks if t.get('parent') is None]
             print(f"DEBUG - 상위 태스크 수: {len(main_tasks)}")
@@ -740,14 +749,15 @@ def mentee(request):
                 print(f"DEBUG - {status} 태스크들:")
                 for task in tasks[:3]:  # 최대 3개만 표시
                     print(f"  - ID: {task.get('task_assign_id')}, 제목: {task.get('title')}, D-day: {task.get('dday_text')}, 클래스: {task.get('dday_class')}")
+
         
         return render(request, 'mentee/mentee.html', context)
         
     except Exception as e:
         messages.error(request, f'데이터를 불러오는 중 오류가 발생했습니다: {str(e)}')
         return render(request, 'mentee/mentee.html', {'mentorship': None})
-
-
+    
+    
 @login_required
 def task_list(request):
     try:
@@ -755,48 +765,76 @@ def task_list(request):
         week_tasks = defaultdict(list)
         selected_task = None
         
-        # 🔧 현재 사용자 ID 가져오기
+        # 🔧 현재 사용자 ID와 역할 가져오기
         user_id = getattr(request.user, 'user_id', None)
+        user_role = getattr(request.user, 'role', None)
         if not user_id:
             user_data = request.session.get('user_data', {})
             user_id = user_data.get('user_id')
+            user_role = user_data.get('role')
         
         if not user_id:
             messages.error(request, '사용자 정보를 찾을 수 없습니다.')
             return redirect('account:login')
         
+        from core.models import Mentorship
+        final_report = None
+        mentorship_obj = Mentorship.objects.filter(mentorship_id=mentorship_id).first()
+        print(f">>>>> 🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
+        if mentorship_obj and mentorship_obj.is_active == False:
+            # 온보딩 종료 시 레포트 가져오기
+            final_report = getattr(mentorship_obj, 'report', None)
+            print(f"🔍 DEBUG - 최종 레포트 정보: {final_report}")
+        
         # 🔧 mentorship_id가 있을 때 is_active 및 사용자 권한 검증
         if mentorship_id:
             try:
                 from core.models import Mentorship
-                mentorship_obj = Mentorship.objects.filter(
-                    mentorship_id=int(mentorship_id),
-                    mentee_id=user_id,
-                    is_active=True  # 🔧 is_active=True 체크 필수
-                ).first()
                 
-                if not mentorship_obj:
-                    print(f"⚠️ WARNING - task_list에서 접근 시도된 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십이 아님")
+                # 멘토인 경우: mentor_id로 검증
+                if user_role == 'mentor':
+                    mentorship_obj = Mentorship.objects.filter(
+                        mentorship_id=int(mentorship_id),
+                        mentor_id=user_id,
+                    ).first()
                     
-                    # 사용자의 실제 활성 멘토십을 찾아서 리다이렉트
-                    active_mentorship = Mentorship.objects.filter(
+                    if not mentorship_obj:
+                        print(f"⚠️ WARNING - 멘토({user_id})가 접근 시도한 mentorship_id={mentorship_id}는 해당 멘토의 멘토십이 아님")
+                        messages.error(request, '해당 멘토십에 접근할 권한이 없습니다.')
+                        return redirect('mentor:mentor')
+                    else:
+                        print(f"✅ INFO - 멘토({user_id})가 mentorship_id={mentorship_id}에 정상 접근")
+                
+                # 멘티인 경우: mentee_id로 검증 (기존 로직)
+                else:
+                    mentorship_obj = Mentorship.objects.filter(
+                        mentorship_id=int(mentorship_id),
                         mentee_id=user_id,
                         is_active=True
                     ).first()
                     
-                    if active_mentorship:
-                        redirect_url = f"{request.path}?mentorship_id={active_mentorship.mentorship_id}"
-                        print(f"🚀 DEBUG - task_list에서 올바른 활성 멘토십으로 리다이렉트: {redirect_url}")
-                        messages.warning(request, '비활성 멘토십에 접근할 수 없습니다. 활성 멘토십으로 이동합니다.')
-                        return redirect(redirect_url)
+                    if not mentorship_obj:
+                        print(f"⚠️ WARNING - task_list에서 접근 시도된 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십이 아님")
+                        
+                        # 사용자의 실제 활성 멘토십을 찾아서 리다이렉트
+                        active_mentorship = Mentorship.objects.filter(
+                            mentee_id=user_id,
+                            is_active=True
+                        ).first()
+                        
+                        if active_mentorship:
+                            redirect_url = f"{request.path}?mentorship_id={active_mentorship.mentorship_id}"
+                            print(f"🚀 DEBUG - task_list에서 올바른 활성 멘토십으로 리다이렉트: {redirect_url}")
+                            messages.warning(request, '비활성 멘토십에 접근할 수 없습니다. 활성 멘토십으로 이동합니다.')
+                            return redirect(redirect_url)
+                        else:
+                            messages.error(request, '활성화된 멘토십이 없습니다.')
+                            return render(request, 'mentee/task_list.html', {
+                                'week_tasks': {},
+                                'mentorship_id': None
+                            })
                     else:
-                        messages.error(request, '활성화된 멘토십이 없습니다.')
-                        return render(request, 'mentee/task_list.html', {
-                            'week_tasks': {},
-                            'mentorship_id': None
-                        })
-                else:
-                    print(f"✅ INFO - task_list에서 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십으로 확인됨")
+                        print(f"✅ INFO - task_list에서 mentorship_id={mentorship_id}가 사용자({user_id})의 활성 멘토십으로 확인됨")
                     
             except Exception as validation_error:
                 print(f"⚠️ ERROR - task_list에서 멘토십 검증 중 오류: {validation_error}")
@@ -852,6 +890,9 @@ def task_list(request):
             'week_tasks': dict(week_tasks),
             'selected_task': selected_task,
             'mentorship_id': mentorship_id,
+            'user_role': user_role,  # 멘토/멘티 구분을 위한 역할 정보
+            'final_report': final_report,
+            'is_active': mentorship_obj.is_active if mentorship_obj else False,
         }
         return render(request, 'mentee/task_list.html', context)
         
@@ -881,6 +922,24 @@ def task_detail(request, task_assign_id):
         if not user_id:
             logger.warning("사용자 ID를 찾을 수 없음")
             return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
+        
+        from core.models import Mentorship
+
+        # -----------------------------
+        # 최종 평가 보고서 처리 (하드코딩)
+        # -----------------------------
+        mentorship_obj = Mentorship.objects.filter(mentee_id=user_id).first()
+        if mentorship_obj and mentorship_obj.is_active is False:
+            final_report = getattr(mentorship_obj, 'report', None)
+            if final_report and final_report.strip() != '':
+                logger.info("최종 평가 보고서 반환")
+                return JsonResponse({
+                    'success': True,
+                    'task': {
+                        'title': "최종 평가 보고서",
+                        'description': final_report
+                    }
+                })
         
         # FastAPI로 태스크 상세 정보 조회
         logger.info(f"FastAPI로 태스크 조회 중... task_assign_id: {task_assign_id}")
@@ -1038,19 +1097,17 @@ def update_task_status(request, task_id):
             return JsonResponse({'success': False, 'error': 'mentorship_id가 필요합니다.'}, status=400)
             
         # 🔍 사용자가 해당 멘토쉽에 접근 권한이 있는지 확인
-        mentorships_result = fastapi_client.get_mentorships(
-            mentee_id=user_id,
-            is_active=True
-        )
+        mentorships_result = fastapi_client.get_mentorships(is_active=True)
         mentorships = mentorships_result.get('mentorships', [])
-        
-        # 사용자의 멘토쉽 목록에서 요청된 mentorship_id가 있는지 확인
-        user_mentorship_ids = [m.get('id') for m in mentorships]
-        logger.info(f"🔍 사용자의 활성 멘토쉽 ID들: {user_mentorship_ids}")
-        
+        user_mentorship_ids = []
+        for m in mentorships:
+            # 멘티 또는 멘토로 참여한 멘토십만 허용
+            if m.get('mentee_id') == user_id or m.get('mentor_id') == user_id:
+                user_mentorship_ids.append(m.get('id'))
+        logger.info(f"🔍 로그인 유저가 멘티/멘토로 속한 멘토십 ID들: {user_mentorship_ids}")
         if client_mentorship_id not in user_mentorship_ids:
-            logger.error(f"❌ 권한 없음: 사용자 {user_id}는 멘토쉽 {client_mentorship_id}에 접근할 수 없음")
-            return JsonResponse({'success': False, 'error': '해당 멘토쉽에 대한 권한이 없습니다.'}, status=403)
+            logger.error(f"❌ 권한 없음: 사용자 {user_id}는 멘토십 {client_mentorship_id}에 속하지 않음")
+            return JsonResponse({'success': False, 'error': '해당 멘토십에 대한 권한이 없습니다.'}, status=403)
         
         # 🎯 클라이언트에서 요청한 mentorship_id 사용 (검증 완료)
         mentorship_id = client_mentorship_id
@@ -1185,7 +1242,13 @@ def update_task_status(request, task_id):
             try:
                 result = fastapi_client.update_task_assign(task_id, update_data)
                 logger.info(f"✅ FastAPI 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
-                
+                # ✅ 검토요청 알람 생성
+                if new_status == '검토요청':
+                    try:
+                        create_review_request_alarm(mentorship_id, task_result.get('title'))
+                    except Exception as alarm_error:
+                        logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
+                        
                 return JsonResponse({
                     'success': True,
                     'old_status': old_status,
@@ -1244,6 +1307,31 @@ def update_task_status(request, task_id):
             'success': False, 
             'error': f'서버 오류가 발생했습니다: {str(e)}'
         }, status=500)
+    
+
+    
+def create_review_request_alarm(mentorship_id, task_title):
+    try:
+        from core.models import Mentorship, Alarm, User
+        mentorship_obj = Mentorship.objects.filter(
+            mentorship_id=mentorship_id,
+            is_active=True
+        ).first()
+        if mentorship_obj:
+            mentee = User.objects.get(user_id=mentorship_obj.mentee_id)
+            mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
+            full_name = f"{mentee.last_name}{mentee.first_name}"
+            Alarm.objects.create(
+                user=mentor,
+                message=f"{full_name} 멘티가 '{task_title}' 태스크를 검토요청했습니다.",
+                is_active=True
+            )
+            return True
+    except Exception as e:
+        logger.error(f"검토요청 알람 생성 실패: {e}")
+    return False
+
+
 
 @login_required 
 def change_task_status_for_test(request):
@@ -1383,3 +1471,4 @@ def test_task_list(request):
     except Exception as e:
         print(f"test_task_list 오류: {e}")
         return render(request, 'mentee/task_list_test.html', {'week_tasks': {}, 'mentorship_id': 2})
+

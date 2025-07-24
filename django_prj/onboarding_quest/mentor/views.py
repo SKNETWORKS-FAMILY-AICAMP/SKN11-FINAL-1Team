@@ -304,15 +304,16 @@ def manage_template(request):
         result = fastapi_client.get_filtered_curriculums(department_id=user.department.department_id if user.department else None)
         curriculums_data = result.get('curriculums', [])
         
-        # 각 커리큘럼의 task 정보 가져오기
-        for curriculum in curriculums_data:
-            curriculum_id = curriculum['curriculum_id']
-            try:
-                tasks_result = fastapi_client.get_curriculum_tasks(curriculum_id)
-                curriculum_tasks[curriculum_id] = tasks_result
-            except Exception as e:
-                print(f"커리큘럼 {curriculum_id} 태스크 조회 오류: {e}")
-                curriculum_tasks[curriculum_id] = []
+        # 태스크 정보는 현재 사용되지 않으므로 빈 딕셔너리로 설정
+        # TODO: 필요시 FastAPI에 /curriculum/{id}/tasks 엔드포인트 추가 후 활성화
+        # for curriculum in curriculums_data:
+        #     curriculum_id = curriculum['curriculum_id']
+        #     try:
+        #         tasks_result = fastapi_client.get_curriculum_tasks(curriculum_id)
+        #         curriculum_tasks[curriculum_id] = tasks_result
+        #     except Exception as e:
+        #         print(f"커리큘럼 {curriculum_id} 태스크 조회 오류: {e}")
+        #         curriculum_tasks[curriculum_id] = []
         
         # curriculums_data를 정렬 (공통 커리큘럼 우선, 그다음 제목순)
         curriculums_data.sort(key=lambda x: (not x.get('common', False), x.get('curriculum_title', '')))
