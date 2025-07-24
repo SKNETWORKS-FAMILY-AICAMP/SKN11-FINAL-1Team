@@ -268,11 +268,147 @@ async def create_mentorship(mentorship: schemas.MentorshipCreate, db: Session = 
     return crud.create_mentorship(db=db, mentorship=mentorship)
 
 
-@router.get("/mentorship/", response_model=List[schemas.Mentorship])
-async def get_mentorships(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """멘토링 관계 목록 조회"""
-    mentorships = crud.get_mentorships(db, skip=skip, limit=limit)
-    return mentorships
+@router.get("/mentorship/", response_model=List[schemas.MentorshipResponse])
+async def get_mentorships(mentor_id: int = None, mentee_id: int = None, search: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """멘토링 관계 목록 조회 with task counts"""
+    print(f"[DEBUG] get_mentorships called with mentor_id={mentor_id}, mentee_id={mentee_id}, search={search}, skip={skip}, limit={limit}")
+    
+    # 필터링된 멘토십 조회
+    if mentor_id or mentee_id or search:
+        mentorships = crud.get_mentorships_with_filters(db, mentor_id=mentor_id, mentee_id=mentee_id, search=search, skip=skip, limit=limit)
+    else:
+        mentorships = crud.get_mentorships(db, skip=skip, limit=limit)
+    
+    print(f"[DEBUG] Found {len(mentorships)} mentorships")
+    
+    response_list = []
+    for i, m in enumerate(mentorships):
+        print(f"[DEBUG] Processing mentorship {i+1}/{len(mentorships)}: ID={m.mentorship_id}")
+        
+        counts = crud.get_task_counts_by_mentorship(db, m.mentorship_id)
+        print(f"[DEBUG] Counts for mentorship {m.mentorship_id}: {counts}")
+        
+        mentee_name = f"{m.mentee.first_name} {m.mentee.last_name}" if m.mentee else ""
+        mentor_name = f"{m.mentor.first_name} {m.mentor.last_name}" if m.mentor else ""
+        
+        total_tasks = counts.get("total_tasks", 0)
+        completed_tasks = counts.get("completed_tasks", 0)
+        
+        print(f"[DEBUG] Final values - total_tasks: {total_tasks}, completed_tasks: {completed_tasks}")
+        
+        mentorship_response = schemas.MentorshipResponse(
+            id=m.mentorship_id,
+            mentor_id=m.mentor_id,
+            mentee_id=m.mentee_id,
+            curriculum_id=None,
+            start_date=m.start_date,
+            end_date=m.end_date,
+            is_active=m.is_active,
+            status="active" if m.is_active else "inactive",
+            created_at=None,
+            updated_at=None,
+            mentee_name=mentee_name,
+            mentor_name=mentor_name,
+            curriculum_title=m.curriculum_title or "",
+            total_weeks=m.total_weeks or 0,
+            total_tasks=total_tasks,
+            completed_tasks=completed_tasks,
+            tags=[]
+        )
+        
+        print(f"[DEBUG] Created response object - total_tasks: {mentorship_response.total_tasks}, completed_tasks: {mentorship_response.completed_tasks}")
+        response_list.append(mentorship_response)
+    
+    print(f"[DEBUG] Returning {len(response_list)} mentorship responses")
+    return response_list
+
+
+@router.get("/mentorship/{mentorship_id}/task_counts", response_model=dict)
+async def get_task_counts(mentorship_id: int, db: Session = Depends(get_db)):
+    """특정 멘토십의 태스크 카운트 조회"""
+    print(f"[DEBUG] get_task_counts called for mentorship_id: {mentorship_id}")
+    
+    # 멘토십 존재 확인
+    mentorship = crud.get_mentorship(db, mentorship_id)
+    if not mentorship:
+        raise HTTPException(status_code=404, detail="멘토십을 찾을 수 없습니다")
+    
+    counts = crud.get_task_counts_by_mentorship(db, mentorship_id)
+    print(f"[DEBUG] Task counts result: {counts}")
+    
+    return counts
+
+
+@router.get("/test/mentorship/{mentor_id}")
+async def test_mentorship_response(mentor_id: int, db: Session = Depends(get_db)):
+    """테스트용: 멘토십 응답 데이터 확인"""
+    print(f"[TEST] Testing mentorship response for mentor_id: {mentor_id}")
+    
+    # 직접 mentorships_with_filters 호출
+    mentorships = crud.get_mentorships_with_filters(db, mentor_id=mentor_id)
+    print(f"[TEST] Found {len(mentorships)} mentorships from crud.get_mentorships_with_filters")
+    
+    if not mentorships:
+        return {"message": "No mentorships found", "mentorships": []}
+    
+    test_results = []
+    for m in mentorships:
+        print(f"[TEST] Processing mentorship {m.mentorship_id}")
+        print(f"[TEST] Mentorship data: mentor_id={m.mentor_id}, mentee_id={m.mentee_id}, is_active={m.is_active}")
+        
+        # 태스크 카운트 확인
+        counts = crud.get_task_counts_by_mentorship(db, m.mentorship_id)
+        print(f"[TEST] Task counts: {counts}")
+        
+        # 사용자 정보 확인
+        mentee = crud.get_user(db, m.mentee_id) if m.mentee_id else None
+        mentor = crud.get_user(db, m.mentor_id) if m.mentor_id else None
+        
+        mentee_name = f"{mentee.first_name} {mentee.last_name}" if mentee else "Unknown"
+        mentor_name = f"{mentor.first_name} {mentor.last_name}" if mentor else "Unknown"
+        
+        print(f"[TEST] Names - mentee: {mentee_name}, mentor: {mentor_name}")
+        
+        test_result = {
+            "mentorship_id": m.mentorship_id,
+            "mentor_id": m.mentor_id,
+            "mentee_id": m.mentee_id,
+            "mentee_name": mentee_name,
+            "mentor_name": mentor_name,
+            "curriculum_title": m.curriculum_title,
+            "total_weeks": m.total_weeks,
+            "is_active": m.is_active,
+            "start_date": str(m.start_date) if m.start_date else None,
+            "end_date": str(m.end_date) if m.end_date else None,
+            "total_tasks": counts.get("total_tasks", 0),
+            "completed_tasks": counts.get("completed_tasks", 0),
+            "raw_counts": counts
+        }
+        
+        print(f"[TEST] Final test result: {test_result}")
+        test_results.append(test_result)
+    
+    return {"mentorships": test_results}
+
+
+@router.get("/debug/task_statuses")
+async def debug_task_statuses_endpoint(mentorship_id: int = None, db: Session = Depends(get_db)):
+    """디버깅용: 실제 DB의 태스크 상태값들을 확인"""
+    print(f"[DEBUG] debug_task_statuses_endpoint called with mentorship_id: {mentorship_id}")
+    
+    status_counts = crud.debug_task_statuses(db, mentorship_id)
+    
+    return {
+        "message": "Check server console for detailed status information",
+        "status_counts": [
+            {
+                "mentorship_id": m_id,
+                "status": status,
+                "count": count
+            }
+            for status, m_id, count in status_counts
+        ]
+    }
 
 
 @router.post("/generate_draft/", response_class=PlainTextResponse)

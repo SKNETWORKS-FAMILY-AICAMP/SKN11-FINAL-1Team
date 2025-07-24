@@ -692,6 +692,96 @@ def get_mentorships_with_filters(
     
     return query.offset(skip).limit(limit).all()
 
+def get_task_counts_by_mentorship(db: Session, mentorship_id: int) -> dict:
+    """
+    Retrieve total and completed task counts for a given mentorship.
+    """
+    # 디버깅을 위한 로그 추가
+    print(f"[DEBUG] get_task_counts_by_mentorship called with mentorship_id: {mentorship_id}")
+    
+    total_tasks = (
+        db.query(models.TaskAssign)
+        .filter(models.TaskAssign.mentorship_id == mentorship_id)
+        .count()
+    )
+    print(f"[DEBUG] Total tasks found: {total_tasks}")
+    
+    # 실제 상태값들 확인
+    all_statuses = (
+        db.query(models.TaskAssign.status)
+        .filter(models.TaskAssign.mentorship_id == mentorship_id)
+        .distinct()
+        .all()
+    )
+    status_list = [status[0] for status in all_statuses if status[0] is not None]
+    print(f"[DEBUG] All statuses in DB for mentorship {mentorship_id}: {status_list}")
+    
+    # 모든 태스크와 그 상태를 확인
+    all_tasks = (
+        db.query(models.TaskAssign.task_assign_id, models.TaskAssign.title, models.TaskAssign.status)
+        .filter(models.TaskAssign.mentorship_id == mentorship_id)
+        .all()
+    )
+    print(f"[DEBUG] All tasks for mentorship {mentorship_id}:")
+    for task in all_tasks:
+        print(f"  Task ID: {task[0]}, Title: {task[1]}, Status: {task[2]}")
+    
+    # 모델 주석에 따른 완료 상태: "진행전/진행중/검토요청/완료"
+    # 가능한 완료 상태들을 모두 포함
+    completed_tasks = (
+        db.query(models.TaskAssign)
+        .filter(
+            models.TaskAssign.mentorship_id == mentorship_id,
+            models.TaskAssign.status.in_(["완료", "완료됨", "COMPLETED", "completed", "Complete", "DONE", "done"])
+        )
+        .count()
+    )
+    
+    print(f"[DEBUG] Final completed tasks count: {completed_tasks}")
+    
+    result = {"total_tasks": total_tasks, "completed_tasks": completed_tasks}
+    print(f"[DEBUG] Returning result: {result}")
+    
+    return result
+
+def debug_task_statuses(db: Session, mentorship_id: int = None):
+    """
+    디버깅용: 실제 DB의 태스크 상태값들을 확인
+    """
+    print(f"[DEBUG] Checking all task statuses in database...")
+    
+    query = db.query(models.TaskAssign.status, models.TaskAssign.mentorship_id)
+    if mentorship_id:
+        query = query.filter(models.TaskAssign.mentorship_id == mentorship_id)
+        print(f"[DEBUG] Filtering by mentorship_id: {mentorship_id}")
+    
+    # 모든 상태값과 개수 확인
+    from sqlalchemy import func
+    status_counts = (
+        query.group_by(models.TaskAssign.status, models.TaskAssign.mentorship_id)
+        .with_entities(
+            models.TaskAssign.status, 
+            models.TaskAssign.mentorship_id,
+            func.count(models.TaskAssign.task_assign_id).label('count')
+        )
+        .all()
+    )
+    
+    print(f"[DEBUG] Status distribution:")
+    for status, m_id, count in status_counts:
+        print(f"  Mentorship {m_id}: Status '{status}' -> {count} tasks")
+    
+    # 전체 고유 상태값들
+    unique_statuses = (
+        db.query(models.TaskAssign.status)
+        .distinct()
+        .all()
+    )
+    unique_status_list = [status[0] for status in unique_statuses if status[0] is not None]
+    print(f"[DEBUG] All unique statuses in entire database: {unique_status_list}")
+    
+    return status_counts
+
 def get_mentorships(db: Session, skip: int = 0, limit: int = 100):
     """멘토링 목록 조회"""
     return db.query(models.Mentorship).offset(skip).limit(limit).all()
