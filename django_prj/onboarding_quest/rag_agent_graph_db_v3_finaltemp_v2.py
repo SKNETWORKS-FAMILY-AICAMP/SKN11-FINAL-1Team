@@ -611,7 +611,7 @@ Context:
             for hierarchy_path, title in sorted(hier_set, key=lambda x: (x[0], x[1])):
                 # hierarchy_path의 마지막 계층이 title과 같으면 title만 표기
                 if hierarchy_path:
-                    # 마지막 계층 추출 (맨 뒤 > 기준으로 분리, 없으면 전체)
+                    # 마지막 계층 추출 (맨 뒤 > 기준으로 분리, 없으면 전체) 
                     last_level = hierarchy_path.split('>')[-1].strip()
                     if last_level == title:
                         ref_lines.append(f" - {title}")
