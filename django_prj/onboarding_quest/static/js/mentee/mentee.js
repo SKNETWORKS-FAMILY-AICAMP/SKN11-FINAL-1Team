@@ -166,6 +166,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+  const completionText = document.getElementById('userLevelTop');
+  const completeBtn = document.getElementById('final-complete-btn');
+
+  if (completionText && completeBtn) {
+    const percentage = parseInt(completionText.textContent.replace('%', ''), 10);
+    if (percentage === 100) {
+      completeBtn.style.display = 'inline-block';
+    }
+  }
+});
+
+function completeFinalTask() {
+  alert('🎉 모든 작업을 완료했습니다!');
+  // 필요 시 서버로 완료 상태 전송 API 추가 가능
+}
+
 
 
 document.addEventListener('click', function(e) {

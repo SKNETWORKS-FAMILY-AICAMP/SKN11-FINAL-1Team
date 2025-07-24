@@ -635,6 +635,7 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (task.status === '진행중') statusClass = 'in-progress';
     else if (task.status === '검토요청') statusClass = 'review-requested';
     else if (task.status === '완료' || task.status === '완료됨') statusClass = 'done';
+
     
     // 하위 태스크 생성 버튼 표시/숨김 제어
     const subtaskBtn = document.getElementById('task-detail-subtask-btn');
@@ -869,6 +870,7 @@ document.addEventListener('DOMContentLoaded', function() {
               else if (payload.status === '진행중') statusBadge.classList.add('in-progress');
               else if (payload.status === '검토요청') statusBadge.classList.add('review-requested');
               else if (payload.status === '완료' || payload.status === '완료됨') statusBadge.classList.add('done');
+
             }
             // 제목
             const titleSpan = card.querySelector('.task-title');
