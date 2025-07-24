@@ -240,15 +240,44 @@ def get_mentees(db: Session, skip: int = 0, limit: int = 100):
     ).offset(skip).limit(limit).all()
 
 def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
-    """사용자 정보 업데이트 (부분 필드)"""
+    """사용자 정보 업데이트 (부분 필드) - 멘토쉽 상태 자동 관리"""
     db_user = get_user(db, user_id)
     if db_user:
+        # 이전 활성 상태 저장
+        previous_is_active = db_user.is_active
+        
         # None 값을 제외하고 업데이트할 필드만 추출
         user_data = user_update.dict(exclude_unset=True, exclude_none=True)
         if 'password' in user_data:
             user_data['password'] = hash_password(user_data['password'])
         for key, value in user_data.items():
             setattr(db_user, key, value)
+        
+        # 사용자 상태가 변경된 경우 멘토쉽 상태 관리
+        if 'is_active' in user_data:
+            new_is_active = user_data['is_active']
+            
+            # 사용자가 비활성화되는 경우: 관련 멘토쉽들을 비활성화
+            if previous_is_active and not new_is_active:
+                # 멘토로 참여 중인 멘토쉽들 비활성화
+                mentor_mentorships = db.query(models.Mentorship).filter(
+                    models.Mentorship.mentor_id == user_id,
+                    models.Mentorship.is_active == True
+                ).all()
+                for mentorship in mentor_mentorships:
+                    mentorship.is_active = False
+                
+                # 멘티로 참여 중인 멘토쉽들 비활성화
+                mentee_mentorships = db.query(models.Mentorship).filter(
+                    models.Mentorship.mentee_id == user_id,
+                    models.Mentorship.is_active == True
+                ).all()
+                for mentorship in mentee_mentorships:
+                    mentorship.is_active = False
+            
+            # 사용자가 재활성화되는 경우: 멘토쉽은 자동으로 재활성화하지 않음
+            # (한번 비활성화된 멘토쉽은 수동으로만 재활성화 가능)
+        
         db.commit()
         db.refresh(db_user)
     return db_user
@@ -501,7 +530,16 @@ def get_tasks_by_mentorship(db: Session, mentorship_id: int):
         models.TaskAssign.mentorship_id == mentorship_id
     ).all()
 
-def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: int = None, status: str = None, week: int = None, skip: int = 0, limit: int = 100):
+def get_task_assigns_filtered(
+    db: Session,
+    mentorship_id: int = None,
+    user_id: int = None,
+    status: str = None,
+    priority: str = None,   # priority 추가
+    week: int = None,
+    skip: int = 0,
+    limit: int = 100
+):
     """필터링된 태스크 할당 목록 조회"""
     query = db.query(models.TaskAssign)
     
@@ -519,11 +557,15 @@ def get_task_assigns_filtered(db: Session, mentorship_id: int = None, user_id: i
     
     if status:
         query = query.filter(models.TaskAssign.status == status)
+
+    if priority:  # priority 필터 추가
+        query = query.filter(models.TaskAssign.priority == priority)
     
     if week:
         query = query.filter(models.TaskAssign.week == week)
     
     return query.offset(skip).limit(limit).all()
+
 
 def get_task_assigns(db: Session, skip: int = 0, limit: int = 100):
     """태스크 할당 목록 조회"""
@@ -564,6 +606,32 @@ def delete_task_assign(db: Session, task_id: int):
         db.commit()
     return db_task
 
+def get_task_memos(db: Session, task_assign_id: int):
+    """특정 태스크의 메모 목록 조회"""
+    return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
+
+def update_task_status(db: Session, task_id: int, status: str):
+    """태스크 상태 업데이트"""
+    db_task = get_task_assign(db, task_id)
+    if db_task:
+        db_task.status = status
+        db.commit()
+        db.refresh(db_task)
+    return db_task
+
+def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optional[int] = None):
+    """태스크에 메모(댓글) 추가"""
+    memo_data = {
+        "task_assign_id": task_assign_id,
+        "comment": comment,
+        "user_id": user_id if user_id else None
+    }
+    db_memo = models.Memo(**memo_data)
+    db.add(db_memo)
+    db.commit()
+    db.refresh(db_memo)
+    return db_memo
+
 
 # Mentorship CRUD
 def create_mentorship(db: Session, mentorship: schemas.MentorshipCreate):
@@ -576,6 +644,7 @@ def create_mentorship(db: Session, mentorship: schemas.MentorshipCreate):
     mentorship_data = mentorship.dict()
     
     # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
+    # 한번 비활성화된 멘토쉽은 사용자 재활성화 시에도 자동으로 활성화되지 않음
     if (mentor and not mentor.is_active) or (mentee and not mentee.is_active):
         mentorship_data['is_active'] = False
     
@@ -726,7 +795,7 @@ def update_mentorship_status(db: Session, mentorship_id: int, is_active: bool):
 
 
 def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schemas.MentorshipCreate):
-    """멘토십 정보 업데이트 - 멘토와 멘티의 활성 상태 확인"""
+    """멘토십 정보 업데이트 - 멘토와 멘티의 활성 상태 확인 (한번 비활성화되면 자동 재활성화 안됨)"""
     db_mentorship = get_mentorship(db, mentorship_id)
     if db_mentorship:
         # 멘토와 멘티의 활성 상태 확인
@@ -738,10 +807,10 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
             setattr(db_mentorship, key, value)
         
         # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
-        if mentor and not mentor.is_active:
+        # 단, 이미 비활성화된 멘토쉽은 사용자가 다시 활성화되어도 자동으로 재활성화되지 않음
+        if (mentor and not mentor.is_active) or (mentee and not mentee.is_active):
             db_mentorship.is_active = False
-        if mentee and not mentee.is_active:
-            db_mentorship.is_active = False
+        # 주의: 멘토와 멘티가 모두 활성 상태여도 이미 비활성화된 멘토쉽은 자동으로 활성화하지 않음
             
         db.commit()
         db.refresh(db_mentorship)

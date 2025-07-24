@@ -21,48 +21,25 @@ function renderUploadList() {
     <input type="text" placeholder="설명 입력" value="${f.description}" 
            onchange="updateFileInfo(${idx}, 'description', this.value)">
   </td>
-  <td style="width:15%; text-align: center;">
+  <td style="width:15%;">
     <input type="checkbox" ${f.common_doc ? 'checked' : ''} 
            onchange="updateFileInfo(${idx}, 'common_doc', this.checked)">
   </td>
-  <td style="width:15%; text-align: center;">
-    <button class="remove-file-btn" onclick="removeFile(${idx})">❌</button>
+  <td style="width:15%;">
+    <button class="remove-file-btn" onclick="removeFile(${idx})">제거</button>
   </td>
 `;
 
     uploadListTbody.appendChild(tr);
   });
 
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //   }
-  // }
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //     document.getElementById('doc-reset-btn')?.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //     document.getElementById('doc-reset-btn')?.classList.remove('show');
-  //   }
-  // }
-  const btnGroup = document.getElementById('doc-btn-group');
-  const uploadBtn = document.getElementById('doc-upload-btn');
-  const resetBtn = document.getElementById('doc-reset-btn');
-
-  if (addedFiles.length > 0) {
-    btnGroup?.classList.remove('hidden');
-    uploadBtn?.classList.add('show');
-    resetBtn?.classList.add('show');
-  } else {
-    btnGroup?.classList.add('hidden');
-    uploadBtn?.classList.remove('show');
-    resetBtn?.classList.remove('show');
+  if (uploadBtn) {
+    if (addedFiles.length > 0) {
+      uploadBtn.classList.add('show');
+    } else {
+      uploadBtn.classList.remove('show');
+    }
   }
-
 }
 
 function updateFileInfo(idx, field, value) {
@@ -351,8 +328,8 @@ async function loadDocumentList(departmentId) {
     </a>
   </td>
   <td>${doc.description || "-"}</td>
-  <td style="text-align: center;">${doc.department ? doc.department.department_name : "-"}</td>
-  <td style="text-align: center;">
+  <td>${doc.department ? doc.department.department_name : "-"}</td>
+  <td>
     ${canEdit
           ? `
         <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
@@ -455,18 +432,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    
-
-
     alert("삭제가 완료되었습니다.");
     loadDocumentList(CURRENT_DEPARTMENT_ID);
-  });
-
-  document.getElementById('doc-reset-btn')?.addEventListener('click', () => {
-    if (confirm("업로드 목록을 초기화하시겠습니까?")) {
-      addedFiles = [];
-      renderUploadList();
-    }
   });
 
 });

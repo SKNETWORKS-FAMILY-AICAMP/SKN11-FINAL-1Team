@@ -14,18 +14,19 @@
 <!-- 검색 및 필터 -->
 <div class="bg-white rounded-lg shadow-md p-6 mb-8">
     <div class="text-left">
-        <div class="flex flex-wrap items-end gap-6">
+        <div class="flex flex-wrap items-end gap-4">
             <!-- 이름 -->
-            <div class="flex-1 min-w-[220px]">
+            <div class="flex-1 min-w-[180px]">
                 <label class="block text-base font-medium text-gray-700 mb-1">이름</label>
                 <input type="text" id="search-input" placeholder="멘토/멘티 이름 검색" value="{{ search_query }}"
+                    oninput="applyFilters()"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
             <!-- 상태 -->
-            <div class="flex-1 min-w-[180px]">
+            <div class="flex-1 min-w-[140px]">
                 <label class="block text-base font-medium text-gray-700 mb-1">상태</label>
-                <select id="status-filter"
+                <select id="status-filter" onchange="applyFilters()"
                         class="w-full px-3 py-2 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">전체</option>
                     <option value="active" {% if status_filter == 'active' %}selected{% endif %}>활성</option>
@@ -34,9 +35,9 @@
             </div>
 
             <!-- 부서 -->
-            <div class="flex-1 min-w-[220px]">
+            <div class="flex-1 min-w-[180px]">
                 <label class="block text-base font-medium text-gray-700 mb-1">부서</label>
-                <select id="department-filter"
+                <select id="department-filter" onchange="applyFilters()"
                         class="w-full px-3 py-2 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">전체 부서</option>
                     {% for department in departments %}
@@ -47,11 +48,15 @@
                 </select>
             </div>
 
-            <!-- 검색 버튼 -->
-            <div class="mt-6">
+            <!-- 버튼 그룹 -->
+            <div class="flex gap-2 mt-6">
                 <button onclick="searchMentorships()"
-                        class="px-5 py-2 bg-blue-500 text-white rounded-md text-base transition-colors">
+                        class="px-5 py-2 bg-blue-500 text-white rounded-md text-base transition-colors hover:bg-blue-600">
                     검색
+                </button>
+                <button onclick="resetFilters()"
+                        class="px-5 py-2 bg-gray-500 text-white rounded-md text-base transition-colors hover:bg-gray-600">
+                    초기화
                 </button>
             </div>
         </div>
@@ -367,6 +372,19 @@ function showReportContent(reportData) {
 // 보고서 모달 닫기 함수
 function closeReportModal() {
     document.getElementById('report-modal').classList.add('hidden');
+}
+
+// 필터 초기화 함수
+function resetFilters() {
+    // 폼 필드들 초기화
+    document.getElementById('search-input').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('department-filter').value = '';
+    
+    // URL에서 파라미터 제거하고 페이지 새로고침
+    const url = new URL(window.location);
+    url.search = '';
+    window.location.href = url.toString();
 }
 </script>
 {% endblock %}

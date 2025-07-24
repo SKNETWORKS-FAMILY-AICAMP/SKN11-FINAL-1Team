@@ -128,8 +128,24 @@ async def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depe
         if existing_user:
             raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다")
     
-    # Perform update with partial fields
+    # 사용자 업데이트 전 현재 상태 확인
+    was_inactive = not db_user.is_active
+    
+    # 사용자 정보 업데이트
     updated_user = crud.update_user(db=db, user_id=user_id, user_update=user)
+    
+    # 사용자가 비활성화 -> 활성화로 변경되는 경우
+    # 한번 비활성화된 멘토십은 계속 비활성화 상태 유지
+    if was_inactive and updated_user.is_active:
+        print(f"🔄 사용자 {user_id}가 활성화되었지만, 기존 비활성화된 멘토십은 유지됩니다.")
+        # 멘토십 상태는 변경하지 않음 (비활성화 유지)
+    
+    # 사용자가 활성화 -> 비활성화로 변경되는 경우에만 멘토십도 비활성화
+    elif not was_inactive and not updated_user.is_active:
+        print(f"🔄 사용자 {user_id}가 비활성화되어 관련 멘토십도 비활성화합니다.")
+        # 이 경우에는 관련 멘토십을 비활성화해야 함
+        # (crud.py의 update_mentorship에서 자동으로 처리됨)
+    
     return updated_user
 
 

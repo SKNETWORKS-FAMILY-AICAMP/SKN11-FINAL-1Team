@@ -28,7 +28,52 @@
             검색
           </button>
         </div>
+        
+        <!-- 필터 버튼들 -->
+        <div class="flex gap-2">
+          <button id="all-btn" class="filter-btn active">전체</button>
+          <button id="active-btn" class="filter-btn">활성화</button>
+          <button id="inactive-btn" class="filter-btn">비활성화</button>
+        </div>
       </div>
+
+      <style>
+        .filter-btn { 
+          padding: 0.5rem 1.5rem; 
+          border-radius: 0.5rem; 
+          background: #f3f4f6; 
+          color: #333; 
+          font-weight: 500; 
+          border: 1px solid #e5e7eb;
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+        .filter-btn:hover {
+          background: #e5e7eb;
+        }
+        .filter-btn.active { 
+          background: #2563eb; 
+          color: #fff; 
+          border-color: #2563eb;
+        }
+        
+        .status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status.ongoing {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .status.completed {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+      </style>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="mentorshipCards">
         <!-- 멘토십 카드들이 JavaScript로 동적 로드됩니다 -->
@@ -65,6 +110,10 @@
 <script>
 // 전역 변수
 let mentorId = null;
+let originalMentorshipsData = []; // 원본 전체 데이터
+let searchResultsData = []; // 검색 결과 데이터
+let currentFilter = 'all'; // 현재 활성화된 필터 상태 추적
+let currentSearchQuery = ''; // 현재 검색어 저장
 const FASTAPI_BASE_URL = 'http://localhost:8001';
 
 // 페이지 로드시 멘토십 데이터 로드
@@ -93,6 +142,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (searchBtn) {
         searchBtn.addEventListener('click', searchMentees);
+    }
+
+    // 필터 버튼 이벤트 리스너
+    const allBtn = document.getElementById('all-btn');
+    const activeBtn = document.getElementById('active-btn');
+    const inactiveBtn = document.getElementById('inactive-btn');
+    
+    if (allBtn) {
+        allBtn.addEventListener('click', () => setActiveFilter('all'));
+    }
+    if (activeBtn) {
+        activeBtn.addEventListener('click', () => setActiveFilter('active'));
+    }
+    if (inactiveBtn) {
+        inactiveBtn.addEventListener('click', () => setActiveFilter('inactive'));
     }
 });
 
@@ -132,7 +196,14 @@ async function loadMentorships() {
         
         const data = await response.json();
         console.log('받은 데이터:', data);
-        renderMentorshipCards(data);
+        console.log('데이터 샘플 (첫 번째 항목):', data[0]);
+        
+        // 원본 데이터 저장, 검색 결과 초기화
+        originalMentorshipsData = data;
+        searchResultsData = []; // 검색 결과 초기화
+        
+        // 필터 적용하여 렌더링
+        applyCurrentFilter();
         
     } catch (error) {
         console.error('Error loading mentorships:', error);
@@ -156,30 +227,56 @@ async function loadMentorships() {
     }
 }
 
+// 멘티 이름 형식 변환: "민수 김" → "김민수"
+function formatMenteeName(name) {
+    if (!name) return '';
+    
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+        // "민수 김" → "김민수"
+        const firstName = parts[0]; // 민수
+        const lastName = parts[1];  // 김
+        return lastName + firstName; // 김민수
+    }
+    return name; // 공백이 없으면 원래 이름 그대로 반환
+}
+
 // 멘토십 카드 렌더링
 function renderMentorshipCards(mentorships) {
     const cardsContainer = document.getElementById('mentorshipCards');
     
+    console.log('=== 카드 렌더링 시작 ===');
+    console.log('렌더링할 멘토십 수:', mentorships ? mentorships.length : 0);
+    console.log('멘토십 데이터:', mentorships);
+    
     if (!mentorships || mentorships.length === 0) {
-        showEmptyState();
+        console.log('데이터가 없어서 빈 상태 표시');
+        showEmptyStateWithFilter();
         return;
     }
     
+    console.log('카드 HTML 생성 시작');
     const cardsHTML = mentorships.map(mentorship => {
         const progress = calculateProgress(mentorship);
         const dday = calculateDday(mentorship);
+        const statusText = mentorship.is_active ? '진행중' : '완료';
+        const statusClass = mentorship.is_active ? 'ongoing' : 'completed';
+        
+        // 이름 형식 변환: "민수 김" → "김민수"
+        const formattedName = formatMenteeName(mentorship.mentee_name);
         
         return `
             <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-shadow cursor-pointer" 
-                 onclick="navigateToTaskList(${mentorship.id})">
+                 onclick="navigateToTaskList(${mentorship.mentorship_id || mentorship.id})">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span class="text-blue-600 font-bold text-lg">${mentorship.mentee_name.charAt(0)}</span>
+                            <span class="text-blue-600 font-bold text-lg">${formattedName.charAt(0)}</span>
                         </div>
                         <div>
-                            <h3 class="font-bold text-xl text-gray-900 mb-1">${mentorship.mentee_name}</h3>
+                            <h3 class="font-bold text-xl text-gray-900 mb-1">${formattedName}</h3>
                             <div class="flex items-center gap-2">
+                                <span class="status ${statusClass}">${statusText}</span>
                                 ${mentorship.tags ? mentorship.tags.map(tag => 
                                     `<span class="bg-blue-50 text-blue-600 text-sm px-3 py-1.5 rounded-full font-medium">${tag}</span>`
                                 ).join('') : ''}
@@ -213,8 +310,17 @@ function renderMentorshipCards(mentorships) {
         `;
     }).join('');
     
+    console.log('생성된 카드 HTML 길이:', cardsHTML.length);
+    console.log('카드 컨테이너 요소:', cardsContainer);
+    
     cardsContainer.innerHTML = cardsHTML;
     hideAllStates();
+    
+    // 카드 컨테이너 다시 보이게 하기
+    cardsContainer.style.display = 'grid';
+    
+    console.log('카드 렌더링 완료, DOM 업데이트됨');
+    console.log('=== 카드 렌더링 종료 ===');
 }
 
 // 진척도 계산
@@ -258,6 +364,32 @@ function showEmptyState() {
     hideOtherStates(['emptyState']);
 }
 
+function showEmptyStateWithFilter() {
+    const emptyStateDiv = document.getElementById('emptyState');
+    const titleElement = emptyStateDiv.querySelector('h3');
+    const messageElement = emptyStateDiv.querySelector('p');
+    
+    // 현재 필터에 따라 메시지 변경
+    switch (currentFilter) {
+        case 'active':
+            titleElement.textContent = '활성화된 멘토쉽이 없습니다';
+            messageElement.textContent = '현재 진행 중인 멘토쉽이 없습니다';
+            break;
+        case 'inactive':
+            titleElement.textContent = '비활성화된 멘토쉽이 없습니다';
+            messageElement.textContent = '완료된 멘토쉽이 없습니다';
+            break;
+        case 'all':
+        default:
+            titleElement.textContent = '관리 중인 멘토쉽이 없습니다';
+            messageElement.textContent = '새로운 멘토쉽을 시작해보세요';
+            break;
+    }
+    
+    emptyStateDiv.style.display = 'block';
+    hideOtherStates(['emptyState']);
+}
+
 function showError(message) {
     document.getElementById('errorMessage').textContent = message;
     document.getElementById('errorState').style.display = 'block';
@@ -294,22 +426,31 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// 검색 함수 (FastAPI 연동)
+// 검색 함수 수정
 async function searchMentees() {
     const searchInput = document.getElementById('searchInput');
     const query = searchInput ? searchInput.value.trim() : '';
+    
+    // 현재 검색어 저장
+    currentSearchQuery = query;
     
     if (!mentorId) {
         showError('로그인이 필요합니다.');
         return;
     }
     
+    // 검색어가 없으면 검색 결과 초기화하고 바로 필터 적용
+    if (!query) {
+        searchResultsData = [];
+        applyCurrentFilter();
+        return;
+    }
+
     try {
         showLoading(true);
         
-        const url = `/fastapi/mentorship/?mentor_id=${mentorId}${query ? `&search=${encodeURIComponent(query)}` : ''}`;
-        console.log('검색 URL:', url);
-        
+        // 검색어가 있을 때만 API 호출
+        const url = `/fastapi/mentorship/?mentor_id=${mentorId}&search=${encodeURIComponent(query)}`;
         const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -318,14 +459,18 @@ async function searchMentees() {
             },
             credentials: 'same-origin'
         });
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
+
+        // 검색 결과를 searchResultsData에 저장 (원본 데이터 보존)
+        const searchResults = await response.json();
+        searchResultsData = searchResults;
         
-        const data = await response.json();
-        renderMentorshipCards(data);
+        // 필터 적용하여 렌더링
+        applyCurrentFilter();
         
     } catch (error) {
         console.error('Error searching mentorships:', error);
@@ -342,5 +487,99 @@ async function searchMentees() {
         showLoading(false);
     }
 }
+
+// 필터 설정 함수
+function setActiveFilter(filterType) {
+    console.log('필터 설정:', filterType);
+    
+    // 현재 필터 상태 업데이트
+    currentFilter = filterType;
+    
+    // 모든 필터 버튼에서 active 클래스 제거
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 클릭된 버튼에 active 클래스 추가
+    const clickedBtn = document.getElementById(`${filterType}-btn`);
+    if (clickedBtn) {
+        clickedBtn.classList.add('active');
+    }
+    
+    // 절대 서버에 재요청하지 않고, 현재 데이터에서만 필터링 적용
+    console.log('클라이언트 사이드 필터링만 적용');
+    applyCurrentFilter();
+}
+
+// 현재 필터 적용 함수
+// 현재 필터 적용 함수 수정
+function applyCurrentFilter() {
+    console.log('=== 필터 적용 시작 ===');
+    console.log('현재 필터:', currentFilter);
+    console.log('현재 검색어:', currentSearchQuery);
+    console.log('원본 데이터 수:', originalMentorshipsData.length);
+    console.log('검색 결과 데이터 수:', searchResultsData.length);
+    
+    // 원본 데이터 상세 로그
+    console.log('원본 데이터 상세:');
+    originalMentorshipsData.forEach((mentorship, index) => {
+        console.log(`  ${index}: ${mentorship.mentee_name} - is_active: ${mentorship.is_active}`);
+    });
+    
+    let baseData;
+    
+    // 검색어가 있으면 검색 결과를 기준으로, 없으면 원본 전체 데이터를 기준으로
+    if (currentSearchQuery && searchResultsData.length > 0) {
+        baseData = searchResultsData; // 검색 결과
+        console.log('검색 모드: 검색 결과 데이터 사용');
+    } else if (!currentSearchQuery) {
+        baseData = originalMentorshipsData; // 원본 전체 데이터
+        console.log('전체 모드: 원본 데이터 사용');
+    } else {
+        // 검색어는 있지만 검색 결과가 없는 경우
+        baseData = [];
+        console.log('검색 결과 없음: 빈 데이터 사용');
+    }
+    
+    console.log('기준 데이터 수:', baseData.length);
+    
+    let filteredData = [...baseData];
+
+    // 활성화/비활성화 필터 적용
+    switch (currentFilter) {
+        case 'active':
+            // 활성화 버튼: is_active가 true인 것들만 표시
+            console.log('활성화 필터 적용 시작');
+            filteredData = filteredData.filter(mentorship => {
+                const isActive = mentorship.is_active === true;
+                console.log(`  멘토십 ${mentorship.mentee_name}: is_active = ${mentorship.is_active}, 포함여부: ${isActive}`);
+                return isActive;
+            });
+            console.log('활성화 필터 적용 후 데이터 수:', filteredData.length);
+            break;
+        case 'inactive':
+            // 비활성화 버튼: is_active가 false인 것들만 표시
+            console.log('비활성화 필터 적용 시작');
+            filteredData = filteredData.filter(mentorship => {
+                const isInactive = mentorship.is_active === false;
+                console.log(`  멘토십 ${mentorship.mentee_name}: is_active = ${mentorship.is_active}, 포함여부: ${isInactive}`);
+                return isInactive;
+            });
+            console.log('비활성화 필터 적용 후 데이터 수:', filteredData.length);
+            break;
+        case 'all':
+        default:
+            console.log('전체 필터: 필터링 안함');
+            break;
+    }
+
+    console.log('최종 렌더링할 데이터:', filteredData);
+    console.log('최종 렌더링할 데이터 수:', filteredData.length);
+    console.log('=== 필터 적용 완료 ===');
+    
+    renderMentorshipCards(filteredData);
+}
+
+
 </script>
 {% endblock %}
