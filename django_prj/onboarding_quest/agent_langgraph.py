@@ -129,8 +129,9 @@ class EventAgent:
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute("""
             SELECT u.user_id, u.first_name, ta.task_assign_id, ta.title, ta.scheduled_end_date, ta.status
-            FROM core_user u
-            JOIN core_taskassign ta ON u.user_id = ta.user_id
+            FROM core_taskassign ta
+            JOIN core_mentorship ms ON ta.mentorship_id_id = ms.mentorship_id
+            JOIN core_user u ON ms.mentee_id = u.user_id
             WHERE u.role = 'mentee'
         """)
         rows = cur.fetchall()
@@ -211,11 +212,11 @@ class EventAgent:
 
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        cur.execute("SELECT task_assign_id, title, status, user_id FROM core_taskassign")
+        cur.execute("SELECT task_assign_id, title, status FROM core_taskassign")
         rows = cur.fetchall()
         conn.close()
 
-        current = {row[0]: {"title": row[1], "status": row[2], "user_id": row[3]} for row in rows}
+        current = {row[0]: {"title": row[1], "status": row[2]} for row in rows}
         detected_task_id = None
         pending_review = False
         alarm_events = []
@@ -238,7 +239,7 @@ class EventAgent:
                 message = alert.choices[0].message.content.strip()
                 alarm_events.append({
                     "event_type": "task_review_requested",
-                    "user_id": info["user_id"],
+                    # user_id가 필요하다면 별도 쿼리 필요
                     "message": message
                 })
                 detected_task_id = task_id
@@ -256,7 +257,7 @@ class EventAgent:
                 message = alert.choices[0].message.content.strip()
                 alarm_events.append({
                     "event_type": "task_completed_by_mentor",
-                    "user_id": info["user_id"],
+                    # user_id가 필요하다면 별도 쿼리 필요
                     "message": message
                 })
 
@@ -282,9 +283,9 @@ class EventAgent:
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute("""
             SELECT u.user_id, u.first_name, m.email, MAX(ta.scheduled_end_date)
-            FROM core_user u
-            JOIN core_taskassign ta ON u.user_id = ta.user_id
-            JOIN core_mentorship ms ON ta.mentorship_id = ms.mentorship_id
+            FROM core_taskassign ta
+            JOIN core_mentorship ms ON ta.mentorship_id_id = ms.mentorship_id
+            JOIN core_user u ON ms.mentee_id = u.user_id
             JOIN core_user m ON m.user_id = ms.mentor_id
             WHERE u.role = 'mentee'
             GROUP BY u.user_id, u.first_name, m.email
@@ -341,36 +342,36 @@ class ReviewAgent:
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
         # task 정보 확인
-        cur.execute("SELECT user_id, mentorship_id, title FROM core_taskassign WHERE task_assign_id = %s", (task_id,))
+        cur.execute("SELECT mentorship_id_id, title FROM core_taskassign WHERE task_assign_id = %s", (task_id,))
         row = cur.fetchone()
         if not row:
             print("❌ [review] 해당 task_assign 없음")
             conn.close()
             return state
 
-        mentee_id, mentorship_id, task_title = row[0], row[1], row[2]
-        print(f"🔍 [review] task_title: {task_title}, mentee_id: {mentee_id}, mentorship_id: {mentorship_id}")
+        mentorship_id, task_title = row[0], row[1]
+        print(f"🔍 [review] task_title: {task_title}, mentorship_id: {mentorship_id}")
 
-        # 멘토 ID 조회
-        cur.execute("SELECT mentor_id FROM core_mentorship WHERE mentorship_id = %s", (mentorship_id,))
+        # 멘토 ID와 멘티 ID 조회
+        cur.execute("SELECT mentor_id, mentee_id FROM core_mentorship WHERE mentorship_id = %s", (mentorship_id,))
         mentor_row = cur.fetchone()
         if not mentor_row:
             print("❌ [review] 멘토 ID 조회 실패")
             conn.close()
             return state
 
-        mentor_id = mentor_row[0]
-        print(f"✅ [review] mentor_id: {mentor_id}")
+        mentor_id, mentee_id = mentor_row[0], mentor_row[1]
+        print(f"✅ [review] mentor_id: {mentor_id}, mentee_id: {mentee_id}")
 
-        # 하위 과제 가져오기
-        cur.execute("SELECT subtask_title, content FROM core_subtask WHERE task_assign_id = %s", (task_id,))
+        # 하위 과제 가져오기 (parent 필드로 조회)
+        cur.execute("SELECT title, description FROM core_taskassign WHERE parent_id = %s", (task_id,))
         subtasks = cur.fetchall()
         conn.close()
 
         if not subtasks:
             print("⚠️ [review] 서브태스크 없음")
 
-        subtask_text = "\n".join([f"- {title.strip()}: {content.strip() or '내용 없음'}" for title, content in subtasks])
+        subtask_text = "\n".join([f"- {title.strip()}: {description.strip() or '내용 없음'}" for title, description in subtasks])
 
         # GPT 프롬프트 작성 및 요청
         prompt = f"""너는 IT 멘토입니다. 상위 업무는 '{task_title}'이고, 하위 작업은 다음과 같습니다:\n{subtask_text}\n다음 형식으로 피드백 작성:\n- 👍 잘한 점:\n- 🔧 개선할 점:\n- 🧾 요약 피드백:\n---"""
@@ -380,10 +381,9 @@ class ReviewAgent:
         # DB에 피드백 저장 -> memo 테이블에 저장
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        today_str = date.today().isoformat()
         cur.execute(
-            "INSERT INTO core_memo (task_assign_id, content, create_date) VALUES (%s, %s, %s)",
-            (task_id, feedback, today_str)
+            "INSERT INTO core_memo (task_assign_id, comment, user_id) VALUES (%s, %s, %s)",
+            (task_id, feedback, mentor_id)
         )
         conn.commit()
         conn.close()
@@ -425,77 +425,79 @@ class ReportAgent:
         with self.get_connection() as conn:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             cur.execute("""
-                SELECT DISTINCT t.task_id, t.title
-                FROM core_task t
-                JOIN core_taskassign ta ON t.task_id = ta.task_id
-                WHERE ta.mentee_id = %s OR ta.mentor_id = %s
-                ORDER BY t.task_id
+                SELECT DISTINCT ta.task_assign_id, ta.title
+                FROM core_taskassign ta
+                JOIN core_mentorship m ON ta.mentorship_id_id = m.mentorship_id
+                WHERE m.mentee_id = %s OR m.mentor_id = %s
+                ORDER BY ta.task_assign_id
             """, (user_id, user_id))
-            return [(row['task_id'], row['title']) for row in cur.fetchall()]
+            return [(row['task_assign_id'], row['title']) for row in cur.fetchall()]
 
     def fetch_single_task_data(self, task_id: int) -> Optional[TaskInfo]:
         with self.get_connection() as conn:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             cur.execute("""
-                SELECT t.*, u_mentee.first_name as mentee_name, u_mentor.first_name as mentor_name
-                FROM core_task t
-                JOIN core_taskassign ta ON t.task_id = ta.task_id
-                JOIN core_user u_mentee ON ta.mentee_id = u_mentee.user_id
-                JOIN core_user u_mentor ON ta.mentor_id = u_mentor.user_id
-                WHERE t.task_id = %s
+                SELECT ta.*, 
+                       CONCAT(u_mentee.last_name, u_mentee.first_name) as mentee_name, 
+                       CONCAT(u_mentor.last_name, u_mentor.first_name) as mentor_name
+                FROM core_taskassign ta
+                JOIN core_mentorship m ON ta.mentorship_id_id = m.mentorship_id
+                JOIN core_user u_mentee ON m.mentee_id = u_mentee.user_id
+                JOIN core_user u_mentor ON m.mentor_id = u_mentor.user_id
+                WHERE ta.task_assign_id = %s
             """, (task_id,))
             task_row = cur.fetchone()
             if not task_row:
                 return None
 
+            # 하위 태스크들과 메모, 리뷰 조회
             cur.execute("""
-                SELECT s.*, 
-                       STRING_AGG(DISTINCT m.content, ',') as memo_contents,
-                       STRING_AGG(DISTINCT r.content, ',') as review_contents,
-                       AVG(r.score) as avg_score
-                FROM core_subtask s
-                LEFT JOIN core_memo m ON s.subtask_id = m.subtask_id
-                LEFT JOIN core_review r ON s.subtask_id = r.subtask_id
-                WHERE s.task_id = %s
-                GROUP BY s.subtask_id
-                ORDER BY s.subtask_id
+                SELECT s.task_assign_id, s.title, s.description, s.guideline,
+                       s.scheduled_start_date, s.status
+                FROM core_taskassign s
+                WHERE s.parent_id = %s
+                ORDER BY s.task_assign_id
             """, (task_id,))
 
             subtasks = []
             for row in cur.fetchall():
+                # 각 서브태스크의 메모 조회
+                cur.execute("""
+                    SELECT comment FROM core_memo
+                    WHERE task_assign_id = %s
+                    ORDER BY create_date
+                """, (row['task_assign_id'],))
+                memos = [memo['comment'] for memo in cur.fetchall()]
+
                 subtasks.append({
-                    'subtask_id': row['subtask_id'],
+                    'subtask_id': row['task_assign_id'],
                     'title': row['title'],
-                    'guide': row['guide'],
-                    'date': row['date'],
-                    'content': row['content'],
-                    'memos': row['memo_contents'].split(',') if row['memo_contents'] else [],
-                    'reviews': row['review_contents'].split(',') if row['review_contents'] else [],
-                    'score': row['avg_score'] if row['avg_score'] else 0
+                    'guide': row['guideline'],
+                    'date': str(row['scheduled_start_date']) if row['scheduled_start_date'] else '',
+                    'content': row['description'] or '',
+                    'status': row['status'],
+                    'memos': memos,
+                    'reviews': [],  # 리뷰 시스템이 없으므로 빈 배열
+                    'score': 0
                 })
 
+            # 태스크 레벨 메모 조회
             cur.execute("""
-                SELECT content, create_date FROM core_memo
-                WHERE task_id = %s AND subtask_id IS NULL
+                SELECT comment, create_date FROM core_memo
+                WHERE task_assign_id = %s
                 ORDER BY create_date
             """, (task_id,))
-            task_memos = [{'content': r['content'], 'date': r['create_date']} for r in cur.fetchall()]
+            task_memos = [{'content': r['comment'], 'date': str(r['create_date'])} for r in cur.fetchall()]
 
-            cur.execute("""
-                SELECT content, score, summary, generated_by, create_date
-                FROM core_review
-                WHERE task_id = %s AND subtask_id IS NULL
-                ORDER BY create_date
-            """, (task_id,))
-            task_reviews = [{'content': r['content'], 'score': r['score'], 'summary': r['summary'],
-                             'generated_by': r['generated_by'], 'date': r['create_date']} for r in cur.fetchall()]
+            # 태스크 레벨 리뷰는 별도 테이블이 없으므로 빈 배열
+            task_reviews = []
 
             return TaskInfo(
-                task_id=task_row['task_id'],
+                task_id=task_row['task_assign_id'],
                 title=task_row['title'],
-                guide=task_row['guide'],
-                date=task_row['date'],
-                content=task_row['content'],
+                guide=task_row['guideline'] or '',
+                date=str(task_row['scheduled_start_date']) if task_row['scheduled_start_date'] else '',
+                content=task_row['description'] or '',
                 mentor_name=task_row['mentor_name'],
                 subtasks=subtasks,
                 task_memos=task_memos,
@@ -708,7 +710,7 @@ class ReportAgent:
             with self.get_connection() as conn:
                 cur = conn.cursor()
                 cur.execute("""
-                    UPDATE mentorship SET report = ? WHERE mentee_id = ?
+                    UPDATE core_mentorship SET report = %s WHERE mentee_id = %s
                 """, (report, user_id))
                 conn.commit()
             print("✅ 리포트 DB 저장 완료")
@@ -735,30 +737,37 @@ class AlarmAgent:
     def __init__(self, db_config: dict = None):
         self.db_config = db_config or DB_CONFIG
 
-    def send_to_inbox(self, user_id: int, message: str):
-        """📩 수신함 테이블에 알림 저장"""
+
+    def send_to_alarm(self, user_id: int, message: str):
+        """📩 알림 테이블에 알림 저장 (core_alarm 사용)"""
         try:
             conn = psycopg2.connect(**self.db_config)
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur = conn.cursor()  # DictCursor 제거: 튜플로 받음
+            # datetime을 문자열로 명시적 변환
+            created_at = str(datetime.now().isoformat())
             cur.execute("""
-                INSERT INTO core_inbox (user_id, message, created_at, is_read)
-                VALUES (%s, %s, %s, false)
-            """, (user_id, message, datetime.now().isoformat()))
+                INSERT INTO core_alarm (user_id, message, created_at, is_active)
+                VALUES (%s, %s, %s, true)
+            """, (int(user_id), str(message), created_at))
             conn.commit()
             conn.close()
-            print(f"📨 [수신함 저장 완료] → 사용자 {user_id}")
+            print(f"📨 [알림 저장 완료] → 사용자 {user_id}")
         except Exception as e:
-            print(f"❌ [inbox 저장 실패]: {e}")
+            print(f"❌ [알림 저장 실패]: {e}")
 
     def save_alarm_log(self, user_id: int, message: str, event_type: str):
-        """📝 alarm 테이블에 알림 로그 저장"""
+        """📝 alarm 테이블에 알림 로그 저장 (event_type은 메시지에 포함)"""
         try:
             conn = psycopg2.connect(**self.db_config)
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur = conn.cursor()  # DictCursor 제거: 튜플로 받음
+            # event_type을 메시지에 포함하여 저장
+            full_message = f"[{event_type}] {message}"
+            # datetime을 문자열로 명시적 변환
+            created_at = str(datetime.now().isoformat())
             cur.execute("""
-                INSERT INTO core_alarm (user_id, message, event_type, created_at)
-                VALUES (%s, %s, %s, %s)
-            """, (user_id, message, event_type, datetime.now().isoformat()))
+                INSERT INTO core_alarm (user_id, message, created_at, is_active)
+                VALUES (%s, %s, %s, true)
+            """, (int(user_id), str(full_message), created_at))
             conn.commit()
             conn.close()
             print(f"🔔 [alarm 로그 저장 완료] → {event_type} for user {user_id}")
@@ -778,9 +787,11 @@ class AlarmAgent:
             USE_CREDENTIALS=True
         )
 
+        # recipients는 반드시 문자열 리스트여야 함
+        recipient_email = str(to_email) if not isinstance(to_email, dict) else to_email.get('email', '')
         message = MessageSchema(
             subject="신입사원 최종 평가 보고서 도착",
-            recipients=[to_email],
+            recipients=[recipient_email],
             body=f"""
             <h3>최종 평가 보고서가 도착했습니다.</h3>
             <p>아래 링크를 통해 확인하세요:</p>
@@ -796,39 +807,55 @@ class AlarmAgent:
         """📧 멘토에게 최종 보고서 이메일 전송"""
         try:
             conn = psycopg2.connect(**self.db_config)
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur = conn.cursor()  # DictCursor 제거: 튜플로 받음
 
             # 멘토 ID, 이메일
-            cur.execute("SELECT mentor_id FROM core_mentorship WHERE mentee_id = %s", (mentee_id,))
+            cur.execute("SELECT mentor_id FROM core_mentorship WHERE mentee_id = %s", (int(mentee_id),))
             mentor_row = cur.fetchone()
             if not mentor_row:
                 print("❌ [멘토 ID 없음]")
                 conn.close()
                 return
-            mentor_id = mentor_row[0]
+            mentor_id = int(mentor_row[0])
 
-            cur.execute("SELECT email FROM user WHERE user_id = ?", (mentor_id,))
+            cur.execute("SELECT email FROM core_user WHERE user_id = %s", (mentor_id,))
             email_row = cur.fetchone()
             if not email_row:
                 print("❌ [멘토 이메일 없음]")
+                conn.close()
                 return
             mentor_email = email_row[0]
+            # 혹시라도 dict 타입이 들어올 경우 방지
+            if isinstance(mentor_email, dict):
+                mentor_email = mentor_email.get('email', '')
+            else:
+                mentor_email = str(mentor_email)
 
             # 발신 계정 조회
-            cur.execute("SELECT sender_email, sender_password FROM email_config ORDER BY created_at DESC LIMIT 1")
+            cur.execute("SELECT email, password FROM core_emailconfig ORDER BY id DESC LIMIT 1")
             sender_row = cur.fetchone()
             if not sender_row:
                 print("❌ [발신 계정 없음]")
+                conn.close()
                 return
-            sender_email, sender_password = sender_row
+            sender_email = str(sender_row[0])
+            sender_password = str(sender_row[1])
             conn.close()
 
-            report_url = f"https://sinip.company/report/{mentee_id}"  # 진슬이 실제 경로로 바꿔야 해
+            report_url = f"https://sinip.company/report/{mentee_id}"  # 실제 경로로 바꿔야 함
+            # recipients에 dict가 들어가지 않도록 보장
             asyncio.run(self.send_email(mentor_email, report_url, sender_email, sender_password))
             print(f"📧 [이메일 발송 완료] → {mentor_email}")
 
         except Exception as e:
             print(f"❌ [이메일 발송 실패]: {e}")
+
+    def send_final_report_email_node(self, state: dict) -> dict:
+        """📧 LangGraph용 최종 보고서 이메일 발송 노드"""
+        user_id = state.get("user_id")
+        if user_id:
+            self.send_final_report_email(user_id)
+        return state
 
     def run(self, state: dict) -> dict:
         """🔔 LangGraph용 실행 메서드"""
@@ -843,34 +870,33 @@ class AlarmAgent:
             if event_type == "final_report_ready":
                 user_id = event.get("user_id")
                 self.send_final_report_email(user_id)
-                self.send_to_inbox(user_id, message)
+                self.send_to_alarm(user_id, message)
                 self.save_alarm_log(user_id, message, event_type)
 
             elif event_type == "task_completed_by_mentor":
                 user_id = event.get("mentee_id")
-                self.send_to_inbox(user_id, message)
+                self.send_to_alarm(user_id, message)
                 self.save_alarm_log(user_id, message, event_type)
 
             elif event_type == "task_review_requested":
                 user_id = event.get("mentor_id")
-                self.send_to_inbox(user_id, message)
+                self.send_to_alarm(user_id, message)
                 self.save_alarm_log(user_id, message, event_type)
 
             elif event_type == "review_written":
                 user_id = event.get("mentee_id")
-                self.send_to_inbox(user_id, message)
+                self.send_to_alarm(user_id, message)
                 self.save_alarm_log(user_id, message, event_type)
 
             elif event_type == "deadline_reminder":
                 user_id = event.get("user_id")
-                self.send_to_inbox(user_id, message)
+                self.send_to_alarm(user_id, message)
                 self.save_alarm_log(user_id, message, event_type)
             
             elif event_type == "task_review_completed":
                 user_id = event.get("mentee_id")
-                self.send_to_inbox(user_id, message)
+                self.send_to_alarm(user_id, message)
                 self.save_alarm_log(user_id, message, event_type)
-
 
             else:
                 print(f"⚠️ 알 수 없는 이벤트 타입: {event_type}")
@@ -899,7 +925,7 @@ builder.add_node("check_onboarding_complete", EventAgent.check_completion)
 builder.add_node("review_node", ReviewAgent.review)
 builder.add_node("report_generator", ReportAgent.generate_comprehensive_report_node)
 builder.add_node("send_alarm_email", AlarmAgent.run)  # 수신함 알람
-builder.add_node("send_email_final_report", AlarmAgent.send_final_report_email)  # 최종 보고서 이메일 발송
+builder.add_node("send_email_final_report", AlarmAgent.send_final_report_email_node)  # 최종 보고서 이메일 발송
 
 # ✅ 진입점 설정
 builder.set_entry_point("check_state")

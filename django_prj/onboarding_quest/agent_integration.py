@@ -200,12 +200,15 @@ class OnboardingAgentIntegrator:
                 try:
                     feedback = llm.invoke(prompt).content
                     
+                    # 멘토 객체 조회
+                    from core.models import User
+                    mentor = User.objects.get(user_id=mentorship.mentor_id)
+                    
                     # 피드백을 메모로 저장
                     Memo.objects.create(
                         task_assign=task_assign,
-                        user_id=mentorship.mentor_id,
-                        comment=feedback,
-                        create_date=date.today()
+                        user=mentor,
+                        comment=feedback
                     )
                     
                     self.logger.info(f"✅ 자동 리뷰 생성 완료: task_id={task_id}")
@@ -230,11 +233,14 @@ class OnboardingAgentIntegrator:
 해당 태스크가 검토 단계에 도달했습니다. 곧 담당 멘토의 상세한 검토가 이루어질 예정입니다.
 """
                 
+                # 멘토 객체 조회
+                from core.models import User
+                mentor = User.objects.get(user_id=mentorship.mentor_id)
+                
                 Memo.objects.create(
                     task_assign=task_assign,
-                    user_id=mentorship.mentor_id,
-                    comment=basic_feedback,
-                    create_date=date.today()
+                    user=mentor,
+                    comment=basic_feedback
                 )
                 
                 self.logger.info(f"✅ 기본 자동 리뷰 생성 완료: task_id={task_id}")
@@ -468,7 +474,7 @@ class OnboardingAgentIntegrator:
     def _check_deadlines(self):
         """모든 활성 멘티의 마감일 체크 (Agent_LangGraph_final.py의 EventAgent 로직)"""
         try:
-            from core.models import User, TaskAssign, Alarm
+            from core.models import User, TaskAssign, Alarm, Mentorship
             
             today = date.today()
             tomorrow = today + timedelta(days=1)
@@ -477,21 +483,26 @@ class OnboardingAgentIntegrator:
             mentees = User.objects.filter(role='mentee')
             
             for mentee in mentees:
+                # 해당 멘티의 멘토십 조회
+                mentorships = Mentorship.objects.filter(mentee_id=mentee.user_id, is_active=True)
+                if not mentorships.exists():
+                    continue
+                
                 # 해당 멘티의 태스크들 중 마감일이 오늘이거나 내일인 것들
                 today_tasks = TaskAssign.objects.filter(
-                    mentorship_id__mentee_id=mentee.user_id,
+                    mentorship_id__in=mentorships,
                     scheduled_end_date=today,
                     status__in=['진행전', '진행중']
                 )
                 
                 tomorrow_tasks = TaskAssign.objects.filter(
-                    mentorship_id__mentee_id=mentee.user_id,
+                    mentorship_id__in=mentorships,
                     scheduled_end_date=tomorrow,
                     status__in=['진행전', '진행중']
                 )
                 
                 overdue_tasks = TaskAssign.objects.filter(
-                    mentorship_id__mentee_id=mentee.user_id,
+                    mentorship_id__in=mentorships,
                     scheduled_end_date__lt=today,
                     status__in=['진행전', '진행중']
                 )
@@ -534,9 +545,11 @@ class OnboardingAgentIntegrator:
             from core.models import User, Mentorship
             
             # 활성 멘토십이 있는 모든 멘티 조회
+            active_mentorships = Mentorship.objects.filter(is_active=True)
+            mentee_ids = [m.mentee_id for m in active_mentorships]
             mentees = User.objects.filter(
                 role='mentee',
-                mentorship_mentee__is_active=True
+                user_id__in=mentee_ids
             ).distinct()
             
             for mentee in mentees:

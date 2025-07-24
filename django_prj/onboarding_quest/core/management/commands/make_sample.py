@@ -889,20 +889,21 @@ class Command(BaseCommand):
             # 멘토 또는 멘티의 부서 정보 가져오기
             mentor = User.objects.get(user_id=mentorship.mentor_id)
             mentee = User.objects.get(user_id=mentorship.mentee_id)
-            
+
             # 부서명 확인 (멘토 부서 우선, 없으면 멘티 부서)
             mentor_dept = mentor.department.department_name if mentor.department else None
             mentee_dept = mentee.department.department_name if mentee.department else None
             dept_name = mentor_dept or mentee_dept
-            
+
             # 부서별 맞춤 리포트 선택
             if dept_name in dept_specific_reports:
                 report_pool = dept_specific_reports[dept_name]
             else:
                 report_pool = default_reports
-            
-            # 랜덤하게 리포트 선택
-            mentorship.report = random.choice(report_pool)
-            mentorship.save()
-            
-        self.stdout.write(f'Mentorship 리포트 샘플 {mentorships.count()}개 생성 완료!')
+
+            # is_active가 False인 경우에만 리포트 값 입력
+            if mentorship.is_active is False:
+                mentorship.report = random.choice(report_pool)
+                mentorship.save()
+
+        self.stdout.write(f'Mentorship 리포트 샘플 {mentorships.filter(is_active=False).count()}개 생성 완료!')
