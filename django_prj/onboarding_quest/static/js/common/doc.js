@@ -2,12 +2,29 @@
 
 console.log("🔥 doc.js 로딩됨");
 
+// 전역 변수들
 const dropArea = document.getElementById('doc-drop-area');
 const fileInput = document.getElementById('doc-file-input');
 let addedFiles = [];
 const uploadListTbody = document.getElementById('doc-upload-list-tbody');
 const uploadBtn = document.getElementById('doc-upload-btn');
 
+// API URL 설정
+const getApiBaseUrl = () => {
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:8001';
+  } else {
+    return `${protocol}//${hostname}:8001`;
+  }
+};
+
+const API_BASE_URL = getApiBaseUrl();
+console.log('🌐 Using API_BASE_URL:', API_BASE_URL);
+
+// ⭐ renderUploadList 함수를 먼저 정의
 function renderUploadList() {
   if (!uploadListTbody) return;
 
@@ -15,40 +32,23 @@ function renderUploadList() {
   addedFiles.forEach((f, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-  <td style="width:5%;"></td> <!-- 체크박스 열 자리 맞춤 -->
-  <td style="width:25%;">${f.name}</td>
-  <td style="width:40%;">
-    <input type="text" placeholder="설명 입력" value="${f.description}" 
-           onchange="updateFileInfo(${idx}, 'description', this.value)">
-  </td>
-  <td style="width:15%; text-align: center;">
-    <input type="checkbox" ${f.common_doc ? 'checked' : ''} 
-           onchange="updateFileInfo(${idx}, 'common_doc', this.checked)">
-  </td>
-  <td style="width:15%; text-align: center;">
-    <button class="remove-file-btn" onclick="removeFile(${idx})">❌</button>
-  </td>
-`;
-
+      <td style="width:5%;"></td>
+      <td style="width:25%;">${f.name}</td>
+      <td style="width:40%;">
+        <input type="text" placeholder="설명 입력" value="${f.description}" 
+               onchange="updateFileInfo(${idx}, 'description', this.value)">
+      </td>
+      <td style="width:15%; text-align: center;">
+        <input type="checkbox" ${f.common_doc ? 'checked' : ''} 
+               onchange="updateFileInfo(${idx}, 'common_doc', this.checked)">
+      </td>
+      <td style="width:15%; text-align: center;">
+        <button class="remove-file-btn" onclick="removeFile(${idx})">❌</button>
+      </td>
+    `;
     uploadListTbody.appendChild(tr);
   });
 
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //   }
-  // }
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //     document.getElementById('doc-reset-btn')?.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //     document.getElementById('doc-reset-btn')?.classList.remove('show');
-  //   }
-  // }
   const btnGroup = document.getElementById('doc-btn-group');
   const uploadBtn = document.getElementById('doc-upload-btn');
   const resetBtn = document.getElementById('doc-reset-btn');
@@ -62,9 +62,9 @@ function renderUploadList() {
     uploadBtn?.classList.remove('show');
     resetBtn?.classList.remove('show');
   }
-
 }
 
+// 업데이트 및 삭제 함수들
 function updateFileInfo(idx, field, value) {
   if (addedFiles[idx]) addedFiles[idx][field] = value;
 }
@@ -74,15 +74,7 @@ function removeFile(idx) {
   renderUploadList();
 }
 
-// function handleFiles(files) {
-//   Array.from(files).forEach(file => {
-//     if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
-//       addedFiles.push({ file, name: file.name, description: '', common_doc: false });
-//     }
-//   });
-//   renderUploadList();
-// }
-
+// 중복 체크 함수
 function isDuplicate(file) {
   return addedFiles.some(f =>
     f.file.name === file.name &&
@@ -91,16 +83,24 @@ function isDuplicate(file) {
   );
 }
 
+// ⭐ handleFiles 함수 (renderUploadList 정의 후)
 function handleFiles(files) {
+  if (!files || files.length === 0) return;
+  
   Array.from(files).forEach(file => {
     if (!isDuplicate(file)) {
-      addedFiles.push({ file, name: file.name, description: '', common_doc: false });
+      addedFiles.push({ 
+        file, 
+        name: file.name, 
+        description: '', 
+        common_doc: false 
+      });
     }
   });
   renderUploadList();
 }
 
-
+// 드래그 앤 드롭 및 파일 입력 이벤트 설정
 if (dropArea && fileInput) {
   ['dragenter', 'dragover'].forEach(evt => {
     dropArea.addEventListener(evt, e => {
@@ -122,16 +122,17 @@ if (dropArea && fileInput) {
   });
 
   dropArea.addEventListener('click', () => fileInput.click());
-  // fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  
   fileInput.addEventListener('change', e => {
     handleFiles(e.target.files);
     fileInput.value = '';  // 같은 파일을 다시 선택할 수 있도록 초기화
   });
-
 }
 
+// 업로드 버튼 이벤트
 uploadBtn?.addEventListener('click', async () => {
   if (addedFiles.length === 0) return;
+  
   uploadBtn.disabled = true;
   uploadBtn.textContent = '업로드 중...';
 
@@ -139,13 +140,15 @@ uploadBtn?.addEventListener('click', async () => {
     for (const fileInfo of addedFiles) {
       const formData = new FormData();
       formData.append('file', fileInfo.file);
-      formData.append('title', fileInfo.name);  // ✅ FastAPI → Django 업로드에서 필요
+      formData.append('title', fileInfo.name);
       formData.append('description', fileInfo.description);
       formData.append('common_doc', fileInfo.common_doc ? 'true' : 'false');
       formData.append('department_id', CURRENT_DEPARTMENT_ID);
       formData.append('original_file_name', fileInfo.name);
 
-      const response = await fetch('http://localhost:8001/api/docs/rag/upload', {
+      console.log('📤 업로드 URL:', `${API_BASE_URL}/api/docs/rag/upload`);
+
+      const response = await fetch(`${API_BASE_URL}/api/docs/rag/upload`, {
         method: 'POST',
         body: formData
       });
@@ -154,7 +157,6 @@ uploadBtn?.addEventListener('click', async () => {
       try {
         result = await response.json();
       } catch (jsonError) {
-        // JSON 파싱 실패 시 텍스트로 받아서 에러 표시
         const errorText = await response.text();
         throw new Error(`서버 응답 파싱 오류 (${response.status}): ${errorText}`);
       }
@@ -272,7 +274,7 @@ function confirmDelete() {
   formData.append('docs_id', deleteDocId);
   formData.append('department_id', CURRENT_DEPARTMENT_ID);
 
-  fetch(`http://localhost:8001/api/docs/rag/${deleteDocId}`, {
+  fetch(`http://15.165.82.201:8001/api/docs/rag/${deleteDocId}`, {
     method: 'DELETE'
   })
     .then(async res => {
@@ -314,7 +316,7 @@ window.addEventListener('click', function (e) {
 
 async function loadDocumentList(departmentId) {
   try {
-    const url = `http://localhost:8001/api/docs/department/${departmentId}`;
+    const url = `http://15.165.82.201:8001/api/docs/department/${departmentId}`;
     console.log("📡 요청 URL:", url);
     
     const response = await fetch(url);
@@ -346,7 +348,7 @@ async function loadDocumentList(departmentId) {
       tr.innerHTML = `
   <td><input type="checkbox" class="doc-checkbox" data-doc-id="${doc.docs_id}"></td>
   <td>
-    <a href="http://localhost:8001/api/docs/documents/download/${doc.docs_id}">
+    <a href="http://15.165.82.201:8001/api/docs/documents/download/${doc.docs_id}">
       📄 ${doc.title || "이름없음"}
     </a>
   </td>
@@ -384,7 +386,7 @@ async function loadDocumentList(departmentId) {
   //     for (const cb of selected) {
   //       const docId = cb.dataset.docId;
   //       try {
-  //         const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+  //         const res = await fetch(`http://15.165.82.201:8001/api/docs/rag/${docId}`, { method: "DELETE" });
   //         const result = await res.json();
   //         if (!result.success) {
   //           console.warn("삭제 실패:", result.message);
@@ -402,7 +404,7 @@ async function loadDocumentList(departmentId) {
 }
 
 function downloadDocument(docsId) {
-  window.location.href = `http://localhost:8001/api/documents/download/${docsId}`;
+  window.location.href = `http://15.165.82.201:8001/api/documents/download/${docsId}`;
 }
 
 
@@ -445,7 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const cb of selected) {
       const docId = cb.dataset.docId;
       try {
-        const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+        const res = await fetch(`http://15.165.82.201:8001/api/docs/rag/${docId}`, { method: "DELETE" });
         const result = await res.json();
         if (!result.success) {
           console.warn("삭제 실패:", result.message);
@@ -493,4 +495,5 @@ function handleUpload(files) {
   });
   renderUploadList();
 }
+
 

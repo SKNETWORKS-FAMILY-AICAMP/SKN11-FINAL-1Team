@@ -26,7 +26,7 @@ class ChatBot {
 
     async loadMessagesFromAPI(sessionId) {
         try {
-            const res = await fetch(`http://127.0.0.1:8001/api/chat/messages/${sessionId}`);
+            const res = await fetch(`http://15.165.82.201:8001/api/chat/messages/${sessionId}`);
             const data = await res.json();
 
             if (!data.success) {
@@ -61,7 +61,7 @@ class ChatBot {
         console.log("📥 세션 로드 시작");
 
         try {
-            const res = await fetch(`http://127.0.0.1:8001/api/chat/sessions/${user_id}`);
+            const res = await fetch(`http://15.165.82.201:8001/api/chat/sessions/${user_id}`);
             const data = await res.json();
 
             console.log("📥 세션 목록 응답 데이터:", data);
@@ -195,7 +195,7 @@ class ChatBot {
         const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
 
         try {
-            const response = await fetch('http://127.0.0.1:8001/api/chat/rag', {
+            const response = await fetch('http://15.165.82.201:8001/api/chat/rag', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -274,7 +274,7 @@ class ChatBot {
     //     const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
 
     //     try {
-    //         const response = await fetch('http://127.0.0.1:8001/api/chat/rag', {
+    //         const response = await fetch('http://15.165.82.201:8001/api/chat/rag', {
     //             method: 'POST',
     //             headers: {
     //                 'Content-Type': 'application/json'
@@ -458,7 +458,7 @@ class ChatBot {
 
     async loadSessionMessages(sessionId) {
         try {
-            const res = await fetch(`http://127.0.0.1:8001/api/chat/messages/${sessionId}`);
+            const res = await fetch(`http://15.165.82.201:8001/api/chat/messages/${sessionId}`);
             const data = await res.json();
 
             if (!data.success) {
@@ -599,7 +599,7 @@ class ChatBot {
 
     async executeDelete() {
         try {
-            const response = await fetch('http://127.0.0.1:8001/api/chat/session/delete', {
+            const response = await fetch('http://15.165.82.201:8001/api/chat/session/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
@@ -640,7 +640,7 @@ class ChatBot {
 
 async function createNewSession() {
     try {
-        const res = await fetch('http://127.0.0.1:8001/api/chat/session/create', {
+        const res = await fetch('http://15.165.82.201:8001/api/chat/session/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ user_id: user_id })
@@ -758,5 +758,6 @@ document.addEventListener('DOMContentLoaded', function () {
         window.chatBot = new ChatBot();  // ✅ 한 번만 실행되도록 보장
     }
 });
+
 
 

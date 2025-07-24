@@ -175,7 +175,7 @@ def doc_upload(request):
                 'original_file_name': uploaded_file.name
             }
 
-            rag_api_url = f"{settings.RAG_API_URL}/upload"
+            rag_api_url = f"{settings.RAG_API_URL}/api/docs/rag/upload"
             response = requests.post(rag_api_url, files=files, data=data, timeout=30)
             
             if response.status_code == 200:

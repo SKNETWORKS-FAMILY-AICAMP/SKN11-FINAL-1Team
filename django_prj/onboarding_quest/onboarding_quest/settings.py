@@ -28,10 +28,9 @@ DEBUG = str2bool(os.getenv('DEBUG', 'False'))
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost', 
-    '54.180.82.143',  # 현재 EC2 공인 IP
+    '15.165.82.201',  # 현재 EC2 공인 IP
     '*',  # 모든 호스트 허용 (개발용, 운영에서는 권장하지 않음)
 ]
-
 # =================================
 # 📋 로깅 설정
 # =================================
@@ -141,11 +140,12 @@ WSGI_APPLICATION = 'onboarding_quest.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'database-1'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'sungilbang'),
-        'HOST': os.getenv('DB_HOST', '52.79.149.1'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'NAME': 'database-1',
+        'USER': 'postgres',
+        'PASSWORD': 'sungilbang',
+        'HOST': 'database-1.czcym4u8awpn.ap-northeast-2.rds.amazonaws.com',
+        'PORT': '5432'
+        
     }
 }
 
@@ -232,3 +232,4 @@ if DEBUG:
     print(f"   - Media Root: {MEDIA_ROOT}")
     print(f"   - RAG API: {RAG_API_URL}")
     print(f"   - Log Level: {LOG_LEVEL}")
+
