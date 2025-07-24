@@ -10,6 +10,8 @@
 <script>
     // 사용자 역할(멘토/멘티)을 JS 변수로 전달
     window.userRole = "{{ user.role }}";  // "mentor" 또는 "mentee"
+
+    const finalReport = "{{ final_report|default_if_none:''|escapejs }}";
 </script>
 
 
@@ -42,21 +44,22 @@
     </div>
   </div>
 
-   {% if final_report %}
-<div class="task-card final-report-card done"
-     onclick="updateFinalReportPanel({{ mentorship_id }})">
+   <!-- ✅ 최종 평가 보고서: 반복문 밖에 둠 -->
+  {% if final_report %}
+<div class="task-card done"
+     data-task-id="final_report"
+     onclick="updateTaskDetailPanel('final_report')">
   <div class="task-card-header">
     <span class="status-badge done">최종</span>
     <span class="task-title">최종 평가 보고서</span>
   </div>
   <div class="task-desc-row">
     <div class="task-desc" style="white-space: pre-wrap;">
-      {{ final_report|truncatechars:50 }}
+      {{ final_report|truncatechars:80 }}
     </div>
   </div>
 </div>
 {% endif %}
-
 
 
   {% for week, tasks in week_tasks.items %}
@@ -115,6 +118,12 @@
 </div>
   <!-- 우측: 상세 정보 -->
   <div class="tasklist-right">
+    <!-- 최종 평가 보고서 전용 영역 (기본 숨김) -->
+    <div id="report-detail-panel" style="display:none; padding:10px;">
+        <h3>최종 평가 보고서</h3>
+        <div id="report-content" style="white-space: pre-wrap; line-height:1.6;"></div>
+    </div> <!-- report-detail-panel 닫기 -->
+
     <div class="task-detail-header" id="detail-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
 
       <div style="display:flex; align-items:center; gap:12px;">
@@ -495,8 +504,6 @@ async function selectTask(taskCard, taskId, animate = true) {
     }
 }
 
-
-
 // 🔄 우측 패널 업데이트 (API 호출)
 async function updateTaskDetailPanel(taskId) {
     try {
@@ -504,7 +511,65 @@ async function updateTaskDetailPanel(taskId) {
         
         // 로딩 상태 표시
         showLoadingState();
-        
+
+            if (taskId === 'final_report') {
+                console.log('📄 최종 평가 보고서 로드');
+
+                // 기존 task UI 업데이트 (제목 + 설명만 사용)
+                updateTaskInfo({
+                    id: 'final_report',
+                    title: '최종 평가 보고서',
+                    description: finalReport || '최종 평가 보고서가 없습니다.',
+                    guideline: '',
+                    status: '',
+                    priority: '',
+                    scheduled_end_date: ''
+                });
+
+                // report 클릭 시 가이드라인, 우선순위(D-Day), 하위 테스크 버튼 숨김
+                const guidelineContent = document.getElementById('guideline-content');
+                const metaRow = document.getElementById('detail-meta-row');
+                const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+
+                if (guidelineContent) guidelineContent.style.display = 'none';
+                if (metaRow) metaRow.style.display = 'none';
+                if (subtaskBtn) {
+                    subtaskBtn.style.display = 'none';
+                    console.log('하위 테스크 버튼 숨김');
+                }
+
+                // **강제 숨김(비동기) - updateTaskInfo에서 덮어쓰는 경우 방지**
+                setTimeout(() => {
+                    const subtaskBtnForce = document.getElementById('task-detail-subtask-btn');
+                    if (subtaskBtnForce) {
+                        subtaskBtnForce.style.display = 'none';
+                        console.log('하위 테스크 버튼 강제 숨김 완료');
+                    }
+                }, 50);
+
+                // 메모 영역 초기화
+                updateMemoList([]);
+                currentTask = {
+                    id: 'final_report',
+                    title: '최종 평가 보고서',
+                    description: finalReport || ''
+                };
+
+                hideLoadingState();
+                return;
+            } else {
+                // 다른 태스크 클릭 시 숨겨진 요소 복원
+                const guidelineContent = document.getElementById('guideline-content');
+                const metaRow = document.getElementById('detail-meta-row');
+                const subtaskBtn = document.getElementById('task-detail-subtask-btn');
+
+                if (guidelineContent) guidelineContent.style.display = '';
+                if (metaRow) metaRow.style.display = '';
+                if (subtaskBtn) subtaskBtn.style.display = 'inline-block';
+            }
+
+
+
         // API 호출
         const response = await fetch(`/mentee/task_detail/${taskId}/`, {
             method: 'GET',
@@ -573,36 +638,6 @@ async function updateTaskDetailPanel(taskId) {
         showErrorState();
     } finally {
         hideLoadingState();
-    }
-}
-
-// 최종 평가 보고서 업데이트
-async function updateFinalReportPanel(mentorshipId) {
-    try {
-        console.log(`🔄 최종 평가 보고서 로드: mentorship_id=${mentorshipId}`);
-        const response = await fetch(`/mentee/final_report/${mentorshipId}/`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) throw new Error('HTTP 오류');
-
-        const data = await response.json();
-        if (data.success) {
-            const detailPanel = document.querySelector('.tasklist-right');
-            detailPanel.innerHTML = `
-                <div style="padding: 24px;">
-                    <h2 style="font-size: 24px; font-weight: bold;">최종 평가 보고서</h2>
-                    <div style="white-space: pre-wrap; line-height: 1.6;">
-                        ${data.report}
-                    </div>
-                </div>
-            `;
-        } else {
-            alert(data.error);
-        }
-    } catch (err) {
-        console.error('최종 보고서 로드 실패:', err);
     }
 }
 
