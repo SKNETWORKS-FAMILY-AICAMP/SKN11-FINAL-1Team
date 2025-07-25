@@ -205,7 +205,7 @@ def task_comment(request, task_assign_id):
                 'task_assign_id': task_assign_id,
                 'user_id': user_id,
                 'comment': comment,
-                'create_date': datetime.now().date().isoformat()
+                'create_date': datetime.now().isoformat()
             }
             
             result = fastapi_client.create_memo(memo_data)
