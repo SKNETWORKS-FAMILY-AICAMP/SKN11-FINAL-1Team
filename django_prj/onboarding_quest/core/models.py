@@ -180,6 +180,7 @@ class Alarm(models.Model):
     message = models.TextField(help_text='알림 메시지')
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='생성일시')
     is_active = models.BooleanField(default=True, help_text='활성화 여부')
+    url_link = models.URLField(null=True, blank=True, help_text='알림 관련 URL 링크')
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.message[:30]}"
@@ -273,6 +274,7 @@ class Mentorship(models.Model):
     curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
     total_weeks = models.IntegerField(default=0, help_text='총 주차 수')
     report = models.TextField(null=True, blank=True, help_text='멘티 최종 평가')
+    url_link = models.URLField(null=True, blank=True, help_text='리포트 관련 URL 링크')
 
 class TaskAssign(models.Model):
     task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')
