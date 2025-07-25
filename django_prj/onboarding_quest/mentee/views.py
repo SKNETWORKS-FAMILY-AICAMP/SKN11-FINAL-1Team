@@ -767,7 +767,7 @@ def task_list(request):
         week_tasks = defaultdict(list)
         selected_task = None
         
-        # 🔧 현재 사용자 ID와 역할 가져오기
+        # 해당 멘토-멘티 멘토쉽 정보 확인 
         user_id = getattr(request.user, 'user_id', None)
         user_role = getattr(request.user, 'role', None)
         if not user_id:
@@ -893,8 +893,6 @@ def task_list(request):
             'selected_task': selected_task,
             'mentorship_id': mentorship_id,
             'user_role': user_role,  # 멘토/멘티 구분을 위한 역할 정보
-            'final_report': final_report,
-            'is_active': mentorship_obj.is_active if mentorship_obj else False,
         }
         return render(request, 'mentee/task_list.html', context)
         
@@ -924,24 +922,6 @@ def task_detail(request, task_assign_id):
         if not user_id:
             logger.warning("사용자 ID를 찾을 수 없음")
             return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
-        
-        from core.models import Mentorship
-
-        # -----------------------------
-        # 최종 평가 보고서 처리 (하드코딩)
-        # -----------------------------
-        mentorship_obj = Mentorship.objects.filter(mentee_id=user_id).first()
-        if mentorship_obj and mentorship_obj.is_active is False:
-            final_report = getattr(mentorship_obj, 'report', None)
-            if final_report and final_report.strip() != '':
-                logger.info("최종 평가 보고서 반환")
-                return JsonResponse({
-                    'success': True,
-                    'task': {
-                        'title': "최종 평가 보고서",
-                        'description': final_report
-                    }
-                })
         
         # FastAPI로 태스크 상세 정보 조회
         logger.info(f"FastAPI로 태스크 조회 중... task_assign_id: {task_assign_id}")
@@ -1099,17 +1079,19 @@ def update_task_status(request, task_id):
             return JsonResponse({'success': False, 'error': 'mentorship_id가 필요합니다.'}, status=400)
             
         # 🔍 사용자가 해당 멘토쉽에 접근 권한이 있는지 확인
-        mentorships_result = fastapi_client.get_mentorships(is_active=True)
+        mentorships_result = fastapi_client.get_mentorships(
+            mentee_id=user_id,
+            is_active=True
+        )
         mentorships = mentorships_result.get('mentorships', [])
-        user_mentorship_ids = []
-        for m in mentorships:
-            # 멘티 또는 멘토로 참여한 멘토십만 허용
-            if m.get('mentee_id') == user_id or m.get('mentor_id') == user_id:
-                user_mentorship_ids.append(m.get('id'))
-        logger.info(f"🔍 로그인 유저가 멘티/멘토로 속한 멘토십 ID들: {user_mentorship_ids}")
+        
+        # 사용자의 멘토쉽 목록에서 요청된 mentorship_id가 있는지 확인
+        user_mentorship_ids = [m.get('id') for m in mentorships]
+        logger.info(f"🔍 사용자의 활성 멘토쉽 ID들: {user_mentorship_ids}")
+        
         if client_mentorship_id not in user_mentorship_ids:
-            logger.error(f"❌ 권한 없음: 사용자 {user_id}는 멘토십 {client_mentorship_id}에 속하지 않음")
-            return JsonResponse({'success': False, 'error': '해당 멘토십에 대한 권한이 없습니다.'}, status=403)
+            logger.error(f"❌ 권한 없음: 사용자 {user_id}는 멘토쉽 {client_mentorship_id}에 접근할 수 없음")
+            return JsonResponse({'success': False, 'error': '해당 멘토쉽에 대한 권한이 없습니다.'}, status=403)
         
         # 🎯 클라이언트에서 요청한 mentorship_id 사용 (검증 완료)
         mentorship_id = client_mentorship_id

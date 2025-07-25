@@ -109,10 +109,35 @@ function updateFilterResults() {
     console.log(`필터링 결과: ${visibleRows.length}/${tableRows.length} 개의 멘토십이 표시됩니다.`);
 }
 
+// 비활성화된 멘토쉽 아래로 내리기
+function reorderRows() {
+    const tbody = document.querySelector('#mentorship-table tbody');
+    if (!tbody) return;
+    Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+        const statusCell = row.cells[5];
+        const statusText = statusCell ? statusCell.textContent.trim() : '';
+        if (statusText.includes('비활성')) {
+            tbody.appendChild(row);
+        }
+    });
+}
+
 // 페이지 로드 시 초기 필터 적용
 document.addEventListener('DOMContentLoaded', function() {
     // 초기 필터 적용 (URL 파라미터가 있는 경우)
     applyFilters();
+    // 비활성 항목은 하단으로 이동
+    reorderRows();
+
+    // 검색 입력 시 엔터키 처리
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchMentorships();
+            }
+        });
+    }
 });
 
 function editMentorship(mentorshipId) {
@@ -132,11 +157,11 @@ function editMentorship(mentorshipId) {
             document.getElementById('edit-start-date').value = data.start_date || '';
             document.getElementById('edit-end-date').value = data.end_date || '';
             document.getElementById('edit-curriculum').value = data.curriculum_id || '';
-            // effective_is_active 값을 사용하여 실제 활성 상태 표시
-            document.getElementById('edit-status').value = data.effective_is_active ? 'true' : 'false';
-            
-            console.log('Setting modal status to:', data.effective_is_active, '(effective_is_active)');
-            console.log('Raw mentorship is_active:', data.is_active);
+            // is_active 값을 사용하여 실제 활성 상태 표시 (boolean or string)
+            const rawIsActive = data.is_active;
+            const isActive = rawIsActive === true || rawIsActive === 'True' || rawIsActive === 'true';
+            document.getElementById('edit-status').value = isActive ? 'true' : 'false';
+            console.log('Raw is_active:', rawIsActive, ', parsed isActive:', isActive);
             
             document.getElementById('edit-modal').classList.remove('hidden');
         })
@@ -197,10 +222,8 @@ function saveMentorship() {
     .then(data => {
         console.log('Response data:', data);
         if (data.success) {
-            alert('멘토쉽이 성공적으로 수정되었습니다.');
             // 모달 닫기
             closeEditModal();
-            
             // 페이지 새로고침으로 변경사항 즉시 반영
             window.location.reload();
         } else {
