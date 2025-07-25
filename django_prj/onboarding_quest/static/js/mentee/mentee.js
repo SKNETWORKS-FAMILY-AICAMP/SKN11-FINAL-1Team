@@ -175,54 +175,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const onboardingClose = document.getElementById('onboarding-close');
   const onboardingConfirm = document.getElementById('onboarding-confirm');
 
-  // 로컬스토리지에 저장된 상태 확인
-  if (localStorage.getItem('onboardingCompleted') === 'true' && completeBtn) {
-    completeBtn.style.display = 'none';
-  }
-
-  // 완료율이 100%일 때만 온보딩 종료 버튼 표시 (단, 아직 완료 안한 경우)
-  if (completionText && completeBtn && localStorage.getItem('onboardingCompleted') !== 'true') {
+  // 완료율이 100%면 온보딩 종료 버튼 표시
+  if (completionText && completeBtn) {
     const percentage = parseInt(completionText.textContent.replace('%', ''), 10);
     if (percentage === 100) {
       completeBtn.style.display = 'inline-block';
     }
   }
 
-  // 온보딩 종료 버튼 클릭 시 모달 열기
+  // 버튼 클릭 시 모달 열기
   if (completeBtn) {
     completeBtn.addEventListener('click', () => {
       onboardingModal.style.display = 'block';
     });
   }
 
-  // 모달 닫기 버튼
-  if (onboardingClose) {
-    onboardingClose.addEventListener('click', () => {
-      onboardingModal.style.display = 'none';
-    });
-  }
+  // 닫기 버튼
+  onboardingClose.addEventListener('click', () => {
+    onboardingModal.style.display = 'none';
+  });
 
-  // 모달 확인 버튼
-  if (onboardingConfirm) {
-    onboardingConfirm.addEventListener('click', () => {
-      onboardingModal.style.display = 'none';
+  // 확인 버튼
+  onboardingConfirm.addEventListener('click', () => {
+    onboardingModal.style.display = 'none';
+    completeFinalTask();
+  });
 
-      // 온보딩 종료 버튼 숨기기 + 로컬스토리지에 상태 저장
-      if (completeBtn) {
-        completeBtn.style.display = 'none';
-        localStorage.setItem('onboardingCompleted', 'true');
-      }
-    });
-  }
-
-  // 모달 바깥 영역 클릭 시 닫기
+  // 모달 외부 클릭 시 닫기
   window.addEventListener('click', (event) => {
     if (event.target === onboardingModal) {
       onboardingModal.style.display = 'none';
     }
   });
 });
-
 
 
 
