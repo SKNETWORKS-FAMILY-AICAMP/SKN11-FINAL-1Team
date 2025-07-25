@@ -520,6 +520,19 @@ def user_create(request):
             import json
             try:
                 json_data = json.loads(request.body)
+                
+                # 현재 로그인한 사용자의 회사 ID 가져오기
+                user_data_session = request.session.get('user_data', {})
+                if isinstance(user_data_session, list) and len(user_data_session) > 0:
+                    user_data_session = user_data_session[0]
+                company_id = user_data_session.get('company_id')
+                
+                if not company_id:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '회사 정보를 찾을 수 없습니다. 관리자에게 문의하세요.'
+                    }, status=400)
+                
                 user_data = {
                     'first_name': json_data.get('first_name'),
                     'last_name': json_data.get('last_name'),
@@ -534,14 +547,9 @@ def user_create(request):
                     'is_admin': json_data.get('is_admin') == True,
                     'department_id': int(json_data.get('department_id')) if json_data.get('department_id') else None,
                     'is_active': json_data.get('is_active', False),
+                    'company_id': str(company_id)  # company_id를 문자열로 처리
                 }
-                user_data_session = request.session.get('user_data', {})
-                company_id = user_data_session.get('company_id')
-                if company_id:
-                    try:
-                        user_data['company_id'] = int(company_id)
-                    except Exception:
-                        pass  # company_id가 int가 아니면 전달하지 않음
+                
                 result = fastapi_client.create_user(user_data)
                 return JsonResponse({
                     'success': True,
@@ -556,6 +564,16 @@ def user_create(request):
                 return JsonResponse({'success': False, 'error': f'사용자 생성 중 예상치 못한 오류가 발생했습니다: {str(e)}'}, status=500)
         # 기존 폼 처리
         try:
+            # 현재 로그인한 사용자의 회사 ID 가져오기
+            user_data_session = request.session.get('user_data', {})
+            if isinstance(user_data_session, list) and len(user_data_session) > 0:
+                user_data_session = user_data_session[0]
+            company_id = user_data_session.get('company_id')
+            
+            if not company_id:
+                messages.error(request, '회사 정보를 찾을 수 없습니다. 관리자에게 문의하세요.')
+                return redirect('account:supervisor')
+            
             user_data = {
                 'first_name': request.POST.get('first_name'),
                 'last_name': request.POST.get('last_name'),
@@ -570,14 +588,9 @@ def user_create(request):
                 'is_admin': request.POST.get('is_admin') == 'on',
                 'department_id': int(request.POST.get('department_id')) if request.POST.get('department_id') else None,
                 'is_active': request.POST.get('is_active') == 'on',
+                'company_id': str(company_id)  # company_id를 문자열로 처리
             }
-            user_data_session = request.session.get('user_data', {})
-            company_id = user_data_session.get('company_id')
-            if company_id:
-                try:
-                    user_data['company_id'] = int(company_id)
-                except Exception:
-                    pass
+            
             result = fastapi_client.create_user(user_data)
             messages.success(request, f"사용자 '{user_data['first_name']} {user_data['last_name']}'가 성공적으로 생성되었습니다.")
             return redirect('account:supervisor')

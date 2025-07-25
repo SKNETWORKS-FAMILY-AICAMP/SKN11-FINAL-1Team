@@ -136,6 +136,7 @@ class User(UserBase):
 class AlarmBase(BaseModel):
     message: str
     is_active: Optional[bool] = True
+    url_link: Optional[str] = None
     
     @validator('message')
     def message_must_not_be_empty(cls, v):
@@ -237,14 +238,16 @@ class MentorshipBase(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     is_active: Optional[bool] = True
-    curriculum_title: Optional[str] = None  # Django 모델에 맞게 curriculum_title 사용
+    curriculum_title: Optional[str] = None
     total_weeks: Optional[int] = 0
+    report: Optional[str] = None
+    url_link: Optional[str] = None
 
 class MentorshipCreate(MentorshipBase):
     pass
 
 class Mentorship(MentorshipBase):
-    mentorship_id: int  # Django 모델의 기본키
+    mentorship_id: int
     mentor: Optional[User] = None
     mentee: Optional[User] = None
     
@@ -263,6 +266,8 @@ class MentorshipResponse(BaseModel):
     status: Optional[str] = "active"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    report: Optional[str] = None
+    url_link: Optional[str] = None
     
     # 추가 정보
     mentee_name: str

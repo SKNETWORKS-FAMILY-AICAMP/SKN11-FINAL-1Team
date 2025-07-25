@@ -369,10 +369,23 @@ body, html {
   <div class="main-content bg-gray-50 p-6 rounded-lg">
     <div class="welcome-section bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8 flex items-center gap-6">
       <img src="{% if request.user.is_authenticated and request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'img/default_profile.png' %}{% endif %}" alt="프로필" class="w-16 h-16 rounded-full object-cover border-2 border-green-200 bg-white shadow-sm" />
-      <div class="flex flex-col flex-1">
+      <div class="flex flex-col flex-1 justify-center">
+
+        
+
         <div class="flex items-center gap-3 mb-2">
           <span class="text-xl font-bold text-gray-900">완료율: <span id="userLevelTop">{{ completion_percentage|default:0 }}%</span></span>
+          <!-- ✅ 완료 버튼 -->
+        <div class="flex justify-end mb-2" style="flex:1;align-items:right;">
+          <button id="final-complete-btn" 
+                  class="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-all"
+                  style="display:none;"
+                  onclick="completeFinalTask()">
+            온보딩 종료 
+          </button>
         </div>
+        </div>
+
         <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
           <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: {{ completion_percentage|default:0 }}%"></div>
         </div>
@@ -503,7 +516,7 @@ body, html {
                    data-status="{{ task.status|escapejs }}"
                    data-guideline="{{ task.guideline|default_if_none:''|escapejs }}"
                    data-memos="{{ task.memos|safe }}"
-                   onclick="showTaskDetail({{ task.task_assign_id }})"
+                   onclick="goToTaskDetail({{ task.task_assign_id }})"
                    id="task{{ task.task_assign_id }}"
                    style="cursor: pointer;">
                 <div class="kanban-card-row" style="margin-bottom:2px; justify-content:space-between;">
@@ -526,6 +539,17 @@ body, html {
         </div>
         
       </div>
+
+      <!-- 온보딩 종료 모달 -->
+      <div id="onboarding-modal" class="custom-modal">
+        <div class="custom-modal-content">
+          <span id="onboarding-close" class="custom-close">&times;</span>
+          <h2>"첫걸음을 멋지게 내디딘 당신을 축하합니다.</h2>
+          <p>앞으로의 활약을 기대하며 잘 부탁드립니다!😊</p>
+          <button id="onboarding-confirm" class="custom-btn">확인</button>
+        </div>
+      </div>
+
     </div>
   </div>
 {% endblock %}
@@ -1025,6 +1049,45 @@ function updateTaskProgress() {
     if (userExpTop) userExpTop.textContent = completedCards;
     if (userExpMaxTop) userExpMaxTop.textContent = totalCards;
     if (expBarTop) expBarTop.style.width = `${Math.min(100, percentage)}%`;
+}
+
+function completeFinalTask() {
+    const mentorshipId = new URLSearchParams(window.location.search).get('mentorship_id');
+    if (!mentorshipId) {
+        showMessage('멘토십 정보를 찾을 수 없습니다.', 'error');
+        return;
+    }
+
+    if (confirm('정말로 온보딩을 종료하시겠습니까?\n종료 후에는 되돌릴 수 없으며, 최종 평가 보고서가 생성됩니다.')) {
+        // CSRF 토큰 가져오기
+        const csrftoken = getCookie('csrftoken');
+        
+        fetch('/mentee/complete_onboarding/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            },
+            body: JSON.stringify({
+                mentorship_id: mentorshipId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage('온보딩이 종료되었습니다. 최종 평가 보고서가 생성됩니다.', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showMessage(data.error || '온보딩 종료 중 오류가 발생했습니다.', 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('서버 오류가 발생했습니다.', 'error');
+            console.error('Error:', error);
+        });
+    }
 }
 </script>
 {% endblock %}

@@ -610,14 +610,33 @@ def get_task_memos(db: Session, task_assign_id: int):
     """특정 태스크의 메모 목록 조회"""
     return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
 
-def update_task_status(db: Session, task_id: int, status: str):
-    """태스크 상태 업데이트"""
+def update_task_status(
+    db: Session,
+    task_id: int,
+    status: str = None,
+    description: str = None,
+    guideline: str = None,
+    priority: str = None,
+    scheduled_end_date: str = None
+):
+    """태스크 상태 및 주요 필드 업데이트"""
     db_task = get_task_assign(db, task_id)
     if db_task:
-        db_task.status = status
+        if status is not None:
+            db_task.status = status
+        if description is not None:
+            db_task.description = description
+        if guideline is not None:
+            db_task.guideline = guideline
+        if priority is not None:
+            db_task.priority = priority
+        if scheduled_end_date is not None:
+            db_task.scheduled_end_date = scheduled_end_date
+
         db.commit()
         db.refresh(db_task)
     return db_task
+
 
 def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optional[int] = None):
     """태스크에 메모(댓글) 추가"""
@@ -893,7 +912,8 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
         mentee = get_user(db, user_id=db_mentorship.mentee_id) if db_mentorship.mentee_id else None
         
         # 멘토십 정보 업데이트
-        for key, value in mentorship_update.dict().items():
+        update_data = mentorship_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
             setattr(db_mentorship, key, value)
         
         # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
@@ -902,6 +922,17 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
             db_mentorship.is_active = False
         # 주의: 멘토와 멘티가 모두 활성 상태여도 이미 비활성화된 멘토쉽은 자동으로 활성화하지 않음
             
+        db.commit()
+        db.refresh(db_mentorship)
+    return db_mentorship
+
+def update_mentorship_report(db: Session, mentorship_id: int, report: str, url_link: Optional[str] = None):
+    """멘토십 리포트 업데이트"""
+    db_mentorship = get_mentorship(db, mentorship_id)
+    if db_mentorship:
+        db_mentorship.report = report
+        if url_link:
+            db_mentorship.url_link = url_link
         db.commit()
         db.refresh(db_mentorship)
     return db_mentorship
@@ -1110,7 +1141,14 @@ def delete_chat_message(db: Session, message_id: int):
 # Alarm CRUD
 def create_alarm(db: Session, alarm: schemas.AlarmCreate):
     """알람 생성"""
-    db_alarm = models.Alarm(**alarm.dict())
+    from datetime import datetime
+    db_alarm = models.Alarm(
+        user_id=alarm.user_id,
+        message=alarm.message,
+        is_active=alarm.is_active,
+        created_at=datetime.now(),
+        url_link=alarm.url_link
+    )
     db.add(db_alarm)
     db.commit()
     db.refresh(db_alarm)
@@ -1150,7 +1188,8 @@ def update_alarm(db: Session, alarm_id: int, alarm_update: schemas.AlarmCreate):
     """알람 정보 업데이트"""
     db_alarm = get_alarm(db, alarm_id)
     if db_alarm:
-        for key, value in alarm_update.dict().items():
+        update_data = alarm_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
             setattr(db_alarm, key, value)
         db.commit()
         db.refresh(db_alarm)

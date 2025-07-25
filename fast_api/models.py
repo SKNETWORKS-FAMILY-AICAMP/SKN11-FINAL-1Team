@@ -76,6 +76,7 @@ class Alarm(Base):
     message = Column(Text, nullable=False, comment="알림 메시지")
     created_at = Column(DateTime, default=func.now(), comment="생성일시")
     is_active = Column(Boolean, default=True, comment="활성화 여부")
+    url_link = Column(String(200), nullable=True, comment="알림 관련 URL 링크")
     
     # 관계 설정
     user = relationship("User", back_populates="alarms")
@@ -93,6 +94,8 @@ class Mentorship(Base):
     is_active = Column(Boolean, default=True, comment="멘토쉽 활성화 여부")
     curriculum_title = Column(String(255), comment="커리큘럼 제목")
     total_weeks = Column(Integer, default=0, comment="총 주차 수")
+    report = Column(Text, nullable=True, comment="멘티 최종 평가")
+    url_link = Column(String(200), nullable=True, comment="리포트 관련 URL 링크")
     
     # 관계 설정
     mentor = relationship("User", foreign_keys=[mentor_id], back_populates="mentor_relationships")
