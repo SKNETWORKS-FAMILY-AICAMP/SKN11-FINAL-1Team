@@ -329,7 +329,10 @@ function confirmDelete() {
   formData.append('department_id', CURRENT_DEPARTMENT_ID);
 
   fetch(`http://localhost:8001/api/docs/rag/${deleteDocId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${ACCESS_TOKEN}`
+    }
   })
     .then(async res => {
       let data;
@@ -606,6 +609,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+  // document.getElementById("bulk-delete-btn")?.addEventListener("click", async () => {
+  //   const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
+  //   if (selected.length === 0) return;
+
+  //   if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
+
+  //   for (const cb of selected) {
+  //     const docId = cb.dataset.docId;
+  //     try {
+  //       const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, {
+  //         method: "DELETE",
+  //         headers: {
+  //           'Authorization': `Bearer ${ACCESS_TOKEN}`
+  //         }
+  //       });
+  //       const result = await res.json();
+  //       if (!result.success) {
+  //         console.warn("삭제 실패:", result.message);
+  //       }
+  //     } catch (err) {
+  //       console.error("삭제 오류:", err);
+  //     }
+  //   }
+
+    
+
+
+  //   alert("삭제가 완료되었습니다.");
+  //   loadDocumentList(CURRENT_DEPARTMENT_ID);
+  // });
+
+
   document.getElementById("bulk-delete-btn")?.addEventListener("click", async () => {
     const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
     if (selected.length === 0) return;
@@ -615,7 +650,12 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const cb of selected) {
       const docId = cb.dataset.docId;
       try {
-        const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+        const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, {
+          method: "DELETE",
+          headers: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`
+          }
+        });
         const result = await res.json();
         if (!result.success) {
           console.warn("삭제 실패:", result.message);
@@ -625,12 +665,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    
-
-
     alert("삭제가 완료되었습니다.");
     loadDocumentList(CURRENT_DEPARTMENT_ID);
+
+    // ✅ 삭제 후 체크박스 초기화
+    document.querySelectorAll(".doc-checkbox").forEach(cb => cb.checked = false);
+
+    // ✅ 전체선택 체크박스 초기화
+    const selectAll = document.getElementById("select-all-docs");
+    if (selectAll) selectAll.checked = false;
+
+    // ✅ 버튼 숨기기
+    const btn = document.getElementById("bulk-delete-btn");
+    if (btn) btn.classList.remove("show");
   });
+
 
   document.getElementById('doc-reset-btn')?.addEventListener('click', () => {
     if (confirm("업로드 목록을 초기화하시겠습니까?")) {

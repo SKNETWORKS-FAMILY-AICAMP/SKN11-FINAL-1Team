@@ -62,6 +62,9 @@ body {
 }
 
 
+.doc-file-list {
+  position: relative;
+}
 
 
 
@@ -83,6 +86,11 @@ body {
 
 .doc-file-list {
   overflow-x: auto; /* ✅ 테이블 넘침 스크롤 처리 */
+}
+
+/* ✅ 선택 삭제 버튼의 위치 고정 */
+.doc-file-list {
+  position: relative;  /* 🔑 버튼의 absolute 기준 */
 }
 
 .doc-file-list-table {
@@ -189,28 +197,50 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* #bulk-delete-container { */
-  /* height: 42px; /* 버튼의 높이 + 여백만큼 고정 */
-  /* display: flex; */
-  /* justify-content: flex-end; */
-  /* align-items: center; */
-  /* margin-bottom: 10px; */
-/* } */
-#bulk-delete-container {
+
+/* #bulk-delete-container {
   position: relative;
   height: 0;
   margin-bottom: 36px; /* 테이블과의 간격 확보 */
+/* } */
+
+/* 선택 삭제 버튼을 부서 필터와 너비/정렬 맞춤 */
+#bulk-delete-container {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 4px;
 }
 
-/* #bulk-delete-btn {
-  display: none;
-} */
+/* ✅ 기존: margin 등 제거하고 위치 띄우기 */
+#bulk-delete-container {
+  position: absolute;
+  top: 40px;
+  right: 27px;
+  z-index: 10;
+  pointer-events: none;
+}
 
-#bulk-delete-btn {
+
+/* #bulk-delete-btn {
   position: absolute;
   top: -48px; /* 위로 띄워 테이블과 간격 줌 */
-  right: 40px;   /* 오른쪽 정렬 */
+  /* right: 40px;   /* 오른쪽 정렬 */
+  /* display: none;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); */
+/* } */
+
+#bulk-delete-btn {
   display: none;
+  pointer-events: auto;
   background-color: #ef4444;
   color: white;
   border: none;
@@ -221,6 +251,8 @@ body {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+
+
 
 #bulk-delete-btn.show {
   display: inline-block;
@@ -636,6 +668,12 @@ body {
     </div>
   </div>
 </div>
+
+<script>
+  const ACCESS_TOKEN = "{{ access_token|default_if_none:'' }}";
+</script>
+
+
 
 <script src="{% static 'js/common/doc.js' %}?v={{ now|date:'U' }}"></script>
 

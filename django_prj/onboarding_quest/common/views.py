@@ -365,9 +365,13 @@ def doc(request):
     # 🔹 모든 부서 목록 전달 (부서 필터용)
     all_departments = Department.objects.all()
 
+    # ✅ 세션에서 access_token 꺼내기 (새로 생성 ❌)
+    access_token = request.session.get('jwt_token', '')
+
     return render(request, 'common/doc.html', {
         'core_docs': all_docs,
-        'all_departments': all_departments
+        'all_departments': all_departments,
+        'access_token': access_token  # ⬅️ 기존 토큰 전달
     })
 
 

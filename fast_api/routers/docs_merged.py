@@ -13,7 +13,7 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from fastapi.responses import FileResponse
 from auth import get_current_user
 from models import User
-
+from fastapi import Request
 # 환경 변수 및 경로 설정
 UPLOAD_BASE_DIR = os.getenv("UPLOAD_BASE_DIR", "uploaded_docs")
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", "media")
@@ -116,88 +116,8 @@ async def upload_document_with_rag(
         logger.error(f"문서 업로드/임베딩 중 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"문서 업로드/임베딩 중 오류: {str(e)}")
 
-# @router.delete("/rag/{docs_id}")
-# async def delete_document_with_rag(docs_id: int, db: Session = Depends(get_db)):
-#     """문서 삭제 + Qdrant 청크 삭제"""
-#     logger.info(f"[DELETE] /api/docs/rag/{{docs_id}} 진입: docs_id={docs_id}")
-#     file_deleted = False
-#     db_deleted = False
-#     rag_result = {"removed_from_vector_db": False}
-#     try:
-#         db_docs = crud.get_docs(db, docs_id=docs_id)
-#         if db_docs is None:
-#             logger.error(f"삭제 요청된 docs_id={docs_id} 문서를 찾을 수 없습니다.")
-#             raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
 
-#         # 파일 삭제
-#         if db_docs.file_path and os.path.exists(db_docs.file_path):
-#             try:
-#                 os.remove(db_docs.file_path)
-#                 file_deleted = True
-#                 logger.info(f"파일 삭제 완료: {db_docs.file_path}")
-#             except Exception as e:
-#                 logger.exception(f"파일 삭제 중 오류: {db_docs.file_path}")
-#         else:
-#             logger.warning(f"삭제 시도 파일이 존재하지 않음: {db_docs.file_path}")
-
-#         # Qdrant 청크 삭제
-#         # ✅ Qdrant 청크 삭제 (부서 컬렉션 + 공통 컬렉션)
-#         try:
-#             normalized_source = f"documents/{os.path.basename(db_docs.file_path)}"
-#             filter_must = [
-#                 FieldCondition(key="metadata.source", match=MatchValue(value=normalized_source))
-#             ]
-
-#             filter_common = Filter(must=filter_must + [
-#                 FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
-#             ])
-#             filter_dept = Filter(must=filter_must + [
-#                 FieldCondition(key="metadata.department_id", match=MatchValue(value=int(db_docs.department_id)))
-#             ])
-
-#             # 부서 컬렉션 삭제
-#             deleted_dept = client.delete(
-#                 collection_name=f"rag_{db_docs.department_id}",
-#                 points_selector=filter_dept
-#             )
-#             logger.info(f"Qdrant 부서 컬렉션 삭제 완료: rag_{db_docs.department_id} -> {deleted_dept}")
-
-#             # 공통 컬렉션도 삭제 시도 (common_doc=True였던 경우)
-#             deleted_common = client.delete(
-#                 collection_name="rag_common",
-#                 points_selector=filter_common
-#             )
-#             logger.info(f"Qdrant 공통 컬렉션 삭제 완료: rag_common -> {deleted_common}")
-
-#             rag_result = {
-#                 "removed_from_vector_db": True,
-#                 "deleted_from_department": deleted_dept.deleted,
-#                 "deleted_from_common": deleted_common.deleted
-#             }
-#         except Exception as e:
-#             logger.exception("Qdrant 삭제 중 오류")
-#             rag_result = {"removed_from_vector_db": False, "error": str(e)}
-
-
-#         # DB 삭제
-#         try:
-#             crud.delete_docs(db, docs_id=docs_id)
-#             db_deleted = True
-#             logger.info(f"DB에서 문서 삭제 완료: docs_id={docs_id}")
-#         except Exception as e:
-#             logger.exception(f"DB 삭제 중 오류: docs_id={docs_id}")
-
-#         return {
-#             "success": True,
-#             "message": "문서 및 벡터DB 청크가 성공적으로 삭제되었습니다.",
-#             "file_deleted": file_deleted,
-#             "db_deleted": db_deleted,
-#             "rag": rag_result
-#         }
-#     except Exception as e:
-#         logger.exception(f"문서 삭제 중 오류: docs_id={docs_id}")
-#         raise HTTPException(status_code=500, detail=f"문서 삭제 중 오류: {str(e)}")
-
+from fastapi.responses import JSONResponse
 
 @router.delete("/rag/{docs_id}")
 async def delete_document_with_rag(
@@ -214,21 +134,26 @@ async def delete_document_with_rag(
         db_docs = crud.get_docs(db, docs_id=docs_id)
         if db_docs is None:
             logger.error(f"삭제 요청된 docs_id={docs_id} 문서를 찾을 수 없습니다.")
-            raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+            return JSONResponse(status_code=404, content={"success": False, "message": "문서를 찾을 수 없습니다."})  # ✅ 변경됨
         
         logger.warning(
-    f"🧾 삭제 요청 정보\n"
-    f" - 사용자 이메일: {current_user.email}\n"
-    f" - 사용자 부서 ID: {current_user.department_id} ({type(current_user.department_id)})\n"
-    f" - 문서 부서 ID: {db_docs.department_id} ({type(db_docs.department_id)})\n"
-    f" - 공통 문서 여부: {db_docs.common_doc}"
-)
-
+            f"🧾 삭제 요청 정보\n"
+            f" - 사용자 이메일: {current_user.email}\n"
+            f" - 사용자 부서 ID: {current_user.department_id} ({type(current_user.department_id)})\n"
+            f" - 문서 부서 ID: {db_docs.department_id} ({type(db_docs.department_id)})\n"
+            f" - 공통 문서 여부: {db_docs.common_doc}"
+        )
 
         # 🔐 삭제 권한 확인 (본인 부서만 가능)
+        # if int(db_docs.department_id) != int(current_user.department_id):
+        #     logger.warning(f"⚠️ 삭제 권한 검사 실패: 문서 부서={db_docs.department_id}({type(db_docs.department_id)}), 사용자 부서={current_user.department_id}({type(current_user.department_id)})")
+        #     return JSONResponse(status_code=403, content={"success": False, "message": "해당 문서를 삭제할 권한이 없습니다."})  # ✅ 변경됨
         if int(db_docs.department_id) != int(current_user.department_id):
-            logger.warning(f"⚠️ 삭제 권한 검사 실패: 문서 부서={db_docs.department_id}({type(db_docs.department_id)}), 사용자 부서={current_user.department_id}({type(current_user.department_id)})")
-            raise HTTPException(status_code=403, detail="해당 문서를 삭제할 권한이 없습니다")
+            logger.info(
+                f"⛔ 삭제 거부: 사용자({current_user.email})의 부서({current_user.department_id})와 "
+                f"문서의 부서({db_docs.department_id})가 달라 삭제 권한 없음"
+            )
+            return JSONResponse(status_code=403, content={"success": False, "message": "해당 문서를 삭제할 권한이 없습니다."})
 
 
         # 파일 삭제
@@ -270,8 +195,8 @@ async def delete_document_with_rag(
 
             rag_result = {
                 "removed_from_vector_db": True,
-                "deleted_from_department": deleted_dept.deleted,
-                "deleted_from_common": deleted_common.deleted
+                "deleted_from_department": deleted_dept.status,  # e.g. 'completed'
+                "deleted_from_common": deleted_common.status
             }
         except Exception as e:
             logger.exception("Qdrant 삭제 중 오류")
