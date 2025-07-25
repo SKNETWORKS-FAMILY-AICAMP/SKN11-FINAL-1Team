@@ -10,6 +10,8 @@ from core.models import Memo, User
 from datetime import date, datetime
 from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError
 from django.contrib import messages
+from core.models import Mentorship
+from report_langgraph import run_report_workflow
 
 # 하위 테스크(TaskAssign) 생성 API
 @csrf_exempt
@@ -780,7 +782,7 @@ def task_list(request):
         from core.models import Mentorship
         final_report = None
         mentorship_obj = Mentorship.objects.filter(mentorship_id=mentorship_id).first()
-        print(f">>>>> 🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
+        print(f"🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
         if mentorship_obj and mentorship_obj.is_active == False:
             # 온보딩 종료 시 레포트 가져오기
             final_report = getattr(mentorship_obj, 'report', None)
@@ -1249,7 +1251,23 @@ def update_task_status(request, task_id):
                         create_review_request_alarm(mentorship_id, task_result.get('title'))
                     except Exception as alarm_error:
                         logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
-                        
+                
+                # 🤖 Agent 시스템 통합: 상태 변화 이벤트 트리거
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+                    from agent_integration import agent_integrator
+                    agent_integrator.trigger_status_change_event(
+                        task_id=task_id,
+                        old_status=old_status,
+                        new_status=new_status,
+                        user_id=user_id
+                    )
+                    logger.info(f"🤖 Agent 시스템 이벤트 트리거 성공: {old_status} -> {new_status}")
+                except Exception as agent_error:
+                    logger.error(f"🤖 Agent 시스템 이벤트 트리거 실패: {agent_error}")
+                
                 return JsonResponse({
                     'success': True,
                     'old_status': old_status,
@@ -1287,12 +1305,34 @@ def update_task_status(request, task_id):
                 task_obj.save()
                 logger.info(f"✅ Django ORM 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
                 
+                # ✅ 검토요청 알람 생성
+                if new_status == '검토요청':
+                    try:
+                        create_review_request_alarm(mentorship_id, task_result.get('title'))
+                    except Exception as alarm_error:
+                        logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
+                
+                # 🤖 Agent 시스템 통합: 상태 변화 이벤트 트리거 (Django ORM)
+                try:
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+                    from agent_integration import agent_integrator
+                    agent_integrator.trigger_status_change_event(
+                        task_id=task_id,
+                        old_status=old_status,
+                        new_status=new_status,
+                        user_id=user_id
+                    )
+                    logger.info(f"🤖 Agent 시스템 이벤트 트리거 성공 (Django ORM): {old_status} -> {new_status}")
+                except Exception as agent_error:
+                    logger.error(f"🤖 Agent 시스템 이벤트 트리거 실패 (Django ORM): {agent_error}")
                 
                 return JsonResponse({
-            'success': True,
-            'old_status': old_status,
-            'new_status': new_status,
-            'task_id': task_id,
+                    'success': True,
+                    'old_status': old_status,
+                    'new_status': new_status,
+                    'task_id': task_id,
                     'message': f'태스크 상태가 "{old_status}"에서 "{new_status}"로 변경되었습니다.',
                     'method': 'django_orm',
                     'notice': 'FastAPI 연동 문제로 Django ORM을 사용했습니다.'
@@ -1315,6 +1355,8 @@ def update_task_status(request, task_id):
 
     
 def create_review_request_alarm(mentorship_id, task_title):
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         from core.models import Mentorship, Alarm, User
         mentorship_obj = Mentorship.objects.filter(
@@ -1475,4 +1517,67 @@ def test_task_list(request):
     except Exception as e:
         print(f"test_task_list 오류: {e}")
         return render(request, 'mentee/task_list_test.html', {'week_tasks': {}, 'mentorship_id': 2})
+
+@login_required
+@require_POST
+def complete_onboarding(request):
+    """온보딩 종료 및 최종 보고서 생성 처리"""
+    try:
+        data = json.loads(request.body)
+        mentorship_id = data.get('mentorship_id')
+        
+        if not mentorship_id:
+            return JsonResponse({
+                'success': False,
+                'error': '멘토십 ID가 필요합니다.'
+            }, status=400)
+
+        # 현재 사용자 정보 확인
+        user_data = request.session.get('user_data', {})
+        user_id = user_data.get('user_id') or request.user.user_id
+
+        # 멘토십 조회 및 권한 확인
+        try:
+            mentorship = Mentorship.objects.get(
+                mentorship_id=mentorship_id,
+                mentee_id=user_id,
+                is_active=True
+            )
+        except Mentorship.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 멘토십을 찾을 수 없거나 접근 권한이 없습니다.'
+            }, status=404)
+
+        # 멘토십 비활성화
+        mentorship.is_active = False
+        mentorship.save()
+
+        # report_langgraph workflow 실행
+        try:
+            final_state = run_report_workflow(user_id=user_id)
+            if final_state:
+                return JsonResponse({
+                    'success': True,
+                    'message': '온보딩이 종료되었으며 최종 보고서가 생성되었습니다.'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': '보고서 생성 중 오류가 발생했습니다.'
+                }, status=500)
+        except Exception as workflow_error:
+            print(f"Workflow 실행 오류: {workflow_error}")
+            # 워크플로우 실패 시에도 온보딩은 종료된 상태 유지
+            return JsonResponse({
+                'success': True,
+                'message': '온보딩은 종료되었으나, 보고서 생성 중 오류가 발생했습니다.'
+            })
+
+    except Exception as e:
+        print(f"온보딩 종료 처리 오류: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'처리 중 오류가 발생했습니다: {str(e)}'
+        }, status=500)
 

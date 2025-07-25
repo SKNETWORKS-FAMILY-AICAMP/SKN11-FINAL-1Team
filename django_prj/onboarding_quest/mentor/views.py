@@ -257,9 +257,19 @@ def manage_mentee(request):
         curriculums_result = fastapi_client.get_curriculums(department_id=department_id)
         curriculums = curriculums_result.get('curriculums', [])
         
+        # 커리큘럼 그룹화: 공통 + 부서별 그룹
+        common_list = [c for c in curriculums if c.get('common')]
+        from collections import OrderedDict
+        dept_dict = OrderedDict()
+        for c in curriculums:
+            if not c.get('common'):
+                name = c.get('department', {}).get('department_name', '')
+                dept_dict.setdefault(name, []).append(c)
+        dept_groups = list(dept_dict.items())  # [(dept_name, [curriculums]), ...]
         return render(request, 'mentor/manage_mentee.html', {
             'mentees': mentees,
-            'curriculums': curriculums,
+            'common_list': common_list,
+            'dept_groups': dept_groups,
         })
         
     except (AuthenticationError, APIError) as e:

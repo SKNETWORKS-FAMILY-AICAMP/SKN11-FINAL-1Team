@@ -124,6 +124,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (mentorId) {
         loadMentorships();
+        // 테스트용 API도 호출
+        testMentorshipAPI();
     } else {
         showError('로그인이 필요합니다.');
     }
@@ -173,7 +175,7 @@ async function loadMentorships() {
         console.log('멘토십 로딩 시작...');
         console.log('멘토 ID:', mentorId);
         
-        const url = `/fastapi/mentorship/?mentor_id=${mentorId}`;
+        const url = `${FASTAPI_BASE_URL}/api/tasks/mentorship/?mentor_id=${mentorId}`;
         console.log('요청 URL:', url);
         
         const response = await fetch(url, {
@@ -197,6 +199,26 @@ async function loadMentorships() {
         const data = await response.json();
         console.log('받은 데이터:', data);
         console.log('데이터 샘플 (첫 번째 항목):', data[0]);
+        
+        // 첫 번째 항목의 모든 필드를 상세히 로그 출력
+        if (data.length > 0) {
+            const firstItem = data[0];
+            console.log('=== 첫 번째 멘토십 상세 데이터 ===');
+            console.log('id:', firstItem.id);
+            console.log('mentor_id:', firstItem.mentor_id);
+            console.log('mentee_id:', firstItem.mentee_id);
+            console.log('mentee_name:', firstItem.mentee_name);
+            console.log('mentor_name:', firstItem.mentor_name);
+            console.log('curriculum_title:', firstItem.curriculum_title);
+            console.log('total_weeks:', firstItem.total_weeks);
+            console.log('total_tasks:', firstItem.total_tasks);
+            console.log('completed_tasks:', firstItem.completed_tasks);
+            console.log('is_active:', firstItem.is_active);
+            console.log('status:', firstItem.status);
+            console.log('start_date:', firstItem.start_date);
+            console.log('end_date:', firstItem.end_date);
+            console.log('=== 상세 데이터 끝 ===');
+        }
         
         // 원본 데이터 저장, 검색 결과 초기화
         originalMentorshipsData = data;
@@ -261,13 +283,18 @@ function renderMentorshipCards(mentorships) {
         const dday = calculateDday(mentorship);
         const statusText = mentorship.is_active ? '진행중' : '완료';
         const statusClass = mentorship.is_active ? 'ongoing' : 'completed';
-        
-        // 이름 형식 변환: "민수 김" → "김민수"
         const formattedName = formatMenteeName(mentorship.mentee_name);
-        
+        const completedTasks = mentorship.completed_tasks ?? 0;
+        const totalTasks = mentorship.total_tasks ?? 0;
+
+        // Highlight completed mentorships with different styling and enable click for all
+        const cardClass = mentorship.is_active
+            ? 'bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-shadow cursor-pointer'
+            : 'bg-gray-100 rounded-xl p-6 opacity-60 cursor-pointer';
+        const clickAttr = `onclick="navigateToTaskList(${mentorship.mentorship_id || mentorship.id})"`;
+
         return `
-            <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-shadow cursor-pointer" 
-                 onclick="navigateToTaskList(${mentorship.mentorship_id || mentorship.id})">
+            <div class="${cardClass}" ${clickAttr}>
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
@@ -302,8 +329,11 @@ function renderMentorshipCards(mentorships) {
                         <span class="text-base font-medium text-gray-600">진척도</span>
                         <span class="text-base font-bold text-gray-900">${progress}%</span>
                     </div>
+                    <div class="w-full flex justify-between items-center mb-1">
+                        <span class="text-sm text-gray-500">완료된 작업: <span class="font-semibold text-blue-600">${completedTasks}</span> / <span class="font-semibold">${totalTasks}</span></span>
+                    </div>
                     <div class="bg-gray-100 rounded-full h-3">
-                        <div class="bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                        <div class="bg-green-500 h-3 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                     </div>
                 </div>
             </div>
@@ -323,12 +353,63 @@ function renderMentorshipCards(mentorships) {
     console.log('=== 카드 렌더링 종료 ===');
 }
 
-// 진척도 계산
+// 진척도 계산 - 실제 태스크 완료 데이터 기반
 function calculateProgress(mentorship) {
-    if (mentorship.completed_tasks && mentorship.total_tasks) {
-        return Math.round((mentorship.completed_tasks / mentorship.total_tasks) * 100);
+    console.log('=== 진척도 계산 시작 ===');
+    console.log('멘토십 전체 객체:', mentorship);
+    console.log('mentee_name:', mentorship.mentee_name);
+    console.log('completed_tasks 타입:', typeof mentorship.completed_tasks);
+    console.log('completed_tasks 값:', mentorship.completed_tasks);
+    console.log('total_tasks 타입:', typeof mentorship.total_tasks);
+    console.log('total_tasks 값:', mentorship.total_tasks);
+    
+    // 값이 정의되어 있는지 확인
+    const completedTasks = mentorship.completed_tasks;
+    const totalTasks = mentorship.total_tasks;
+    
+    console.log('완료된 태스크 (변수):', completedTasks);
+    console.log('전체 태스크 (변수):', totalTasks);
+    
+    if (completedTasks !== undefined && totalTasks !== undefined && totalTasks > 0) {
+        const progress = Math.round((completedTasks / totalTasks) * 100);
+        console.log('계산 공식:', `(${completedTasks} / ${totalTasks}) * 100 = ${progress}%`);
+        console.log('=== 진척도 계산 완료: ' + progress + '% ===');
+        return progress;
     }
+    
+    console.log('조건 불충족:');
+    console.log('  - completedTasks !== undefined:', completedTasks !== undefined);
+    console.log('  - totalTasks !== undefined:', totalTasks !== undefined);
+    console.log('  - totalTasks > 0:', totalTasks > 0);
+    console.log('=== 진척도 계산 완료: 0% (기본값) ===');
     return 0;
+}
+
+// 테스트용 API 호출
+async function testMentorshipAPI() {
+    try {
+        console.log('[TEST] 테스트 API 호출 시작...');
+        const testUrl = `${FASTAPI_BASE_URL}/api/tasks/test/mentorship/${mentorId}`;
+        console.log('[TEST] 테스트 URL:', testUrl);
+        
+        const response = await fetch(testUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const testData = await response.json();
+            console.log('[TEST] 테스트 API 응답:', testData);
+        } else {
+            console.log('[TEST] 테스트 API 오류:', response.status);
+        }
+    } catch (error) {
+        console.log('[TEST] 테스트 API 예외:', error);
+    }
 }
 
 // D-DAY 계산
@@ -450,7 +531,7 @@ async function searchMentees() {
         showLoading(true);
         
         // 검색어가 있을 때만 API 호출
-        const url = `/fastapi/mentorship/?mentor_id=${mentorId}&search=${encodeURIComponent(query)}`;
+        const url = `${FASTAPI_BASE_URL}/api/tasks/mentorship/?mentor_id=${mentorId}&search=${encodeURIComponent(query)}`;
         const response = await fetch(url, {
             method: 'GET',
             headers: {
