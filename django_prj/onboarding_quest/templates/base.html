@@ -107,23 +107,23 @@
             {% if request.user.is_authenticated %}
                 {% if request.user.role == 'mentor' %}
                     {% if request.user.is_admin %}
-                        <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>관리자</a>
-                        <a href="{% url 'account:manage_mentorship' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/manage_mentorship/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 관리</a>
+                        <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-200 flex items-center gap-3 font-bold text-blue-700 hover:text-blue-900{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>직원 관리</a>
+                        <a href="{% url 'account:manage_mentorship' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-200 flex items-center gap-3 font-bold text-blue-700 hover:text-blue-900{% if request.path == '/account/manage_mentorship/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 관리</a>
                     {% endif %}
-                    <a href="{% url 'mentor:mentor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
-                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
-                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
+                    <a href="{% url 'mentor:mentor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>대쉬보드</a>
                     <a href="{% url 'mentor:manage_mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 생성</a>
                     <a href="{% url 'mentor:manage_template' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/manage_template/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>커리큘럼 관리</a>
-                {% elif request.user.role == 'mentee' %}
-                    <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>메인</a>
-                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
+                           <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
                     <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
+                {% elif request.user.role == 'mentee' %}
+                    <a href="{% url 'mentee:mentee' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentee/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>대쉬보드</a>
                     {% if user_mentorship %}
                         <a href="{% url 'mentee:task_list' %}?mentorship_id={{ user_mentorship.mentorship_id }}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if 'task_list' in request.path %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>태스크 목록</a>
                     {% else %}
-                        <span class="sidebar-link block py-3 px-4 rounded-lg flex items-center gap-3 font-bold text-gray-400 cursor-not-allowed"><span class="text-lg"></span>태스크 목록 <span class="text-xs">(멘토쉽 필요)</span></span>
+                        <span class="sidebar-link block py-3 px-4 rounded-lg flex items-center gap-3 font-bold text-gray-400 cursor-not-allowed"><span class="text-lg"></span>태스크 목록 (멘토쉽 必)</span>
                     {% endif %}
+                    <a href="{% url 'common:chatbot' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/chatbot/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>채팅</a>
+                    <a href="{% url 'common:doc' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/common/doc/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>문서 업로드</a>
                 {% endif %}
             {% else %}
                 <a href="{% url 'account:login' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/account/login/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>로그인</a>
@@ -132,7 +132,7 @@
     </div>
     
     <!-- 알람 사이드 패널 -->
-    <div id="alarmPanel" class="fixed top-0 w-72 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden flex flex-col" style="left: 18rem;">
+        <div id="alarmPanel" class="fixed top-0 w-85 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden flex flex-col" style="left: 18rem;">
         <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
             <span class="font-bold text-lg text-gray-900 flex items-center gap-2">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
