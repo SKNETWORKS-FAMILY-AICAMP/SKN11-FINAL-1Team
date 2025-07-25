@@ -165,8 +165,8 @@
       <input id="edit-title" type="text" style="width:100%; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
       <label style="font-weight:bold; color:#222;">가이드라인</label>
       <textarea id="edit-guideline" style="width:100%; min-height:60px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
-      <label style="font-weight:bold; color:#222;">세부내용(여러 줄)</label>
-      <textarea id="edit-description" style="width:100%; min-height:80px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
+      <label style="font-weight:bold; color:#222;">세부내용</label>
+      <textarea id="edit-description" style="width:100%; min-height:200px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
       <div style="display:flex; gap:8px;">
         <button type="submit" id="edit-save-btn" style="background:#1976d2; color:#ffffff; font-weight:bold; border:none; border-radius:6px; padding:6px 18px; font-size:15px; cursor:pointer;">저장</button>
         <button type="button" id="edit-cancel-btn" style="background:#eee; color:#000000; font-weight:bold; border:none; border-radius:6px; padding:6px 18px; font-size:15px; cursor:pointer;">취소</button>
@@ -652,7 +652,8 @@ function updateTaskInfo(task) {
     // 설명 업데이트
     const descElement = document.getElementById('detail-desc');
     if (descElement) {
-        descElement.textContent = task.desc || task.description || '설명이 없습니다.';
+        descElement.innerHTML = (task.desc || task.description || '설명이 없습니다.').replace(/\n/g, '<br>');
+
     }
     
     // 우선순위 뱃지 업데이트
@@ -699,7 +700,9 @@ function updateMemoList(memos) {
     // 기존 메모 제거
     messagesContainer.innerHTML = '';
     
-    if (memos && memos.length > 0) {
+    if (Array.isArray(memos) && memos.length > 0) {
+    // 날짜 기준 오래된 순서로 정렬
+        memos.sort((a, b) => new Date(a.create_date) - new Date(b.create_date));
         memos.forEach(memo => {
             const memoElement = document.createElement('div');
             memoElement.className = 'memo-item';
@@ -1413,10 +1416,7 @@ setTimeout(() => {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({
-                    status: payload.status,
-                    mentorship_id: parseInt(window.mentorshipId)
-                }),
+                body: JSON.stringify(payload),  // ✨ 전체 payload 전송
                 credentials: 'same-origin'
             });
                 

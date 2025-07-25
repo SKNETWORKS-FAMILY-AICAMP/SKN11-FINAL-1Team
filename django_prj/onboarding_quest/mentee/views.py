@@ -1181,6 +1181,7 @@ def update_task_status(request, task_id):
         # 이미 위에서 data 파싱 완료
         
         new_status = data.get('status', '').strip()
+        new_description = data.get('description', '').strip()
         valid_statuses = ['진행전', '진행중', '검토요청', '완료']
         if new_status not in valid_statuses:
             return JsonResponse({
@@ -1202,7 +1203,7 @@ def update_task_status(request, task_id):
         # 🚀 FastAPI TaskAssignCreate 스키마에 맞는 완전한 데이터 구성
         update_data = {
             'title': task_result.get('title') or '',
-            'description': task_result.get('description') or '',
+            'description': new_description or task_result.get('description') or '', 
             'guideline': task_result.get('guideline') or '',
             'week': task_result.get('week', 1),  # 기본값 1
             'order': task_result.get('order', 1),  # 기본값 1
@@ -1272,6 +1273,8 @@ def update_task_status(request, task_id):
                 logger.info(f"🔧 Django ORM으로 태스크 상태 업데이트 시도...")
                 task_obj = TaskAssign.objects.get(task_assign_id=task_id)
                 task_obj.status = new_status
+                if new_description:
+                    task_obj.description = new_description  # ✨ 추가
                 
                 # 날짜 필드 업데이트
                 if new_status == '진행중' and not task_obj.real_start_date:
@@ -1283,6 +1286,7 @@ def update_task_status(request, task_id):
                 
                 task_obj.save()
                 logger.info(f"✅ Django ORM 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
+                
                 
                 return JsonResponse({
             'success': True,
