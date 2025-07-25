@@ -124,7 +124,9 @@
                     </td>
 
                     <td class="px-6 py-4 whitespace-nowrap text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-900{% endif %} {% if not mentorship.effective_is_active %}text-gray-500{% endif %}">
-                        {{ mentorship.curriculum_title }}
+                        <a href="{% url 'mentee:task_list' %}?mentorship_id={{ mentorship.mentorship_id }}&mentee_id={{ mentorship.mentee.user_id }}" class="text-blue-600 hover:underline">
+                            {{ mentorship.curriculum_title }}
+                        </a>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-900{% endif %} {% if not mentorship.effective_is_active %}text-gray-500{% endif %}">
                         {% if mentorship.start_date or mentorship.end_date %}
