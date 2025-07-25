@@ -35,4 +35,8 @@ urlpatterns = [
     path('mentorship/<int:mentorship_id>/edit/', views.mentorship_edit, name='mentorship_edit'),
     path('mentorship/<int:mentorship_id>/delete/', views.mentorship_delete, name='mentorship_delete'),
     path('mentorship/<int:mentorship_id>/detail/', views.mentorship_detail, name='mentorship_detail'),
+    # 멘토쉽 평가(report) 조회 API
+    path('mentorship/report/', views.mentorship_report, name='mentorship_report'),
+    # # 멘토쉽 평가(report) 조회 API
+    # path('mentorship/report/', views.mentorship_report, name='mentorship_report'),
 ]

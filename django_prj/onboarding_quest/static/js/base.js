@@ -65,21 +65,14 @@ if (alarmOverlay) {
 }
 
 function openAlarmPanel() {
-    if (alarmPanel && alarmOverlay) {
-        alarmPanel.classList.remove('hidden');
-        alarmOverlay.classList.remove('hidden');
-        // 사이드바 뒤에서 나오는 효과를 위해 초기 위치를 사이드바 아래쪽으로 설정
-        alarmPanel.style.transform = 'translateX(-100%)';
-        alarmPanel.style.zIndex = '40';
-        setTimeout(() => {
-            alarmPanel.style.transform = 'translateX(0)';
-        }, 10);
-        alarmPanelOpen = true; // 상태 업데이트
+    const alarmListWrapper = document.getElementById('alarmListWrapper');
+    if (alarmListWrapper) {
+        alarmListWrapper.style.padding = '0';
+        alarmListWrapper.style.margin = '0';
     }
-    // 알람 리스트에 스크롤 기능 추가
     if (alarmList) {
-        alarmList.style.maxHeight = '60vh';
-        alarmList.style.overflowY = 'auto';
+        alarmList.style.margin = '0';
+        alarmList.style.paddingBottom = '0';
     }
 }
 
