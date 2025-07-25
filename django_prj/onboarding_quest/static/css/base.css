@@ -275,3 +275,13 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-collapsed .flex.items-center.justify-between .sidebar-text {
     display: none !important;
 }
+
+#alarmListWrapper,
+#alarmList {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+#alarmList > *:last-child {
+  margin-bottom: 0 !important;
+}
+

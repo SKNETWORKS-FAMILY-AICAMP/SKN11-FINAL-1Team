@@ -4,6 +4,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.http import HttpResponseForbidden
 from core.models import User, Department, Mentorship, Curriculum
@@ -1126,6 +1127,28 @@ def mentorship_detail(request, mentorship_id):
     except Exception as e:
         logger.error(f"Mentorship detail error: {str(e)}")
         return JsonResponse({'error': f'멘토쉽 정보 조회 실패: {str(e)}'}, status=400)
+    
+@login_required
+def mentorship_report(request):
+    """
+    멘토쉽 평가(report) 조회 API
+    Retrieves report text from core.models.Mentorship based on mentorship_id, mentor_id, mentee_id
+    """
+    mentorship_id = request.GET.get('mentorship_id')
+    mentor_id = request.GET.get('mentor_id')
+    mentee_id = request.GET.get('mentee_id')
+    try:
+        from core.models import Mentorship
+        mentorship = Mentorship.objects.filter(
+            mentorship_id=mentorship_id,
+            mentor_id=mentor_id,
+            mentee_id=mentee_id
+        ).first()
+        report_text = mentorship.report if mentorship and mentorship.report else ''
+        return JsonResponse({'report': report_text})
+    except Exception as e:
+        logger.error(f"멘토쉽 리포트 조회 실패: {e}")
+        return JsonResponse({'report': ''}, status=500)
 
 @login_required
 def mentorship_edit(request, mentorship_id):
