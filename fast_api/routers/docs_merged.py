@@ -188,13 +188,24 @@ async def get_docs(docs_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
     return db_docs
 
+# @router.get("/department/{department_id}", response_model=List[schemas.Docs])
+# async def get_docs_by_department(department_id: int, db: Session = Depends(get_db)):
+#     """부서별 문서 조회"""
+#     db_department = crud.get_department(db, department_id=department_id)
+#     if db_department is None:
+#         raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
+#     return crud.get_docs_by_department(db, department_id=department_id)
+
 @router.get("/department/{department_id}", response_model=List[schemas.Docs])
 async def get_docs_by_department(department_id: int, db: Session = Depends(get_db)):
-    """부서별 문서 조회"""
+    """부서별 문서 + 공통 문서 조회"""
     db_department = crud.get_department(db, department_id=department_id)
     if db_department is None:
         raise HTTPException(status_code=404, detail="부서를 찾을 수 없습니다")
-    return crud.get_docs_by_department(db, department_id=department_id)
+    
+    return crud.get_department_documents(db, department_id=department_id, include_common=True)
+
+
 
 @router.get("/common/", response_model=List[schemas.Docs])
 async def get_common_docs(db: Session = Depends(get_db)):

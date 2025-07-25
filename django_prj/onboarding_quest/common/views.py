@@ -2,7 +2,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
-from core.models import Docs, ChatSession, ChatMessage
+from core.models import Docs, ChatSession, ChatMessage, Department
 import json
 import os
 import uuid
@@ -339,12 +339,37 @@ def doc_download(request, doc_id):
         return HttpResponse(f'파일 다운로드 중 오류가 발생했습니다: {str(e)}', status=500)
 
 
+# def doc(request):
+#     user = request.user
+#     common_docs = Docs.objects.filter(common_doc=True)
+#     dept_docs = Docs.objects.filter(department=user.department, common_doc=False) if user.is_authenticated and user.department else Docs.objects.none()
+#     all_docs = list(common_docs) + [doc for doc in dept_docs if doc not in common_docs]
+#     return render(request, 'common/doc.html', {'core_docs': all_docs})
+
+from django.shortcuts import render
+from core.models import Docs, Department
+
 def doc(request):
     user = request.user
+
+    # 공통 문서
     common_docs = Docs.objects.filter(common_doc=True)
-    dept_docs = Docs.objects.filter(department=user.department, common_doc=False) if user.is_authenticated and user.department else Docs.objects.none()
+
+    # 사용자 부서 문서 (공통 아닌 것만)
+    dept_docs = Docs.objects.filter(department=user.department, common_doc=False) \
+        if user.is_authenticated and user.department else Docs.objects.none()
+
+    # 중복 제거 병합
     all_docs = list(common_docs) + [doc for doc in dept_docs if doc not in common_docs]
-    return render(request, 'common/doc.html', {'core_docs': all_docs})
+
+    # 🔹 모든 부서 목록 전달 (부서 필터용)
+    all_departments = Department.objects.all()
+
+    return render(request, 'common/doc.html', {
+        'core_docs': all_docs,
+        'all_departments': all_departments
+    })
+
 
 @csrf_exempt
 def new_chat_session(request):

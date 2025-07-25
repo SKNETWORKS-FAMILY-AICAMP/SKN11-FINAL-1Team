@@ -47,25 +47,6 @@ body {
   padding: 2rem;
 }
 
-.doc-container,
-.doc-left,
-.doc-upload-box,
-.doc-file-list,
-.doc-table-wrapper {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.doc-file-list {
-  overflow-x: auto;
-}
-
-
-
-
-
-
 .doc-left {
   width: 100%;
   max-width: 1400px;
@@ -80,26 +61,6 @@ body {
   align-items: center;
   gap: 0.75rem;
 }
-
-.doc-file-list {
-  overflow-x: auto; /* ✅ 테이블 넘침 스크롤 처리 */
-}
-
-.doc-file-list-table {
-  word-break: break-word; /* ✅ 긴 단어도 줄바꿈 */
-}
-
-.doc-table-wrapper {
-  background: white;
-  /* padding: 1rem; */
-  border: 1px solid var(--blue-100);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
-  overflow-x: auto;
-}
-
-
-
 
 .doc-upload-box {
   background: white;
@@ -301,14 +262,13 @@ body {
 
 .doc-file-list-table {
   width: 100%;
-  table-layout: fixed;
   border-collapse: collapse;
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
   background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--gray-200);
 }
-
 
 .doc-file-list-table thead {
   background: linear-gradient(135deg, var(--gray-700) 0%, var(--gray-600) 100%);
@@ -554,30 +514,19 @@ body {
     </div>
 
     <!-- 등록된 파일 목록 -->
-    <!-- 등록된 파일 목록 -->
     <div class="doc-file-list">
       <div class="doc-title">파일 목록</div>
     
+      <!-- ✅ 선택 삭제 버튼은 테이블 위쪽에 위치 -->
       <div id="bulk-delete-container">
-        <button id="bulk-delete-btn" class="doc-delete-btn">선택 삭제</button>
+        <button id="bulk-delete-btn" class="doc-delete-btn">
+          선택 삭제
+        </button>
       </div>
+
+      
     
-      <div class="flex justify-between items-center mb-4">
-        <!-- 왼쪽: 검색창 -->
-        <input type="text" id="doc-search-input" placeholder="문서명 또는 설명 검색..."
-          class="border px-4 py-2 w-1/2 rounded-md shadow-sm">
-    
-        <!-- 오른쪽: 부서 필터 -->
-        <select id="department-filter" class="border px-4 py-2 rounded-md shadow-sm">
-          <option value="">전체 부서</option>
-          <option value="공통">공통 문서</option>
-          {% for dept in all_departments %}
-          <option value="{{ dept.department_name }}">{{ dept.department_name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    
-      <!-- ✅ 테이블은 래퍼 없이 직접 삽입 -->
+      <!-- ✅ 단일 테이블 시작 -->
       <table class="doc-file-list-table">
         <thead>
           <tr>
@@ -593,7 +542,6 @@ body {
         </tbody>
       </table>
     </div>
-
 
   </div>
 </div>
