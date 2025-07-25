@@ -2,7 +2,7 @@ import multiprocessing
 from datetime import datetime
 from config import settings
 
-bind = f"{settings.host}:{settings.port}"  # 바인드할 주소와 포트
+bind = "0.0.0.0:8001"  # 바인드할 주소와 포트
 workers = multiprocessing.cpu_count() * 2 + 1  # 워커 개수(코어 수 기반)
 worker_class = "uvicorn.workers.UvicornWorker"  # Uvicorn 워커 클래스
 daemon = False  # 데몬 실행 여부
