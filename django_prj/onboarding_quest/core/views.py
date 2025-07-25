@@ -7,9 +7,14 @@ from django.views.decorators.http import require_http_methods
 import requests
 import json
 from django.conf import settings
+import os
+from dotenv import load_dotenv
 
-# FastAPI 서버 URL
-FASTAPI_BASE_URL = "http://localhost:8001"
+# 환경 변수 로드
+load_dotenv()
+
+# FastAPI 서버 URL을 환경 변수에서 가져오기
+FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')
 
 # 임시 멘토십 데이터 (FastAPI 서버가 문제일 때 사용)
 def get_temp_mentorship_data(mentor_id=None):

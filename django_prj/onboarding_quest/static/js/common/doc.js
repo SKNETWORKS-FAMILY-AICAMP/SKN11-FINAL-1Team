@@ -145,7 +145,7 @@ uploadBtn?.addEventListener('click', async () => {
       formData.append('department_id', CURRENT_DEPARTMENT_ID);
       formData.append('original_file_name', fileInfo.name);
 
-      const response = await fetch('http://localhost:8001/api/docs/rag/upload', {
+      const response = await fetch(`${FASTAPI_BASE_URL}/api/docs/rag/upload`, {
         method: 'POST',
         body: formData
       });
@@ -272,7 +272,7 @@ function confirmDelete() {
   formData.append('docs_id', deleteDocId);
   formData.append('department_id', CURRENT_DEPARTMENT_ID);
 
-  fetch(`http://localhost:8001/api/docs/rag/${deleteDocId}`, {
+  fetch(`${FASTAPI_BASE_URL}/api/docs/rag/${deleteDocId}`, {
     method: 'DELETE'
   })
     .then(async res => {
@@ -314,7 +314,7 @@ window.addEventListener('click', function (e) {
 
 async function loadDocumentList(departmentId) {
   try {
-    const url = `http://localhost:8001/api/docs/department/${departmentId}`;
+    const url = `${FASTAPI_BASE_URL}/api/docs/department/${departmentId}`;
     console.log("📡 요청 URL:", url);
     
     const response = await fetch(url);
@@ -346,7 +346,7 @@ async function loadDocumentList(departmentId) {
       tr.innerHTML = `
   <td><input type="checkbox" class="doc-checkbox" data-doc-id="${doc.docs_id}"></td>
   <td>
-    <a href="http://localhost:8001/api/docs/documents/download/${doc.docs_id}">
+    <a href="${FASTAPI_BASE_URL}/api/docs/documents/download/${doc.docs_id}">
       📄 ${doc.title || "이름없음"}
     </a>
   </td>
@@ -384,7 +384,7 @@ async function loadDocumentList(departmentId) {
   //     for (const cb of selected) {
   //       const docId = cb.dataset.docId;
   //       try {
-  //         const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+  //         const res = await fetch(`${FASTAPI_BASE_URL}/api/docs/rag/${docId}`, { method: "DELETE" });
   //         const result = await res.json();
   //         if (!result.success) {
   //           console.warn("삭제 실패:", result.message);
@@ -402,7 +402,7 @@ async function loadDocumentList(departmentId) {
 }
 
 function downloadDocument(docsId) {
-  window.location.href = `http://localhost:8001/api/documents/download/${docsId}`;
+  window.location.href = `${FASTAPI_BASE_URL}/api/documents/download/${docsId}`;
 }
 
 
@@ -445,7 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const cb of selected) {
       const docId = cb.dataset.docId;
       try {
-        const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+        const res = await fetch(`${FASTAPI_BASE_URL}/api/docs/rag/${docId}`, { method: "DELETE" });
         const result = await res.json();
         if (!result.success) {
           console.warn("삭제 실패:", result.message);

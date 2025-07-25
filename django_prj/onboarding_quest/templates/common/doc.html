@@ -457,6 +457,7 @@ body {
 {% block content %}
 <script>
   const CURRENT_DEPARTMENT_ID = {{ user.department.department_id }};
+  const FASTAPI_BASE_URL = '{{ FASTAPI_BASE_URL }}';
 </script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {

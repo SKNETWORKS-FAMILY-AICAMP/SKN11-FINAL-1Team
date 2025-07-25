@@ -5,6 +5,7 @@
 
 {% block extra_head %}
 <meta name="csrf-token" content="{{ csrf_token }}">
+<!-- 환경변수는 window 객체 대신 템플릿 변수로 직접 사용 -->
 <link rel="stylesheet" href="{% static 'css/account/supervisor.css' %}">
 {% endblock %}
 
@@ -302,7 +303,7 @@ async function viewMenteeReport(userId) {
         document.getElementById('report-modal').classList.remove('hidden');
         
         // 보고서 데이터를 가져옵니다
-        const response = await fetch(`http://127.0.0.1:8001/api/mentorship/reports/${userId}`, {
+        const response = await fetch(`{{ FASTAPI_BASE_URL }}/api/mentorship/reports/${userId}`, {
             headers: {
                 'Accept': 'application/json',
                 'Cache-Control': 'no-cache'

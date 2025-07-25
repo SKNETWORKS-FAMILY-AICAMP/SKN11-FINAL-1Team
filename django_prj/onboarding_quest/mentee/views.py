@@ -344,7 +344,15 @@ def mentee(request):
         except Exception as e:
             print(f"🔍 DEBUG - DB 확인 중 오류: {e}")
         
-        context = {}
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        FASTAPI_BASE_URL = os.environ.get('FASTAPI_BASE_URL', 'http://localhost:8001')
+        DJANGO_BASE_URL = os.environ.get('DJANGO_BASE_URL', 'http://localhost:8000')
+        context = {
+            'FASTAPI_BASE_URL': FASTAPI_BASE_URL,
+            'DJANGO_BASE_URL': DJANGO_BASE_URL,
+        }
         
         # 🔧 URL 파라미터에서 멘토십 ID 가져오기
         mentorship_id = request.GET.get('mentorship_id')

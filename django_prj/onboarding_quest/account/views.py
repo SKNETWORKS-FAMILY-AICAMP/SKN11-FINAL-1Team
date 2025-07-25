@@ -15,8 +15,6 @@ from django.views.decorators.csrf import csrf_exempt
 from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError, NotFoundError
 import json
 import logging
-import json
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -23,6 +23,10 @@ from embed_and_upsert import advanced_embed_and_upsert, get_existing_point_ids
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from dotenv import load_dotenv
+
+# 환경 변수 로드
+load_dotenv()
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -111,6 +115,7 @@ async def call_rag_api(question, session_id=None, user_id=None, department_id=No
         }
 
 # 챗봇 메인 함수
+@login_required
 def chatbot(request):
     current_session_id = request.GET.get('session')
     chat_sessions = []
@@ -142,11 +147,14 @@ def chatbot(request):
         except Exception as e:
             logger.warning(f"FastAPI 토큰 생성 실패: {e}")
 
-    return render(request, 'common/chatbot.html', {
+    context = {
         'chat_sessions': chat_sessions,
         'current_session_id': current_session_id,
         'fastapi_token': fastapi_token,
-    })
+        'FASTAPI_BASE_URL': os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')
+    }
+    
+    return render(request, 'common/chatbot.html', context)
 
 
 # 문서 업로드 API (djnago DB에 저장)
@@ -344,7 +352,15 @@ def doc(request):
     common_docs = Docs.objects.filter(common_doc=True)
     dept_docs = Docs.objects.filter(department=user.department, common_doc=False) if user.is_authenticated and user.department else Docs.objects.none()
     all_docs = list(common_docs) + [doc for doc in dept_docs if doc not in common_docs]
-    return render(request, 'common/doc.html', {'core_docs': all_docs})
+    
+    # FastAPI URL을 컨텍스트에 추가
+    context = {
+        'core_docs': all_docs,
+        'user': user,
+        'FASTAPI_BASE_URL': os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')
+    }
+    
+    return render(request, 'common/doc.html', context)
 
 @csrf_exempt
 def new_chat_session(request):

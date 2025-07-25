@@ -11,7 +11,11 @@ from django.views.decorators.csrf import csrf_exempt
 from core.models import Mentorship, User
 from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError
 from django.contrib import messages
+import os
+from dotenv import load_dotenv
 
+# 환경 변수 로드
+load_dotenv()
 
 # 멘토링 생성 API - FastAPI 프록시
 @login_required
@@ -181,6 +185,7 @@ def mentor(request):
     context = {
         'user': request.user,  # JavaScript에서 사용할 사용자 정보
         'user_id': request.user.user_id,  # 명시적으로 user_id 전달
+        'FASTAPI_BASE_URL': os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')  # FastAPI URL 추가
     }
     
     return render(request, 'mentor/mentor.html', context)
@@ -224,6 +229,7 @@ def add_template(request, curriculum_id=None):
                 'edit_mode': True,
                 'curriculum': json.dumps(curriculum_dict, ensure_ascii=False),
                 'tasks_json': json.dumps(task_list, ensure_ascii=False),
+                'FASTAPI_BASE_URL': os.getenv('FASTAPI_BASE_URL', 'http://localhost:8001')
             }
         except Curriculum.DoesNotExist:
             from django.contrib import messages

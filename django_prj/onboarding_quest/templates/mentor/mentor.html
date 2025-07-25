@@ -114,7 +114,7 @@ let originalMentorshipsData = []; // 원본 전체 데이터
 let searchResultsData = []; // 검색 결과 데이터
 let currentFilter = 'all'; // 현재 활성화된 필터 상태 추적
 let currentSearchQuery = ''; // 현재 검색어 저장
-const FASTAPI_BASE_URL = 'http://localhost:8001';
+const FASTAPI_BASE_URL = '{{ FASTAPI_BASE_URL }}';
 
 // 페이지 로드시 멘토십 데이터 로드
 document.addEventListener('DOMContentLoaded', function() {
