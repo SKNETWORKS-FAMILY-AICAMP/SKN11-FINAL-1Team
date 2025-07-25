@@ -385,6 +385,7 @@ body, html {
           </button>
         </div>
         </div>
+
         <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
           <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: {{ completion_percentage|default:0 }}%"></div>
         </div>
@@ -538,6 +539,17 @@ body, html {
         </div>
         
       </div>
+
+      <!-- 온보딩 종료 모달 -->
+      <div id="onboarding-modal" class="custom-modal">
+        <div class="custom-modal-content">
+          <span id="onboarding-close" class="custom-close">&times;</span>
+          <h2>"첫걸음을 멋지게 내디딘 당신을 축하합니다.</h2>
+          <p>앞으로의 활약을 기대하며 잘 부탁드립니다!😊</p>
+          <button id="onboarding-confirm" class="custom-btn">확인</button>
+        </div>
+      </div>
+
     </div>
   </div>
 {% endblock %}

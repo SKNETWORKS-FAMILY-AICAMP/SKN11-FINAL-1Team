@@ -610,14 +610,33 @@ def get_task_memos(db: Session, task_assign_id: int):
     """특정 태스크의 메모 목록 조회"""
     return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
 
-def update_task_status(db: Session, task_id: int, status: str):
-    """태스크 상태 업데이트"""
+def update_task_status(
+    db: Session,
+    task_id: int,
+    status: str = None,
+    description: str = None,
+    guideline: str = None,
+    priority: str = None,
+    scheduled_end_date: str = None
+):
+    """태스크 상태 및 주요 필드 업데이트"""
     db_task = get_task_assign(db, task_id)
     if db_task:
-        db_task.status = status
+        if status is not None:
+            db_task.status = status
+        if description is not None:
+            db_task.description = description
+        if guideline is not None:
+            db_task.guideline = guideline
+        if priority is not None:
+            db_task.priority = priority
+        if scheduled_end_date is not None:
+            db_task.scheduled_end_date = scheduled_end_date
+
         db.commit()
         db.refresh(db_task)
     return db_task
+
 
 def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optional[int] = None):
     """태스크에 메모(댓글) 추가"""
