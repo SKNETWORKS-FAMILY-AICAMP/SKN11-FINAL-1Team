@@ -540,19 +540,19 @@ body, html {
         
       </div>
 
-      <!-- 온보딩 종료 모달 -->
-      <div id="onboarding-modal" class="custom-modal">
+      <div id="finalTaskModal" class="custom-modal">
         <div class="custom-modal-content">
-          <span id="onboarding-close" class="custom-close">&times;</span>
-          <h2>"첫걸음을 멋지게 내디딘 당신을 축하합니다.</h2>
+          <span id="finalModalClose" class="custom-close">&times;</span>
+          <h2>첫걸음을 멋지게 내디딘 당신을 축하합니다.</h2>
           <p>앞으로의 활약을 기대하며 잘 부탁드립니다!😊</p>
-          <button id="onboarding-confirm" class="custom-btn">확인</button>
+          <button id="finalModalConfirm" class="custom-btn">확인</button>
         </div>
-      </div>
+      </div> <!-- finalTaskModal 끝 -->
 
-    </div>
-  </div>
+</div> <!-- main-content 닫음 -->
 {% endblock %}
+
+
 
 {% block extra_js %}
 <script src="{% static 'js/mentee/mentee.js' %}"></script>
@@ -570,7 +570,7 @@ body, html {
           {% endif %}
       ]
   }
-  </script>
+</script>
 <script>
 // 전역 변수
 let dragged = null;
@@ -1058,10 +1058,22 @@ function completeFinalTask() {
         return;
     }
 
-    if (confirm('정말로 온보딩을 종료하시겠습니까?\n종료 후에는 되돌릴 수 없으며, 최종 평가 보고서가 생성됩니다.')) {
-        // CSRF 토큰 가져오기
+    // 커스텀 모달 열기
+    const modal = document.getElementById('finalTaskModal');
+    const confirmBtn = document.getElementById('finalModalConfirm');
+    const closeBtn = document.getElementById('finalModalClose');
+
+    modal.style.display = 'block';
+
+    // 닫기
+    closeBtn.onclick = () => { modal.style.display = 'none'; };
+    window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
+    // 확인 버튼 → 기존 fetch 로직 실행
+    confirmBtn.onclick = () => {
+        modal.style.display = 'none';
+
         const csrftoken = getCookie('csrftoken');
-        
         fetch('/mentee/complete_onboarding/', {
             method: 'POST',
             headers: {
@@ -1087,7 +1099,7 @@ function completeFinalTask() {
             showMessage('서버 오류가 발생했습니다.', 'error');
             console.error('Error:', error);
         });
-    }
+    };
 }
 </script>
 {% endblock %}

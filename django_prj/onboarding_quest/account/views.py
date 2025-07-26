@@ -1,3 +1,6 @@
+from django.http import HttpResponse
+import openpyxl
+from io import BytesIO
 from django.views.decorators.http import require_GET
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
@@ -191,6 +194,114 @@ def logout_view(request):
 
 #region 관리자
 
+# 엑셀 양식 다운로드 (한글 필드명)
+@login_required
+def user_excel_template(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Users'
+    # 한글 필드명: 사번, 성, 이름, 이메일, 비밀번호, 부서, 직급, 직무, mentee/mentor, 입사일, 관리자여부, 활성화여부
+    ws.append(['사번', '성', '이름', '이메일', '비밀번호', '부서', '직급', '직무', 'mentee/mentor', '입사일', '관리자여부(o/x)', '활성화여부(o/x)'])
+    # 예시 데이터 한 줄 (관리자여부, 활성화여부: o/x)
+    ws.append(['1001', '홍', '길동', 'hong@company.com', '비밀번호', '개발', '사원', '백엔드', 'mentee', '2025-07-01', 'x', 'o'])
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="user_template.xlsx"'
+    return response
+
+# 엑셀 업로드 (유저 일괄 등록, 한글 필드명, 회사 id 적용, 부서 자동 생성)
+@login_required
+@csrf_exempt
+def user_excel_upload(request):
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        excel_file = request.FILES['excel_file']
+        wb = openpyxl.load_workbook(excel_file)
+        ws = wb.active
+        header = [cell.value for cell in ws[1]]
+        created, failed = 0, 0
+        # 로그인한 유저의 회사 id(사업자번호) 가져오기
+        user_data_raw = request.session.get('user_data', {})
+        def safe_get_user_data(session_data):
+            if isinstance(session_data, dict):
+                return session_data
+            elif isinstance(session_data, list) and len(session_data) > 0:
+                first_item = session_data[0]
+                if hasattr(first_item, 'dict'):
+                    return first_item.dict()
+                elif hasattr(first_item, '__dict__'):
+                    return first_item.__dict__
+                elif isinstance(first_item, dict):
+                    return first_item
+            return {}
+        user_data = safe_get_user_data(user_data_raw)
+        company_id = user_data.get('company_id')
+        from core.models import Company
+        try:
+            company_obj = Company.objects.get(company_id=company_id)
+        except Company.DoesNotExist:
+            messages.error(request, '회사 정보가 올바르지 않습니다. 관리자에게 문의하세요.')
+            return redirect('account:supervisor')
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            data = dict(zip(header, row))
+            try:
+                # 한글 필드명 매핑
+                employee_number = data.get('사번')
+                last_name = data.get('성')
+                first_name = data.get('이름')
+                email = data.get('이메일')
+                password = data.get('비밀번호')
+                if password is not None:
+                    password = str(password)
+                dept_name = data.get('부서')
+                position = data.get('직급')
+                job_part = data.get('직무')
+                role = data.get('mentee/mentor')
+                join_date = data.get('입사일')
+                is_admin = data.get('관리자여부(o/x)')
+                is_active = data.get('활성화여부(o/x)')
+                # o/x -> bool 변환
+                def ox_to_bool(val):
+                    if isinstance(val, str):
+                        return val.strip().lower() == 'o'
+                    return False
+                is_admin_bool = ox_to_bool(is_admin)
+                is_active_bool = ox_to_bool(is_active)
+                # 부서 처리: 없으면 생성 (회사와 함께)
+                department = None
+                if dept_name:
+                    department, _ = Department.objects.get_or_create(
+                        department_name=dept_name,
+                        company=company_obj,
+                        defaults={'description': '', 'is_active': True}
+                    )
+                # User 생성
+                # User.objects.create_user를 사용하여 유저 생성
+                user = User.objects.create_user(
+                    email=email,
+                    password=password,
+                    employee_number=employee_number,
+                    last_name=last_name,
+                    first_name=first_name,
+                    position=position,
+                    job_part=job_part,
+                    role=role,
+                    join_date=join_date,
+                    department=department,
+                    company=company_obj,
+                    is_admin=is_admin_bool,
+                    is_active=is_active_bool
+                )
+                created += 1
+            except Exception as e:
+                logger.error(f"유저 생성 실패: {e} (이메일: {email})")
+                failed += 1
+        messages.success(request, f"{created}명 등록, {failed}명 실패")
+        return redirect('account:supervisor')
+    messages.error(request, '엑셀 파일이 필요합니다.')
+    return redirect('account:supervisor')
+
 @login_required
 def supervisor(request):
     try:
@@ -226,7 +337,7 @@ def supervisor(request):
             messages.error(request, '회사 정보를 찾을 수 없습니다.')
             return redirect('account:login')
         
-        # FastAPI에서 부서 목록 가져오기
+        # FastAPI에서 부서 목록 가져오기 (같은 회사의 부서만)
         logger.info("Fetching departments...")
         departments_response = fastapi_client.get_departments(company_id=company_id)
         logger.info(f"Departments response type: {type(departments_response)}")
@@ -293,6 +404,7 @@ def supervisor(request):
             'selected_department_id': int(selected_department_id) if selected_department_id else None,
             'dept_detail': dept_detail,
             'search_query': search_query,
+            'user_data': user_data,  # 템플릿에서 company_id 사용을 위해 추가
         })
         
     except AuthenticationError:

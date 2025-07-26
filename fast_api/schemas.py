@@ -72,15 +72,37 @@ class UserBase(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
-    job_part: str
-    position: str
-    join_date: date
+    job_part: str = Field(default="기본")
+    position: str = Field(default="기본")
+    join_date: date = Field(default_factory=lambda: date(2024, 1, 1))
     tag: Optional[str] = None
-    role: str
+    role: str = Field(default="mentee")
     employee_number: Optional[int] = None
     is_admin: Optional[bool] = False
     is_superuser: Optional[bool] = False
     profile_image: Optional[str] = None
+
+    @validator('first_name', 'last_name', 'job_part', 'role', 'position')
+    def prevent_empty_string(cls, v):
+        """필수 텍스트 필드는 비어있을 수 없습니다"""
+        if not v or not v.strip():
+            # 각 필드별 기본값 반환
+            return "기본" if v in ['job_part', 'position'] else ("mentee" if v == 'role' else v)
+        return v
+
+    @validator('employee_number')
+    def validate_employee_number(cls, v):
+        """사번은 양수여야 합니다"""
+        if v is not None and v <= 0:
+            raise ValueError('사번은 양수여야 합니다')
+        return v
+
+    @validator('tag')
+    def validate_tag(cls, v):
+        """태그 길이 검증"""
+        if v and len(v) > 255:
+            raise ValueError('태그는 255자를 초과할 수 없습니다')
+        return v
     
     @validator('first_name', 'last_name', 'job_part', 'role', 'position')
     def name_fields_must_not_be_empty(cls, v):

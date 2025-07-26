@@ -205,7 +205,7 @@ def task_comment(request, task_assign_id):
                 'task_assign_id': task_assign_id,
                 'user_id': user_id,
                 'comment': comment,
-                'create_date': datetime.now().date().isoformat()
+                'create_date': datetime.now().isoformat()
             }
             
             result = fastapi_client.create_memo(memo_data)
@@ -893,6 +893,8 @@ def task_list(request):
             'selected_task': selected_task,
             'mentorship_id': mentorship_id,
             'user_role': user_role,  # 멘토/멘티 구분을 위한 역할 정보
+            'final_report': final_report,
+            'is_active': mentorship_obj.is_active if mentorship_obj else False,
         }
         return render(request, 'mentee/task_list.html', context)
         
@@ -922,6 +924,24 @@ def task_detail(request, task_assign_id):
         if not user_id:
             logger.warning("사용자 ID를 찾을 수 없음")
             return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
+        
+        from core.models import Mentorship
+
+        # -----------------------------
+        # 최종 평가 보고서 처리 (하드코딩)
+        # -----------------------------
+        mentorship_obj = Mentorship.objects.filter(mentee_id=user_id).first()
+        if mentorship_obj and mentorship_obj.is_active is False:
+            final_report = getattr(mentorship_obj, 'report', None)
+            if final_report and final_report.strip() != '':
+                logger.info("최종 평가 보고서 반환")
+                return JsonResponse({
+                    'success': True,
+                    'task': {
+                        'title': "최종 평가 보고서",
+                        'description': final_report
+                    }
+                })
         
         # FastAPI로 태스크 상세 정보 조회
         logger.info(f"FastAPI로 태스크 조회 중... task_assign_id: {task_assign_id}")
@@ -1055,10 +1075,10 @@ def update_task_status(request, task_id):
                 user_id = request.user.id
                 logger.info(f"🔍 Django User ID 사용: {user_id}")
             
-        logger.info(f"🎯 최종 user_id: {user_id}")
+        logger.info(f"최종 user_id: {user_id}")
             
         if not user_id:
-            logger.error(f"❌ 사용자 ID를 찾을 수 없음")
+            logger.error(f"사용자 ID를 찾을 수 없음")
             return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
         
         # 요청 데이터에서 mentorship_id 가져오기
@@ -1079,10 +1099,25 @@ def update_task_status(request, task_id):
             return JsonResponse({'success': False, 'error': 'mentorship_id가 필요합니다.'}, status=400)
             
         # 🔍 사용자가 해당 멘토쉽에 접근 권한이 있는지 확인
-        mentorships_result = fastapi_client.get_mentorships(
-            mentee_id=user_id,
-            is_active=True
-        )
+        # 현재 사용자 role 확인
+        user_role = getattr(request.user, 'role', None)
+        logger.info(f"현재 사용자 role: {user_role}")
+
+        # 멘티인 경우
+        if user_role == 'mentee':
+            mentorships_result = fastapi_client.get_mentorships(
+                mentee_id=user_id,
+                is_active=True
+            )
+        # 멘토인 경우
+        elif user_role == 'mentor':
+            mentorships_result = fastapi_client.get_mentorships(
+                mentor_id=user_id,
+                is_active=True
+            )
+        else:
+            mentorships_result = {'mentorships': []}
+
         mentorships = mentorships_result.get('mentorships', [])
         
         # 사용자의 멘토쉽 목록에서 요청된 mentorship_id가 있는지 확인
@@ -1195,9 +1230,9 @@ def update_task_status(request, task_id):
             'scheduled_end_date': task_result.get('scheduled_end_date'),
             'real_start_date': task_result.get('real_start_date'),
             'real_end_date': task_result.get('real_end_date'),
-            'status': new_status,  # 🎯 새로운 상태
+            'status': new_status,  # 새로운 상태
             'priority': task_result.get('priority', '중'),  # 기본값 '중'
-            'mentorship_id': mentorship_id,  # 🎯 클라이언트에서 요청한 mentorship_id 사용
+            'mentorship_id': mentorship_id,  # 클라이언트에서 요청한 mentorship_id 사용
         }
         
         # 🔧 None 값 제거 (FastAPI에서 Optional 필드 처리)

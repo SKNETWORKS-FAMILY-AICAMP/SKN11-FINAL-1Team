@@ -31,6 +31,8 @@ urlpatterns = [
     path('user/<int:pk>/update/', views.user_update_view, name='user_update'),
 
     # 멘토쉽 관리
+    path('user/excel/template/', views.user_excel_template, name='user_excel_template'),
+    path('user/excel/upload/', views.user_excel_upload, name='user_excel_upload'),
     path('manage_mentorship/', views.manage_mentorship, name='manage_mentorship'),
     path('mentorship/<int:mentorship_id>/edit/', views.mentorship_edit, name='mentorship_edit'),
     path('mentorship/<int:mentorship_id>/delete/', views.mentorship_delete, name='mentorship_delete'),
