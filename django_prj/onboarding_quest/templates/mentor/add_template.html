@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     try {
       // API 호출 - FastAPI로 직접 요청
-      const response = await fetch('http://localhost:8001/api/tasks/generate_draft/', {
+      const response = await fetch('{{ FASTAPI_BASE_URL }}/api/tasks/generate_draft/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     try {
       // API 호출하여 세부 Task 생성 - FastAPI로 직접 요청
-      const response = await fetch('http://localhost:8001/api/tasks/generate_tasks_from_draft/', {
+      const response = await fetch('{{ FASTAPI_BASE_URL }}/api/tasks/generate_tasks_from_draft/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

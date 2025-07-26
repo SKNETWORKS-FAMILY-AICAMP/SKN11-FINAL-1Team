@@ -8,9 +8,6 @@ import requests
 import json
 from django.conf import settings
 
-# FastAPI 서버 URL
-FASTAPI_BASE_URL = "http://localhost:8001"
-
 # 임시 멘토십 데이터 (FastAPI 서버가 문제일 때 사용)
 def get_temp_mentorship_data(mentor_id=None):
     """임시 멘토십 데이터 생성"""
@@ -122,7 +119,7 @@ def fastapi_proxy(request, path):
         print("[DEBUG] 멘토십 생성 요청 - FastAPI로 전달")
         
     # 요청 URL 구성 - /api/ prefix 추가
-    url = f"{FASTAPI_BASE_URL}/api/{path}"
+    url = f"{settings.FASTAPI_BASE_URL}/api/{path}"
     
     # 쿼리 파라미터 전달
     if request.GET:

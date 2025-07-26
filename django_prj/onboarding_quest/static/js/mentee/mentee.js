@@ -136,7 +136,7 @@ function initializeFilterAndSort(mentorshipId) {
         const statusOption = statusSelect.value;
         const priorityOption = prioritySelect.value;
 
-        let url = `http://127.0.0.1:8001/api/tasks/assigns?mentorship_id=${mentorshipId}`;
+        let url = `${window.API_URLS.FASTAPI_BASE_URL}/api/tasks/assigns?mentorship_id=${mentorshipId}`;
         if (statusOption !== 'all') url += `&status=${encodeURIComponent(statusOption)}`;
         if (priorityOption !== 'all') url += `&priority=${encodeURIComponent(priorityOption)}`;
 

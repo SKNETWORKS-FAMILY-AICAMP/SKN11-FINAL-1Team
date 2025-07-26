@@ -10,6 +10,14 @@
     <!-- Pretendard 폰트 CDN -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <!-- 글로벌 API URL 설정 -->
+    <script>
+        window.API_URLS = {
+            DJANGO_BASE_URL: '{{ DJANGO_BASE_URL }}',
+            FASTAPI_BASE_URL: '{{ FASTAPI_BASE_URL }}',
+            RAG_API_URL: '{{ RAG_API_URL }}'
+        };
+    </script>
     {% block extra_head %}{% endblock %}
 </head>
 <body id="body" class="min-h-screen flex transition-colors duration-300">

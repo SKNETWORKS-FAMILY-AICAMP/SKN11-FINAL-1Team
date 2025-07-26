@@ -1,4 +1,15 @@
+from django.conf import settings
 from core.models import Mentorship
+
+def api_urls_context(request):
+    """
+    API URL들을 모든 템플릿에서 사용할 수 있도록 제공
+    """
+    return {
+        'DJANGO_BASE_URL': settings.DJANGO_BASE_URL,
+        'FASTAPI_BASE_URL': settings.FASTAPI_BASE_URL,
+        'RAG_API_URL': settings.RAG_API_URL,
+    }
 
 def mentorship_context(request):
     """
