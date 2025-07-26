@@ -455,9 +455,6 @@ async def generate_draft(input_data: dict):
         curriculum_input = CurriculumInput(
             curriculum_title=input_data.get('title', ''),
             curriculum_description=input_data.get('description', ''),
-            # job_role=input_data.get('job_role', '신입사원'),
-            # weeks=input_data.get('weeks', 12),
-            # goal=input_data.get('goal', '신입사원의 성공적인 온보딩과 조직 적응')
         )
         
         print(f"[DEBUG] Curriculum input: {curriculum_input}")
@@ -508,9 +505,6 @@ async def generate_tasks_from_draft(input_data: dict):
         curriculum_input = CurriculumInput(
             curriculum_title=input_data.get('title', ''),
             curriculum_description=input_data.get('description', ''),
-            # job_role=input_data.get('job_role', '신입사원'),
-            # weeks=input_data.get('weeks', 12),
-            # goal=input_data.get('goal', '신입사원의 성공적인 온보딩과 조직 적응')
         )
         
         print(f"[DEBUG] Generating tasks for: {curriculum_input.curriculum_title}")

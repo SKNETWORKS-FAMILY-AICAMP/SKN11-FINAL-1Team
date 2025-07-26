@@ -275,34 +275,6 @@ class ChatBot {
         this.loadingMessageElement = messageContent;
     }
 
-    // async typeText(element, text) {
-    //     element.innerHTML = '';
-    //     for (let i = 0; i < text.length; i++) {
-    //         element.textContent += text[i];
-    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
-    //         await new Promise(res => setTimeout(res, 15));
-    //     }
-    // }
-    // async typeText(element, text) {
-    //     const converter = new showdown.Converter({
-    //         simpleLineBreaks: true,
-    //         tables: true
-    //     });
-
-    //     let currentText = '';
-    //     for (let i = 0; i < text.length; i++) {
-    //         currentText += text[i];
-
-    //         // 실시간으로 Markdown 변환 및 렌더링
-    //         element.innerHTML = converter.makeHtml(currentText);
-
-    //         // 스크롤을 자동으로 가장 아래로 이동
-    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
-
-    //         // 글자 출력 속도 조절 (15ms마다 1글자씩 출력)
-    //         await new Promise(res => setTimeout(res, 15));
-    //     }
-    // }
     async typeText(element, fullText, speed = 15) {
         const converter = new showdown.Converter({
             simpleLineBreaks: true,
@@ -471,46 +443,6 @@ class ChatBot {
             this.chatArea.scrollTop = this.chatArea.scrollHeight;
         }
     }
-
-
-    // addMessageToChat(type, text) {
-    //     const messageRow = document.createElement('div');
-    //     messageRow.className = `chatbot-msg-row ${type === 'user' ? 'user' : 'bot'}`;
-
-    //     const messageContent = document.createElement('div');
-    //     messageContent.className = `chatbot-msg-${type === 'user' ? 'user' : 'chabot'}`;
-
-    //     if (type === 'bot') {
-    //         const converter = new showdown.Converter({
-    //             simpleLineBreaks: true,
-    //             tables: true
-    //         });
-
-    //         // 📌 📄 참고 문서 앞에 두 줄 띄우기 (전처리)
-    //         // const patchedText = text.replace(/\n{1}(📄 참고 문서:)/g, "\n\n$1");
-    //         // const patchedText = text.replace(/(📄 참고 문서:)/g, "\n\n$1");
-    //         const patchedText = text.replace(/(📄 참고 문서:)/g, "<br>$1");
-
-
-    //         const html = converter.makeHtml(patchedText);
-    //         messageContent.innerHTML = html;
-
-            
-    //     } else {
-    //         messageContent.textContent = text;
-    //     }
-
-    //     messageRow.appendChild(messageContent);
-    //     this.chatArea.appendChild(messageRow);
-    //     // this.chatArea.scrollTop = this.chatArea.scrollHeight;
-    //     if (!this.userScrolling) {
-    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
-    //     }
-
-    // }
-
-
-
 
     closeDeleteModal() {
         const modal = document.getElementById('deleteModal');

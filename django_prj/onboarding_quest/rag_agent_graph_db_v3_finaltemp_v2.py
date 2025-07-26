@@ -347,17 +347,6 @@ def reformulate_question_improved(state: AgentState) -> AgentState:
         "rewrite_count": state.get("rewrite_count", 0) + 1
     }
 
-# # 개선된 판단 함수
-# def decide_to_reflect_improved(state: AgentState) -> str:
-#     """점수 기반으로 재작성 여부 결정"""
-#     if state.get("rewrite_count", 0) >= 2:
-#         return "summarize"
-    
-#     # 평가 점수 기반 판단
-#     if state.get("needs_rewrite", False):
-#         return "rewrite"
-#     else:
-#         return "summarize"
 
 def decide_to_reflect_improved(state: AgentState) -> str:
     start = time.time()
@@ -372,94 +361,101 @@ def decide_to_reflect_improved(state: AgentState) -> str:
     return "rewrite"  # 그 외에만 재작성
 
 
-
 def search_documents_with_rerank(state: AgentState) -> AgentState:
+    import re
+    import collections
     start = time.time()
-    logger.info("🟢 search_documents_with_rerank 시작")
-    logger.info("🔎 search_documents_with_rerank 실행")
+    logger.info("● search_documents_with_rerank 시작")
+
     query = state.get("rewritten_question") or state["question"]
     user_department_id = state.get("user_department_id")
-
     query_vec = embeddings.embed_query(query)
 
-    # 부서별 필터
+    collections_to_search = []
     if user_department_id:
-        search_filter = Filter(
-            should=[
-                FieldCondition(key="metadata.department_id", match=MatchValue(value=user_department_id)),
-                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
-            ]
-        )
-    else:
-        search_filter = Filter(
-            must=[
-                FieldCondition(key="metadata.common_doc", match=MatchValue(value=True))
-            ]
-        )
+        collections_to_search.append(f"rag_{user_department_id}")
+    collections_to_search.append("rag_common")
 
-    # Qdrant에서 유사도 기반 top-10 검색
-    results = client.search(
-        collection_name=COLLECTION_NAME,
-        query_vector=query_vec,
-        query_filter=search_filter,
-        limit=10,
-        with_payload=True
-    )
+    combined_results = []
 
-    if not results:
+    for col in collections_to_search:
+        try:
+            logger.info(f"파일여 해당 열리: {col}")
+            result = client.search(
+                collection_name=col,
+                query_vector=query_vec,
+                query_filter=None,
+                limit=10,
+                with_payload=True
+            )
+            combined_results.extend(result)
+        except Exception as e:
+            logger.warning(f"⚠️ 해당 열리에서 어느 문제 발생: {e}")
+
+    if not combined_results:
         return {**state, "contexts": []}
 
-    # GPT rerank 프롬프트 구성
-    prompt_chunks = ""
-    for i, r in enumerate(results, 1):
-        meta = r.payload.get("metadata", {})
-        title = meta.get("title", f"청크 {i}")
-        chunk = r.payload.get("text", "")
-        # 계층 경로가 있으면 프롬프트에 함께 표시
-        hierarchy_path = meta.get("hierarchy_path")
-        if hierarchy_path:
-            prompt_chunks += f"\n청크 {i} ({hierarchy_path} | {title}):\n{chunk}\n"
-        else:
-            prompt_chunks += f"\n청크 {i} ({title}):\n{chunk}\n"
+    # 환경 설정: 문서 별 무료
+    docs_map = collections.defaultdict(list)
+    for r in combined_results:
+        file_name = r.payload.get("metadata", {}).get("original_file_name") or r.payload.get("metadata", {}).get("file_name") or "unknown"
+        docs_map[file_name].append(r)
 
-    rerank_prompt = f"""
-다음 질문과 가장 관련 있는 청크를 3개 이내로 선택해 주세요.
+    # 문서 단위로 representative chunk를 2~3개로 발체
+    document_candidates = []
+    for i, (file_name, results) in enumerate(docs_map.items(), 1):
+        chunks_text = ""
+        for j, r in enumerate(results[:3], 1):
+            meta = r.payload.get("metadata", {})
+            title = meta.get("title", f"chunk {j}")
+            chunk = r.payload.get("text", "")
+            hierarchy_path = meta.get("hierarchy_path")
+            if hierarchy_path:
+                chunks_text += f"- {hierarchy_path} | {title}: {chunk[:200]}...\n"
+            else:
+                chunks_text += f"- {title}: {chunk[:200]}...\n"
+        document_candidates.append((i, file_name, chunks_text.strip(), results))
+
+    doc_prompt = f"""
+다음 질문과 같은 내용을 해결할 목적으로 내보인 문서들 간에서 가장 관련 있는 문서를 고르세요.
 
 질문:
 {query}
 
-후보 청크:
-{prompt_chunks}
+호분 문서:
+"""
+    for idx, file_name, chunks, _ in document_candidates:
+        doc_prompt += f"\n\ud30c일 {idx} ({file_name}):\n{chunks}\n"
 
-선택한 청크의 번호를 쉼표로 구분해서 출력하세요 (예: 1,3,5).
-다른 설명은 하지 마세요.
+    doc_prompt += """
+
+발생한 문서 번호를 1개 또는 2개로 고르고, 번호만 순서대로 출력하세요. (예: 1,3)
+다른 설명은 제공하지 마세요.
 """
 
-    response = llm_fast.invoke(rerank_prompt).content.strip()
-    selected_nums = [int(x.strip()) for x in re.findall(r'\d+', response)]
+    response = llm_smart.invoke(doc_prompt).content.strip()
+    selected_idxs = [int(x.strip()) for x in re.findall(r'\d+', response)]
 
     contexts = []
-    for idx in selected_nums:
-        if 1 <= idx <= len(results):
-            r = results[idx - 1]
-            meta = r.payload.get("metadata", {})
-            title = meta.get("title", "무제")
-            text = r.payload.get("text", "")
-            file_name = meta.get("original_file_name") or meta.get("file_name", "알 수 없음")
-            hierarchy_path = meta.get("hierarchy_path")
-            # hierarchy_path가 있고, title이 hierarchy_path의 마지막 계층과 같으면 전체 계층만 표기
-            if hierarchy_path:
-                # 마지막 계층 추출
-                last_level = hierarchy_path.split('>')[-1].strip()
-                if last_level == title:
-                    contexts.append(f"[{hierarchy_path}] (출처: {file_name})\n{text}")
+    for idx in selected_idxs:
+        if 1 <= idx <= len(document_candidates):
+            _, file_name, _, results = document_candidates[idx - 1]
+            for r in results[:3]:
+                meta = r.payload.get("metadata", {})
+                title = meta.get("title", "무제")
+                text = r.payload.get("text", "")
+                hierarchy_path = meta.get("hierarchy_path")
+                if hierarchy_path:
+                    last_level = hierarchy_path.split('>')[-1].strip()
+                    if last_level == title:
+                        contexts.append(f"[{hierarchy_path}] (출처: {file_name})\n{text}")
+                    else:
+                        contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
                 else:
-                    contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
-            else:
-                contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-    elapsed = time.time() - start
-    logger.info(f"🟢 search_documents_with_rerank 완료 - ⏱️ {elapsed:.2f}초")
+                    contexts.append(f"[{title}] (출처: {file_name})\n{text}")
 
+    elapsed = time.time() - start
+    logger.info(f"\u25cf search_documents_with_rerank 완료 - \u231a {elapsed:.2f}초")
     return {**state, "contexts": contexts}
 
 
