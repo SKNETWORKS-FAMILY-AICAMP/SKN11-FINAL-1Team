@@ -123,25 +123,22 @@ function renderTaskListGrouped(tasks) {
 }
 
 function initializeFilterAndSort(mentorshipId) {
-    const sortSelect = document.getElementById('task-sort');
     const statusSelect = document.getElementById('task-filter-status');
     const prioritySelect = document.getElementById('task-filter-priority');
 
     // 요소들이 존재하지 않으면 함수 종료
-    if (!sortSelect || !statusSelect || !prioritySelect) {
+    if (!statusSelect || !prioritySelect) {
         console.log('필터/정렬 요소들이 존재하지 않아 초기화를 건너뜁니다.');
         return;
     }
 
     async function fetchTaskList() {
-        const sortOption = sortSelect.value;
         const statusOption = statusSelect.value;
         const priorityOption = prioritySelect.value;
 
         let url = `http://127.0.0.1:8001/api/tasks/assigns?mentorship_id=${mentorshipId}`;
         if (statusOption !== 'all') url += `&status=${encodeURIComponent(statusOption)}`;
         if (priorityOption !== 'all') url += `&priority=${encodeURIComponent(priorityOption)}`;
-        url += `&sort=${sortOption}`;
 
         console.log("▶ API 호출:", url);
 
@@ -157,7 +154,6 @@ function initializeFilterAndSort(mentorshipId) {
         }
     }
 
-    sortSelect.addEventListener('change', fetchTaskList);
     statusSelect.addEventListener('change', fetchTaskList);
     prioritySelect.addEventListener('change', fetchTaskList);
 
