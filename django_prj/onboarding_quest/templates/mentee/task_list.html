@@ -44,8 +44,8 @@
     </div>
   </div>
 
-   <!-- ✅ 최종 평가 보고서: 반복문 밖에 둠 -->
-  {% if final_report %}
+   <!-- 최종 평가 보고서 카드 -->
+{% if final_report_summary %}
 <div class="task-card done"
      data-task-id="final_report"
      onclick="updateTaskDetailPanel('final_report')">
@@ -55,11 +55,13 @@
   </div>
   <div class="task-desc-row">
     <div class="task-desc" style="white-space: pre-wrap;">
-      {{ final_report|truncatechars:80 }}
+      {{ final_report_summary }}
     </div>
   </div>
 </div>
 {% endif %}
+
+
 
 
   {% for week, tasks in week_tasks.items %}
@@ -123,6 +125,7 @@
         <h3>최종 평가 보고서</h3>
         <div id="report-content" style="white-space: pre-wrap; line-height:1.6;"></div>
     </div> <!-- report-detail-panel 닫기 -->
+
 
     <div class="task-detail-header" id="detail-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
 
@@ -525,6 +528,7 @@ async function updateTaskDetailPanel(taskId) {
                     priority: '',
                     scheduled_end_date: ''
                 });
+
 
                 // report 클릭 시 가이드라인, 우선순위(D-Day), 하위 테스크 버튼 숨김
                 const guidelineContent = document.getElementById('guideline-content');
@@ -1387,8 +1391,8 @@ setTimeout(() => {
                 guideline: document.getElementById('edit-guideline').value || currentTask.guideline,
                 week: currentTask.week || 1,
                 order: currentTask.order,
-                scheduled_start_date: currentTask.scheduled_start_date || null,
-                scheduled_end_date: document.getElementById('edit-end-date').value || null,
+                scheduled_start_date: document.getElementById('edit-start-date')?.value || currentTask.scheduled_start_date || null,
+                scheduled_end_date: document.getElementById('edit-end-date')?.value || currentTask.scheduled_end_date || null,
                 real_start_date: currentTask.real_start_date || null,
                 real_end_date: currentTask.real_end_date || null,
                 status: document.getElementById('edit-status').value || currentTask.status,
@@ -1416,7 +1420,7 @@ setTimeout(() => {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify(payload),  // ✨ 전체 payload 전송
+                body: JSON.stringify(payload),  // 전체 payload 전송
                 credentials: 'same-origin'
             });
                 
