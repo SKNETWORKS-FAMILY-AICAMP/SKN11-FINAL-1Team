@@ -178,13 +178,14 @@ async def get_task_detail(task_id: int, db: Session = Depends(get_db)):
 # Task 상태 업데이트
 @router.post("/assign/update_status/{task_id}")
 async def update_task_status_api(task_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    print(f"DEBUG [update_task_status_api] task_id={task_id}, payload={payload}")
     """태스크 상태와 주요 필드를 업데이트"""
     status = payload.get("status")
     description = payload.get("description")
     guideline = payload.get("guideline")
     priority = payload.get("priority")
+    scheduled_start_date = payload.get("scheduled_start_date")
     scheduled_end_date = payload.get("scheduled_end_date")
-    mentorship_id = payload.get("mentorship_id")
 
     # 태스크 조회
     task = crud.get_task_assign(db, task_id=task_id)
@@ -199,10 +200,12 @@ async def update_task_status_api(task_id: int, payload: dict = Body(...), db: Se
         description=description,
         guideline=guideline,
         priority=priority,
+        scheduled_start_date=scheduled_start_date,
         scheduled_end_date=scheduled_end_date
     )
 
-    return {"success": True, "task_id": task_id}
+    return {"success": True, "task_id": task_id, "updated_priority": updated_task.priority}
+
 
 
 

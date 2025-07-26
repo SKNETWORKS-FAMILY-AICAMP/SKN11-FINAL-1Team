@@ -836,10 +836,16 @@ document.addEventListener('DOMContentLoaded', function() {
         start_date: startDate,
         end_date: endDate,
         priority: editPriority.value,
-        scheduled_end_date: editEndDate.value
+        scheduled_start_date:editStartDate.value || null,
+        scheduled_end_date: editEndDate.value || null
       };
+
+      console.log("DEBUG payload:", payload);
+
+
+      // 이 부분 mentee/update_task_status로 변경했음.
       try {
-        const resp = await fetch(`/mentee/task_update/${currentTask.id}/`, {
+        const resp = await fetch(`/mentee/update_task_status/${currentTask.id}/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

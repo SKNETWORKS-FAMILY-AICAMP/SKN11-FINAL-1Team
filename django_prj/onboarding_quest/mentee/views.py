@@ -1,6 +1,9 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 import json
+import markdown
+from django.utils.html import strip_tags
+from django.utils.text import Truncator
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from core.models import TaskAssign
@@ -148,7 +151,7 @@ def create_subtask(request, parent_id):
                 
                 subtask = TaskAssign.objects.create(
                     parent=parent_task,
-                    mentorship_id=mentorship,  # 🔧 수정: mentorship → mentorship_id
+                    mentorship_id=mentorship,  # 수정: mentorship → mentorship_id
                     title=title,
                     guideline=guideline,
                     description=description,
@@ -280,10 +283,19 @@ def task_update(request, task_assign_id):
         elif old_status != '완료' and new_status == '완료':
             update_data['real_end_date'] = datetime.now().date().isoformat()
         
-        # 기타 필드 업데이트
-        for field in ['title', 'description', 'guideline']:
+        # 기타 필드 업데이트 (빈 값 처리 포함)
+        for field in ['title', 'description', 'guideline', 'priority', 'scheduled_start_date', 'scheduled_end_date']:
             if field in data:
-                update_data[field] = data[field]
+                value = data[field]
+                if isinstance(value, str) and value.strip() == '':
+                    update_data[field] = None
+                else:
+                    update_data[field] = value
+
+        
+        
+        print(f"DEBUG - FastAPI로 전송할 데이터: {update_data}")
+
         
         # FastAPI로 태스크 업데이트
         result = fastapi_client.update_task_assign(task_assign_id, update_data)
@@ -781,13 +793,24 @@ def task_list(request):
         
         from core.models import Mentorship
         final_report = None
+        final_report_summary = None
         mentorship_obj = Mentorship.objects.filter(mentorship_id=mentorship_id).first()
+
         print(f"🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
-        if mentorship_obj and mentorship_obj.is_active == False:
+        if mentorship_obj and mentorship_obj.is_active is False:
             # 온보딩 종료 시 레포트 가져오기
-            final_report = getattr(mentorship_obj, 'report', None)
-            print(f"🔍 DEBUG - 최종 레포트 정보: {final_report}")
-        
+            raw_report = getattr(mentorship_obj, 'report', None)
+            if raw_report:
+                # 상세 보기용 HTML 마크다운 변환
+                final_report = markdown.markdown(raw_report)
+
+                # 요약은 HTML 태그 제거 후 80자로 잘라내기
+                plain_text = strip_tags(final_report)
+                final_report_summary = Truncator(plain_text).chars(80)
+
+            print(f"🔍 DEBUG - 최종 레포트 요약: {final_report_summary}")
+            print(f"🔍 DEBUG - 최종 레포트 전체 HTML: {final_report}")
+
         # 🔧 mentorship_id가 있을 때 is_active 및 사용자 권한 검증
         if mentorship_id:
             try:
@@ -894,6 +917,7 @@ def task_list(request):
             'mentorship_id': mentorship_id,
             'user_role': user_role,  # 멘토/멘티 구분을 위한 역할 정보
             'final_report': final_report,
+            'final_report_summary': final_report_summary,
             'is_active': mentorship_obj.is_active if mentorship_obj else False,
         }
         return render(request, 'mentee/task_list.html', context)
@@ -935,11 +959,15 @@ def task_detail(request, task_assign_id):
             final_report = getattr(mentorship_obj, 'report', None)
             if final_report and final_report.strip() != '':
                 logger.info("최종 평가 보고서 반환")
+
+                # 마크다운을 HTML로 변환
+                final_report = markdown.markdown(final_report)
+
                 return JsonResponse({
                     'success': True,
                     'task': {
                         'title': "최종 평가 보고서",
-                        'description': final_report
+                        'description': final_report  # 변환된 HTML
                     }
                 })
         
@@ -1221,18 +1249,18 @@ def update_task_status(request, task_id):
         
         # 🚀 FastAPI TaskAssignCreate 스키마에 맞는 완전한 데이터 구성
         update_data = {
-            'title': task_result.get('title') or '',
-            'description': new_description or task_result.get('description') or '', 
-            'guideline': task_result.get('guideline') or '',
-            'week': task_result.get('week', 1),  # 기본값 1
-            'order': task_result.get('order', 1),  # 기본값 1
-            'scheduled_start_date': task_result.get('scheduled_start_date'),
-            'scheduled_end_date': task_result.get('scheduled_end_date'),
+            'title': data.get('title', task_result.get('title') or ''),
+            'description': data.get('description', task_result.get('description') or ''), 
+            'guideline': data.get('guideline', task_result.get('guideline') or ''),
+            'week': task_result.get('week', 1),
+            'order': task_result.get('order', 1),
+            'scheduled_start_date': data.get('scheduled_start_date', task_result.get('scheduled_start_date')),
+            'scheduled_end_date': data.get('scheduled_end_date', task_result.get('scheduled_end_date')),
             'real_start_date': task_result.get('real_start_date'),
             'real_end_date': task_result.get('real_end_date'),
-            'status': new_status,  # 새로운 상태
-            'priority': task_result.get('priority', '중'),  # 기본값 '중'
-            'mentorship_id': mentorship_id,  # 클라이언트에서 요청한 mentorship_id 사용
+            'status': new_status,
+            'priority': data.get('priority', task_result.get('priority')),  # 기본값 '중' 제거
+            'mentorship_id': mentorship_id,
         }
         
         # 🔧 None 값 제거 (FastAPI에서 Optional 필드 처리)
@@ -1309,7 +1337,28 @@ def update_task_status(request, task_id):
                 task_obj = TaskAssign.objects.get(task_assign_id=task_id)
                 task_obj.status = new_status
                 if new_description:
-                    task_obj.description = new_description  # ✨ 추가
+                    task_obj.description = new_description  # 추가
+
+                # 🔧 우선순위 업데이트
+                if data.get('priority'):
+                    task_obj.priority = data['priority']
+
+                # 🔧 종료일 업데이트
+                if data.get('scheduled_end_date'):
+                    try:
+                        task_obj.scheduled_end_date = datetime.strptime(data['scheduled_end_date'], '%Y-%m-%d').date()
+                        logger.info(f"📅 종료일 저장: {task_obj.scheduled_end_date}")
+                    except ValueError:
+                        logger.warning(f"유효하지 않은 종료일 형식: {data['scheduled_end_date']}")
+
+                # 🔧 시작일 업데이트
+                if data.get('scheduled_start_date'):
+                    try:
+                        task_obj.scheduled_start_date = datetime.strptime(data['scheduled_start_date'], '%Y-%m-%d').date()
+                        logger.info(f"📅 시작일 저장: {task_obj.scheduled_start_date}")
+                    except ValueError:
+                        logger.warning(f"유효하지 않은 시작일 형식: {data['scheduled_start_date']}")
+
                 
                 # 날짜 필드 업데이트
                 if new_status == '진행중' and not task_obj.real_start_date:

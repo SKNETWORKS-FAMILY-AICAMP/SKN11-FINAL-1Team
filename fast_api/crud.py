@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import date
 import models
 import schemas
+from datetime import datetime
 from passlib.context import CryptContext
 
 # 비밀번호 암호화 설정
@@ -658,24 +659,38 @@ def update_task_status(
     description: str = None,
     guideline: str = None,
     priority: str = None,
+    scheduled_start_date: str = None,
     scheduled_end_date: str = None
 ):
-    """태스크 상태 및 주요 필드 업데이트"""
     db_task = get_task_assign(db, task_id)
-    if db_task:
-        if status is not None:
-            db_task.status = status
-        if description is not None:
-            db_task.description = description
-        if guideline is not None:
-            db_task.guideline = guideline
-        if priority is not None:
-            db_task.priority = priority
-        if scheduled_end_date is not None:
-            db_task.scheduled_end_date = scheduled_end_date
+    # 변경 전 우선순위, 날짜
+    print(f"DEBUG [crud.update_task_status] Before: priority={db_task.priority}, scheduled_end_date={db_task.scheduled_end_date}")
 
-        db.commit()
-        db.refresh(db_task)
+    if priority is not None:
+        db_task.priority = priority
+    if scheduled_start_date:
+        try:
+            db_task.scheduled_start_date = datetime.strptime(scheduled_start_date, "%Y-%m-%d").date()
+        except ValueError:
+            print(f"⚠ 잘못된 시작일: {scheduled_start_date}")
+    if scheduled_end_date:
+        try:
+            db_task.scheduled_end_date = datetime.strptime(scheduled_end_date, "%Y-%m-%d").date()
+        except ValueError:
+            print(f"⚠ 잘못된 종료일: {scheduled_end_date}")
+
+    db.commit()
+    db.refresh(db_task)
+
+    # 변경 후 우선순위 , 날짜 출력 
+    print(f"DEBUG [crud.update_task_status] After: priority={db_task.priority}, scheduled_end_date={db_task.scheduled_end_date}")
+    return db_task
+
+
+
+    
+    db.commit()
+    db.refresh(db_task)
     return db_task
 
 
