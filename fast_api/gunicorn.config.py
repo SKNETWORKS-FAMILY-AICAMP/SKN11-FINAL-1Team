@@ -1,8 +1,13 @@
 import multiprocessing
 from datetime import datetime
 from config import settings
+import os
 
-bind = f"{settings.host}:{settings.port}"  # 바인드할 주소와 포트
+# 로그 디렉토리 경로 설정 (홈 디렉토리 기준)
+log_dir = os.path.expanduser("~/logs/uvicorn")
+os.makedirs(log_dir, exist_ok=True)
+
+bind = "0.0.0.0:8001"  # 바인드할 주소와 포트
 workers = multiprocessing.cpu_count() * 2 + 1  # 워커 개수(코어 수 기반)
 worker_class = "uvicorn.workers.UvicornWorker"  # Uvicorn 워커 클래스
 daemon = False  # 데몬 실행 여부
@@ -11,8 +16,8 @@ keepalive = 2  # keepalive 타임아웃(초)
 
 # 로그 파일 및 레벨 설정 (옵션)
 loglevel = settings.log_level.lower()
-accesslog = f"/log/uvicorn/access_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
-errorlog = f"/log/uvicorn/error_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
+accesslog = f"{log_dir}/access_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
+errorlog = f"{log_dir}/error_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
 
 # 필요시 추가 설정
 # graceful_timeout = 30

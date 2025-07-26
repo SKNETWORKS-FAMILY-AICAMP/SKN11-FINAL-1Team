@@ -14,14 +14,16 @@ class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('이메일은 필수입니다.')
+        if not password:
+            raise ValueError('비밀번호는 필수입니다.')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)  # 비밀번호 해시
+        user.set_password(password)  # 반드시 해시
         user.save()
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('admin', True)
+        extra_fields.setdefault('is_admin', True)
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
@@ -51,7 +53,7 @@ def create_default_email_config(sender, **kwargs):
         if not EmailConfig.objects.filter(email='sinipezflow@gmail.com').exists():
             EmailConfig.objects.create(
                 email='sinipezflow@gmail.com',
-                password=make_password('jgdy jiwk fvez knvz'),
+                password='jgdy jiwk fvez knvz',
                 name='알림봇'
             )
 
@@ -118,7 +120,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('mentor', 'Mentor')
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, help_text='역할(멘티/멘토)')
-    join_date = models.DateField(auto_now_add=True, null=True, blank=True, help_text='입사일')
+    join_date = models.DateField(null=True, blank=True, help_text='입사일')
     position = models.CharField(max_length=50, help_text='직위')
     job_part = models.CharField(max_length=50, help_text='직무')
     email = models.EmailField(unique=True, help_text='이메일(로그인 ID)')
@@ -180,6 +182,7 @@ class Alarm(models.Model):
     message = models.TextField(help_text='알림 메시지')
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text='생성일시')
     is_active = models.BooleanField(default=True, help_text='활성화 여부')
+    url_link = models.URLField(null=True, blank=True, help_text='알림 관련 URL 링크')
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.message[:30]}"
@@ -273,6 +276,7 @@ class Mentorship(models.Model):
     curriculum_title = models.CharField(max_length=255, help_text='커리큘럼 제목')
     total_weeks = models.IntegerField(default=0, help_text='총 주차 수')
     report = models.TextField(null=True, blank=True, help_text='멘티 최종 평가')
+    url_link = models.URLField(null=True, blank=True, help_text='리포트 관련 URL 링크')
 
 class TaskAssign(models.Model):
     task_assign_id = models.AutoField(primary_key=True, help_text='과제 할당 고유 ID')

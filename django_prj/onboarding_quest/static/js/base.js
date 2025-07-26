@@ -78,7 +78,6 @@ function openAlarmPanel() {
     }
     // 알람 리스트에 스크롤 기능 추가
     if (alarmList) {
-        alarmList.style.maxHeight = '60vh';
         alarmList.style.overflowY = 'auto';
     }
 }

@@ -496,23 +496,38 @@
       <label>시작일자</label>
       <input type="date" id="start-date" value="2025-07-16">
       
-      <label>커리큘럼 선택</label>
-      <div id="curriculum-checkbox-container">
-        {% for curriculum in curriculums %}
+    <label>커리큘럼 선택</label>
+    <div id="curriculum-checkbox-container">
+      {% if common_list %}
+      <div class="mb-2">
+        {% for curriculum in common_list %}
         <div>
           <label>
             <input type="checkbox" name="curriculum" value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}">
-            {% if curriculum.common %}
-              <span class="tag common-tag">공통</span>
-            {% else %}
-              <span class="tag dept-tag">{{ curriculum.department.department_name }}</span>
-            {% endif %}
-
+            <span class="tag common-tag">공통</span>
             <span>{{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)</span>
           </label>
         </div>
         {% endfor %}
       </div>
+      {% endif %}
+
+      {% for dept_name, group in dept_groups %}
+      <div class="mb-2">
+        <!-- 부서명 대제목 제거 -->
+        {% for curriculum in group %}
+        <div>
+          <label>
+            <input type="checkbox" name="curriculum" value="{{ curriculum.curriculum_id }}" data-weeks="{{ curriculum.total_weeks }}">
+            <span class="tag dept-tag">{{ dept_name }}</span>
+            <span>{{ curriculum.curriculum_title }} ({{ curriculum.total_weeks }}주)</span>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+
       
       <div class="end-date-label" id="end-date-label">종료일: 커리큘럼을 선택하세요</div>
       

@@ -1,8 +1,12 @@
+from django.http import HttpResponse
+import openpyxl
+from io import BytesIO
 from django.views.decorators.http import require_GET
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.http import HttpResponseForbidden
@@ -13,8 +17,6 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError, NotFoundError
-import json
-import logging
 import json
 import logging
 
@@ -190,6 +192,114 @@ def logout_view(request):
 
 #region 관리자
 
+# 엑셀 양식 다운로드 (한글 필드명)
+@login_required
+def user_excel_template(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Users'
+    # 한글 필드명: 사번, 성, 이름, 이메일, 비밀번호, 부서, 직급, 직무, mentee/mentor, 입사일, 관리자여부, 활성화여부
+    ws.append(['사번', '성', '이름', '이메일', '비밀번호', '부서', '직급', '직무', 'mentee/mentor', '입사일', '관리자여부(o/x)', '활성화여부(o/x)'])
+    # 예시 데이터 한 줄 (관리자여부, 활성화여부: o/x)
+    ws.append(['1001', '홍', '길동', 'hong@company.com', '비밀번호', '개발', '사원', '백엔드', 'mentee', '2025-07-01', 'x', 'o'])
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="user_template.xlsx"'
+    return response
+
+# 엑셀 업로드 (유저 일괄 등록, 한글 필드명, 회사 id 적용, 부서 자동 생성)
+@login_required
+@csrf_exempt
+def user_excel_upload(request):
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        excel_file = request.FILES['excel_file']
+        wb = openpyxl.load_workbook(excel_file)
+        ws = wb.active
+        header = [cell.value for cell in ws[1]]
+        created, failed = 0, 0
+        # 로그인한 유저의 회사 id(사업자번호) 가져오기
+        user_data_raw = request.session.get('user_data', {})
+        def safe_get_user_data(session_data):
+            if isinstance(session_data, dict):
+                return session_data
+            elif isinstance(session_data, list) and len(session_data) > 0:
+                first_item = session_data[0]
+                if hasattr(first_item, 'dict'):
+                    return first_item.dict()
+                elif hasattr(first_item, '__dict__'):
+                    return first_item.__dict__
+                elif isinstance(first_item, dict):
+                    return first_item
+            return {}
+        user_data = safe_get_user_data(user_data_raw)
+        company_id = user_data.get('company_id')
+        from core.models import Company
+        try:
+            company_obj = Company.objects.get(company_id=company_id)
+        except Company.DoesNotExist:
+            messages.error(request, '회사 정보가 올바르지 않습니다. 관리자에게 문의하세요.')
+            return redirect('account:supervisor')
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            data = dict(zip(header, row))
+            try:
+                # 한글 필드명 매핑
+                employee_number = data.get('사번')
+                last_name = data.get('성')
+                first_name = data.get('이름')
+                email = data.get('이메일')
+                password = data.get('비밀번호')
+                if password is not None:
+                    password = str(password)
+                dept_name = data.get('부서')
+                position = data.get('직급')
+                job_part = data.get('직무')
+                role = data.get('mentee/mentor')
+                join_date = data.get('입사일')
+                is_admin = data.get('관리자여부(o/x)')
+                is_active = data.get('활성화여부(o/x)')
+                # o/x -> bool 변환
+                def ox_to_bool(val):
+                    if isinstance(val, str):
+                        return val.strip().lower() == 'o'
+                    return False
+                is_admin_bool = ox_to_bool(is_admin)
+                is_active_bool = ox_to_bool(is_active)
+                # 부서 처리: 없으면 생성 (회사와 함께)
+                department = None
+                if dept_name:
+                    department, _ = Department.objects.get_or_create(
+                        department_name=dept_name,
+                        company=company_obj,
+                        defaults={'description': '', 'is_active': True}
+                    )
+                # User 생성
+                # User.objects.create_user를 사용하여 유저 생성
+                user = User.objects.create_user(
+                    email=email,
+                    password=password,
+                    employee_number=employee_number,
+                    last_name=last_name,
+                    first_name=first_name,
+                    position=position,
+                    job_part=job_part,
+                    role=role,
+                    join_date=join_date,
+                    department=department,
+                    company=company_obj,
+                    is_admin=is_admin_bool,
+                    is_active=is_active_bool
+                )
+                created += 1
+            except Exception as e:
+                logger.error(f"유저 생성 실패: {e} (이메일: {email})")
+                failed += 1
+        messages.success(request, f"{created}명 등록, {failed}명 실패")
+        return redirect('account:supervisor')
+    messages.error(request, '엑셀 파일이 필요합니다.')
+    return redirect('account:supervisor')
+
 @login_required
 def supervisor(request):
     try:
@@ -225,7 +335,7 @@ def supervisor(request):
             messages.error(request, '회사 정보를 찾을 수 없습니다.')
             return redirect('account:login')
         
-        # FastAPI에서 부서 목록 가져오기
+        # FastAPI에서 부서 목록 가져오기 (같은 회사의 부서만)
         logger.info("Fetching departments...")
         departments_response = fastapi_client.get_departments(company_id=company_id)
         logger.info(f"Departments response type: {type(departments_response)}")
@@ -292,6 +402,7 @@ def supervisor(request):
             'selected_department_id': int(selected_department_id) if selected_department_id else None,
             'dept_detail': dept_detail,
             'search_query': search_query,
+            'user_data': user_data,  # 템플릿에서 company_id 사용을 위해 추가
         })
         
     except AuthenticationError:
@@ -519,6 +630,19 @@ def user_create(request):
             import json
             try:
                 json_data = json.loads(request.body)
+                
+                # 현재 로그인한 사용자의 회사 ID 가져오기
+                user_data_session = request.session.get('user_data', {})
+                if isinstance(user_data_session, list) and len(user_data_session) > 0:
+                    user_data_session = user_data_session[0]
+                company_id = user_data_session.get('company_id')
+                
+                if not company_id:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '회사 정보를 찾을 수 없습니다. 관리자에게 문의하세요.'
+                    }, status=400)
+                
                 user_data = {
                     'first_name': json_data.get('first_name'),
                     'last_name': json_data.get('last_name'),
@@ -533,14 +657,9 @@ def user_create(request):
                     'is_admin': json_data.get('is_admin') == True,
                     'department_id': int(json_data.get('department_id')) if json_data.get('department_id') else None,
                     'is_active': json_data.get('is_active', False),
+                    'company_id': str(company_id)  # company_id를 문자열로 처리
                 }
-                user_data_session = request.session.get('user_data', {})
-                company_id = user_data_session.get('company_id')
-                if company_id:
-                    try:
-                        user_data['company_id'] = int(company_id)
-                    except Exception:
-                        pass  # company_id가 int가 아니면 전달하지 않음
+                
                 result = fastapi_client.create_user(user_data)
                 return JsonResponse({
                     'success': True,
@@ -555,6 +674,16 @@ def user_create(request):
                 return JsonResponse({'success': False, 'error': f'사용자 생성 중 예상치 못한 오류가 발생했습니다: {str(e)}'}, status=500)
         # 기존 폼 처리
         try:
+            # 현재 로그인한 사용자의 회사 ID 가져오기
+            user_data_session = request.session.get('user_data', {})
+            if isinstance(user_data_session, list) and len(user_data_session) > 0:
+                user_data_session = user_data_session[0]
+            company_id = user_data_session.get('company_id')
+            
+            if not company_id:
+                messages.error(request, '회사 정보를 찾을 수 없습니다. 관리자에게 문의하세요.')
+                return redirect('account:supervisor')
+            
             user_data = {
                 'first_name': request.POST.get('first_name'),
                 'last_name': request.POST.get('last_name'),
@@ -569,14 +698,9 @@ def user_create(request):
                 'is_admin': request.POST.get('is_admin') == 'on',
                 'department_id': int(request.POST.get('department_id')) if request.POST.get('department_id') else None,
                 'is_active': request.POST.get('is_active') == 'on',
+                'company_id': str(company_id)  # company_id를 문자열로 처리
             }
-            user_data_session = request.session.get('user_data', {})
-            company_id = user_data_session.get('company_id')
-            if company_id:
-                try:
-                    user_data['company_id'] = int(company_id)
-                except Exception:
-                    pass
+            
             result = fastapi_client.create_user(user_data)
             messages.success(request, f"사용자 '{user_data['first_name']} {user_data['last_name']}'가 성공적으로 생성되었습니다.")
             return redirect('account:supervisor')
@@ -1113,6 +1237,28 @@ def mentorship_detail(request, mentorship_id):
     except Exception as e:
         logger.error(f"Mentorship detail error: {str(e)}")
         return JsonResponse({'error': f'멘토쉽 정보 조회 실패: {str(e)}'}, status=400)
+    
+@login_required
+def mentorship_report(request):
+    """
+    멘토쉽 평가(report) 조회 API
+    Retrieves report text from core.models.Mentorship based on mentorship_id, mentor_id, mentee_id
+    """
+    mentorship_id = request.GET.get('mentorship_id')
+    mentor_id = request.GET.get('mentor_id')
+    mentee_id = request.GET.get('mentee_id')
+    try:
+        from core.models import Mentorship
+        mentorship = Mentorship.objects.filter(
+            mentorship_id=mentorship_id,
+            mentor_id=mentor_id,
+            mentee_id=mentee_id
+        ).first()
+        report_text = mentorship.report if mentorship and mentorship.report else ''
+        return JsonResponse({'report': report_text})
+    except Exception as e:
+        logger.error(f"멘토쉽 리포트 조회 실패: {e}")
+        return JsonResponse({'report': ''}, status=500)
 
 @login_required
 def mentorship_edit(request, mentorship_id):

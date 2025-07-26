@@ -124,7 +124,9 @@
                     </td>
 
                     <td class="px-6 py-4 whitespace-nowrap text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-900{% endif %} {% if not mentorship.effective_is_active %}text-gray-500{% endif %}">
-                        {{ mentorship.curriculum_title }}
+                        <a href="{% url 'mentee:task_list' %}?mentorship_id={{ mentorship.mentorship_id }}&mentee_id={{ mentorship.mentee.user_id }}" class="text-blue-600 hover:underline">
+                            {{ mentorship.curriculum_title }}
+                        </a>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-base {% if not mentorship.mentor or not mentorship.mentee %}text-gray-400{% else %}text-gray-900{% endif %} {% if not mentorship.effective_is_active %}text-gray-500{% endif %}">
                         {% if mentorship.start_date or mentorship.end_date %}
@@ -149,8 +151,8 @@
                         {% endif %}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                        {% if mentorship.mentee %}
-                            <button onclick="viewMenteeReport('{{ mentorship.mentee.user_id }}')"
+                        {% if mentorship.mentor and mentorship.mentee %}
+                            <button onclick="viewMenteeReport('{{ mentorship.mentorship_id }}','{{ mentorship.mentor.user_id }}','{{ mentorship.mentee.user_id }}')"
                                     class="px-3 py-1 bg-blue-100 text-blue-800 rounded-md text-sm hover:bg-blue-200 transition-colors">
                                 보고서
                             </button>
@@ -228,7 +230,7 @@
                         <select id="edit-mentee" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             {% for mentee in mentees %}
                                 {% if mentee.is_active %}
-                                <option value="{{ mentee.user_id }}">{{ mentee.last_name }} {{ mentee.first_name }} ({{ mentee.department.department_name }})</option>
+                                <option value="{{ mentee.user_id }}">{{ mentee.last_name }}{{ mentee.first_name }} ({{ mentee.department.department_name }})</option>
                                 {% endif %}
                             {% endfor %}
                         </select>
@@ -270,22 +272,20 @@
     </div>
 </div>
 
-<!-- 보고서 모달 -->
-<div id="report-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-10 mx-auto p-5 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">멘티 보고서</h3>
-                <button onclick="closeReportModal()" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div id="report-content" class="max-h-96 overflow-y-auto">
-                <div class="text-center py-8 text-gray-500">
-                    보고서를 불러오는 중...
-                </div>
+<!-- 보고서 모달창 -->
+<div id="report-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="relative w-full max-w-4xl bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-900">멘티 보고서</h3>
+            <button onclick="closeReportModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="report-content" class="px-6 py-4 max-h-[75vh] overflow-y-auto text-gray-800 whitespace-pre-wrap leading-relaxed">
+            <div class="text-center py-8 text-gray-500">
+                보고서를 불러오는 중...
             </div>
         </div>
     </div>
@@ -295,42 +295,30 @@
 {% block extra_js %}
 <script src="{% static 'js/account/manage_mentorship.js' %}"></script>
 <script>
-// 멘티 보고서 보기 함수
-async function viewMenteeReport(userId) {
+// 보고서 보기 함수
+async function viewMenteeReport(mentorshipId, mentorId, menteeId) {
+    const modal = document.getElementById('report-modal');
+    const contentDiv = document.getElementById('report-content');
+    modal.classList.remove('hidden');
     try {
-        // 보고서 모달 표시
-        document.getElementById('report-modal').classList.remove('hidden');
-        
-        // 보고서 데이터를 가져옵니다
-        const response = await fetch(`http://127.0.0.1:8001/api/mentorship/reports/${userId}`, {
-            headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
-            },
-            mode: 'cors',
-            credentials: 'omit'
-        });
-        
+        const url = new URL('{% url "account:mentorship_report" %}', window.location.origin);
+        url.searchParams.set('mentorship_id', mentorshipId);
+        url.searchParams.set('mentor_id', mentorId);
+        url.searchParams.set('mentee_id', menteeId);
+        const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        const data = await response.json();
         if (response.ok) {
-            const reportData = await response.json();
-            showReportContent(reportData);
-        } else if (response.status === 404) {
-            showReportContent([]);
+            const report = data.report || '';
+            if (report) {
+                contentDiv.innerHTML = `<div class="p-6 whitespace-pre-wrap text-gray-900">${report.replace(/\n/g, '<br>')}</div>`;
+            } else {
+                contentDiv.innerHTML = `<div class="text-center py-8 text-gray-500">등록된 보고서가 없습니다.</div>`;
+            }
         } else {
-            console.error('보고서 조회 실패:', response.status);
-            document.getElementById('report-content').innerHTML = `
-                <div class="text-center py-8 text-red-500">
-                    보고서를 불러오는 중 오류가 발생했습니다.
-                </div>
-            `;
+            contentDiv.innerHTML = `<div class="text-center py-8 text-red-500">보고서 조회 실패: ${response.status}</div>`;
         }
-    } catch (error) {
-        console.error('보고서 조회 오류:', error);
-        document.getElementById('report-content').innerHTML = `
-            <div class="text-center py-8 text-red-500">
-                보고서 조회 중 네트워크 오류가 발생했습니다.
-            </div>
-        `;
+    } catch (e) {
+        contentDiv.innerHTML = `<div class="text-center py-8 text-red-500">보고서 조회 중 오류 발생</div>`;
     }
 }
 

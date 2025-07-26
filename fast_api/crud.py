@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, cast, String
 from typing import List, Optional
+from datetime import date
 import models
 import schemas
+from datetime import datetime
 from passlib.context import CryptContext
 
 # 비밀번호 암호화 설정
@@ -82,9 +84,14 @@ def get_department(db: Session, department_id: int):
     """부서 단일 조회"""
     return db.query(models.Department).filter(models.Department.department_id == department_id).first()
 
-def get_departments(db: Session, skip: int = 0, limit: int = 100):
-    """부서 목록 조회"""
-    return db.query(models.Department).offset(skip).limit(limit).all()
+def get_departments(db: Session, skip: int = 0, limit: int = 100, company_id: str = None):
+    """부서 목록 조회 (회사별 필터링 지원)"""
+    query = db.query(models.Department)
+    
+    if company_id:
+        query = query.filter(models.Department.company_id == company_id)
+    
+    return query.offset(skip).limit(limit).all()
 
 def update_department(db: Session, department_id: int, department_update: schemas.DepartmentUpdate):
     """부서 정보 업데이트"""
@@ -192,6 +199,41 @@ def get_users_with_filters(
     role: str = None,
     is_active: bool = None
 ):
+    """필터링된 사용자 목록 조회 with 기본값 처리"""
+    query = db.query(models.User)
+    
+    # 필터 적용
+    if company_id:
+        query = query.filter(models.User.company_id == company_id)
+    if department_id:
+        query = query.filter(models.User.department_id == department_id)
+    if role:
+        query = query.filter(models.User.role == role)
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    if search:
+        search_filter = or_(
+            models.User.email.ilike(f"%{search}%"),
+            models.User.first_name.ilike(f"%{search}%"),
+            models.User.last_name.ilike(f"%{search}%"),
+            cast(models.User.employee_number, String).ilike(f"%{search}%")
+        )
+        query = query.filter(search_filter)
+    
+    users = query.offset(skip).limit(limit).all()
+    
+    # 필수 필드 기본값 처리
+    for user in users:
+        if not user.job_part:
+            user.job_part = "기본"
+        if not user.position:
+            user.position = "기본"
+        if not user.role:
+            user.role = "mentee"
+        if not user.join_date:
+            user.join_date = date(2024, 1, 1)
+    
+    return users
     """필터링 옵션이 있는 사용자 목록 조회"""
     query = db.query(models.User)
     
@@ -610,14 +652,47 @@ def get_task_memos(db: Session, task_assign_id: int):
     """특정 태스크의 메모 목록 조회"""
     return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
 
-def update_task_status(db: Session, task_id: int, status: str):
-    """태스크 상태 업데이트"""
+def update_task_status(
+    db: Session,
+    task_id: int,
+    status: str = None,
+    description: str = None,
+    guideline: str = None,
+    priority: str = None,
+    scheduled_start_date: str = None,
+    scheduled_end_date: str = None
+):
     db_task = get_task_assign(db, task_id)
-    if db_task:
-        db_task.status = status
-        db.commit()
-        db.refresh(db_task)
+    # 변경 전 우선순위, 날짜
+    print(f"DEBUG [crud.update_task_status] Before: priority={db_task.priority}, scheduled_end_date={db_task.scheduled_end_date}")
+
+    if priority is not None:
+        db_task.priority = priority
+    if scheduled_start_date:
+        try:
+            db_task.scheduled_start_date = datetime.strptime(scheduled_start_date, "%Y-%m-%d").date()
+        except ValueError:
+            print(f"⚠ 잘못된 시작일: {scheduled_start_date}")
+    if scheduled_end_date:
+        try:
+            db_task.scheduled_end_date = datetime.strptime(scheduled_end_date, "%Y-%m-%d").date()
+        except ValueError:
+            print(f"⚠ 잘못된 종료일: {scheduled_end_date}")
+
+    db.commit()
+    db.refresh(db_task)
+
+    # 변경 후 우선순위 , 날짜 출력 
+    print(f"DEBUG [crud.update_task_status] After: priority={db_task.priority}, scheduled_end_date={db_task.scheduled_end_date}")
     return db_task
+
+
+
+    
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
 
 def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optional[int] = None):
     """태스크에 메모(댓글) 추가"""
@@ -893,7 +968,8 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
         mentee = get_user(db, user_id=db_mentorship.mentee_id) if db_mentorship.mentee_id else None
         
         # 멘토십 정보 업데이트
-        for key, value in mentorship_update.dict().items():
+        update_data = mentorship_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
             setattr(db_mentorship, key, value)
         
         # 멘토 또는 멘티가 비활성 상태라면 멘토십도 비활성화
@@ -902,6 +978,17 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
             db_mentorship.is_active = False
         # 주의: 멘토와 멘티가 모두 활성 상태여도 이미 비활성화된 멘토쉽은 자동으로 활성화하지 않음
             
+        db.commit()
+        db.refresh(db_mentorship)
+    return db_mentorship
+
+def update_mentorship_report(db: Session, mentorship_id: int, report: str, url_link: Optional[str] = None):
+    """멘토십 리포트 업데이트"""
+    db_mentorship = get_mentorship(db, mentorship_id)
+    if db_mentorship:
+        db_mentorship.report = report
+        if url_link:
+            db_mentorship.url_link = url_link
         db.commit()
         db.refresh(db_mentorship)
     return db_mentorship
@@ -1110,7 +1197,14 @@ def delete_chat_message(db: Session, message_id: int):
 # Alarm CRUD
 def create_alarm(db: Session, alarm: schemas.AlarmCreate):
     """알람 생성"""
-    db_alarm = models.Alarm(**alarm.dict())
+    from datetime import datetime
+    db_alarm = models.Alarm(
+        user_id=alarm.user_id,
+        message=alarm.message,
+        is_active=alarm.is_active,
+        created_at=datetime.now(),
+        url_link=alarm.url_link
+    )
     db.add(db_alarm)
     db.commit()
     db.refresh(db_alarm)
@@ -1150,7 +1244,8 @@ def update_alarm(db: Session, alarm_id: int, alarm_update: schemas.AlarmCreate):
     """알람 정보 업데이트"""
     db_alarm = get_alarm(db, alarm_id)
     if db_alarm:
-        for key, value in alarm_update.dict().items():
+        update_data = alarm_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
             setattr(db_alarm, key, value)
         db.commit()
         db.refresh(db_alarm)

@@ -8,7 +8,7 @@
     <style>
         .dashboard-container {
             display: flex;
-            min-height: 100vh;
+            min-height: 88vh;
             background: #f8fafc;
         }
         
@@ -18,7 +18,7 @@
             border-right: 1px solid #e5e7eb;
             padding: 24px 0;
             position: fixed;
-            height: 100vh;
+            height: 88vh;
             overflow-y: auto;
         }
         
@@ -52,6 +52,7 @@
             transition: all 0.2s;
             border-right: 3px solid transparent;
             font-size: 16px;
+            cursor: pointer;
         }
         
         .nav-item:hover {
@@ -188,6 +189,21 @@
         
         .table tr:last-child td {
             border-bottom: none;
+        }
+        
+        /* 비활성 사용자 스타일 */
+        .table tr.inactive-user {
+            background-color: #f3f4f6;
+            opacity: 0.7;
+        }
+        
+        .table tr.inactive-user td {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+        
+        .table tr.inactive-user:hover {
+            background-color: #e5e7eb;
         }
         
         .badge {
@@ -359,6 +375,26 @@
         .sidebar-add-btn:hover {
             background: #059669;
         }
+        
+        /* 로딩 스피너 스타일 */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
     </style>
 {% endblock %}
 
@@ -379,9 +415,9 @@
                 </svg>
                 전체
             </a>
-            {% for dept in departments %}
+            {% for dept in departments|dictsort:"department_name" %}
             <div class="nav-item {% if dept.department_id == selected_department_id %}active{% endif %}" style="justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 12px;" onclick="window.location.href='?dept={{ dept.department_id }}'">
+                <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="window.location.href='?dept={{ dept.department_id }}'">
                     <svg class="nav-icon" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                     </svg>
@@ -456,59 +492,26 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="top-bar">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; width: 100%;">
-                <!-- 왼쪽: 검색/정렬 옵션 -->
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <input type="text" id="search-input" placeholder="사번, 이름, 이메일 검색" value="{{ search_query }}" class="search-input" onkeyup="handleSearchKeyup(event)">
-                    {% if selected_department_id %}
-                    <input type="hidden" id="dept-filter" value="{{ selected_department_id }}">
-                    {% endif %}
-                    <button type="button" class="btn btn-primary" onclick="performSearch()">검색</button>
-                    <button type="button" class="btn btn-secondary" style="padding: 10px;" onclick="refreshUserList()" title="새로고침">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                    </button>
-
-<script>
-// 새로고침 버튼에 검색/필터 초기화 기능 추가
-document.addEventListener('DOMContentLoaded', function() {
-    const refreshBtn = document.querySelector('button[title="새로고침"]');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-            document.getElementById('search-input').value = '';
-            document.getElementById('employee-number-sort').value = '';
-            document.getElementById('join-date-sort').value = '';
-            refreshUserList();
-        });
-    }
-});
-</script>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <label style="font-size: 14px; color: #4b5563;">사번순:</label>
-                        <select id="employee-number-sort" class="form-input" style="width: auto; padding: 8px 12px; min-width: 100px;">
-                            <option value="">선택</option>
-                            <option value="asc">오름차순</option>
-                            <option value="desc">내림차순</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <label style="font-size: 14px; color: #4b5563;">입사일순:</label>
-                        <select id="join-date-sort" class="form-input" style="width: auto; padding: 8px 12px; min-width: 100px;">
-                            <option value="">선택</option>
-                            <option value="asc">오름차순</option>
-                            <option value="desc">내림차순</option>
-                        </select>
-                    </div>
-                </div>
-                <!-- 오른쪽: 선택삭제/신규유저등록 버튼 -->
+            <div style="display: flex; justify-content: flex-end; width: 100%; gap: 0; margin-bottom: 10px;">
                 <div style="display: flex; gap: 12px; align-items: center;">
-                    <button id="delete-selected-btn" class="btn" style="background: #dc2626; color: white; display: none; min-width: 120px; justify-content: center;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    <!-- 엑셀 양식 다운로드 버튼 -->
+                    <a href="{% url 'account:user_excel_template' %}" class="btn btn-secondary" style="background: #f3f4f6; color: #1971c2; border: 1px solid #d1d5db;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v16h16V4H4zm8 4v8m0 0l-3-3m3 3l3-3"/>
                         </svg>
-                        선택삭제
-                    </button>
+                        엑셀 양식 다운로드
+                    </a>
+                    <!-- 엑셀 업로드 버튼 (폼) -->
+                    <form id="excel-upload-form" method="post" enctype="multipart/form-data" action="{% url 'account:user_excel_upload' %}" style="display: inline-block;">
+                        {% csrf_token %}
+                        <label for="excel-upload-input" id="excel-upload-label" class="btn btn-primary" style="cursor: pointer; margin-bottom: 0;">
+                            <svg id="excel-upload-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span id="excel-upload-text">엑셀로 유저 일괄 등록</span>
+                        </label>
+                        <input id="excel-upload-input" type="file" name="excel_file" accept=".xlsx,.xls" style="display: none;" onchange="handleExcelUpload(this)">
+                    </form>
                     <a href="{% url 'account:user_create' %}" class="btn btn-add" style="min-width: 120px; justify-content: center;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -516,10 +519,40 @@ document.addEventListener('DOMContentLoaded', function() {
                         신규 유저 등록
                     </a>
                 </div>
-            </div>
+                <button id="delete-selected-btn" class="btn" style="background: #dc2626; color: white; display: none; min-width: 120px; justify-content: center; margin-left: 16px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    선택삭제
+                </button>
+            </div>            
         </div>
         
-        <div class="table-container">
+        <div class="table-container">        
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; margin-bottom: 16px;">
+                <!-- 왼쪽: 검색 관련 버튼들 -->
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <input type="text" id="search-input" placeholder="사번, 이름, 이메일 검색" value="{{ search_query }}" class="search-input" onkeyup="handleSearchKeyup(event)" style="max-width: 300px;">
+                    {% if selected_department_id %}
+                    <input type="hidden" id="dept-filter" value="{{ selected_department_id }}">
+                    {% endif %}
+                    <button type="button" class="btn btn-primary" onclick="performSearch()" style="min-width: 60px;">검색</button>
+                    <button type="button" class="btn btn-secondary" style="padding: 10px;" onclick="refreshUserList()" title="새로고침">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
+                <!-- 오른쪽: 선택삭제 -->
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button id="delete-selected-btn" class="btn" style="background: #dc2626; color: white; display: none; min-width: 120px; justify-content: center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        선택삭제
+                    </button>
+                </div>
+            </div>
             <table class="table">
                 <thead>
                     <tr>
@@ -530,22 +563,37 @@ document.addEventListener('DOMContentLoaded', function() {
                             사번 
                             <span id="employee-number-indicator" style="margin-left: 5px; color: #6b7280;"></span>
                         </th>
-                        <th>이름</th>
-                        <th>이메일</th>
-                        <th>부서</th>
-                        <th>직급</th>
+                        <th style="cursor: pointer;" onclick="toggleSort('name')" title="클릭하여 정렬">
+                            이름
+                            <span id="name-indicator" style="margin-left: 5px; color: #6b7280;"></span>
+                        </th>
+                        <th style="cursor: pointer;" onclick="toggleSort('email')" title="클릭하여 정렬">
+                            이메일
+                            <span id="email-indicator" style="margin-left: 5px; color: #6b7280;"></span>
+                        </th>
+                        <th style="cursor: pointer;" onclick="toggleSort('department')" title="클릭하여 정렬">
+                            부서
+                            <span id="department-indicator" style="margin-left: 5px; color: #6b7280;"></span>
+                        </th>
+                        <th style="cursor: pointer;" onclick="toggleSort('position')" title="클릭하여 정렬">
+                            직급
+                            <span id="position-indicator" style="margin-left: 5px; color: #6b7280;"></span>
+                        </th>
                         <th style="cursor: pointer;" onclick="toggleSort('join_date')" title="클릭하여 정렬">
                             입사일
                             <span id="join-date-indicator" style="margin-left: 5px; color: #6b7280;"></span>
                         </th>
-                        <th>상태</th>
+                        <th style="cursor: pointer;" onclick="toggleSort('status')" title="클릭하여 정렬">
+                            상태
+                            <span id="status-indicator" style="margin-left: 5px; color: #6b7280;"></span>
+                        </th>
                         <th>작업</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for u in users %}
                     <!-- Debug: {{ u|pprint }} -->
-                    <tr>
+                    <tr{% if not u.is_active %} class="inactive-user"{% endif %}>
                         <td class="checkbox-column">
                             <input type="checkbox" class="checkbox-input user-checkbox" data-user-id="{{ u.user_id }}">
                         </td>
@@ -606,6 +654,23 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
+// 새로고침 버튼에 검색/필터 초기화 기능 추가
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshBtn = document.querySelector('button[title="새로고침"]');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            document.getElementById('search-input').value = '';
+            
+            // 모든 헤더 정렬 상태 초기화
+            Object.keys(sortStates).forEach(key => {
+                sortStates[key] = 'none';
+            });
+            
+            refreshUserList();
+        });
+    }
+});
+
 // 사용자 목록 새로고침 함수
 async function refreshUserList(searchQuery = '') {
     try {
@@ -615,7 +680,7 @@ async function refreshUserList(searchQuery = '') {
         
         // 세션에서 회사 ID 가져오기 (Django 템플릿에서 전달)
         const companyId = '{{ user_data.company_id }}';
-        if (companyId) {
+        if (companyId && companyId !== 'None' && companyId !== '') {
             params.append('company_id', companyId);
         }
         
@@ -627,7 +692,7 @@ async function refreshUserList(searchQuery = '') {
             params.append('department_id', deptId);
         }
         
-        const response = await fetch(`http://127.0.0.1:8001/api/users/?${params.toString()}`, {
+        const response = await fetch(`{{ FASTAPI_BASE_URL }}/api/users/?${params.toString()}`, {
             headers: {
                 'Accept': 'application/json',
                 'Cache-Control': 'no-cache'
@@ -665,7 +730,7 @@ function updateUserTable(users) {
     }
     
     tbody.innerHTML = users.map(user => `
-        <tr>
+        <tr${!user.is_active ? ' class="inactive-user"' : ''}>
             <td class="checkbox-column">
                 <input type="checkbox" class="checkbox-input user-checkbox" data-user-id="${user.user_id}">
             </td>
@@ -713,35 +778,57 @@ function updateUserTable(users) {
 
 // 정렬 적용 함수
 function applySorting(users) {
-    const employeeNumberSort = document.getElementById('employee-number-sort').value;
-    const joinDateSort = document.getElementById('join-date-sort').value;
-    
     let sortedUsers = [...users];
     
-    // 사번 정렬 (우선순위 높음)
-    if (employeeNumberSort) {
+    // 현재 활성화된 정렬 필드 찾기
+    let activeField = null;
+    let activeState = null;
+    
+    Object.keys(sortStates).forEach(field => {
+        if (sortStates[field] !== 'none') {
+            activeField = field;
+            activeState = sortStates[field];
+        }
+    });
+    
+    // 활성화된 정렬이 있으면 해당 필드로만 정렬
+    if (activeField && activeState) {
         sortedUsers.sort((a, b) => {
-            const aNum = parseInt(a.employee_number) || 0;
-            const bNum = parseInt(b.employee_number) || 0;
+            let comparison = 0;
             
-            if (employeeNumberSort === 'asc') {
-                return aNum - bNum;
-            } else {
-                return bNum - aNum;
+            switch (activeField) {
+                case 'employee_number':
+                    const aNum = parseInt(a.employee_number) || 0;
+                    const bNum = parseInt(b.employee_number) || 0;
+                    comparison = aNum - bNum;
+                    break;
+                case 'name':
+                    const aName = (a.last_name + a.first_name).toLowerCase();
+                    const bName = (b.last_name + b.first_name).toLowerCase();
+                    comparison = aName.localeCompare(bName);
+                    break;
+                case 'email':
+                    comparison = a.email.toLowerCase().localeCompare(b.email.toLowerCase());
+                    break;
+                case 'department':
+                    const aDept = a.department?.department_name || '';
+                    const bDept = b.department?.department_name || '';
+                    comparison = aDept.localeCompare(bDept);
+                    break;
+                case 'position':
+                    comparison = (a.position || '').localeCompare(b.position || '');
+                    break;
+                case 'join_date':
+                    const aDate = new Date(a.join_date || '1900-01-01');
+                    const bDate = new Date(b.join_date || '1900-01-01');
+                    comparison = aDate - bDate;
+                    break;
+                case 'status':
+                    comparison = (a.is_active ? 1 : 0) - (b.is_active ? 1 : 0);
+                    break;
             }
-        });
-    }
-    // 입사일 정렬 (사번 정렬이 없을 때만 적용)
-    else if (joinDateSort) {
-        sortedUsers.sort((a, b) => {
-            const aDate = new Date(a.join_date || '1900-01-01');
-            const bDate = new Date(b.join_date || '1900-01-01');
             
-            if (joinDateSort === 'asc') {
-                return aDate - bDate;
-            } else {
-                return bDate - aDate;
-            }
+            return activeState === 'desc' ? -comparison : comparison;
         });
     }
     
@@ -751,52 +838,72 @@ function applySorting(users) {
     return sortedUsers;
 }
 
+// 정렬 상태 저장 객체
+const sortStates = {
+    employee_number: 'none',
+    name: 'none',
+    email: 'none',
+    department: 'none',
+    position: 'none',
+    join_date: 'none',
+    status: 'none'
+};
+
+// 정렬 상태 가져오기 함수
+function getSortState(field) {
+    return sortStates[field.replace('-', '_')] || 'none';
+}
+
 // 헤더 클릭으로 정렬 토글
 function toggleSort(field) {
-    if (field === 'employee_number') {
-        const current = document.getElementById('employee-number-sort').value;
-        const newValue = current === 'asc' ? 'desc' : 'asc';
-        document.getElementById('employee-number-sort').value = newValue;
-        document.getElementById('join-date-sort').value = '';
-    } else if (field === 'join_date') {
-        const current = document.getElementById('join-date-sort').value;
-        const newValue = current === 'asc' ? 'desc' : 'asc';
-        document.getElementById('join-date-sort').value = newValue;
-        document.getElementById('employee-number-sort').value = '';
+    // 다른 모든 정렬 상태 초기화 (개별 정렬을 위해)
+    Object.keys(sortStates).forEach(key => {
+        if (key !== field) {
+            sortStates[key] = 'none';
+        }
+    });
+    
+    // 현재 정렬 상태 가져오기
+    const currentState = sortStates[field];
+    
+    // 정렬 상태 순환: none -> asc -> desc -> none
+    if (currentState === 'none') {
+        sortStates[field] = 'asc';
+    } else if (currentState === 'asc') {
+        sortStates[field] = 'desc';
+    } else {
+        sortStates[field] = 'none';
     }
+    
     performSearch();
 }
 
 // 정렬 표시기 업데이트
 function updateSortIndicators() {
-    const employeeNumberSort = document.getElementById('employee-number-sort').value;
-    const joinDateSort = document.getElementById('join-date-sort').value;
+    // 모든 헤더들의 정렬 표시기 업데이트
+    const headers = ['employee-number', 'name', 'email', 'department', 'position', 'join-date', 'status'];
+    headers.forEach(header => {
+        const indicator = document.getElementById(`${header}-indicator`);
+        if (indicator) {
+            updateHeaderIndicator(header, indicator);
+        }
+    });
+}
+
+// 개별 헤더 표시기 업데이트
+function updateHeaderIndicator(fieldId, indicator) {
+    const field = fieldId.replace('-', '_');
+    const state = sortStates[field];
     
-    const empIndicator = document.getElementById('employee-number-indicator');
-    const joinIndicator = document.getElementById('join-date-indicator');
-    
-    // 사번 표시기
-    if (employeeNumberSort === 'asc') {
-        empIndicator.innerHTML = '↑';
-        empIndicator.style.color = '#2563eb';
-    } else if (employeeNumberSort === 'desc') {
-        empIndicator.innerHTML = '↓';
-        empIndicator.style.color = '#2563eb';
+    if (state === 'asc') {
+        indicator.innerHTML = '↑';
+        indicator.style.color = '#2563eb';
+    } else if (state === 'desc') {
+        indicator.innerHTML = '↓';
+        indicator.style.color = '#2563eb';
     } else {
-        empIndicator.innerHTML = '';
-        empIndicator.style.color = '#6b7280';
-    }
-    
-    // 입사일 표시기
-    if (joinDateSort === 'asc') {
-        joinIndicator.innerHTML = '↑';
-        joinIndicator.style.color = '#2563eb';
-    } else if (joinDateSort === 'desc') {
-        joinIndicator.innerHTML = '↓';
-        joinIndicator.style.color = '#2563eb';
-    } else {
-        joinIndicator.innerHTML = '';
-        joinIndicator.style.color = '#6b7280';
+        indicator.innerHTML = '';
+        indicator.style.color = '#6b7280';
     }
 }
 
@@ -808,8 +915,12 @@ function performSearch() {
 
 function clearSearch() {
     document.getElementById('search-input').value = '';
-    document.getElementById('employee-number-sort').value = '';
-    document.getElementById('join-date-sort').value = '';
+    
+    // 모든 헤더 정렬 상태 초기화
+    Object.keys(sortStates).forEach(key => {
+        sortStates[key] = 'none';
+    });
+    
     refreshUserList();
 }
 
@@ -875,26 +986,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 정렬 표시기 초기화
     updateSortIndicators();
     
-    // 정렬 드롭다운 이벤트 리스너 추가
-    const employeeNumberSort = document.getElementById('employee-number-sort');
-    const joinDateSort = document.getElementById('join-date-sort');
-    
-    employeeNumberSort.addEventListener('change', function() {
-        if (this.value) {
-            // 사번 정렬이 선택되면 입사일 정렬 초기화
-            joinDateSort.value = '';
-        }
-        performSearch();
-    });
-    
-    joinDateSort.addEventListener('change', function() {
-        if (this.value) {
-            // 입사일 정렬이 선택되면 사번 정렬 초기화
-            employeeNumberSort.value = '';
-        }
-        performSearch();
-    });
-    
     // 선택삭제 버튼 클릭 이벤트
     const deleteSelectedBtn = document.getElementById('delete-selected-btn');
     deleteSelectedBtn.addEventListener('click', function() {
@@ -914,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 다중 사용자 삭제 함수
     async function deleteMultipleUsers(userIds) {
         try {
-            const response = await fetch(`http://127.0.0.1:8001/api/users/`, {
+            const response = await fetch(`{{ FASTAPI_BASE_URL }}/api/users/`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -953,7 +1044,7 @@ async function deleteSingleUser(userId) {
     }
     
     try {
-        const response = await fetch(`http://127.0.0.1:8001/api/users/${userId}`, {
+        const response = await fetch(`{{ FASTAPI_BASE_URL }}/api/users/${userId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -1041,6 +1132,23 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// 엑셀 업로드 처리 함수
+function handleExcelUpload(input) {
+    if (input.files && input.files[0]) {
+        const label = document.getElementById('excel-upload-label');
+        const icon = document.getElementById('excel-upload-icon');
+        const text = document.getElementById('excel-upload-text');
+        
+        // 로딩 상태로 변경
+        label.classList.add('loading');
+        icon.outerHTML = '<div class="loading-spinner" style="margin-right: 4px;"></div>';
+        text.textContent = '업로드 진행중...';
+        
+        // 폼 제출
+        document.getElementById('excel-upload-form').submit();
+    }
 }
 
 // 부서 수정 폼 표시

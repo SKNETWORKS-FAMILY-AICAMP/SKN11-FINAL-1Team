@@ -265,98 +265,6 @@ body, html {
   color: #9ca3af;
   opacity: 0.7;
 }
-.task-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.task-modal {
-  background: white;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.modal-header button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.modal-body p {
-  margin-bottom: 16px;
-}
-
-.task-comments {
-  margin-top: 24px;
-  border-top: 1px solid #e5e7eb;
-  padding-top: 20px;
-}
-
-.task-comments h3 {
-  margin-bottom: 16px;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.comment {
-  background: #f9fafb;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.comment strong {
-  color: #374151;
-}
-
-.comment small {
-  color: #6b7280;
-  float: right;
-}
-
-.loading-message {
-  color: #9ca3af;
-  font-style: italic;
-}
 
 .error-card {
   border-left-color: #dc2626 !important;
@@ -385,6 +293,7 @@ body, html {
           </button>
         </div>
         </div>
+
         <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
           <div id="expBarTop" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: {{ completion_percentage|default:0 }}%"></div>
         </div>
@@ -538,9 +447,20 @@ body, html {
         </div>
         
       </div>
-    </div>
-  </div>
+
+      <div id="finalTaskModal" class="custom-modal">
+        <div class="custom-modal-content">
+          <span id="finalModalClose" class="custom-close">&times;</span>
+          <h2>첫걸음을 멋지게 내디딘 당신을 축하합니다.</h2>
+          <p>앞으로의 활약을 기대하며 잘 부탁드립니다!😊</p>
+          <button id="finalModalConfirm" class="custom-btn">확인</button>
+        </div>
+      </div> <!-- finalTaskModal 끝 -->
+
+</div> <!-- main-content 닫음 -->
 {% endblock %}
+
+
 
 {% block extra_js %}
 <script src="{% static 'js/mentee/mentee.js' %}"></script>
@@ -558,7 +478,7 @@ body, html {
           {% endif %}
       ]
   }
-  </script>
+</script>
 <script>
 // 전역 변수
 let dragged = null;
@@ -661,12 +581,8 @@ function addCardEventListeners(card) {
         );
     });
     
-    // 클릭 이벤트 (상세보기)
-    card.addEventListener('click', function(e) {
-        if (!dragged) {
-            showTaskDetail(card.dataset.taskId);
-        }
-    });
+    // 클릭 이벤트 제거 - 모든 카드에서 모달을 열지 않음
+    // HTML의 onclick 속성만 사용하여 goToTaskDetail로 바로 이동
 }
 
 
@@ -880,69 +796,14 @@ function showTaskDetail(taskId) {
     const card = document.getElementById(`task${taskId}`);
     if (!card) return;
     
-    // data 속성에서 직접 정보 추출 (API 호출 불필요!)
-    const task = {
-        id: card.dataset.taskId,
-        title: card.dataset.title,
-        description: card.dataset.desc,
-        status: card.dataset.status,
-        priority: card.dataset.priority,
-        scheduled_end_date: card.dataset.date,
-        guideline: card.dataset.guideline,
-        memos: JSON.parse(card.dataset.memos || '[]')
-    };
-    
-    showTaskModal(task);
-}
-
-// 태스크 상세 모달 표시
-function showTaskModal(task) {
-    // 기존 모달이 있으면 제거
-    const existingModal = document.querySelector('.task-modal-overlay');
-    if (existingModal) {
-        existingModal.remove();
+    // review-task 클래스가 있는 카드는 모달을 열지 않음
+    if (card.classList.contains('review-task')) {
+        return; // 모달 열기를 중단
     }
     
-    // 모달 HTML 생성 및 표시
-    const modalHTML = `
-        <div class="task-modal-overlay" onclick="closeTaskModal()">
-            <div class="task-modal" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h2>${task.title}</h2>
-                    <button onclick="closeTaskModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p><strong>설명:</strong> ${task.desc || task.description || '설명이 없습니다.'}</p>
-                    <p><strong>상태:</strong> ${task.status}</p>
-                    <p><strong>우선순위:</strong> ${task.priority || '중'}</p>
-                    <p><strong>예정 완료일:</strong> ${task.scheduled_end_date || '미정'}</p>
-                    ${task.guideline ? `<p><strong>가이드라인:</strong> ${task.guideline}</p>` : ''}
-                    
-                    <div class="task-comments">
-                        <h3>댓글</h3>
-                        ${task.memos && task.memos.length > 0 ? 
-                            task.memos.map(memo => `
-                                <div class="comment">
-                                    <strong>${memo.user}</strong>: ${memo.comment}
-                                    <small>(${memo.create_date})</small>
-                                </div>
-                            `).join('') :
-                            '<p style="color: #9ca3af; font-style: italic;">댓글이 없습니다.</p>'
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
-
-function closeTaskModal() {
-    const modal = document.querySelector('.task-modal-overlay');
-    if (modal) {
-        modal.remove();
-    }
+    // 모든 카드에 대해 모달을 열지 않고 바로 페이지 이동
+    const mentorshipId = new URLSearchParams(window.location.search).get('mentorship_id');
+    window.location.href = `/mentee/task_list/?mentorship_id=${mentorshipId}&task_id=${taskId}`;
 }
 
 // 태스크 업데이트 메시지 표시
@@ -1037,6 +898,62 @@ function updateTaskProgress() {
     if (userExpTop) userExpTop.textContent = completedCards;
     if (userExpMaxTop) userExpMaxTop.textContent = totalCards;
     if (expBarTop) expBarTop.style.width = `${Math.min(100, percentage)}%`;
+}
+
+function completeFinalTask() {
+    const mentorshipId = new URLSearchParams(window.location.search).get('mentorship_id');
+    if (!mentorshipId) {
+        showTaskUpdateMessage('멘토십 정보를 찾을 수 없습니다.', 'error');
+        return;
+    }
+
+    // 커스텀 모달 열기
+    const modal = document.getElementById('finalTaskModal');
+    const confirmBtn = document.getElementById('finalModalConfirm');
+    const closeBtn = document.getElementById('finalModalClose');
+
+    if (!modal || !confirmBtn || !closeBtn) {
+        console.error('모달 요소를 찾을 수 없습니다.');
+        return;
+    }
+
+    modal.style.display = 'block';
+
+    // 닫기
+    closeBtn.onclick = () => { modal.style.display = 'none'; };
+    window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
+    // 확인 버튼 → 기존 fetch 로직 실행
+    confirmBtn.onclick = () => {
+        modal.style.display = 'none';
+
+        const csrftoken = getCookie('csrftoken');
+        fetch('/mentee/complete_onboarding/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            },
+            body: JSON.stringify({
+                mentorship_id: mentorshipId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showTaskUpdateMessage('온보딩이 종료되었습니다. 최종 평가 보고서가 생성됩니다.', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showTaskUpdateMessage(data.error || '온보딩 종료 중 오류가 발생했습니다.', 'error');
+            }
+        })
+        .catch(error => {
+            showTaskUpdateMessage('서버 오류가 발생했습니다.', 'error');
+            console.error('Error:', error);
+        });
+    };
 }
 </script>
 {% endblock %}

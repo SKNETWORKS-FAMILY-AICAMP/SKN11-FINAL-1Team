@@ -27,6 +27,9 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here-change-in-production'
 DEBUG = str2bool(os.getenv('DEBUG', 'False'))
 ALLOWED_HOSTS = parse_list(os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1'))
 
+# CORS 설정
+ALLOWED_ORIGINS = parse_list(os.getenv('ALLOWED_ORIGINS', 'http://localhost:8000,http://localhost:8001'))
+
 # =================================
 # 📋 로깅 설정
 # =================================
@@ -122,6 +125,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.api_urls_context',
                 'core.context_processors.mentorship_context',
             ],
         },
@@ -192,7 +196,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
 MEDIA_ROOT = os.path.join(BASE_DIR, os.getenv('MEDIA_ROOT', 'media'))
 
-# 파일 업로드 크기 제한
+# 파일 업로드 관련 설정
+UPLOAD_BASE_DIR = os.getenv('UPLOAD_BASE_DIR', 'uploaded_docs')
 MAX_FILE_SIZE_MB = int(os.getenv('MAX_FILE_SIZE', '50'))
 FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024  # MB to bytes
 DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_FILE_SIZE_MB * 2 * 1024 * 1024  # 2x for safety
@@ -201,6 +206,10 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_FILE_SIZE_MB * 2 * 1024 * 1024  # 2x for safet
 # 🔐 인증 설정
 # =================================
 AUTH_USER_MODEL = 'core.User'
+
+# JWT 설정
+JWT_ALGORITHM = os.getenv('JWT_ALGORITHM', 'HS256')
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', '30'))
 
 # CSRF 설정
 CSRF_COOKIE_NAME = 'csrftoken'
@@ -215,6 +224,11 @@ LOGOUT_REDIRECT_URL = '/account/login/'
 # =================================
 # 🌐 외부 서비스 연동
 # =================================
+# Django 서버 설정
+DJANGO_HOST = os.getenv('DJANGO_HOST', 'localhost')
+DJANGO_PORT = int(os.getenv('DJANGO_PORT', '8000'))
+DJANGO_BASE_URL = os.getenv('DJANGO_BASE_URL', f'http://{DJANGO_HOST}:{DJANGO_PORT}')
+
 # FastAPI 서버 설정
 FASTAPI_HOST = os.getenv('FASTAPI_HOST', 'localhost')
 FASTAPI_PORT = int(os.getenv('FASTAPI_PORT', '8001'))
@@ -224,6 +238,21 @@ FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', f'http://{FASTAPI_HOST}:{FASTAP
 RAG_API_URL = os.getenv('RAG_API_URL', FASTAPI_BASE_URL)
 QDRANT_URL = os.getenv('QDRANT_URL', 'http://localhost:6333')
 QDRANT_COLLECTION_NAME = os.getenv('QDRANT_COLLECTION_NAME', 'rag_multiformat')
+
+# OpenAI API 설정
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+
+# =================================
+# 🤖 Agent 스케줄 설정
+# =================================
+# Agent 실행 주기 (초 단위)
+AGENT_CYCLE_INTERVAL = int(os.getenv('AGENT_CYCLE_INTERVAL', '30'))
+# 정시 체크 간격 (시간 단위)
+AGENT_HOURLY_CHECK = int(os.getenv('AGENT_HOURLY_CHECK', '1'))
+# 일일 체크 실행 시간 (24시간 형식)
+AGENT_DAILY_CHECK_HOUR = int(os.getenv('AGENT_DAILY_CHECK_HOUR', '9'))
+# Agent 활성화 여부
+AGENT_ENABLED = str2bool(os.getenv('AGENT_ENABLED', 'True'))
 
 # =================================
 # 🚀 기타 설정

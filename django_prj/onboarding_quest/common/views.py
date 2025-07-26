@@ -111,6 +111,7 @@ async def call_rag_api(question, session_id=None, user_id=None, department_id=No
         }
 
 # 챗봇 메인 함수
+@login_required
 def chatbot(request):
     current_session_id = request.GET.get('session')
     chat_sessions = []

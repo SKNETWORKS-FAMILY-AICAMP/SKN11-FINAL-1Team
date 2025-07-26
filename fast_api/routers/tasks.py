@@ -178,15 +178,35 @@ async def get_task_detail(task_id: int, db: Session = Depends(get_db)):
 # Task 상태 업데이트
 @router.post("/assign/update_status/{task_id}")
 async def update_task_status_api(task_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
-    """태스크 상태를 업데이트"""
+    print(f"DEBUG [update_task_status_api] task_id={task_id}, payload={payload}")
+    """태스크 상태와 주요 필드를 업데이트"""
     status = payload.get("status")
-    mentorship_id = payload.get("mentorship_id")
+    description = payload.get("description")
+    guideline = payload.get("guideline")
+    priority = payload.get("priority")
+    scheduled_start_date = payload.get("scheduled_start_date")
+    scheduled_end_date = payload.get("scheduled_end_date")
+
+    # 태스크 조회
     task = crud.get_task_assign(db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="할당된 태스크를 찾을 수 없습니다.")
-    
-    updated_task = crud.update_task_status(db, task_id=task_id, status=status)  # crud 함수 필요
-    return {"success": True}
+
+    # CRUD 호출
+    updated_task = crud.update_task_status(
+        db,
+        task_id=task_id,
+        status=status,
+        description=description,
+        guideline=guideline,
+        priority=priority,
+        scheduled_start_date=scheduled_start_date,
+        scheduled_end_date=scheduled_end_date
+    )
+
+    return {"success": True, "task_id": task_id, "updated_priority": updated_task.priority}
+
+
 
 
 # Task 댓글 추가

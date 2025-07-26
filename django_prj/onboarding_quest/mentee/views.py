@@ -1,6 +1,9 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 import json
+import markdown
+from django.utils.html import strip_tags
+from django.utils.text import Truncator
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from core.models import TaskAssign
@@ -10,6 +13,8 @@ from core.models import Memo, User
 from datetime import date, datetime
 from core.utils.fastapi_client import fastapi_client, APIError, AuthenticationError
 from django.contrib import messages
+from core.models import Mentorship
+from report_langgraph import run_report_workflow
 
 # 하위 테스크(TaskAssign) 생성 API
 @csrf_exempt
@@ -146,7 +151,7 @@ def create_subtask(request, parent_id):
                 
                 subtask = TaskAssign.objects.create(
                     parent=parent_task,
-                    mentorship_id=mentorship,  # 🔧 수정: mentorship → mentorship_id
+                    mentorship_id=mentorship,  # 수정: mentorship → mentorship_id
                     title=title,
                     guideline=guideline,
                     description=description,
@@ -203,7 +208,7 @@ def task_comment(request, task_assign_id):
                 'task_assign_id': task_assign_id,
                 'user_id': user_id,
                 'comment': comment,
-                'create_date': datetime.now().date().isoformat()
+                'create_date': datetime.now().isoformat()
             }
             
             result = fastapi_client.create_memo(memo_data)
@@ -278,10 +283,19 @@ def task_update(request, task_assign_id):
         elif old_status != '완료' and new_status == '완료':
             update_data['real_end_date'] = datetime.now().date().isoformat()
         
-        # 기타 필드 업데이트
-        for field in ['title', 'description', 'guideline']:
+        # 기타 필드 업데이트 (빈 값 처리 포함)
+        for field in ['title', 'description', 'guideline', 'priority', 'scheduled_start_date', 'scheduled_end_date']:
             if field in data:
-                update_data[field] = data[field]
+                value = data[field]
+                if isinstance(value, str) and value.strip() == '':
+                    update_data[field] = None
+                else:
+                    update_data[field] = value
+
+        
+        
+        print(f"DEBUG - FastAPI로 전송할 데이터: {update_data}")
+
         
         # FastAPI로 태스크 업데이트
         result = fastapi_client.update_task_assign(task_assign_id, update_data)
@@ -765,7 +779,7 @@ def task_list(request):
         week_tasks = defaultdict(list)
         selected_task = None
         
-        # 🔧 현재 사용자 ID와 역할 가져오기
+        # 해당 멘토-멘티 멘토쉽 정보 확인 
         user_id = getattr(request.user, 'user_id', None)
         user_role = getattr(request.user, 'role', None)
         if not user_id:
@@ -779,13 +793,24 @@ def task_list(request):
         
         from core.models import Mentorship
         final_report = None
+        final_report_summary = None
         mentorship_obj = Mentorship.objects.filter(mentorship_id=mentorship_id).first()
-        print(f">>>>> 🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
-        if mentorship_obj and mentorship_obj.is_active == False:
+
+        print(f"🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
+        if mentorship_obj and mentorship_obj.is_active is False:
             # 온보딩 종료 시 레포트 가져오기
-            final_report = getattr(mentorship_obj, 'report', None)
-            print(f"🔍 DEBUG - 최종 레포트 정보: {final_report}")
-        
+            raw_report = getattr(mentorship_obj, 'report', None)
+            if raw_report:
+                # 상세 보기용 HTML 마크다운 변환
+                final_report = markdown.markdown(raw_report)
+
+                # 요약은 HTML 태그 제거 후 80자로 잘라내기
+                plain_text = strip_tags(final_report)
+                final_report_summary = Truncator(plain_text).chars(80)
+
+            print(f"🔍 DEBUG - 최종 레포트 요약: {final_report_summary}")
+            print(f"🔍 DEBUG - 최종 레포트 전체 HTML: {final_report}")
+
         # 🔧 mentorship_id가 있을 때 is_active 및 사용자 권한 검증
         if mentorship_id:
             try:
@@ -892,6 +917,7 @@ def task_list(request):
             'mentorship_id': mentorship_id,
             'user_role': user_role,  # 멘토/멘티 구분을 위한 역할 정보
             'final_report': final_report,
+            'final_report_summary': final_report_summary,
             'is_active': mentorship_obj.is_active if mentorship_obj else False,
         }
         return render(request, 'mentee/task_list.html', context)
@@ -933,11 +959,15 @@ def task_detail(request, task_assign_id):
             final_report = getattr(mentorship_obj, 'report', None)
             if final_report and final_report.strip() != '':
                 logger.info("최종 평가 보고서 반환")
+
+                # 마크다운을 HTML로 변환
+                final_report = markdown.markdown(final_report)
+
                 return JsonResponse({
                     'success': True,
                     'task': {
                         'title': "최종 평가 보고서",
-                        'description': final_report
+                        'description': final_report  # 변환된 HTML
                     }
                 })
         
@@ -1073,10 +1103,10 @@ def update_task_status(request, task_id):
                 user_id = request.user.id
                 logger.info(f"🔍 Django User ID 사용: {user_id}")
             
-        logger.info(f"🎯 최종 user_id: {user_id}")
+        logger.info(f"최종 user_id: {user_id}")
             
         if not user_id:
-            logger.error(f"❌ 사용자 ID를 찾을 수 없음")
+            logger.error(f"사용자 ID를 찾을 수 없음")
             return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
         
         # 요청 데이터에서 mentorship_id 가져오기
@@ -1097,17 +1127,34 @@ def update_task_status(request, task_id):
             return JsonResponse({'success': False, 'error': 'mentorship_id가 필요합니다.'}, status=400)
             
         # 🔍 사용자가 해당 멘토쉽에 접근 권한이 있는지 확인
-        mentorships_result = fastapi_client.get_mentorships(is_active=True)
+        # 현재 사용자 role 확인
+        user_role = getattr(request.user, 'role', None)
+        logger.info(f"현재 사용자 role: {user_role}")
+
+        # 멘티인 경우
+        if user_role == 'mentee':
+            mentorships_result = fastapi_client.get_mentorships(
+                mentee_id=user_id,
+                is_active=True
+            )
+        # 멘토인 경우
+        elif user_role == 'mentor':
+            mentorships_result = fastapi_client.get_mentorships(
+                mentor_id=user_id,
+                is_active=True
+            )
+        else:
+            mentorships_result = {'mentorships': []}
+
         mentorships = mentorships_result.get('mentorships', [])
-        user_mentorship_ids = []
-        for m in mentorships:
-            # 멘티 또는 멘토로 참여한 멘토십만 허용
-            if m.get('mentee_id') == user_id or m.get('mentor_id') == user_id:
-                user_mentorship_ids.append(m.get('id'))
-        logger.info(f"🔍 로그인 유저가 멘티/멘토로 속한 멘토십 ID들: {user_mentorship_ids}")
+        
+        # 사용자의 멘토쉽 목록에서 요청된 mentorship_id가 있는지 확인
+        user_mentorship_ids = [m.get('id') for m in mentorships]
+        logger.info(f"🔍 사용자의 활성 멘토쉽 ID들: {user_mentorship_ids}")
+        
         if client_mentorship_id not in user_mentorship_ids:
-            logger.error(f"❌ 권한 없음: 사용자 {user_id}는 멘토십 {client_mentorship_id}에 속하지 않음")
-            return JsonResponse({'success': False, 'error': '해당 멘토십에 대한 권한이 없습니다.'}, status=403)
+            logger.error(f"❌ 권한 없음: 사용자 {user_id}는 멘토쉽 {client_mentorship_id}에 접근할 수 없음")
+            return JsonResponse({'success': False, 'error': '해당 멘토쉽에 대한 권한이 없습니다.'}, status=403)
         
         # 🎯 클라이언트에서 요청한 mentorship_id 사용 (검증 완료)
         mentorship_id = client_mentorship_id
@@ -1181,6 +1228,7 @@ def update_task_status(request, task_id):
         # 이미 위에서 data 파싱 완료
         
         new_status = data.get('status', '').strip()
+        new_description = data.get('description', '').strip()
         valid_statuses = ['진행전', '진행중', '검토요청', '완료']
         if new_status not in valid_statuses:
             return JsonResponse({
@@ -1201,18 +1249,18 @@ def update_task_status(request, task_id):
         
         # 🚀 FastAPI TaskAssignCreate 스키마에 맞는 완전한 데이터 구성
         update_data = {
-            'title': task_result.get('title') or '',
-            'description': task_result.get('description') or '',
-            'guideline': task_result.get('guideline') or '',
-            'week': task_result.get('week', 1),  # 기본값 1
-            'order': task_result.get('order', 1),  # 기본값 1
-            'scheduled_start_date': task_result.get('scheduled_start_date'),
-            'scheduled_end_date': task_result.get('scheduled_end_date'),
+            'title': data.get('title', task_result.get('title') or ''),
+            'description': data.get('description', task_result.get('description') or ''), 
+            'guideline': data.get('guideline', task_result.get('guideline') or ''),
+            'week': task_result.get('week', 1),
+            'order': task_result.get('order', 1),
+            'scheduled_start_date': data.get('scheduled_start_date', task_result.get('scheduled_start_date')),
+            'scheduled_end_date': data.get('scheduled_end_date', task_result.get('scheduled_end_date')),
             'real_start_date': task_result.get('real_start_date'),
             'real_end_date': task_result.get('real_end_date'),
-            'status': new_status,  # 🎯 새로운 상태
-            'priority': task_result.get('priority', '중'),  # 기본값 '중'
-            'mentorship_id': mentorship_id,  # 🎯 클라이언트에서 요청한 mentorship_id 사용
+            'status': new_status,
+            'priority': data.get('priority', task_result.get('priority')),  # 기본값 '중' 제거
+            'mentorship_id': mentorship_id,
         }
         
         # 🔧 None 값 제거 (FastAPI에서 Optional 필드 처리)
@@ -1288,6 +1336,29 @@ def update_task_status(request, task_id):
                 logger.info(f"🔧 Django ORM으로 태스크 상태 업데이트 시도...")
                 task_obj = TaskAssign.objects.get(task_assign_id=task_id)
                 task_obj.status = new_status
+                if new_description:
+                    task_obj.description = new_description  # 추가
+
+                # 🔧 우선순위 업데이트
+                if data.get('priority'):
+                    task_obj.priority = data['priority']
+
+                # 🔧 종료일 업데이트
+                if data.get('scheduled_end_date'):
+                    try:
+                        task_obj.scheduled_end_date = datetime.strptime(data['scheduled_end_date'], '%Y-%m-%d').date()
+                        logger.info(f"📅 종료일 저장: {task_obj.scheduled_end_date}")
+                    except ValueError:
+                        logger.warning(f"유효하지 않은 종료일 형식: {data['scheduled_end_date']}")
+
+                # 🔧 시작일 업데이트
+                if data.get('scheduled_start_date'):
+                    try:
+                        task_obj.scheduled_start_date = datetime.strptime(data['scheduled_start_date'], '%Y-%m-%d').date()
+                        logger.info(f"📅 시작일 저장: {task_obj.scheduled_start_date}")
+                    except ValueError:
+                        logger.warning(f"유효하지 않은 시작일 형식: {data['scheduled_start_date']}")
+
                 
                 # 날짜 필드 업데이트
                 if new_status == '진행중' and not task_obj.real_start_date:
@@ -1512,4 +1583,67 @@ def test_task_list(request):
     except Exception as e:
         print(f"test_task_list 오류: {e}")
         return render(request, 'mentee/task_list_test.html', {'week_tasks': {}, 'mentorship_id': 2})
+
+@login_required
+@require_POST
+def complete_onboarding(request):
+    """온보딩 종료 및 최종 보고서 생성 처리"""
+    try:
+        data = json.loads(request.body)
+        mentorship_id = data.get('mentorship_id')
+        
+        if not mentorship_id:
+            return JsonResponse({
+                'success': False,
+                'error': '멘토십 ID가 필요합니다.'
+            }, status=400)
+
+        # 현재 사용자 정보 확인
+        user_data = request.session.get('user_data', {})
+        user_id = user_data.get('user_id') or request.user.user_id
+
+        # 멘토십 조회 및 권한 확인
+        try:
+            mentorship = Mentorship.objects.get(
+                mentorship_id=mentorship_id,
+                mentee_id=user_id,
+                is_active=True
+            )
+        except Mentorship.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 멘토십을 찾을 수 없거나 접근 권한이 없습니다.'
+            }, status=404)
+
+        # 멘토십 비활성화
+        mentorship.is_active = False
+        mentorship.save()
+
+        # report_langgraph workflow 실행
+        try:
+            final_state = run_report_workflow(user_id=user_id)
+            if final_state:
+                return JsonResponse({
+                    'success': True,
+                    'message': '온보딩이 종료되었으며 최종 보고서가 생성되었습니다.'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': '보고서 생성 중 오류가 발생했습니다.'
+                }, status=500)
+        except Exception as workflow_error:
+            print(f"Workflow 실행 오류: {workflow_error}")
+            # 워크플로우 실패 시에도 온보딩은 종료된 상태 유지
+            return JsonResponse({
+                'success': True,
+                'message': '온보딩은 종료되었으나, 보고서 생성 중 오류가 발생했습니다.'
+            })
+
+    except Exception as e:
+        print(f"온보딩 종료 처리 오류: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'처리 중 오류가 발생했습니다: {str(e)}'
+        }, status=500)
 

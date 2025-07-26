@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Numeric, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -44,10 +44,10 @@ class User(Base):
     company_id = Column(String(12), ForeignKey("core_company.company_id"), comment="소속 회사")
     department_id = Column(Integer, ForeignKey("core_department.department_id"), comment="소속 부서")
     tag = Column(String(255), comment="유저 태그")
-    role = Column(String(20), nullable=False, comment="역할(멘티/멘토)")
-    join_date = Column(Date, comment="입사일")
-    position = Column(String(50), nullable=False, comment="직위")
-    job_part = Column(String(50), nullable=False, comment="직무")
+    role = Column(String(20), nullable=False, server_default=text("'mentee'"), comment="역할(멘티/멘토)")
+    join_date = Column(Date, nullable=False, server_default=text("'2024-01-01'"), comment="입사일")
+    position = Column(String(50), nullable=False, server_default=text("'기본'"), comment="직위")
+    job_part = Column(String(50), nullable=False, server_default=text("'기본'"), comment="직무")
     email = Column(String(255), nullable=False, unique=True, comment="이메일(로그인 ID)")
     password = Column(String(128), nullable=False, comment="비밀번호")
     last_name = Column(String(50), nullable=False, comment="성")
@@ -76,6 +76,7 @@ class Alarm(Base):
     message = Column(Text, nullable=False, comment="알림 메시지")
     created_at = Column(DateTime, default=func.now(), comment="생성일시")
     is_active = Column(Boolean, default=True, comment="활성화 여부")
+    url_link = Column(String(200), nullable=True, comment="알림 관련 URL 링크")
     
     # 관계 설정
     user = relationship("User", back_populates="alarms")
@@ -93,6 +94,8 @@ class Mentorship(Base):
     is_active = Column(Boolean, default=True, comment="멘토쉽 활성화 여부")
     curriculum_title = Column(String(255), comment="커리큘럼 제목")
     total_weeks = Column(Integer, default=0, comment="총 주차 수")
+    report = Column(Text, nullable=True, comment="멘티 최종 평가")
+    url_link = Column(String(200), nullable=True, comment="리포트 관련 URL 링크")
     
     # 관계 설정
     mentor = relationship("User", foreign_keys=[mentor_id], back_populates="mentor_relationships")

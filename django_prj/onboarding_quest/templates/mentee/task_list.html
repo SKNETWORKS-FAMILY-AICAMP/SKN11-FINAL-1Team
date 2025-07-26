@@ -22,11 +22,6 @@
   <!-- 정렬/필터 컨트롤 -->
   <div class="task-controls" style="margin: 12px 0; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; justify-content: space-between;">
-      <select id="task-sort" style="padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; flex: 1; height: 40px;">
-        <option value="week">주차별</option>
-        <option value="deadline">마감일별</option>
-      </select>
-
       <select id="task-filter-status" style="padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; flex: 1; height: 40px;">
         <option value="all">전체 상태</option>
         <option value="진행전">진행전</option>
@@ -44,8 +39,8 @@
     </div>
   </div>
 
-   <!-- ✅ 최종 평가 보고서: 반복문 밖에 둠 -->
-  {% if final_report %}
+   <!-- 최종 평가 보고서 카드 -->
+{% if final_report_summary %}
 <div class="task-card done"
      data-task-id="final_report"
      onclick="updateTaskDetailPanel('final_report')">
@@ -55,11 +50,13 @@
   </div>
   <div class="task-desc-row">
     <div class="task-desc" style="white-space: pre-wrap;">
-      {{ final_report|truncatechars:80 }}
+      {{ final_report_summary }}
     </div>
   </div>
 </div>
 {% endif %}
+
+
 
 
   {% for week, tasks in week_tasks.items %}
@@ -67,14 +64,16 @@
     {% for task in tasks %}
       {% if not task.parent %}
       <div class="task-card {% if forloop.first and forloop.parentloop.first %}selected{% endif %} {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}"
-        data-task-id="{{ task.task_id }}"
+        data-task-id="{{ task.task_assign_id }}"
         data-title="{{ task.title|escapejs }}"
-        data-desc="{{ task.description|default_if_none:''|escapejs }}"
+        data-desc="{{ task.guideline|default_if_none:''|escapejs }}"
         data-priority="{{ task.priority|default:'하'|escapejs }}"
         data-status="{{ task.status|escapejs }}"
-        data-scheduled_end_date="{{ task.scheduled_end_date|date:'Y-m-d' }}"
+        data-scheduled_start_date="{{ task.scheduled_start_date|date:'Y-m-d'|default:'' }}"
+        data-scheduled_end_date="{{ task.scheduled_end_date|date:'Y-m-d'|default:'' }}"
         data-week="{{ week }}"
         data-dday="{{ task.dday|default_if_none:'' }}"
+        onclick="updateTaskDetailPanel('{{ task.task_assign_id }}')"
         >
         <div class="task-card-header">
           <span class="status-badge {% if task.status == '진행전' %}not-started{% elif task.status == '진행중' %}in-progress{% elif task.status == '검토요청' %}review-requested{% elif task.status == '완료' or task.status == '완료됨' %}done{% endif %}">{{ task.status }}</span>
@@ -86,7 +85,7 @@
           {% endif %}
         </div>
         <div class="task-desc-row">
-          <div class="task-desc">{{ task.description }}</div>
+          <div class="task-desc">{{ task.guideline }}</div>
         </div>
 
         
@@ -124,6 +123,7 @@
         <div id="report-content" style="white-space: pre-wrap; line-height:1.6;"></div>
     </div> <!-- report-detail-panel 닫기 -->
 
+
     <div class="task-detail-header" id="detail-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
 
       <div style="display:flex; align-items:center; gap:12px;">
@@ -157,6 +157,10 @@
           </select>
         </div>
         <div style="flex:1;">
+          <label style="font-weight:bold; color:#222;">시작날짜</label>
+          <input id="edit-start-date" type="date" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
+        </div>
+        <div style="flex:1;">
           <label style="font-weight:bold; color:#222;">마감날짜</label>
           <input id="edit-end-date" type="date" style="width:100%; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
         </div>
@@ -165,8 +169,8 @@
       <input id="edit-title" type="text" style="width:100%; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;" />
       <label style="font-weight:bold; color:#222;">가이드라인</label>
       <textarea id="edit-guideline" style="width:100%; min-height:60px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
-      <label style="font-weight:bold; color:#222;">세부내용(여러 줄)</label>
-      <textarea id="edit-description" style="width:100%; min-height:80px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
+      <label style="font-weight:bold; color:#222;">세부내용</label>
+      <textarea id="edit-description" style="width:100%; min-height:200px; margin-bottom:8px; border-radius:6px; border:1px solid #ccc; padding:8px; font-size:15px;"></textarea>
       <div style="display:flex; gap:8px;">
         <button type="submit" id="edit-save-btn" style="background:#1976d2; color:#ffffff; font-weight:bold; border:none; border-radius:6px; padding:6px 18px; font-size:15px; cursor:pointer;">저장</button>
         <button type="button" id="edit-cancel-btn" style="background:#eee; color:#000000; font-weight:bold; border:none; border-radius:6px; padding:6px 18px; font-size:15px; cursor:pointer;">취소</button>
@@ -175,6 +179,7 @@
     <div class="task-detail-meta-row" id="detail-meta-row">
       <span class="task-badge yellow" id="detail-badge">중급</span>
       <span class="d-day-badge" id="detail-dday"></span>
+      <span class="task-date-info" id="detail-date-range" style="text-align: right; font-style: italic; margin-left: auto;"></span>
     </div>
     <div class="task-detail-divider"></div>
     <div class="task-detail-list" id="detail-list">
@@ -424,8 +429,45 @@ function initializeMessageSystem() {
 
 // 🔧 필터/정렬 기능 초기화 (기존 기능 유지)
 function initializeFilterAndSort() {
-    // 기존 필터/정렬 로직이 있다면 여기에 추가
-    console.log('✅ 필터/정렬 기능 설정 완료');
+    // 셀렉트 박스 이벤트 리스너 등록
+    const statusSelect = document.getElementById('task-filter-status');
+    const prioritySelect = document.getElementById('task-filter-priority');
+
+    function applyTaskFilters() {
+        const statusValue = statusSelect.value;
+        const priorityValue = prioritySelect.value;
+
+        // 모든 태스크 카드 반복
+        document.querySelectorAll('.task-card').forEach(card => {
+            const cardStatus = card.dataset.status;
+            const cardPriority = card.dataset.priority;
+
+            let visible = true;
+
+            // 상태 필터
+            if (statusValue !== 'all' && cardStatus !== statusValue) {
+                visible = false;
+            }
+            // 우선순위 필터
+            if (priorityValue !== 'all' && cardPriority !== priorityValue) {
+                visible = false;
+            }
+
+            card.style.display = visible ? '' : 'none';
+        });
+    }
+
+    // 셀렉트 박스 값 변경 시 필터 적용
+    [statusSelect, prioritySelect].forEach(select => {
+        if (select) {
+            select.addEventListener('change', applyTaskFilters);
+        }
+    });
+
+    // 페이지 로드 시 최초 필터 적용
+    applyTaskFilters();
+
+    console.log('✅ 필터/정렬 기능 설정 완료 (AND 조건 적용)');
 }
 
 // 🔧 첫 번째 태스크 자동 선택
@@ -523,8 +565,10 @@ async function updateTaskDetailPanel(taskId) {
                     guideline: '',
                     status: '',
                     priority: '',
+                    scheduled_start_date: '',
                     scheduled_end_date: ''
                 });
+
 
                 // report 클릭 시 가이드라인, 우선순위(D-Day), 하위 테스크 버튼 숨김
                 const guidelineContent = document.getElementById('guideline-content');
@@ -608,6 +652,7 @@ async function updateTaskDetailPanel(taskId) {
                 guideline: task.guideline,
                 status: task.status,
                 priority: task.priority,
+                scheduled_start_date: task.scheduled_start_date,
                 scheduled_end_date: task.scheduled_end_date,
                 week: task.week,
                 order: task.order,
@@ -652,7 +697,8 @@ function updateTaskInfo(task) {
     // 설명 업데이트
     const descElement = document.getElementById('detail-desc');
     if (descElement) {
-        descElement.textContent = task.desc || task.description || '설명이 없습니다.';
+        descElement.innerHTML = (task.desc || task.description || '설명이 없습니다.').replace(/\n/g, '<br>');
+
     }
     
     // 우선순위 뱃지 업데이트
@@ -668,6 +714,21 @@ function updateTaskInfo(task) {
         const ddayText = calculateDday(task.scheduled_end_date);
         ddayElement.textContent = ddayText || '';
         ddayElement.style.display = ddayText ? 'inline-block' : 'none';
+    }
+    
+    // 날짜 범위 업데이트 (시작일 ~ 종료일)
+    const dateRangeElement = document.getElementById('detail-date-range');
+    if (dateRangeElement) {
+        let dateRangeText = '';
+        if (task.scheduled_start_date && task.scheduled_end_date) {
+            dateRangeText = `${task.scheduled_start_date} ~ ${task.scheduled_end_date}`;
+        } else if (task.scheduled_start_date) {
+            dateRangeText = `${task.scheduled_start_date} ~`;
+        } else if (task.scheduled_end_date) {
+            dateRangeText = `~ ${task.scheduled_end_date}`;
+        }
+        dateRangeElement.textContent = dateRangeText;
+        //dateRangeElement.style.display = dateRangeText ? 'block' : 'none';
     }
     
     console.log('✅ 태스크 기본 정보 업데이트 완료');
@@ -699,7 +760,9 @@ function updateMemoList(memos) {
     // 기존 메모 제거
     messagesContainer.innerHTML = '';
     
-    if (memos && memos.length > 0) {
+    if (Array.isArray(memos) && memos.length > 0) {
+    // 날짜 기준 오래된 순서로 정렬
+        memos.sort((a, b) => new Date(a.create_date) - new Date(b.create_date));
         memos.forEach(memo => {
             const memoElement = document.createElement('div');
             memoElement.className = 'memo-item';
@@ -1247,6 +1310,7 @@ function displaySelectedTask() {
             guideline: window.selectedTaskData.guideline,
             status: window.selectedTaskData.status,
             priority: window.selectedTaskData.priority,
+            scheduled_start_date: window.selectedTaskData.scheduled_start_date,
             scheduled_end_date: window.selectedTaskData.scheduled_end_date,
             week: window.selectedTaskData.week,
             order: window.selectedTaskData.order,
@@ -1290,16 +1354,21 @@ function showEditForm() {
     const editForm = document.getElementById('task-edit-form');
     const descDiv = document.getElementById('detail-desc');
     const listDiv = document.getElementById('detail-list');
+    const guidelineContent = document.getElementById('guideline-content');
     const editStatus = document.getElementById('edit-status');
     const editTitle = document.getElementById('edit-title');
     const editGuideline = document.getElementById('edit-guideline');
     const editDescription = document.getElementById('edit-description');
     const editPriority = document.getElementById('edit-priority');
+    const editStartDate = document.getElementById('edit-start-date');
     const editEndDate = document.getElementById('edit-end-date');
     
     // 기존 영역 숨김
     document.getElementById('detail-header-row').style.display = 'none';
     document.getElementById('detail-meta-row').style.display = 'none';
+    if (guidelineContent) {
+        guidelineContent.style.display = 'none';
+    }
     
     // 기존 값 세팅
     editStatus.value = currentTask.status || '진행전';
@@ -1307,6 +1376,11 @@ function showEditForm() {
     editGuideline.value = currentTask.guideline || '';
     editDescription.value = currentTask.description || '';
     editPriority.value = currentTask.priority || '하';
+    if (currentTask.scheduled_start_date) {
+        editStartDate.value = String(currentTask.scheduled_start_date).slice(0, 10);
+    } else {
+        editStartDate.value = '';
+    }
     if (currentTask.scheduled_end_date) {
         editEndDate.value = String(currentTask.scheduled_end_date).slice(0, 10);
     } else {
@@ -1331,11 +1405,15 @@ function hideEditForm() {
     const editForm = document.getElementById('task-edit-form');
     const descDiv = document.getElementById('detail-desc');
     const listDiv = document.getElementById('detail-list');
+    const guidelineContent = document.getElementById('guideline-content');
     
     editForm.style.display = 'none';
     // 숨겼던 영역 다시 표시
     document.getElementById('detail-header-row').style.display = 'flex';
     document.getElementById('detail-meta-row').style.display = 'flex';
+    if (guidelineContent) {
+        guidelineContent.style.display = 'block';
+    }
     descDiv.style.display = 'block';
     listDiv.style.display = 'block';
     isEditing = false;
@@ -1384,8 +1462,8 @@ setTimeout(() => {
                 guideline: document.getElementById('edit-guideline').value || currentTask.guideline,
                 week: currentTask.week || 1,
                 order: currentTask.order,
-                scheduled_start_date: currentTask.scheduled_start_date || null,
-                scheduled_end_date: document.getElementById('edit-end-date').value || null,
+                scheduled_start_date: document.getElementById('edit-start-date')?.value || currentTask.scheduled_start_date || null,
+                scheduled_end_date: document.getElementById('edit-end-date')?.value || currentTask.scheduled_end_date || null,
                 real_start_date: currentTask.real_start_date || null,
                 real_end_date: currentTask.real_end_date || null,
                 status: document.getElementById('edit-status').value || currentTask.status,
@@ -1413,10 +1491,7 @@ setTimeout(() => {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({
-                    status: payload.status,
-                    mentorship_id: parseInt(window.mentorshipId)
-                }),
+                body: JSON.stringify(payload),  // 전체 payload 전송
                 credentials: 'same-origin'
             });
                 
@@ -1435,8 +1510,9 @@ setTimeout(() => {
                     currentTask.guideline = payload.guideline;
                     currentTask.description = payload.description;
                     currentTask.priority = payload.priority;
+                    currentTask.scheduled_start_date = payload.scheduled_start_date;
                     currentTask.scheduled_end_date = payload.scheduled_end_date;
-                    
+
                     // 태스크 정보 업데이트
                     updateTaskInfo(currentTask);
                     updateGuideline(currentTask.guideline);
@@ -1448,6 +1524,9 @@ setTimeout(() => {
                         taskCard.setAttribute('data-title', payload.title);
                         taskCard.setAttribute('data-status', payload.status);
                         taskCard.setAttribute('data-priority', payload.priority);
+                        if (payload.scheduled_start_date) {
+                            taskCard.setAttribute('data-scheduled_start_date', payload.scheduled_start_date);
+                        }
                         if (payload.scheduled_end_date) {
                             taskCard.setAttribute('data-scheduled_end_date', payload.scheduled_end_date);
                         }

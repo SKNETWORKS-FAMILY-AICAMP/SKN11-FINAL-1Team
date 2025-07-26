@@ -114,7 +114,7 @@ let originalMentorshipsData = []; // 원본 전체 데이터
 let searchResultsData = []; // 검색 결과 데이터
 let currentFilter = 'all'; // 현재 활성화된 필터 상태 추적
 let currentSearchQuery = ''; // 현재 검색어 저장
-const FASTAPI_BASE_URL = 'http://localhost:8001';
+const FASTAPI_BASE_URL = '{{ FASTAPI_BASE_URL }}';
 
 // 페이지 로드시 멘토십 데이터 로드
 document.addEventListener('DOMContentLoaded', function() {
@@ -286,10 +286,15 @@ function renderMentorshipCards(mentorships) {
         const formattedName = formatMenteeName(mentorship.mentee_name);
         const completedTasks = mentorship.completed_tasks ?? 0;
         const totalTasks = mentorship.total_tasks ?? 0;
-        
+
+        // Highlight completed mentorships with different styling and enable click for all
+        const cardClass = mentorship.is_active
+            ? 'bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-shadow cursor-pointer'
+            : 'bg-gray-100 rounded-xl p-6 opacity-60 cursor-pointer';
+        const clickAttr = `onclick="navigateToTaskList(${mentorship.mentorship_id || mentorship.id})"`;
+
         return `
-            <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                 onclick="navigateToTaskList(${mentorship.mentorship_id || mentorship.id})">
+            <div class="${cardClass}" ${clickAttr}>
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">

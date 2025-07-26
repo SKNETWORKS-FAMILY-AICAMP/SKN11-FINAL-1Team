@@ -673,10 +673,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (task.priority === '상') badgeClass = 'red';
     else if (task.priority === '중') badgeClass = 'green';
     
-    // 마감일 표시 (날짜 형식)
-    let deadlineText = task.scheduled_end_date || '';
+    // 시작일과 마감일 표시
+    let startDateText = task.scheduled_start_date ? `시작: ${task.scheduled_start_date}` : '';
+    let endDateText = task.scheduled_end_date ? `마감: ${task.scheduled_end_date}` : '';
     
-    metaRow.innerHTML = `<span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> <span class="d-day-badge">${deadlineText}</span>`;
+    metaRow.innerHTML = `
+      <span class="task-badge ${badgeClass}" id="detail-badge">${task.priority || '하'}</span> 
+      <span class="d-day-badge" id="detail-dday">${endDateText}</span>
+      <span class="task-date-info" id="detail-start-date">${startDateText}</span>
+      <span class="task-date-info" id="detail-end-date"></span>
+    `;
     
     // description을 리스트로 표시 (기존 코드 유지)
     // 하지만 새로운 구조에서는 가이드라인이 별도 영역에 표시됨
@@ -836,10 +842,16 @@ document.addEventListener('DOMContentLoaded', function() {
         start_date: startDate,
         end_date: endDate,
         priority: editPriority.value,
-        scheduled_end_date: editEndDate.value
+        scheduled_start_date:editStartDate.value || null,
+        scheduled_end_date: editEndDate.value || null
       };
+
+      console.log("DEBUG payload:", payload);
+
+
+      // 이 부분 mentee/update_task_status로 변경했음.
       try {
-        const resp = await fetch(`/mentee/task_update/${currentTask.id}/`, {
+        const resp = await fetch(`/mentee/update_task_status/${currentTask.id}/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
