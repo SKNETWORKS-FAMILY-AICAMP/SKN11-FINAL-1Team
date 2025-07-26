@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, cast, String
 from typing import List, Optional
+from datetime import date
 import models
 import schemas
 from passlib.context import CryptContext
@@ -82,9 +83,14 @@ def get_department(db: Session, department_id: int):
     """부서 단일 조회"""
     return db.query(models.Department).filter(models.Department.department_id == department_id).first()
 
-def get_departments(db: Session, skip: int = 0, limit: int = 100):
-    """부서 목록 조회"""
-    return db.query(models.Department).offset(skip).limit(limit).all()
+def get_departments(db: Session, skip: int = 0, limit: int = 100, company_id: str = None):
+    """부서 목록 조회 (회사별 필터링 지원)"""
+    query = db.query(models.Department)
+    
+    if company_id:
+        query = query.filter(models.Department.company_id == company_id)
+    
+    return query.offset(skip).limit(limit).all()
 
 def update_department(db: Session, department_id: int, department_update: schemas.DepartmentUpdate):
     """부서 정보 업데이트"""
@@ -192,6 +198,41 @@ def get_users_with_filters(
     role: str = None,
     is_active: bool = None
 ):
+    """필터링된 사용자 목록 조회 with 기본값 처리"""
+    query = db.query(models.User)
+    
+    # 필터 적용
+    if company_id:
+        query = query.filter(models.User.company_id == company_id)
+    if department_id:
+        query = query.filter(models.User.department_id == department_id)
+    if role:
+        query = query.filter(models.User.role == role)
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+    if search:
+        search_filter = or_(
+            models.User.email.ilike(f"%{search}%"),
+            models.User.first_name.ilike(f"%{search}%"),
+            models.User.last_name.ilike(f"%{search}%"),
+            cast(models.User.employee_number, String).ilike(f"%{search}%")
+        )
+        query = query.filter(search_filter)
+    
+    users = query.offset(skip).limit(limit).all()
+    
+    # 필수 필드 기본값 처리
+    for user in users:
+        if not user.job_part:
+            user.job_part = "기본"
+        if not user.position:
+            user.position = "기본"
+        if not user.role:
+            user.role = "mentee"
+        if not user.join_date:
+            user.join_date = date(2024, 1, 1)
+    
+    return users
     """필터링 옵션이 있는 사용자 목록 조회"""
     query = db.query(models.User)
     

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Numeric, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -44,10 +44,10 @@ class User(Base):
     company_id = Column(String(12), ForeignKey("core_company.company_id"), comment="소속 회사")
     department_id = Column(Integer, ForeignKey("core_department.department_id"), comment="소속 부서")
     tag = Column(String(255), comment="유저 태그")
-    role = Column(String(20), nullable=False, comment="역할(멘티/멘토)")
-    join_date = Column(Date, comment="입사일")
-    position = Column(String(50), nullable=False, comment="직위")
-    job_part = Column(String(50), nullable=False, comment="직무")
+    role = Column(String(20), nullable=False, server_default=text("'mentee'"), comment="역할(멘티/멘토)")
+    join_date = Column(Date, nullable=False, server_default=text("'2024-01-01'"), comment="입사일")
+    position = Column(String(50), nullable=False, server_default=text("'기본'"), comment="직위")
+    job_part = Column(String(50), nullable=False, server_default=text("'기본'"), comment="직무")
     email = Column(String(255), nullable=False, unique=True, comment="이메일(로그인 ID)")
     password = Column(String(128), nullable=False, comment="비밀번호")
     last_name = Column(String(50), nullable=False, comment="성")
