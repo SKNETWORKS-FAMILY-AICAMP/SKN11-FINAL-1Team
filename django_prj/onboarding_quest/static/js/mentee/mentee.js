@@ -127,6 +127,12 @@ function initializeFilterAndSort(mentorshipId) {
     const statusSelect = document.getElementById('task-filter-status');
     const prioritySelect = document.getElementById('task-filter-priority');
 
+    // 요소들이 존재하지 않으면 함수 종료
+    if (!sortSelect || !statusSelect || !prioritySelect) {
+        console.log('필터/정렬 요소들이 존재하지 않아 초기화를 건너뜁니다.');
+        return;
+    }
+
     async function fetchTaskList() {
         const sortOption = sortSelect.value;
         const statusOption = statusSelect.value;
@@ -171,9 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', () => {
   const completionText = document.getElementById('userLevelTop');
   const completeBtn = document.getElementById('final-complete-btn');
-  const onboardingModal = document.getElementById('onboarding-modal');
-  const onboardingClose = document.getElementById('onboarding-close');
-  const onboardingConfirm = document.getElementById('onboarding-confirm');
+  const finalTaskModal = document.getElementById('finalTaskModal');
+  const finalModalClose = document.getElementById('finalModalClose');
+  const finalModalConfirm = document.getElementById('finalModalConfirm');
 
   // 완료율이 100%면 온보딩 종료 버튼 표시
   if (completionText && completeBtn) {
@@ -184,29 +190,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 버튼 클릭 시 모달 열기
-  if (completeBtn) {
+  if (completeBtn && finalTaskModal) {
     completeBtn.addEventListener('click', () => {
-      onboardingModal.style.display = 'block';
+      finalTaskModal.style.display = 'block';
     });
   }
 
   // 닫기 버튼
-  onboardingClose.addEventListener('click', () => {
-    onboardingModal.style.display = 'none';
-  });
+  if (finalModalClose && finalTaskModal) {
+    finalModalClose.addEventListener('click', () => {
+      finalTaskModal.style.display = 'none';
+    });
+  }
 
   // 확인 버튼
-  onboardingConfirm.addEventListener('click', () => {
-    onboardingModal.style.display = 'none';
-    completeFinalTask();
-  });
+  if (finalModalConfirm && finalTaskModal) {
+    finalModalConfirm.addEventListener('click', () => {
+      finalTaskModal.style.display = 'none';
+      if (typeof completeFinalTask === 'function') {
+        completeFinalTask();
+      }
+    });
+  }
 
   // 모달 외부 클릭 시 닫기
-  window.addEventListener('click', (event) => {
-    if (event.target === onboardingModal) {
-      onboardingModal.style.display = 'none';
-    }
-  });
+  if (finalTaskModal) {
+    window.addEventListener('click', (event) => {
+      if (event.target === finalTaskModal) {
+        finalTaskModal.style.display = 'none';
+      }
+    });
+  }
 });
 
 

@@ -285,6 +285,14 @@
   font-size: 17px;
   margin-bottom: 12px;
 }
+.task-date-info {
+  background: #f0f0f0;
+  color: #555;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
 .task-detail-divider {
   border: none;
   border-top: 1.5px solid #e0e0e0;
