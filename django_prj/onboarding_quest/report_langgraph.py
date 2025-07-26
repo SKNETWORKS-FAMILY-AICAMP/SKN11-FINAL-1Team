@@ -285,7 +285,7 @@ class ReportNodes:
                 MAIL_SERVER="smtp.gmail.com",
                 MAIL_STARTTLS=True,
                 MAIL_SSL_TLS=False,
-                MAIL_FROM_NAME="온보딩 알리미",
+                MAIL_FROM_NAME="EZ:FLOW",
                 USE_CREDENTIALS=True,
                 VALIDATE_CERTS=True
             )
