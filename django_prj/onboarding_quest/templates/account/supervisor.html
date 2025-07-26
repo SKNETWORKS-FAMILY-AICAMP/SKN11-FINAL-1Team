@@ -375,6 +375,26 @@
         .sidebar-add-btn:hover {
             background: #059669;
         }
+        
+        /* 로딩 스피너 스타일 */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
     </style>
 {% endblock %}
 
@@ -484,13 +504,13 @@
                     <!-- 엑셀 업로드 버튼 (폼) -->
                     <form id="excel-upload-form" method="post" enctype="multipart/form-data" action="{% url 'account:user_excel_upload' %}" style="display: inline-block;">
                         {% csrf_token %}
-                        <label for="excel-upload-input" class="btn btn-primary" style="cursor: pointer; margin-bottom: 0;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                        <label for="excel-upload-input" id="excel-upload-label" class="btn btn-primary" style="cursor: pointer; margin-bottom: 0;">
+                            <svg id="excel-upload-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                             </svg>
-                            엑셀로 유저 일괄 등록
+                            <span id="excel-upload-text">엑셀로 유저 일괄 등록</span>
                         </label>
-                        <input id="excel-upload-input" type="file" name="excel_file" accept=".xlsx,.xls" style="display: none;" onchange="document.getElementById('excel-upload-form').submit();">
+                        <input id="excel-upload-input" type="file" name="excel_file" accept=".xlsx,.xls" style="display: none;" onchange="handleExcelUpload(this)">
                     </form>
                     <a href="{% url 'account:user_create' %}" class="btn btn-add" style="min-width: 120px; justify-content: center;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1112,6 +1132,23 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// 엑셀 업로드 처리 함수
+function handleExcelUpload(input) {
+    if (input.files && input.files[0]) {
+        const label = document.getElementById('excel-upload-label');
+        const icon = document.getElementById('excel-upload-icon');
+        const text = document.getElementById('excel-upload-text');
+        
+        // 로딩 상태로 변경
+        label.classList.add('loading');
+        icon.outerHTML = '<div class="loading-spinner" style="margin-right: 4px;"></div>';
+        text.textContent = '업로드 진행중...';
+        
+        // 폼 제출
+        document.getElementById('excel-upload-form').submit();
+    }
 }
 
 // 부서 수정 폼 표시
