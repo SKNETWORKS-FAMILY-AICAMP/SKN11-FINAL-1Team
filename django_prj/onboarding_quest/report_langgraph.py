@@ -11,6 +11,9 @@ import psycopg2
 import psycopg2.extras
 import asyncio
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from core import crud   # crud.py 경로가 core 폴더 안에 있는 경우
+from core.database import get_db  # database.py 경로가 core 폴더 안에 있는 경우
+
 
 # ✅ 환경 설정
 load_dotenv()
@@ -371,7 +374,24 @@ class ReportNodes:
                     mentorship_row = cur.fetchone()
                     
                     if mentorship_row and mentorship_row['report']:
-                        report_url = f"https://sinip.company/report/{mentorship_row['mentorship_id']}"
+                        report_url = f"http://127.0.0.1:8000/mentee/task_list/?mentorship_id={mentorship_row['mentorship_id']}&open=final_report"
+
+                         # DB에 url_link 저장
+                        try:
+                            from database import get_db
+                            db = next(get_db())  # 세션 생성
+                            crud.update_mentorship_report(
+                                db,
+                                mentorship_id=mentorship_row['mentorship_id'],
+                                report=mentorship_row['report'],
+                                url_link=report_url
+                            )
+                            db.close()
+                            print(f"✅ DB에 report_url 저장 완료: {report_url}")
+                        except Exception as db_error:
+                            import traceback
+                            print(f"❌ DB url_link 저장 실패: {db_error}")
+                            traceback.print_exc()
                         
                         try:
                             asyncio.run(self.send_email_async(

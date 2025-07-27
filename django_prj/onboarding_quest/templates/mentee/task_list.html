@@ -315,9 +315,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // URL에서 task_id 파라미터 확인
         const urlParams = new URLSearchParams(window.location.search);
+        const openParam = urlParams.get('open');   // ← 추가된 부분
         const taskIdFromUrl = urlParams.get('task_id');
 
-        if (taskIdFromUrl) {
+        // open=final_report일 경우 최종 보고서 자동 표시
+        if (openParam === 'final_report') {
+            console.log('📄 URL 파라미터로 final_report 열기');
+            updateTaskDetailPanel('final_report');
+        } else if (taskIdFromUrl) {
             // URL에 task_id가 있으면 해당 태스크 선택
             const targetCard = document.querySelector(`.task-card[data-task-id="${taskIdFromUrl}"]`);
             if (targetCard) {
@@ -326,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         } else {
-            // URL에 task_id 없으면 첫 번째 태스크 선택
+            // 기본 동작: 첫 번째 태스크 선택
             setTimeout(() => {
                 const firstTaskCard = document.querySelector('.task-card');
                 if (firstTaskCard) {
@@ -336,6 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }, 100);
         }
+
 
         console.log('✅ Task List 초기화 완료');
     } catch (error) {
@@ -568,6 +574,12 @@ async function updateTaskDetailPanel(taskId) {
                     scheduled_start_date: '',
                     scheduled_end_date: ''
                 });
+
+                // **최종 보고서 내용 삽입**
+                const reportContentElement = document.getElementById('report-content');
+                if (reportContentElement) {
+                    reportContentElement.innerHTML = finalReport || '<p>보고서 내용이 없습니다.</p>';
+                }
 
 
                 // report 클릭 시 가이드라인, 우선순위(D-Day), 하위 테스크 버튼 숨김

@@ -983,14 +983,22 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
     return db_mentorship
 
 def update_mentorship_report(db: Session, mentorship_id: int, report: str, url_link: Optional[str] = None):
-    """멘토십 리포트 업데이트"""
+    """멘토십 리포트 및 URL 링크 업데이트"""
     db_mentorship = get_mentorship(db, mentorship_id)
-    if db_mentorship:
-        db_mentorship.report = report
-        if url_link:
-            db_mentorship.url_link = url_link
-        db.commit()
-        db.refresh(db_mentorship)
+    if not db_mentorship:
+        print(f"Mentorship ID {mentorship_id}를 찾을 수 없습니다.")
+        return None
+
+    # 보고서 내용 업데이트
+    db_mentorship.report = report
+
+    # URL 링크 업데이트 (빈 문자열도 허용)
+    if url_link is not None:
+        db_mentorship.url_link = url_link
+
+    db.commit()
+    db.refresh(db_mentorship)
+    print(f"Mentorship {mentorship_id} 보고서 및 링크 업데이트 완료")
     return db_mentorship
 
 

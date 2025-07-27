@@ -797,8 +797,9 @@ def task_list(request):
         mentorship_obj = Mentorship.objects.filter(mentorship_id=mentorship_id).first()
 
         print(f"🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
-        if mentorship_obj and mentorship_obj.is_active is False:
-            # 온보딩 종료 시 레포트 가져오기
+        if mentorship_obj:
+            # 레포트 내용 가져오기 (is_active 여부 상관없이)
+            # 이게 맞나..?
             raw_report = getattr(mentorship_obj, 'report', None)
             if raw_report:
                 # 상세 보기용 HTML 마크다운 변환
@@ -885,7 +886,7 @@ def task_list(request):
                     dday = diff
                 
                 task_data = {
-                    'task_id': task.get('task_assign_id'),  # 🚨 task_id 필드 추가
+                    'task_id': task.get('task_assign_id'),  # task_id 필드 추가
                     'task_assign_id': task.get('task_assign_id'),
                     'title': task.get('title'),
                     'desc': task.get('description'),
@@ -919,6 +920,7 @@ def task_list(request):
             'final_report': final_report,
             'final_report_summary': final_report_summary,
             'is_active': mentorship_obj.is_active if mentorship_obj else False,
+            'final_report_link': getattr(mentorship_obj, 'url_link', None), # url 추가!!
         }
         return render(request, 'mentee/task_list.html', context)
         
@@ -967,7 +969,8 @@ def task_detail(request, task_assign_id):
                     'success': True,
                     'task': {
                         'title': "최종 평가 보고서",
-                        'description': final_report  # 변환된 HTML
+                        'description': final_report,  # 변환된 HTML
+                        'url_link': getattr(mentorship_obj, 'url_link', None) # 최종 평가 보고서 url
                     }
                 })
         
@@ -1064,6 +1067,7 @@ def task_detail(request, task_assign_id):
     except Exception as e:
         logger.error(f"예상치 못한 오류 - task_assign_id: {task_assign_id}, 오류: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'error': f'서버 오류가 발생했습니다: {str(e)}'}, status=500)
+    
 
 # 태스크 상태 업데이트 API (Drag&Drop용) - 🔧 강화된 인증 및 오류 처리
 @csrf_exempt
