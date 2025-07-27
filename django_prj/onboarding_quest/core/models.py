@@ -14,14 +14,16 @@ class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('이메일은 필수입니다.')
+        if not password:
+            raise ValueError('비밀번호는 필수입니다.')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)  # 비밀번호 해시
+        user.set_password(password)  # 반드시 해시
         user.save()
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('admin', True)
+        extra_fields.setdefault('is_admin', True)
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
@@ -118,7 +120,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('mentor', 'Mentor')
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, help_text='역할(멘티/멘토)')
-    join_date = models.DateField(auto_now_add=True, null=True, blank=True, help_text='입사일')
+    join_date = models.DateField(null=True, blank=True, help_text='입사일')
     position = models.CharField(max_length=50, help_text='직위')
     job_part = models.CharField(max_length=50, help_text='직무')
     email = models.EmailField(unique=True, help_text='이메일(로그인 ID)')

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, date
 import schemas
 import crud
 from database import get_db
@@ -48,6 +48,17 @@ async def login(login_data: LoginData, db: Session = Depends(get_db)):
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
+    
+    # user 필드 기본값 처리
+    if not user.job_part:
+        user.job_part = "기본"
+    if not user.position:
+        user.position = "기본"
+    if not user.role:
+        user.role = "mentee"
+    if not user.join_date:
+        user.join_date = date(2024, 1, 1)
+    
     # user를 딕셔너리로 변환해서 반환
     user_dict = schemas.User.from_orm(user).dict()
     return {

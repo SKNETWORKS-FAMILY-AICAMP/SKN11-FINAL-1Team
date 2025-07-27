@@ -8,6 +8,9 @@ let addedFiles = [];
 const uploadListTbody = document.getElementById('doc-upload-list-tbody');
 const uploadBtn = document.getElementById('doc-upload-btn');
 
+let loadedDocuments = [];      // 전체 문서 목록 (최초 불러올 때 저장됨)
+let filteredDocuments = [];    // 검색/필터 후 화면에 보여질 문서 목록
+
 function renderUploadList() {
   if (!uploadListTbody) return;
 
@@ -33,22 +36,6 @@ function renderUploadList() {
     uploadListTbody.appendChild(tr);
   });
 
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //   }
-  // }
-  // if (uploadBtn) {
-  //   if (addedFiles.length > 0) {
-  //     uploadBtn.classList.add('show');
-  //     document.getElementById('doc-reset-btn')?.classList.add('show');
-  //   } else {
-  //     uploadBtn.classList.remove('show');
-  //     document.getElementById('doc-reset-btn')?.classList.remove('show');
-  //   }
-  // }
   const btnGroup = document.getElementById('doc-btn-group');
   const uploadBtn = document.getElementById('doc-upload-btn');
   const resetBtn = document.getElementById('doc-reset-btn');
@@ -65,6 +52,31 @@ function renderUploadList() {
 
 }
 
+function applyFilters() {
+  const search = document.getElementById("doc-search-input")?.value.toLowerCase() || "";
+  const selectedDept = document.getElementById("department-filter")?.value;
+
+  filteredDocuments = loadedDocuments.filter(doc => {
+    const titleMatch = doc.title?.toLowerCase().includes(search);
+    const descMatch = doc.description?.toLowerCase().includes(search);
+
+    let deptMatch = true;
+    if (selectedDept === "공통") {
+      deptMatch = doc.common_doc === true;
+    } else if (selectedDept) {
+      deptMatch = doc.department?.department_name === selectedDept;
+    }
+
+    return (titleMatch || descMatch) && deptMatch;
+  });
+
+  renderDocTable(filteredDocuments);
+}
+
+
+
+
+
 function updateFileInfo(idx, field, value) {
   if (addedFiles[idx]) addedFiles[idx][field] = value;
 }
@@ -73,15 +85,6 @@ function removeFile(idx) {
   addedFiles.splice(idx, 1);
   renderUploadList();
 }
-
-// function handleFiles(files) {
-//   Array.from(files).forEach(file => {
-//     if (!addedFiles.some(f => f.name === file.name && f.size === file.size)) {
-//       addedFiles.push({ file, name: file.name, description: '', common_doc: false });
-//     }
-//   });
-//   renderUploadList();
-// }
 
 function isDuplicate(file) {
   return addedFiles.some(f =>
@@ -145,7 +148,7 @@ uploadBtn?.addEventListener('click', async () => {
       formData.append('department_id', CURRENT_DEPARTMENT_ID);
       formData.append('original_file_name', fileInfo.name);
 
-      const response = await fetch('http://localhost:8001/api/docs/rag/upload', {
+      const response = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/docs/rag/upload`, {
         method: 'POST',
         body: formData
       });
@@ -236,35 +239,6 @@ function closeDeleteModal() {
   deleteDocId = null;
 }
 
-// function confirmDelete() {
-//   if (!deleteDocId) return;
-
-//   const formData = new FormData();
-//   formData.append('docs_id', deleteDocId);
-//   formData.append('department_id', CURRENT_DEPARTMENT_ID);
-
-//   fetch(`/common/doc/${deleteDocId}/delete/`, {
-//     method: 'POST',
-//     body: formData
-//   })
-//     .then(res => res.json())
-//     .then(data => {
-//       if (data.success) {
-//         alert('삭제되었습니다.');
-//         location.reload();
-//       } else {
-//         alert('삭제 실패: ' + data.error);
-//       }
-//     })
-//     .catch(err => {
-//       console.error('삭제 오류:', err);
-//       alert('삭제 중 오류가 발생했습니다.');
-//     });
-
-//   closeDeleteModal();
-// }
-
-
 function confirmDelete() {
   if (!deleteDocId) return;
 
@@ -272,8 +246,11 @@ function confirmDelete() {
   formData.append('docs_id', deleteDocId);
   formData.append('department_id', CURRENT_DEPARTMENT_ID);
 
-  fetch(`http://localhost:8001/api/docs/rag/${deleteDocId}`, {
-    method: 'DELETE'
+  fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/docs/rag/${deleteDocId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${ACCESS_TOKEN}`
+    }
   })
     .then(async res => {
       let data;
@@ -312,97 +289,80 @@ window.addEventListener('click', function (e) {
   if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
 });
 
+
 async function loadDocumentList(departmentId) {
   try {
-    const url = `http://localhost:8001/api/docs/department/${departmentId}`;
+    const url = `${window.API_URLS.FASTAPI_BASE_URL}/api/docs/department/${departmentId}`;
     console.log("📡 요청 URL:", url);
-    
+
     const response = await fetch(url);
     const data = await response.json();
     console.log("DOC LIST RESULT:", data);
 
-    const container = document.getElementById("doc-list");
-    if (!container) return;
-
-    container.innerHTML = "";
-
-    // FastAPI는 배열을 직접 반환
+    // 배열이 아니면 에러 출력
     if (!Array.isArray(data)) {
-      container.innerHTML = `<tr><td colspan="4">문서 불러오기 실패: ${data.detail || '알 수 없는 오류'}</td></tr>`;
+      const container = document.getElementById("doc-list");
+      if (container) {
+        container.innerHTML = `<tr><td colspan="5">문서 불러오기 실패: ${data.detail || '알 수 없는 오류'}</td></tr>`;
+      }
       return;
     }
 
-    if (data.length === 0) {
-      container.innerHTML = `<tr><td colspan="4">해당 부서의 문서가 없습니다.</td></tr>`;
-      return;
-    }
+    // ✅ 데이터 저장하고 필터링 실행
+    loadedDocuments = data;
+    applyFilters();  // 🔍 검색어 + 부서 필터 적용 후 renderDocTable 실행됨
 
-    data.forEach(doc => {
-      const tr = document.createElement("tr");
-      tr.setAttribute("data-doc-id", doc.docs_id);
-
-      const canEdit = doc.department_id === CURRENT_DEPARTMENT_ID;
-
-      tr.innerHTML = `
-  <td><input type="checkbox" class="doc-checkbox" data-doc-id="${doc.docs_id}"></td>
-  <td>
-    <a href="http://localhost:8001/api/docs/documents/download/${doc.docs_id}">
-      📄 ${doc.title || "이름없음"}
-    </a>
-  </td>
-  <td>${doc.description || "-"}</td>
-  <td style="text-align: center;">${doc.department ? doc.department.department_name : "-"}</td>
-  <td style="text-align: center;">
-    ${canEdit
-          ? `
-        <button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
-        <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>
-      `
-          : `<span style="color:#999;">-</span>`
-        }
-  </td>
-`;
-
-      container.appendChild(tr);
-    });
   } catch (error) {
     console.error("문서 목록 로드 오류:", error);
     const container = document.getElementById("doc-list");
     if (container) {
-      container.innerHTML = `<tr><td colspan="4">문서 목록을 불러오는 중 오류가 발생했습니다.</td></tr>`;
+      container.innerHTML = `<tr><td colspan="5">문서 목록을 불러오는 중 오류가 발생했습니다.</td></tr>`;
     }
   }
-  // 리스트 렌더링 완료 후 버튼 이벤트 다시 연결
-  // const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
-  // if (bulkDeleteBtn) {
-  //   bulkDeleteBtn.onclick = async () => {
-  //     const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
-  //     if (selected.length === 0) return;
-
-  //     if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
-
-  //     for (const cb of selected) {
-  //       const docId = cb.dataset.docId;
-  //       try {
-  //         const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
-  //         const result = await res.json();
-  //         if (!result.success) {
-  //           console.warn("삭제 실패:", result.message);
-  //         }
-  //       } catch (err) {
-  //         console.error("삭제 오류:", err);
-  //       }
-  //     }
-
-  //     alert("삭제가 완료되었습니다.");
-  //     loadDocumentList(CURRENT_DEPARTMENT_ID);
-  //   };
-  // }
-
 }
 
+
+function renderDocTable(docs) {
+  const container = document.getElementById("doc-list");
+  container.innerHTML = "";
+
+  if (!Array.isArray(docs) || docs.length === 0) {
+    container.innerHTML = `<tr><td colspan="5">검색된 문서가 없습니다.</td></tr>`;
+    return;
+  }
+
+  docs.forEach(doc => {
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-doc-id", doc.docs_id);
+
+    const canEdit = doc.department_id === CURRENT_DEPARTMENT_ID;
+
+    tr.innerHTML = `
+      <td><input type="checkbox" class="doc-checkbox" data-doc-id="${doc.docs_id}"></td>
+      <td>
+        <a href="http://localhost:8001/api/docs/documents/download/${doc.docs_id}">
+          📄 ${doc.title || "이름없음"}
+          ${doc.common_doc ? '<span style="color:#38b2ac; font-weight:bold;"> [공통]</span>' : ''}
+        </a>
+      </td>
+      <td>${doc.description || "-"}</td>
+      <td style="text-align: center;">${doc.department ? doc.department.department_name : "-"}</td>
+      <td style="text-align: center;">
+        ${canEdit
+        ? `<button class="doc-edit-btn" onclick="openEditModal(${doc.docs_id}, '${doc.description || ""}', ${doc.common_doc})">수정</button>
+             <button class="doc-delete-btn" onclick="deleteDoc(${doc.docs_id})">삭제</button>`
+        : `<span style="color:#999;">-</span>`}
+      </td>
+    `;
+    container.appendChild(tr);
+  });
+}
+
+
+
+
 function downloadDocument(docsId) {
-  window.location.href = `http://localhost:8001/api/documents/download/${docsId}`;
+  window.location.href = `${window.API_URLS.FASTAPI_BASE_URL}/api/documents/download/${docsId}`;
 }
 
 
@@ -411,6 +371,11 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDocumentList(CURRENT_DEPARTMENT_ID);
 
   // 업로드 이벤트 등록
+  document.getElementById("doc-search-input")?.addEventListener("input", applyFilters);
+  document.getElementById("department-filter")?.addEventListener("change", applyFilters);
+  document.getElementById("common-doc-toggle")?.addEventListener("change", applyFilters);
+
+
   document.body.addEventListener("dragover", preventDefaults, false);
   document.body.addEventListener("drop", handleDrop, false);
 
@@ -435,7 +400,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
-
   document.getElementById("bulk-delete-btn")?.addEventListener("click", async () => {
     const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
     if (selected.length === 0) return;
@@ -445,7 +409,12 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const cb of selected) {
       const docId = cb.dataset.docId;
       try {
-        const res = await fetch(`http://localhost:8001/api/docs/rag/${docId}`, { method: "DELETE" });
+        const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/docs/rag/${docId}`, { 
+          method: "DELETE",
+          headers: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`
+          }
+        });
         const result = await res.json();
         if (!result.success) {
           console.warn("삭제 실패:", result.message);
@@ -455,12 +424,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    
-
-
     alert("삭제가 완료되었습니다.");
     loadDocumentList(CURRENT_DEPARTMENT_ID);
+
+    // ✅ 삭제 후 체크박스 초기화
+    document.querySelectorAll(".doc-checkbox").forEach(cb => cb.checked = false);
+
+    // ✅ 전체선택 체크박스 초기화
+    const selectAll = document.getElementById("select-all-docs");
+    if (selectAll) selectAll.checked = false;
+
+    // ✅ 버튼 숨기기
+    const btn = document.getElementById("bulk-delete-btn");
+    if (btn) btn.classList.remove("show");
   });
+
 
   document.getElementById('doc-reset-btn')?.addEventListener('click', () => {
     if (confirm("업로드 목록을 초기화하시겠습니까?")) {

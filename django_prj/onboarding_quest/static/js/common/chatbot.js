@@ -19,14 +19,16 @@ class ChatBot {
         this.isSubmitting = false;
         this.loadingMessageElement = null;
         this.renderLock = false;  // ✅ 메시지 중복 렌더링 방지
-        this.loadSessionsFromAPI();  // ✅ 기존 refreshSessionList() 대신
         this.userScrolling = false;
+        
+        this.bindEvents();  // 이벤트 바인딩
+        this.loadSessionsFromAPI();  // ✅ 기존 refreshSessionList() 대신
 
     }
 
     async loadMessagesFromAPI(sessionId) {
         try {
-            const res = await fetch(`http://127.0.0.1:8001/api/chat/messages/${sessionId}`);
+            const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/messages/${sessionId}`);
             const data = await res.json();
 
             if (!data.success) {
@@ -61,7 +63,7 @@ class ChatBot {
         console.log("📥 세션 로드 시작");
 
         try {
-            const res = await fetch(`http://127.0.0.1:8001/api/chat/sessions/${user_id}`);
+            const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/sessions/${user_id}`);
             const data = await res.json();
 
             console.log("📥 세션 목록 응답 데이터:", data);
@@ -195,7 +197,7 @@ class ChatBot {
         const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
 
         try {
-            const response = await fetch('http://127.0.0.1:8001/api/chat/rag', {
+            const response = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/rag`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -248,81 +250,6 @@ class ChatBot {
         this.isSubmitting = false;
     }
 
-
-
-    // async handleMessageSubmit(e) {
-    //     e.preventDefault();
-    //     if (this.isSubmitting) return;
-
-    //     const input = document.getElementById('chatbot-input');
-    //     const message = input.value.trim();
-    //     if (!message) return;
-
-    //     console.log('📤 메시지 제출됨:', message);
-
-    //     this.isSubmitting = true;
-
-    //     input.value = '';
-
-    //     // ✅ 사용자 메시지 즉시 출력 (UX)
-    //     this.addMessageToChat('user', message);
-
-
-
-    //     this.showLoadingAnimation();
-
-    //     const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
-
-    //     try {
-    //         const response = await fetch('http://127.0.0.1:8001/api/chat/rag', {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Content-Type': 'application/json'
-    //             },
-    //             body: JSON.stringify({
-    //                 question: message,
-    //                 session_id: sessionId ? parseInt(sessionId) : null,
-    //                 user_id: parseInt(user_id),
-    //                 department_id: parseInt(department_id)
-    //             })
-    //         });
-
-    //         const data = await response.json();
-    //         if (data.success) {
-    //             this.selectedSessionInput.value = data.session_id;
-
-    //             // ✅ 응답을 기존 자리에 타자 애니메이션으로 출력
-    //             if (this.loadingMessageElement) {
-    //                 await this.typeText(this.loadingMessageElement, data.answer);
-    //                 this.loadingMessageElement.parentElement.classList.remove('loading');
-    //                 this.loadingMessageElement = null;
-    //             }
-
-    //             // ✅ 소스 정보 표시 (선택사항)
-    //             if (data.contexts && data.contexts.length > 0) {
-    //                 const sourcesText = `\n\n📚 참고 문서: ${data.contexts.length}개 문서 참조`;
-    //                 const sourcesSpan = document.createElement('span');
-    //                 sourcesSpan.style.fontSize = '12px';
-    //                 sourcesSpan.style.color = '#666';
-    //                 sourcesSpan.textContent = sourcesText;
-    //                 this.loadingMessageElement?.parentElement.appendChild(sourcesSpan);
-    //             }
-
-    //             // ✅ session-messages에 챗봇 메시지만 동기화
-    //             this.updateSessionMessagesInDOM('chatbot', data.answer);
-    //         } else {
-    //             alert('오류: ' + (data.error || data.detail || '알 수 없는 오류'));
-    //         }
-    //     } catch (err) {
-    //         console.error('에러 발생:', err);
-    //         alert('메시지 전송 중 오류가 발생했습니다.');
-    //     }
-
-    //     // input.value = '';
-    //     this.isSubmitting = false;
-    // }
-
-
     showLoadingAnimation() {
         const oldLoading = document.querySelector('.chatbot-msg-row.bot.loading');
         if (oldLoading) oldLoading.remove();
@@ -348,34 +275,6 @@ class ChatBot {
         this.loadingMessageElement = messageContent;
     }
 
-    // async typeText(element, text) {
-    //     element.innerHTML = '';
-    //     for (let i = 0; i < text.length; i++) {
-    //         element.textContent += text[i];
-    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
-    //         await new Promise(res => setTimeout(res, 15));
-    //     }
-    // }
-    // async typeText(element, text) {
-    //     const converter = new showdown.Converter({
-    //         simpleLineBreaks: true,
-    //         tables: true
-    //     });
-
-    //     let currentText = '';
-    //     for (let i = 0; i < text.length; i++) {
-    //         currentText += text[i];
-
-    //         // 실시간으로 Markdown 변환 및 렌더링
-    //         element.innerHTML = converter.makeHtml(currentText);
-
-    //         // 스크롤을 자동으로 가장 아래로 이동
-    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
-
-    //         // 글자 출력 속도 조절 (15ms마다 1글자씩 출력)
-    //         await new Promise(res => setTimeout(res, 15));
-    //     }
-    // }
     async typeText(element, fullText, speed = 15) {
         const converter = new showdown.Converter({
             simpleLineBreaks: true,
@@ -458,7 +357,7 @@ class ChatBot {
 
     async loadSessionMessages(sessionId) {
         try {
-            const res = await fetch(`http://127.0.0.1:8001/api/chat/messages/${sessionId}`);
+            const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/messages/${sessionId}`);
             const data = await res.json();
 
             if (!data.success) {
@@ -545,46 +444,6 @@ class ChatBot {
         }
     }
 
-
-    // addMessageToChat(type, text) {
-    //     const messageRow = document.createElement('div');
-    //     messageRow.className = `chatbot-msg-row ${type === 'user' ? 'user' : 'bot'}`;
-
-    //     const messageContent = document.createElement('div');
-    //     messageContent.className = `chatbot-msg-${type === 'user' ? 'user' : 'chabot'}`;
-
-    //     if (type === 'bot') {
-    //         const converter = new showdown.Converter({
-    //             simpleLineBreaks: true,
-    //             tables: true
-    //         });
-
-    //         // 📌 📄 참고 문서 앞에 두 줄 띄우기 (전처리)
-    //         // const patchedText = text.replace(/\n{1}(📄 참고 문서:)/g, "\n\n$1");
-    //         // const patchedText = text.replace(/(📄 참고 문서:)/g, "\n\n$1");
-    //         const patchedText = text.replace(/(📄 참고 문서:)/g, "<br>$1");
-
-
-    //         const html = converter.makeHtml(patchedText);
-    //         messageContent.innerHTML = html;
-
-            
-    //     } else {
-    //         messageContent.textContent = text;
-    //     }
-
-    //     messageRow.appendChild(messageContent);
-    //     this.chatArea.appendChild(messageRow);
-    //     // this.chatArea.scrollTop = this.chatArea.scrollHeight;
-    //     if (!this.userScrolling) {
-    //         this.chatArea.scrollTop = this.chatArea.scrollHeight;
-    //     }
-
-    // }
-
-
-
-
     closeDeleteModal() {
         const modal = document.getElementById('deleteModal');
         if (modal) modal.style.display = 'none';
@@ -599,7 +458,7 @@ class ChatBot {
 
     async executeDelete() {
         try {
-            const response = await fetch('http://127.0.0.1:8001/api/chat/session/delete', {
+            const response = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/session/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
@@ -640,7 +499,7 @@ class ChatBot {
 
 async function createNewSession() {
     try {
-        const res = await fetch('http://127.0.0.1:8001/api/chat/session/create', {
+        const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/session/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ user_id: user_id })

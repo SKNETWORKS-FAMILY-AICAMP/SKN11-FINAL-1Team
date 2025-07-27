@@ -114,13 +114,14 @@
     padding: 12px 16px;
     font-size: 15px;
     color: #222;
-    margin-bottom: 4px;
+    margin-bottom: 0;
     border-left: 5px solid #aa00ff;
     display: flex;
     align-items: flex-start;
     gap: 8px;
     cursor: grab;
     transition: background 0.2s;
+    flex: 1;
   }
   .template-task-item.drag-over {
     background: #fffbe6;
@@ -235,6 +236,48 @@
     transition: background 0.2s, color 0.2s;
   }
   .template-btn:hover { background: #1565c0; }
+  
+  /* 삭제 버튼 스타일 */
+  .delete-btn {
+    background: white;
+    color: #f44336;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+  }
+  .delete-btn:hover {
+    background: rgba(244, 67, 54, 0.1);
+    transform: scale(1.1);
+  }
+  
+  /* 주차 삭제 버튼 스타일 */
+  .week-delete-btn {
+    background: transparent;
+    color: #f44336;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .week-delete-btn:hover {
+    background: rgba(244, 67, 54, 0.1);
+    transform: scale(1.1);
+  }
 </style>
   <style>
     /* 좌측 하단 고정 버튼 스타일 */
@@ -481,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     try {
       // API 호출 - FastAPI로 직접 요청
-      const response = await fetch('http://localhost:8001/api/tasks/generate_draft/', {
+      const response = await fetch('{{ FASTAPI_BASE_URL }}/api/tasks/generate_draft/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -546,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     try {
       // API 호출하여 세부 Task 생성 - FastAPI로 직접 요청
-      const response = await fetch('http://localhost:8001/api/tasks/generate_tasks_from_draft/', {
+      const response = await fetch('{{ FASTAPI_BASE_URL }}/api/tasks/generate_tasks_from_draft/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -858,15 +901,45 @@ document.addEventListener('DOMContentLoaded', function() {
       // 주차 헤더 + Task 추가 버튼
       const weekHeader = document.createElement('div');
       weekHeader.style = 'font-weight:bold; font-size:1.1em; margin-bottom:10px; color:#000000; display:flex; align-items:center; justify-content:space-between;';
-      // Task 추가 버튼은 이벤트 위임으로 처리
-      weekHeader.innerHTML = `<span>${week}주차</span><button class='template-btn add-task-modal-btn' style='padding:6px 18px; font-size:14px; margin-left:10px;' data-week="${week}">Task 추가</button>`;
+      // Task 추가 버튼과 주차 삭제 버튼 (1주차가 아닐 때만 삭제 버튼 표시)
+      weekHeader.innerHTML = `
+        <span>${week}주차</span>
+        <div style="display:flex; align-items:center;">
+          <button class='template-btn add-task-modal-btn' style='padding:6px 18px; font-size:14px; margin-left:10px;' data-week="${week}">Task 추가</button>
+          ${week !== 1 ? `<button class='week-delete-btn' style='background-color:white' data-week="${week}" title="주차 삭제">🗑️</button>` : ''}
+        </div>
+      `;
       weekSection.appendChild(weekHeader);
       // 각 Task 카드
       weekTasks.forEach((task, idx) => {
+        // tasks 배열에서 현재 task의 실제 인덱스를 찾기
+        let globalTaskIdx = -1;
+        for (let i = 0; i < window.tasks_json.length; i++) {
+          if (window.tasks_json[i] === task) {
+            globalTaskIdx = i;
+            break;
+          }
+        }
+        
+        // 만약 찾지 못했다면 title과 week로 매칭 시도
+        if (globalTaskIdx === -1) {
+          globalTaskIdx = window.tasks_json.findIndex(t => 
+            t.title === task.title && 
+            t.week === task.week && 
+            t.description === task.description
+          );
+        }
+        
+        console.log('Task:', task.title, 'Global index:', globalTaskIdx);
+        
+        // Task 카드와 삭제 버튼을 감싸는 컨테이너 생성
+        const taskContainer = document.createElement('div');
+        taskContainer.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;';
+        
         const item = document.createElement('div');
         item.className = 'template-task-item';
         item.setAttribute('draggable', 'true');
-        item.dataset.idx = window.tasks_json.findIndex(t => t === task);
+        item.dataset.idx = globalTaskIdx;
         item.dataset.week = week;
         item.innerHTML = `
           <div class="task-content">
@@ -879,12 +952,25 @@ document.addEventListener('DOMContentLoaded', function() {
             ${task.description ? `<div style='color:#555; font-size:13px;'>설명: ${task.description}</div>` : ''}
           </div>
         `;
-        // 카드 클릭 시 모달 오픈
+        
+        // 삭제 버튼을 별도로 생성
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn task-delete-btn';
+        deleteBtn.setAttribute('data-task-idx', globalTaskIdx);
+        deleteBtn.setAttribute('title', 'Task 삭제');
+        deleteBtn.textContent = '❌';
+        deleteBtn.style.cssText = 'flex-shrink: 0; margin-left: 0;';
+        
+        // 카드 클릭 시 모달 오픈 (삭제 버튼 제외)
         item.addEventListener('click', function(e) {
           e.stopPropagation();
-          openTaskModal({ ...task, idx: window.tasks_json.findIndex(t => t === task) }, week);
+          openTaskModal({ ...task, idx: globalTaskIdx }, week);
         });
-        weekSection.appendChild(item);
+        
+        // 컨테이너에 카드와 삭제 버튼 추가
+        taskContainer.appendChild(item);
+        taskContainer.appendChild(deleteBtn);
+        weekSection.appendChild(taskContainer);
       });
       taskList.appendChild(weekSection);
     });
@@ -893,14 +979,91 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initTaskListDnD, 0);
   }
 
-  // 이벤트 위임: Task 추가 버튼 클릭 시 모달 오픈
+  // 이벤트 위임: Task 추가 버튼 및 삭제 버튼 클릭 처리
   taskList.addEventListener('click', function(e) {
+    console.log('Click event target:', e.target);
+    console.log('Target classes:', e.target.classList);
+    console.log('Target data-task-idx:', e.target.getAttribute('data-task-idx'));
+    
+    // Task 추가 버튼 클릭
     if (e.target.classList.contains('add-task-modal-btn')) {
+      e.preventDefault();
       e.stopPropagation();
       const week = Number(e.target.getAttribute('data-week'));
       openTaskModal(null, week);
     }
+    // Task 삭제 버튼 클릭 - 여러 방법으로 감지
+    else if (e.target.classList.contains('task-delete-btn') || 
+             e.target.classList.contains('delete-btn') || 
+             e.target.hasAttribute('data-task-idx')) {
+      console.log('Task delete button clicked');
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const taskIdx = Number(e.target.getAttribute('data-task-idx'));
+      console.log('Task index from data attribute:', taskIdx);
+      
+      if (!isNaN(taskIdx) && taskIdx >= 0 && confirm('이 Task를 삭제하시겠습니까?')) {
+        deleteTask(taskIdx);
+      }
+    }
+    // 주차 삭제 버튼 클릭
+    else if (e.target.classList.contains('week-delete-btn')) {
+      e.preventDefault();
+      e.stopPropagation();
+      const week = Number(e.target.getAttribute('data-week'));
+      if (confirm(`${week}주차를 삭제하시겠습니까? 해당 주차의 모든 Task가 함께 삭제됩니다.`)) {
+        deleteWeek(week);
+      }
+    }
   });
+
+// Task 삭제 함수
+function deleteTask(taskIdx) {
+  console.log('deleteTask called with index:', taskIdx);
+  console.log('Current tasks_json length:', window.tasks_json ? window.tasks_json.length : 'undefined');
+  console.log('Current tasks_json:', window.tasks_json);
+  
+  // window.tasks_json이 존재하는지 확인
+  if (!window.tasks_json || !Array.isArray(window.tasks_json)) {
+    console.error('tasks_json is not defined or not an array');
+    showMessage('Task 목록이 초기화되지 않았습니다.', 'error');
+    return;
+  }
+  
+  // taskIdx가 유효한 숫자인지 확인
+  if (isNaN(taskIdx) || taskIdx < 0 || taskIdx >= window.tasks_json.length) {
+    console.error('Invalid task index:', taskIdx, 'Array length:', window.tasks_json.length);
+    showMessage('삭제할 Task를 찾을 수 없습니다.', 'error');
+    return;
+  }
+  
+  const taskToDelete = window.tasks_json[taskIdx];
+  console.log('Task to delete:', taskToDelete);
+  
+  // Task 삭제
+  window.tasks_json.splice(taskIdx, 1);
+  console.log('Task deleted. New array length:', window.tasks_json.length);
+  
+  // 화면 다시 렌더링
+  renderTasksByWeek(window.tasks_json);
+  showMessage('Task가 삭제되었습니다.');
+}
+
+// 주차 삭제 함수
+function deleteWeek(week) {
+  // 해당 주차의 모든 Task 삭제
+  window.tasks_json = window.tasks_json.filter(task => Number(task.week) !== week);
+  
+  // persistedWeeks에서도 해당 주차 제거
+  if (window.persistedWeeks) {
+    window.persistedWeeks = window.persistedWeeks.filter(w => Number(w) !== week);
+  }
+  
+  renderTasksByWeek(window.tasks_json);
+  showMessage(`${week}주차가 삭제되었습니다.`);
+}
+
 // Task 추가/수정 모달 관련 함수
 function openTaskModal(task, week) {
   const modal = document.getElementById('task-modal');

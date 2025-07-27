@@ -47,6 +47,28 @@ body {
   padding: 2rem;
 }
 
+.doc-container,
+.doc-left,
+.doc-upload-box,
+.doc-file-list,
+.doc-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.doc-file-list {
+  overflow-x: auto;
+}
+
+
+.doc-file-list {
+  position: relative;
+}
+
+
+
+
 .doc-left {
   width: 100%;
   max-width: 1400px;
@@ -61,6 +83,31 @@ body {
   align-items: center;
   gap: 0.75rem;
 }
+
+.doc-file-list {
+  overflow-x: auto; /* ✅ 테이블 넘침 스크롤 처리 */
+}
+
+/* ✅ 선택 삭제 버튼의 위치 고정 */
+.doc-file-list {
+  position: relative;  /* 🔑 버튼의 absolute 기준 */
+}
+
+.doc-file-list-table {
+  word-break: break-word; /* ✅ 긴 단어도 줄바꿈 */
+}
+
+.doc-table-wrapper {
+  background: white;
+  /* padding: 1rem; */
+  border: 1px solid var(--blue-100);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+
+
 
 .doc-upload-box {
   background: white;
@@ -150,28 +197,50 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* #bulk-delete-container { */
-  /* height: 42px; /* 버튼의 높이 + 여백만큼 고정 */
-  /* display: flex; */
-  /* justify-content: flex-end; */
-  /* align-items: center; */
-  /* margin-bottom: 10px; */
-/* } */
-#bulk-delete-container {
+
+/* #bulk-delete-container {
   position: relative;
   height: 0;
   margin-bottom: 36px; /* 테이블과의 간격 확보 */
+/* } */
+
+/* 선택 삭제 버튼을 부서 필터와 너비/정렬 맞춤 */
+#bulk-delete-container {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 4px;
 }
 
-/* #bulk-delete-btn {
-  display: none;
-} */
+/* ✅ 기존: margin 등 제거하고 위치 띄우기 */
+#bulk-delete-container {
+  position: absolute;
+  top: 40px;
+  right: 27px;
+  z-index: 10;
+  pointer-events: none;
+}
 
-#bulk-delete-btn {
+
+/* #bulk-delete-btn {
   position: absolute;
   top: -48px; /* 위로 띄워 테이블과 간격 줌 */
-  right: 40px;   /* 오른쪽 정렬 */
+  /* right: 40px;   /* 오른쪽 정렬 */
+  /* display: none;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); */
+/* } */
+
+#bulk-delete-btn {
   display: none;
+  pointer-events: auto;
   background-color: #ef4444;
   color: white;
   border: none;
@@ -182,6 +251,8 @@ body {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+
+
 
 #bulk-delete-btn.show {
   display: inline-block;
@@ -262,13 +333,14 @@ body {
 
 .doc-file-list-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
-  background: white;
   border-radius: 12px;
-  overflow: hidden;
   box-shadow: var(--shadow-sm);
+  background: white;
   border: 1px solid var(--gray-200);
 }
+
 
 .doc-file-list-table thead {
   background: linear-gradient(135deg, var(--gray-700) 0%, var(--gray-600) 100%);
@@ -514,17 +586,30 @@ body {
     </div>
 
     <!-- 등록된 파일 목록 -->
+    <!-- 등록된 파일 목록 -->
     <div class="doc-file-list">
       <div class="doc-title">파일 목록</div>
     
-      <!-- ✅ 선택 삭제 버튼은 테이블 위쪽에 위치 -->
       <div id="bulk-delete-container">
-        <button id="bulk-delete-btn" class="doc-delete-btn">
-          선택 삭제
-        </button>
+        <button id="bulk-delete-btn" class="doc-delete-btn">선택 삭제</button>
       </div>
     
-      <!-- ✅ 단일 테이블 시작 -->
+      <div class="flex justify-between items-center mb-4">
+        <!-- 왼쪽: 검색창 -->
+        <input type="text" id="doc-search-input" placeholder="문서명 또는 설명 검색..."
+          class="border px-4 py-2 w-1/2 rounded-md shadow-sm">
+    
+        <!-- 오른쪽: 부서 필터 -->
+        <select id="department-filter" class="border px-4 py-2 rounded-md shadow-sm">
+          <option value="">전체 부서</option>
+          <option value="공통">공통 문서</option>
+          {% for dept in all_departments %}
+          <option value="{{ dept.department_name }}">{{ dept.department_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    
+      <!-- ✅ 테이블은 래퍼 없이 직접 삽입 -->
       <table class="doc-file-list-table">
         <thead>
           <tr>
@@ -540,6 +625,7 @@ body {
         </tbody>
       </table>
     </div>
+
 
   </div>
 </div>
@@ -582,6 +668,12 @@ body {
     </div>
   </div>
 </div>
+
+<script>
+  const ACCESS_TOKEN = "{{ access_token|default_if_none:'' }}";
+</script>
+
+
 
 <script src="{% static 'js/common/doc.js' %}?v={{ now|date:'U' }}"></script>
 

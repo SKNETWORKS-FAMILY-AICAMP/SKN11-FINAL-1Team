@@ -77,12 +77,10 @@ class Settings(BaseSettings):
         
         # 기본값 설정
         return [
-            "http://localhost:3000",
-            "http://localhost:8000",  # Django 서버
-            "http://localhost:8001",  # FastAPI 서버
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:8000",
-            "http://127.0.0.1:8001"
+            self.django_base_url,    # Django 서버
+            self.base_url,           # FastAPI 서버
+            self.django_base_url.replace("localhost", "127.0.0.1"),
+            self.base_url.replace("localhost", "127.0.0.1")
         ]
     
     # =================================
