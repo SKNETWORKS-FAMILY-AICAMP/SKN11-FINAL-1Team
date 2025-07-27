@@ -32,7 +32,7 @@ class ChatBot {
             const data = await res.json();
 
             if (!data.success) {
-                alert("메시지를 불러오는 데 실패했습니다.");
+                showError("메시지를 불러오는 데 실패했습니다.");
                 return;
             }
 
@@ -54,7 +54,7 @@ class ChatBot {
             this.scrollToBottom();
         } catch (e) {
             console.error("메시지 로딩 오류:", e);
-            alert("메시지 로딩 중 오류 발생");
+            showError("메시지 로딩 중 오류 발생");
         }
     }
 
@@ -69,7 +69,7 @@ class ChatBot {
             console.log("📥 세션 목록 응답 데이터:", data);
 
             if (!data.success) {
-                alert("세션 목록을 불러오는 데 실패했습니다.");
+                showError("세션 목록을 불러오는 데 실패했습니다.");
                 return;
             }
 
@@ -122,7 +122,7 @@ class ChatBot {
 
         } catch (e) {
             console.error("세션 목록 로딩 오류:", e);
-            alert("세션 목록을 불러오는 중 오류가 발생했습니다.");
+            showError("세션 목록을 불러오는 중 오류가 발생했습니다.");
         }
     }
 
@@ -231,11 +231,11 @@ class ChatBot {
 
                 this.updateSessionMessagesInDOM('chatbot', data.answer);
             } else {
-                alert('오류: ' + (data.error || data.detail || '알 수 없는 오류'));
+                showError('오류: ' + (data.error || data.detail || '알 수 없는 오류'));
             }
         } catch (err) {
             console.error('에러 발생:', err);
-            alert('메시지 전송 중 오류가 발생했습니다.');
+            showError('메시지 전송 중 오류가 발생했습니다.');
         }
 
         // ✅ 전송 버튼 상태 복원
@@ -361,14 +361,14 @@ class ChatBot {
             const data = await res.json();
 
             if (!data.success) {
-                alert("메시지를 불러오는 데 실패했습니다.");
+                showError("메시지를 불러오는 데 실패했습니다.");
                 return;
             }
 
             this.renderMessages(data.messages);
         } catch (err) {
             console.error("메시지 불러오기 실패:", err);
-            alert("메시지 로딩 중 오류 발생");
+            showError("메시지 로딩 중 오류 발생");
         }
     }
 
@@ -481,11 +481,11 @@ class ChatBot {
                 // ✅ 목록 다시 불러오고 이벤트 다시 붙이기
                 await this.loadSessionsFromAPI();
             } else {
-                alert("삭제 실패: " + (data.error || ""));
+                showError("삭제 실패: " + (data.error || ""));
             }
         } catch (error) {
             console.error("삭제 오류:", error);
-            alert("삭제 중 오류 발생");
+            showError("삭제 중 오류 발생");
         }
     }
 
@@ -507,7 +507,7 @@ async function createNewSession() {
 
         const data = await res.json();
         if (!data.success) {
-            alert("세션 생성 실패: " + (data.error || ""));
+            showError("세션 생성 실패: " + (data.error || ""));
             return;
         }
 
@@ -574,7 +574,7 @@ async function createNewSession() {
 
     } catch (e) {
         console.error("세션 생성 실패:", e);
-        alert("세션 생성 중 오류가 발생했습니다.");
+        showError("세션 생성 중 오류가 발생했습니다.");
     }
 }
 

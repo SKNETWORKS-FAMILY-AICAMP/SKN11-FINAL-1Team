@@ -95,12 +95,12 @@ async function saveMemo(taskId, comment) {
       return true;
     } else {
       console.error('메모 저장 실패:', data.error);
-      alert('메모 저장에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+      showError('메모 저장에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
       return false;
     }
   } catch (error) {
     console.error('메모 저장 오류:', error);
-    alert('메모 저장 중 오류가 발생했습니다.');
+    showError('메모 저장 중 오류가 발생했습니다.');
     return false;
   }
 }
@@ -134,9 +134,9 @@ function initMemoInput() {
           chatInput.value = '';
         }
       } else if (!comment) {
-        alert('메모를 입력해주세요.');
+        showWarning('메모를 입력해주세요.');
       } else if (!currentTaskId) {
-        alert('태스크를 선택해주세요.');
+        showWarning('태스크를 선택해주세요.');
       }
     });
   }
@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
       newCard.addEventListener('click', function() {
         // 편집 중일 때는 클릭 차단
         if (typeof isEditing !== 'undefined' && isEditing) {
-          alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
+          showWarning('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
           return;
         }
         
@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 편집 중일 때는 클릭 차단
         if (typeof isEditing !== 'undefined' && isEditing) {
-          alert('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
+          showWarning('편집을 완료하거나 취소한 후 다른 태스크를 선택할 수 있습니다.');
           return;
         }
         
@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const subtaskForm = document.getElementById('subtask-form');
   const subtaskCancelBtn = document.getElementById('subtask-cancel-btn');
   subtaskBtn.addEventListener('click', function() {
-    if (!currentTask) return alert('상위 Task를 먼저 선택하세요.');
+    if (!currentTask) return showWarning('상위 Task를 먼저 선택하세요.');
     subtaskModal.style.display = 'flex';
     subtaskForm.reset();
     document.getElementById('subtask-parent-title').value = currentTask.title || '';
@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   subtaskForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-    if (!currentTask) return alert('상위 Task를 먼저 선택하세요.');
+    if (!currentTask) return showWarning('상위 Task를 먼저 선택하세요.');
     const title = document.getElementById('subtask-title').value.trim();
     const guideline = document.getElementById('subtask-guideline').value.trim();
     const description = document.getElementById('subtask-desc').value.trim();
@@ -522,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mentorship_id = currentTask.mentorship_id || (currentTask.mentorship_id || null);
     const week = currentTask.week;
     const order = null;
-    if (!title) return alert('제목을 입력하세요.');
+    if (!title) return showWarning('제목을 입력하세요.');
     try {
       const resp = await fetch(`/mentee/create_subtask/${parent_id}/`, {
         method: 'POST',
@@ -545,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       const data = await resp.json();
       if (data.success) {
-        alert('하위 테스크가 생성되었습니다.');
+        showSuccess('하위 테스크가 생성되었습니다.');
         subtaskModal.style.display = 'none';
         // 좌측 카드의 서브태스크 리스트에 바로 추가
         const card = document.querySelector(`.task-card[data-task-id="${parent_id}"]`);
@@ -614,10 +614,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // 필요시 상세정보 갱신
         if (currentTask && currentTask.id) fetchAndUpdateDetail(currentTask.id);
       } else {
-        alert('생성 실패: ' + (data.error || '오류'));
+        showError('생성 실패: ' + (data.error || '오류'));
       }
     } catch (err) {
-      alert('생성 중 오류: ' + err);
+      showError('생성 중 오류: ' + err);
     }
   });
   const cards = document.querySelectorAll('.task-card');
@@ -732,10 +732,10 @@ document.addEventListener('DOMContentLoaded', function() {
           currentTask.memos.push(data.memo);
           updateDetailFromData(currentTask);
         } else {
-          alert('댓글 등록 실패: ' + (data.error || '오류'));
+          showError('댓글 등록 실패: ' + (data.error || '오류'));
         }
       } catch (err) {
-        alert('댓글 등록 중 오류: ' + err);
+        showError('댓글 등록 중 오류: ' + err);
       }
     });
     chatInput.addEventListener('keydown', function(e) {
@@ -973,10 +973,10 @@ document.addEventListener('DOMContentLoaded', function() {
           
           hideEditForm();
         } else {
-          alert('저장 실패: ' + (data.error || '오류'));
+          showError('저장 실패: ' + (data.error || '오류'));
         }
       } catch (err) {
-        alert('저장 중 오류 발생: ' + err);
+        showError('저장 중 오류 발생: ' + err);
       }
     });
   }
@@ -1097,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 🌐 메시지 전송 함수
   async function sendMessage() {
     if (!currentSelectedTaskId) {
-      alert('태스크를 먼저 선택해주세요.');
+      showWarning('태스크를 먼저 선택해주세요.');
       return;
     }
     
@@ -1105,7 +1105,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const message = chatInput.value.trim();
     
     if (!message) {
-      alert('메시지를 입력해주세요.');
+      showWarning('메시지를 입력해주세요.');
       return;
     }
     
@@ -1129,14 +1129,14 @@ document.addEventListener('DOMContentLoaded', function() {
           console.log('✅ 메시지 전송 성공');
           loadTaskMessages(currentSelectedTaskId); // 메시지 목록 새로고침
         } else {
-          alert('메시지 전송 실패: ' + (data.error || '알 수 없는 오류'));
+          showError('메시지 전송 실패: ' + (data.error || '알 수 없는 오류'));
         }
       } else {
-        alert('메시지 전송에 실패했습니다.');
+        showError('메시지 전송에 실패했습니다.');
       }
     } catch (error) {
       console.error('메시지 전송 오류:', error);
-      alert('네트워크 오류가 발생했습니다.');
+      showError('네트워크 오류가 발생했습니다.');
     }
   }
 

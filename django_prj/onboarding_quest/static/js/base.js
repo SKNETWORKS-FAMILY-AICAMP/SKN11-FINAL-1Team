@@ -203,18 +203,18 @@ function toggleAlarmStatus(alarmId, isActive) {
             // 알람 목록 새로고침
             loadAlarms();
         } else {
-            alert('알림 상태 변경에 실패했습니다.');
+            showError('알림 상태 변경에 실패했습니다.');
         }
     })
     .catch(error => {
         console.error('알람 상태 변경 실패:', error);
-        alert('알림 상태 변경에 실패했습니다.');
+        showError('알림 상태 변경에 실패했습니다.');
     });
 }
 
 // 알람 삭제
-function deleteAlarm(alarmId) {
-    if (!confirm('이 알림을 삭제하시겠습니까?')) {
+async function deleteAlarm(alarmId) {
+    if (!(await showCustomConfirm('이 알림을 삭제하시겠습니까?'))) {
         return;
     }
     
@@ -230,12 +230,12 @@ function deleteAlarm(alarmId) {
             // 알람 목록 새로고침
             loadAlarms();
         } else {
-            alert('알림 삭제에 실패했습니다.');
+            showError('알림 삭제에 실패했습니다.');
         }
     })
     .catch(error => {
         console.error('알람 삭제 실패:', error);
-        alert('알림 삭제에 실패했습니다.');
+        showError('알림 삭제에 실패했습니다.');
     });
 }
 
@@ -253,12 +253,12 @@ function markAllAlarmsRead() {
             // 알람 목록 새로고침
             loadAlarms();
         } else {
-            alert('알림 읽음 처리에 실패했습니다.');
+            showError('알림 읽음 처리에 실패했습니다.');
         }
     })
     .catch(error => {
         console.error('알람 읽음 처리 실패:', error);
-        alert('알림 읽음 처리에 실패했습니다.');
+        showError('알림 읽음 처리에 실패했습니다.');
     });
 }
 
@@ -331,14 +331,14 @@ function createTestAlarm() {
         if (data.success) {
             // 알람 목록 새로고침
             loadAlarms();
-            alert('테스트 알림이 생성되었습니다.');
+            showSuccess('테스트 알림이 생성되었습니다.');
         } else {
-            alert('알림 생성에 실패했습니다.');
+            showError('알림 생성에 실패했습니다.');
         }
     })
     .catch(error => {
         console.error('알람 생성 실패:', error);
-        alert('알림 생성에 실패했습니다.');
+        showError('알림 생성에 실패했습니다.');
     });
 }
 

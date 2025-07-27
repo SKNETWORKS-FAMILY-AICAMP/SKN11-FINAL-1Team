@@ -165,14 +165,17 @@ uploadBtn?.addEventListener('click', async () => {
       if (!result.success) throw new Error(result.error || result.message || '업로드 실패');
     }
 
-    alert('모든 파일이 성공적으로 업로드되었습니다.');
+    showSuccess('모든 파일이 성공적으로 업로드되었습니다.');
     addedFiles = [];
     renderUploadList();
-    location.reload();
+    // 토스트 메시지가 표시될 시간을 주고 페이지 새로고침
+    setTimeout(() => {
+      location.reload();
+    }, 1500);
 
   } catch (err) {
     console.error('Upload error:', err);
-    alert('업로드 실패: ' + err.message);
+    showError('업로드 실패: ' + err.message);
   } finally {
     uploadBtn.disabled = false;
     uploadBtn.textContent = '📤 업로드';
@@ -211,15 +214,18 @@ document.getElementById('edit-form')?.addEventListener('submit', function (e) {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        alert('수정되었습니다.');
-        location.reload();
+        showSuccess('수정되었습니다.');
+        // 토스트 메시지가 표시될 시간을 주고 페이지 새로고침
+        setTimeout(() => {
+          location.reload();
+        }, 1500);
       } else {
-        alert('수정 실패: ' + data.error);
+        showError('수정 실패: ' + data.error);
       }
     })
     .catch(err => {
       console.error('수정 오류:', err);
-      alert('수정 중 오류가 발생했습니다.');
+      showError('수정 중 오류가 발생했습니다.');
     });
 
   closeEditModal();
@@ -265,15 +271,18 @@ function confirmDelete() {
     })
     .then(data => {
       if (data.success) {
-        alert('삭제되었습니다.');
-        location.reload();
+        showSuccess('삭제되었습니다.');
+        // 토스트 메시지가 표시될 시간을 주고 페이지 새로고침
+        setTimeout(() => {
+          location.reload();
+        }, 1500);
       } else {
-        alert('삭제 실패: ' + (data.error || data.message || '알 수 없는 오류'));
+        showError('삭제 실패: ' + (data.error || data.message || '알 수 없는 오류'));
       }
     })
     .catch(err => {
       console.error('삭제 오류:', err);
-      alert('삭제 중 오류가 발생했습니다: ' + err.message);
+      showError('삭제 중 오류가 발생했습니다: ' + err.message);
     });
 
   closeDeleteModal();
@@ -404,7 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const selected = [...document.querySelectorAll(".doc-checkbox:checked")];
     if (selected.length === 0) return;
 
-    if (!confirm(`${selected.length}개의 문서를 삭제하시겠습니까?`)) return;
+    if (!(await showCustomConfirm(`${selected.length}개의 문서를 삭제하시겠습니까?`))) return;
 
     for (const cb of selected) {
       const docId = cb.dataset.docId;
@@ -424,7 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    alert("삭제가 완료되었습니다.");
+    showSuccess("삭제가 완료되었습니다.");
     loadDocumentList(CURRENT_DEPARTMENT_ID);
 
     // ✅ 삭제 후 체크박스 초기화
@@ -440,8 +449,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
-  document.getElementById('doc-reset-btn')?.addEventListener('click', () => {
-    if (confirm("업로드 목록을 초기화하시겠습니까?")) {
+  document.getElementById('doc-reset-btn')?.addEventListener('click', async () => {
+    if (await showCustomConfirm("업로드 목록을 초기화하시겠습니까?")) {
       addedFiles = [];
       renderUploadList();
     }

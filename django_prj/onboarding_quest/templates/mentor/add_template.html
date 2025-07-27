@@ -980,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // 이벤트 위임: Task 추가 버튼 및 삭제 버튼 클릭 처리
-  taskList.addEventListener('click', function(e) {
+  taskList.addEventListener('click', async function(e) {
     console.log('Click event target:', e.target);
     console.log('Target classes:', e.target.classList);
     console.log('Target data-task-idx:', e.target.getAttribute('data-task-idx'));
@@ -1003,7 +1003,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const taskIdx = Number(e.target.getAttribute('data-task-idx'));
       console.log('Task index from data attribute:', taskIdx);
       
-      if (!isNaN(taskIdx) && taskIdx >= 0 && confirm('이 Task를 삭제하시겠습니까?')) {
+      if (!isNaN(taskIdx) && taskIdx >= 0 && await showCustomConfirm('이 Task를 삭제하시겠습니까?')) {
         deleteTask(taskIdx);
       }
     }
@@ -1012,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       e.stopPropagation();
       const week = Number(e.target.getAttribute('data-week'));
-      if (confirm(`${week}주차를 삭제하시겠습니까? 해당 주차의 모든 Task가 함께 삭제됩니다.`)) {
+      if (await showCustomConfirm(`${week}주차를 삭제하시겠습니까? 해당 주차의 모든 Task가 함께 삭제됩니다.`)) {
         deleteWeek(week);
       }
     }

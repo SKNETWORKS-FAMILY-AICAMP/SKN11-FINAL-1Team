@@ -50,7 +50,7 @@ class CurriculumManager {
         }
     }
 
-    handleDetailButtonClick(button) {
+    async handleDetailButtonClick(button) {
         const buttonId = button.id;
         const selectedItem = document.querySelector('.template-item.selected');
         if (!selectedItem) return;
@@ -70,23 +70,26 @@ class CurriculumManager {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert('복제 완료!');
-                    window.location.reload();
+                    showSuccess('복제 완료!');
+                    // 토스트 메시지가 표시될 시간을 주고 페이지 새로고침
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
                 } else {
-                    alert(data.message || '복제 실패');
+                    showError(data.message || '복제 실패');
                 }
             })
-            .catch(() => alert('복제 중 오류 발생'));
+            .catch(() => showError('복제 중 오류 발생'));
             return;
         }
         
         if (isCommon && (buttonId === 'delete-btn' || buttonId === 'edit-btn')) {
-            alert('공용 커리큘럼은 수정/삭제할 수 없습니다.');
+            showWarning('공용 커리큘럼은 수정/삭제할 수 없습니다.');
             return;
         }
         
         if (buttonId === 'delete-btn') {
-            if (!confirm('정말로 이 커리큘럼을 삭제하시겠습니까?')) return;
+            if (!(await showCustomConfirm('정말로 이 커리큘럼을 삭제하시겠습니까?'))) return;
             fetch(`/mentor/api/delete_curriculum/${curriculumId}/`, {
                 method: 'DELETE',
                 headers: {
@@ -97,13 +100,16 @@ class CurriculumManager {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert('삭제 완료!');
-                    window.location.reload();
+                    showSuccess('삭제 완료!');
+                    // 토스트 메시지가 표시될 시간을 주고 페이지 새로고침
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
                 } else {
-                    alert(data.message || '삭제 실패');
+                    showError(data.message || '삭제 실패');
                 }
             })
-            .catch(() => alert('삭제 중 오류 발생'));
+            .catch(() => showError('삭제 중 오류 발생'));
             return;
         }
         
