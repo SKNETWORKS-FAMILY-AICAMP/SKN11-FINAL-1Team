@@ -140,7 +140,10 @@
     </div>
     
     <!-- 알람 사이드 패널 -->
-        <div id="alarmPanel" class="fixed top-0 w-80 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden flex flex-col" style="left: 18rem;">
+        <div id="alarmPanel" class="fixed top-0 w-80 h-full bg-white shadow-2xl border-l border-gray-200 transform -translate-x-full transition-transform duration-300 ease-in-out z-40 hidden flex flex-col" style="left: 18rem; min-width: 250px; max-width: 600px;">
+        <!-- 리사이즈 핸들 -->
+        <div id="resizeHandle" class="absolute right-0 top-0 w-1 h-full bg-gray-300 hover:bg-blue-500 cursor-ew-resize transition-colors duration-200 opacity-0 hover:opacity-100"></div>
+        
         <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
             <span class="font-bold text-lg text-gray-900 flex items-center gap-2">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,7 +199,91 @@
             sideBar.style.width = mainBar.style.width;
         }
     }
-    document.addEventListener('DOMContentLoaded', syncSidebarBar);
+    
+    // 알림 패널 리사이즈 기능
+    function initAlarmPanelResize() {
+        const resizeHandle = document.getElementById('resizeHandle');
+        const alarmPanel = document.getElementById('alarmPanel');
+        
+        if (!resizeHandle || !alarmPanel) return;
+        
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        
+        // 저장된 너비가 있으면 복원
+        const savedWidth = localStorage.getItem('alarmPanelWidth');
+        if (savedWidth) {
+            alarmPanel.style.width = savedWidth + 'px';
+        }
+        
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = parseInt(window.getComputedStyle(alarmPanel).width, 10);
+            
+            // 드래그 중 커서 변경 및 선택 방지
+            document.body.style.cursor = 'ew-resize';
+            document.body.classList.add('no-select');
+            
+            // 트랜지션 비활성화 (부드러운 리사이징을 위해)
+            alarmPanel.style.transition = 'none';
+            
+            // 리사이즈 핸들 활성화 상태 표시
+            resizeHandle.style.opacity = '1';
+            resizeHandle.style.width = '4px';
+            
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const width = startWidth + (e.clientX - startX);
+            const minWidth = 250; // 최소 너비
+            const maxWidth = Math.min(600, window.innerWidth * 0.4); // 최대 너비 (화면의 40% 또는 600px 중 작은 값)
+            
+            const newWidth = Math.max(minWidth, Math.min(maxWidth, width));
+            alarmPanel.style.width = newWidth + 'px';
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                
+                // 커서와 선택 복원
+                document.body.style.cursor = '';
+                document.body.classList.remove('no-select');
+                
+                // 트랜지션 복원
+                alarmPanel.style.transition = 'transform 300ms ease-in-out';
+                
+                // 리사이즈 핸들 초기 상태로 복원
+                resizeHandle.style.opacity = '';
+                resizeHandle.style.width = '';
+                
+                // 너비 저장
+                const currentWidth = parseInt(window.getComputedStyle(alarmPanel).width, 10);
+                localStorage.setItem('alarmPanelWidth', currentWidth);
+            }
+        });
+        
+        // 윈도우 리사이즈 시 최대 너비 재조정
+        window.addEventListener('resize', () => {
+            const currentWidth = parseInt(window.getComputedStyle(alarmPanel).width, 10);
+            const maxWidth = Math.min(600, window.innerWidth * 0.4);
+            
+            if (currentWidth > maxWidth) {
+                alarmPanel.style.width = maxWidth + 'px';
+                localStorage.setItem('alarmPanelWidth', maxWidth);
+            }
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        syncSidebarBar();
+        initAlarmPanelResize();
+    });
 </script>
 
 

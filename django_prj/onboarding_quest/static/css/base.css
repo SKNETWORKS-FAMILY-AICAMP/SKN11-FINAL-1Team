@@ -285,3 +285,29 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0 !important;
 }
 
+/* 알림 패널 리사이즈 핸들 스타일 */
+#resizeHandle {
+  background: linear-gradient(90deg, transparent 0%, #d1d5db 50%, transparent 100%);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+#resizeHandle:hover {
+  background: linear-gradient(90deg, transparent 0%, #3b82f6 50%, transparent 100%);
+  opacity: 1 !important;
+  width: 3px;
+}
+
+#resizeHandle:active {
+  background: linear-gradient(90deg, transparent 0%, #1d4ed8 50%, transparent 100%);
+  width: 4px;
+}
+
+/* 드래그 중 선택 방지 */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
