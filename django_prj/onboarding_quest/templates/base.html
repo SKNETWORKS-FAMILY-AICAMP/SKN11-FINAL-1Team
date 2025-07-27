@@ -179,6 +179,45 @@
     <!-- 알람 패널 오버레이 -->
     <div id="alarmOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
     
+    <!-- 커스텀 Alert 모달 -->
+    <div id="customAlertModal" class="hidden fixed inset-0 z-[10000] bg-black bg-opacity-40 backdrop-blur-sm modal-fade-in">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto modal-slide-in border border-gray-100">
+                <!-- 닫기 버튼 -->
+                <button id="customAlertClose" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 z-10">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                
+                <!-- 모달 내용 -->
+                <div class="p-6 sm:p-8 text-center">
+                    <!-- 아이콘 -->
+                    <div id="customAlertIcon" class="mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-full icon-pulse">
+                        <!-- 아이콘 내용이 JavaScript로 삽입됩니다 -->
+                    </div>
+                    
+                    <!-- 제목 -->
+                    <h3 id="customAlertTitle" class="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                        <!-- 제목이 JavaScript로 삽입됩니다 -->
+                    </h3>
+                    
+                    <!-- 메시지 -->
+                    <p id="customAlertMessage" class="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed">
+                        <!-- 메시지가 JavaScript로 삽입됩니다 -->
+                    </p>
+                    
+                    <!-- 버튼 영역 (구분선 포함) -->
+                    <div class="border-t border-gray-100 pt-4 -mx-6 sm:-mx-8 px-6 sm:px-8">
+                        <div id="customAlertButtons" class="flex flex-col sm:flex-row gap-3 justify-center">
+                            <!-- 버튼이 JavaScript로 삽입됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Main Content -->
     <div id="main-content" class="flex-1 flex flex-col transition-colors duration-300 bg-gray-50 ml-72" style="margin-left: 18rem;">
         <main class="flex-1 p-8 bg-gray-50">
@@ -279,6 +318,170 @@
             }
         });
     }
+    
+    // 커스텀 Alert 시스템
+    function showCustomAlert(message, type = 'info', title = '', buttons = null) {
+        const modal = document.getElementById('customAlertModal');
+        const iconElement = document.getElementById('customAlertIcon');
+        const titleElement = document.getElementById('customAlertTitle');
+        const messageElement = document.getElementById('customAlertMessage');
+        const buttonsElement = document.getElementById('customAlertButtons');
+        
+        // 아이콘 설정 (SVG 아이콘 사용)
+        const icons = {
+            success: {
+                svg: `<svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>`,
+                bgClass: 'bg-emerald-50'
+            },
+            error: {
+                svg: `<svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>`,
+                bgClass: 'bg-red-50'
+            },
+            warning: {
+                svg: `<svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.99-.833-2.76 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                      </svg>`,
+                bgClass: 'bg-amber-50'
+            },
+            info: {
+                svg: `<svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>`,
+                bgClass: 'bg-blue-50'
+            },
+            question: {
+                svg: `<svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>`,
+                bgClass: 'bg-purple-50'
+            }
+        };
+        
+        const iconConfig = icons[type] || icons.info;
+        iconElement.innerHTML = iconConfig.svg;
+        iconElement.className = `mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-full icon-pulse ${iconConfig.bgClass}`;
+        
+        // 제목 설정
+        if (title) {
+            titleElement.textContent = title;
+        } else {
+            // 기본 제목 설정
+            const defaultTitles = {
+                success: '성공!',
+                error: '오류 발생',
+                warning: '주의하세요',
+                info: '알림',
+                question: '확인이 필요합니다'
+            };
+            titleElement.textContent = defaultTitles[type] || '알림';
+        }
+        
+        // 메시지 설정
+        messageElement.textContent = message;
+        
+        // 버튼 설정
+        buttonsElement.innerHTML = '';
+        if (buttons && Array.isArray(buttons)) {
+            buttons.forEach((button, index) => {
+                const btn = document.createElement('button');
+                btn.textContent = button.text;
+                
+                if (button.class === 'btn-primary') {
+                    btn.className = 'flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-w-[80px] sm:min-w-[100px]';
+                } else {
+                    btn.className = 'flex-1 sm:flex-none px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 min-w-[80px] sm:min-w-[100px]';
+                }
+                
+                btn.onclick = () => {
+                    modal.classList.add('hidden');
+                    if (button.callback) button.callback();
+                };
+                buttonsElement.appendChild(btn);
+            });
+        } else {
+            // 기본 확인 버튼
+            const okBtn = document.createElement('button');
+            okBtn.textContent = '확인';
+            okBtn.className = 'w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-w-[120px]';
+            okBtn.onclick = () => modal.classList.add('hidden');
+            buttonsElement.appendChild(okBtn);
+        }
+        
+        // 모달 표시
+        modal.classList.remove('hidden');
+        
+        // ESC 키로 모달 닫기
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                modal.classList.add('hidden');
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
+        return new Promise(resolve => {
+            const closeHandler = () => {
+                modal.classList.add('hidden');
+                document.removeEventListener('keydown', escHandler);
+                resolve(false);
+            };
+            
+            document.getElementById('customAlertClose').onclick = closeHandler;
+            modal.onclick = (e) => {
+                if (e.target === modal) closeHandler();
+            };
+        });
+    }
+    
+    // 커스텀 Confirm 다이얼로그
+    function showCustomConfirm(message, title = '확인이 필요합니다') {
+        return new Promise(resolve => {
+            showCustomAlert(message, 'question', title, [
+                {
+                    text: '취소',
+                    class: 'btn-secondary',
+                    callback: () => resolve(false)
+                },
+                {
+                    text: '확인', 
+                    class: 'btn-primary',
+                    callback: () => resolve(true)
+                }
+            ]);
+        });
+    }
+    
+    // 편의 함수들
+    function showSuccess(message, title = '') {
+        return showCustomAlert(message, 'success', title);
+    }
+    
+    function showError(message, title = '') {
+        return showCustomAlert(message, 'error', title);
+    }
+    
+    function showWarning(message, title = '') {
+        return showCustomAlert(message, 'warning', title);
+    }
+    
+    function showInfo(message, title = '') {
+        return showCustomAlert(message, 'info', title);
+    }
+    
+    // 기본 alert 함수 오버라이드
+    window.originalAlert = window.alert;
+    window.alert = function(message) {
+        showCustomAlert(message, 'info');
+    };
+    
+    window.originalConfirm = window.confirm;
+    window.confirm = function(message) {
+        return showCustomConfirm(message);
+    };
     
     document.addEventListener('DOMContentLoaded', function() {
         syncSidebarBar();

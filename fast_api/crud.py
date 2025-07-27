@@ -376,7 +376,7 @@ def delete_user_with_company_department(db: Session, user_id: int, company_id: s
     # 6. 삭제 실행
     db.delete(db_user)
     db.commit()
-    return db_user, "사용자가 성공적으로 삭제되었습니다."
+    return db_user, "사용자가 삭제되었습니다."
 
 # 기존 delete 함수들은 유지 (하위 호환성)
 def delete_user(db: Session, user_id: int):

@@ -705,7 +705,7 @@ mentoringForm.addEventListener('submit', async function(e) {
   
   const selected = document.querySelector('#mentee-list a.selected');
   if (!selected) {
-    alert('멘티를 선택하세요.');
+    showWarning('멘티를 선택하세요.');
     return;
   }
   
@@ -715,7 +715,7 @@ mentoringForm.addEventListener('submit', async function(e) {
   const curriculumIds = checkedCurriculums.map(cb => cb.value);
   
   if (curriculumIds.length === 0) {
-    alert('최소 하나의 커리큘럼을 선택하세요.');
+    showWarning('최소 하나의 커리큘럼을 선택하세요.');
     return;
   }
   
@@ -760,7 +760,7 @@ mentoringForm.addEventListener('submit', async function(e) {
       const mentorshipId = data.mentorship_id || '';
       const successMessage = `멘토쉽이 성공적으로 생성되었습니다!${mentorshipId ? ` (ID: ${mentorshipId})` : ''}`;
       
-      alert(successMessage);
+      showSuccess(successMessage);
       
       // 즉시 멘토 대시보드로 이동
       window.location.href = '/mentor/';
@@ -774,7 +774,7 @@ mentoringForm.addEventListener('submit', async function(e) {
     submitBtn.disabled = false;
     
     console.error('멘토쉽 생성 오류:', err);
-    alert(`멘토쉽 생성 중 오류가 발생했습니다: ${err.message}`);
+    showError(`멘토쉽 생성 중 오류가 발생했습니다: ${err.message}`);
   }
 });
 

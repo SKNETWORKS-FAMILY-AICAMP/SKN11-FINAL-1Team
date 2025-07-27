@@ -387,7 +387,7 @@ function initializeDetailPanelButtons() {
             // 현재 선택된 태스크 정보 가져오기
             const selectedCard = document.querySelector('.task-card.selected');
             if (!selectedCard) {
-                alert('태스크를 먼저 선택해주세요.');
+                showWarning('태스크를 먼저 선택해주세요.');
                 return;
             }
             
@@ -1152,13 +1152,13 @@ async function createSubtask() {
     
     // 유효성 검사
     if (!title) {
-        alert('제목을 입력해주세요.');
+        showWarning('제목을 입력해주세요.');
         document.getElementById('subtask-title').focus();
         return;
     }
     
     if (!parentTaskId) {
-        alert('상위 태스크를 선택해주세요.');
+        showWarning('상위 태스크를 선택해주세요.');
         return;
     }
     
@@ -1175,7 +1175,7 @@ async function createSubtask() {
         console.log('🔍 URL에서 가져온 멘토십 ID:', finalMentorshipId);
         
         if (!finalMentorshipId) {
-            alert('멘토십 정보를 찾을 수 없습니다.');
+            showError('멘토십 정보를 찾을 수 없습니다.');
             return;
         }
         
@@ -1451,7 +1451,7 @@ setTimeout(() => {
             e.preventDefault();
             
             if (!currentTask || !currentTask.id) {
-                alert('태스크 정보를 찾을 수 없습니다.');
+                showError('태스크 정보를 찾을 수 없습니다.');
                 return;
             }
             
