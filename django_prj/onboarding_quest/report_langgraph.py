@@ -11,8 +11,8 @@ import psycopg2
 import psycopg2.extras
 import asyncio
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from core import crud   # crud.py 경로가 core 폴더 안에 있는 경우
-from core.database import get_db  # database.py 경로가 core 폴더 안에 있는 경우
+from core.models import Mentorship
+
 
 
 # ✅ 환경 설정
@@ -376,23 +376,21 @@ class ReportNodes:
                     if mentorship_row and mentorship_row['report']:
                         report_url = f"http://127.0.0.1:8000/mentee/task_list/?mentorship_id={mentorship_row['mentorship_id']}&open=final_report"
 
-                         # DB에 url_link 저장
+                        # DB에 url_link 저장
+                        # Django ORM을 사용하여 url_link 업데이트
                         try:
-                            from database import get_db
-                            db = next(get_db())  # 세션 생성
-                            crud.update_mentorship_report(
-                                db,
-                                mentorship_id=mentorship_row['mentorship_id'],
-                                report=mentorship_row['report'],
-                                url_link=report_url
-                            )
-                            db.close()
+                            mentorship_obj = Mentorship.objects.get(mentorship_id=mentorship_row['mentorship_id'])
+                            mentorship_obj.url_link = report_url
+                            mentorship_obj.save(update_fields=['url_link'])
                             print(f"✅ DB에 report_url 저장 완료: {report_url}")
+                        except Mentorship.DoesNotExist:
+                            print(f"❌ Mentorship ID={mentorship_row['mentorship_id']}를 찾을 수 없습니다.")
                         except Exception as db_error:
                             import traceback
                             print(f"❌ DB url_link 저장 실패: {db_error}")
                             traceback.print_exc()
-                        
+                             
+
                         try:
                             asyncio.run(self.send_email_async(
                                 to_email=mentor_email,
