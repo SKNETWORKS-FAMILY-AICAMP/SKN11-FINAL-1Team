@@ -10,6 +10,7 @@ from langgraph.graph import StateGraph, END
 import psycopg2
 import psycopg2.extras
 import asyncio
+import re
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from core.models import Mentorship
 
@@ -297,25 +298,32 @@ class ReportNodes:
             recipient_email = str(to_email) if not isinstance(to_email, dict) else to_email.get('email', '')
             
             # HTML 형식의 이메일 본문 생성
+            def markdown_to_html(text: str) -> str:
+                text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)  # **bold**
+                text = text.replace('\n', '<br>')  # 줄바꿈 처리
+                return text
+
+            report_html = markdown_to_html(report_content)
+
             email_body = f"""
-            <h2>{mentee_name} 멘티 온보딩 최종 평가 보고서</h2>
-            
-            <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
-                <h3>보고서 내용</h3>
-                <div style="white-space: pre-wrap; font-family: Arial, sans-serif;">
-                    {report_content}
+                <h2>{mentee_name} 멘티 온보딩 최종 평가 보고서</h2>
+                
+                <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
+                    <h3>보고서 내용</h3>
+                    <div style="font-family: Arial, sans-serif;">
+                        {report_html}
+                    </div>
                 </div>
-            </div>
-            
-            <p>자세한 내용은 아래 링크에서 확인하실 수 있습니다:</p>
-            <a href="{report_url}" style="display: inline-block; margin: 20px 0; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
-                보고서 상세 보기
-            </a>
-            
-            <p style="color: #6c757d; font-size: 0.9em; margin-top: 30px;">
-                본 이메일은 자동으로 발송되었습니다.<br>
-                문의사항이 있으시면 관리자에게 연락해 주세요.
-            </p>
+                
+                <p>자세한 내용은 아래 링크에서 확인하실 수 있습니다:</p>
+                <a href="{report_url}" style="display: inline-block; margin: 20px 0; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+                    보고서 상세 보기
+                </a>
+                
+                <p style="color: #6c757d; font-size: 0.9em; margin-top: 30px;">
+                    본 이메일은 자동으로 발송되었습니다.<br>
+                    문의사항이 있으시면 관리자에게 연락해 주세요.
+                </p>
             """
             
             message = MessageSchema(
