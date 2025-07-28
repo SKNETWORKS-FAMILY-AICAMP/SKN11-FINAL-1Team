@@ -118,6 +118,8 @@ class ReportNodes:
         state["onboarding_due"] = False
         state["last_onboarding_check"] = today_str
         return state
+    
+    
 
     def generate_report(self, state: GraphState) -> GraphState:
         """보고서 생성 노드"""
@@ -184,25 +186,31 @@ class ReportNodes:
             
             # GPT를 사용한 보고서 생성
             prompt = f"""
-            다음 정보를 바탕으로 {report_data['mentee_name']} 멘티의 온보딩 최종 보고서를 작성해주세요:
-            
+            다음 정보를 바탕으로 {report_data['mentee_name']} 멘티의 온보딩 최종 보고서를 작성해주세요.
+
+            **요구사항:**
+            - 마크다운 문법(##, **, - 등)을 절대 사용하지 말고, 문단 단위의 평문으로 작성할 것.
+            - 태스크 수행 내용이 없거나 미흡한 경우, 해당 내용을 명시적으로 평가에 반영할 것.
+            - 멘티가 수행한 태스크와 상태를 기반으로 성실도, 진행 상황, 개선점을 분석할 것.
+            - 최종 평가 보고서는 아래의 네 가지 항목 구조를 반드시 유지할 것:
+            1. 전체 온보딩 과정 요약
+            2. 주요 성과 및 습득 역량
+            3. 개선 필요 사항
+            4. 종합 평가
+
             멘티 정보:
-            - 이름: {report_data['mentee_name']}
-            - 역할: {report_data['role']}
-            - 담당 멘토: {report_data['mentor_name']}
-            
+            이름: {report_data['mentee_name']}
+            역할: {report_data['role']}
+            담당 멘토: {report_data['mentor_name']}
+
             수행한 태스크:
             {chr(10).join([
                 f"- {t['title']}: {t['status']}" +
                 (f" (시작: {t['real_start_date']}, 완료: {t['real_end_date']})" if t['real_end_date'] else "")
                 for t in report_data['tasks']
             ])}
-            
-            다음 구조로 작성해주세요:
-            1. 전체 온보딩 과정 요약
-            2. 주요 성과 및 습득 역량
-            3. 개선 필요 사항
-            4. 종합 평가
+
+            위 정보를 바탕으로 태스크 수행 여부를 객관적으로 평가하고, 수행 기록이 부족하거나 없을 경우 그 점을 언급하며 최종 보고서를 작성하세요.
             """
             
             report = llm.invoke(prompt).content
