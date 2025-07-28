@@ -821,37 +821,15 @@ def generate_answer(state: AgentState) -> AgentState:
     start = time.time()
     logger.info("🟢 generate_answer 시작")
     logger.info("💬 generate_answer 실행")
-    # context = "\n---\n".join(state.get("contexts", []))
-    # question = state.get("rewritten_question") or state["question"]
-    # full_history = state.get("chat_history", [])
-    # recent_history = full_history[-WINDOW_SIZE:]
-    # history_text = "\n".join(recent_history)
-    context_list = state.get("contexts", [])
-    context = "\n---\n".join(context_list)
+    context = "\n---\n".join(state.get("contexts", []))
     question = state.get("rewritten_question") or state["question"]
     full_history = state.get("chat_history", [])
     recent_history = full_history[-WINDOW_SIZE:]
     history_text = "\n".join(recent_history)
-
-    # ✅ 안내 context만 있는 경우 fallback 안내 리턴
-    if (
-        len(context_list) == 1 and 
-        "[안내] 선택한 문서에서 관련 정보를 찾지 못했습니다." in context_list[0]
-    ):
-        answer_text = (
-            "선택하신 문서에는 질문과 관련된 정보가 없습니다.\n"
-            "📌 다른 문서를 선택하거나, 더 관련성 높은 문서를 추가로 선택해 주세요."
-        )
-        updated_history = full_history + [f"Q: {question}\nA: {answer_text}"]
-        elapsed = time.time() - start
-        logger.info(f"🟢 generate_answer (fallback 안내) 완료 - ⏱️ {elapsed:.2f}초")
-        return {**state, "answer": answer_text, "chat_history": updated_history}
-
     
     # 출처 정보: 파일명별로 (hierarchy_path, title) 튜플을 set으로 집계 (완전 중복 제거)
     ref_map = {}  # {file_name: set((hierarchy_path, title))}
-    # for c in state.get("contexts", []):
-    for c in context_list:
+    for c in state.get("contexts", []):
         if c.startswith("["):
             first_line = c.split("\n")[0]
             if "(출처: " in first_line:

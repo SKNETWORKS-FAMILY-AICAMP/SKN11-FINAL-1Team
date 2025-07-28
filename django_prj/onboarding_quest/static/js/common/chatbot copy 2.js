@@ -15,8 +15,7 @@ class ChatBot {
             });
             return;
         }
-        this.savedRange = null;
-        this.activeAutocompleteIndex = -1;  // ✅ 추가
+        
         this.deleteModalSessionId = null;
         this.isSubmitting = false;
         this.loadingMessageElement = null;
@@ -28,36 +27,7 @@ class ChatBot {
         if (this.autocompleteInput) {
             this.autocompleteInput.addEventListener('input', (e) => this.handleAutocomplete(e));
             this.autocompleteInput.addEventListener('keyup', (e) => this.handleAutocomplete(e)); // ✅ 추가
-            // this.autocompleteInput.addEventListener('keydown', (e) => this.handleBackspaceOnToken(e)); // ⬅️ 추가
-            this.autocompleteInput.addEventListener('keydown', (e) => {
-                this.handleBackspaceOnToken(e);
-
-                const items = this.autocompleteDropdown.querySelectorAll('.autocomplete-dropdown-item');
-                if (items.length === 0 || this.autocompleteDropdown.style.display === 'none') return;
-
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    this.activeAutocompleteIndex = (this.activeAutocompleteIndex + 1) % items.length;
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    this.activeAutocompleteIndex = (this.activeAutocompleteIndex - 1 + items.length) % items.length;
-                } else if (e.key === 'Tab' || e.key === 'Enter') {  // ✅ 여기에 Enter도 같이 체크
-                    e.preventDefault();
-                    if (this.activeAutocompleteIndex >= 0 && this.activeAutocompleteIndex < items.length) {
-                        const selected = items[this.activeAutocompleteIndex];
-                        this.insertDocumentToken(selected.textContent.trim());
-                        this.autocompleteDropdown.style.display = 'none';
-                        this.activeAutocompleteIndex = -1;
-                    }
-                }
-
-                // ✅ 스타일 반영
-                items.forEach((el, idx) => {
-                    el.classList.toggle('active', idx === this.activeAutocompleteIndex);
-                });
-            });
-
-
+            this.autocompleteInput.addEventListener('keydown', (e) => this.handleBackspaceOnToken(e)); // ⬅️ 추가
         }
     }
 
@@ -207,57 +177,12 @@ class ChatBot {
 
         // '@검색어' 제거
         const caretText = this.getCaretText(this.autocompleteInput);
-        // const match = caretText.match(/@(\S{1,20})$/);
-        // if (match) {
-        //     const startOffset = range.endOffset - match[0].length;
-        //     range.setStart(range.endContainer, startOffset);
-        //     range.deleteContents();
-        // }
-        // '@검색어' 제거
         const match = caretText.match(/@(\S{1,20})$/);
         if (match) {
-            const fullMatch = match[0];
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return;
-            const range = selection.getRangeAt(0);
-
-            const preCaretRange = range.cloneRange();
-            preCaretRange.selectNodeContents(this.autocompleteInput);
-            const caretText = preCaretRange.toString();
-            const index = caretText.lastIndexOf(fullMatch);
-
-            if (index !== -1) {
-                // 전체 텍스트 기준으로 위치 찾아서 삭제 범위 지정
-                const allNodes = this.autocompleteInput.childNodes;
-                let count = 0;
-
-                for (const node of allNodes) {
-                    const nodeText = node.textContent || '';
-                    const nextCount = count + nodeText.length;
-
-                    if (index >= count && index < nextCount) {
-                        const startOffset = index - count;
-                        const endOffset = startOffset + fullMatch.length;
-
-                        const deletionRange = document.createRange();
-                        deletionRange.setStart(node, startOffset);
-                        deletionRange.setEnd(node, endOffset);
-                        deletionRange.deleteContents();
-
-                        // 커서 위치 재조정
-                        const newRange = document.createRange();
-                        newRange.setStart(node, startOffset);
-                        newRange.collapse(true);
-                        selection.removeAllRanges();
-                        selection.addRange(newRange);
-                        break;
-                    }
-
-                    count = nextCount;
-                }
-            }
+            const startOffset = range.endOffset - match[0].length;
+            range.setStart(range.endContainer, startOffset);
+            range.deleteContents();
         }
-
 
         // 토큰 <span> 생성
         // const span = document.createElement('span');
@@ -346,76 +271,25 @@ class ChatBot {
 
 
                 this.autocompleteDropdown.innerHTML = '';
-                // data.forEach(doc => {
-                //     const item = document.createElement('div');
-                //     item.className = 'autocomplete-dropdown-item';
-                //     item.textContent = doc.name;
-                //     item.addEventListener('click', (e) => {
-                //         e.preventDefault();
-                //         this.autocompleteInput.focus();  // ✅ 입력창 포커스 다시 주기
-                //         setTimeout(() => {
-                //             this.insertDocumentToken(doc.name);  // ✅ 안정적으로 토큰 삽입
-                //             this.autocompleteDropdown.style.display = 'none';
-                //         }, 0);
-                //     });
-
-                //     // item.addEventListener('click', () => {
-                //     //     this.insertDocumentToken(doc.name);
-                //     //     this.autocompleteDropdown.style.display = 'none';
-                //     // });
-                //     this.autocompleteDropdown.appendChild(item);
-                // });
-
                 data.forEach(doc => {
                     const item = document.createElement('div');
                     item.className = 'autocomplete-dropdown-item';
                     item.textContent = doc.name;
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.autocompleteInput.focus();  // ✅ 입력창 포커스 다시 주기
+                        setTimeout(() => {
+                            this.insertDocumentToken(doc.name);  // ✅ 안정적으로 토큰 삽입
+                            this.autocompleteDropdown.style.display = 'none';
+                        }, 0);
+                    });
 
-                    // item.addEventListener('click', (e) => {
-                    //     e.preventDefault();
-                    //     this.autocompleteInput.focus();
-                    //     this.insertDocumentToken(doc.name);  // ✅ 즉시 실행
+                    // item.addEventListener('click', () => {
+                    //     this.insertDocumentToken(doc.name);
                     //     this.autocompleteDropdown.style.display = 'none';
                     // });
-
-                    item.addEventListener('mousedown', (e) => {
-                        // 마우스 누르는 순간 selection 저장
-                        const selection = window.getSelection();
-                        if (selection && selection.rangeCount > 0) {
-                            savedSelection = selection.getRangeAt(0).cloneRange();
-                        }
-                    });
-
-                    item.addEventListener('mousedown', (e) => {
-                        // 클릭 직전 selection 저장
-                        const selection = window.getSelection();
-                        if (selection && selection.rangeCount > 0) {
-                            this.savedRange = selection.getRangeAt(0).cloneRange();
-                        }
-                    });
-
-                    item.addEventListener('mouseup', (e) => {
-                        e.preventDefault();
-
-                        this.autocompleteInput.focus();
-
-                        // 저장된 selection 복원
-                        if (this.savedRange) {
-                            const selection = window.getSelection();
-                            selection.removeAllRanges();
-                            selection.addRange(this.savedRange);
-                            this.savedRange = null;
-                        }
-
-                        this.insertDocumentToken(doc.name);
-                        this.autocompleteDropdown.style.display = 'none';
-                    });
-
-
-
                     this.autocompleteDropdown.appendChild(item);
                 });
-
 
                 
                 // 위치 계산
@@ -490,16 +364,7 @@ class ChatBot {
         if (this.isSubmitting) return;
 
         const input = document.getElementById('chatbot-input');
-
-        console.log('📌 raw innerHTML:', input.innerHTML);
-        console.log('📌 raw innerText:', input.innerText);
-        // const tokens = Array.from(input.querySelectorAll('.token')).map(el => el.textContent.trim());
-        const tokens = Array.from(input.querySelectorAll('.token')).map(el => {
-            const textSpan = el.querySelector('span');
-            return textSpan ? textSpan.textContent.trim() : null;
-        }).filter(Boolean);
-        console.log('📌 추출된 tokens:', tokens);
-
+        const tokens = Array.from(input.querySelectorAll('.token')).map(el => el.textContent.trim());
         const question = Array.from(input.childNodes)
             .filter(n => n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && !n.classList.contains('token')))
             .map(n => n.textContent)
@@ -511,7 +376,6 @@ class ChatBot {
         //     .map(n => n.textContent)
         //     .join(' ')
         //     .trim();
-        console.log('📌 전송할 question:', question);
 
         if (!question && tokens.length === 0) return;
         this.addMessageToChat('user', question);
@@ -546,14 +410,6 @@ class ChatBot {
         const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
 
         try {
-            console.log('📤 최종 fetch 전송 payload:', {
-                question,
-                doc_filter: tokens,
-                session_id: sessionId ? parseInt(sessionId) : null,
-                user_id: parseInt(user_id),
-                department_id: parseInt(department_id)
-            });
-
             const response = await fetch('http://127.0.0.1:8001/api/chat/rag', {
                 method: 'POST',
                 headers: {

@@ -7,96 +7,6 @@
 <link rel="stylesheet" href="{% static 'css/common/chatbot.css' %}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-
-    .chatbot-input[contenteditable="true"]:empty:before {
-    content: attr(data-placeholder);
-    color: #adb5bd;
-    pointer-events: none;
-}
-    
-
-
-
-
-/* .autocomplete-dropdown {
-  position: absolute;
-  background: white;
-  border: 1px solid #ccc;
-  z-index: 999;
-  max-height: 200px;
-  overflow-y: auto;
-  box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
-  min-width: 200px;  /* ✅ 최소 너비 지정 */
-  /* border-radius: 6px; */
-/* } */
-
-.autocomplete-dropdown {
-  max-height: 200px;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  position: absolute;
-  z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
-  padding: 4px 0;
-  transition: opacity 0.1s ease;
-}
-
-
-
-.autocomplete-dropdown-item {
-  padding: 8px 12px;
-  cursor: pointer;
-}
-.autocomplete-dropdown-item:hover {
-  background-color: #f2f2f2;
-}
-
-
-
-.autocomplete-dropdown-item.active {
-    background-color: #f1f3f5;
-}
-
-
-.autocomplete-dropdown-item.active {
-  background-color: #f0f0f0;
-  font-weight: bold;
-}
-
-
-
-.token {
-  background: #e2e6ea;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 14px;
-  margin: 4px 6px 4px 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #343a40;
-  font-weight: 500;
-  user-select: none;
-  cursor: default;
-  border: 1px solid #ced4da;
-  transition: background-color 0.2s ease;
-}
-
-.token:hover {
-  background-color: #dee2e6;
-}
-
-.chatbot-input {
-  position: relative; /* ✅ 이것만 추가 */
-}
-
-
-
-
-
-
     html,
     body {
         margin: 0;
@@ -663,22 +573,16 @@
         </div>
 
         <!-- ✅ form 기본 제출 방지 -->
-        <!-- <form method="post" class="chatbot-form-row" id="chatbot-form" onsubmit="return false;"> -->
-        <form method="post" class="chatbot-form-row" id="chatbot-form" onsubmit="return false;" style="position: relative;">
+        <form method="post" class="chatbot-form-row" id="chatbot-form" onsubmit="return false;">
             {% csrf_token %}
             <input type="hidden" name="session_id" id="selected-session-id" value="{% if current_session_id %}{{ current_session_id }}{% elif chat_sessions %}{{ chat_sessions.0.session.session_id }}{% endif %}">
-            <div id="chatbot-input" class="chatbot-input" contenteditable="true"
-                data-placeholder="무엇을 도와드릴까요? 궁금한 것을 자유롭게 물어보세요..."></div>
-
+            <input type="text" name="message" placeholder="무엇을 도와드릴까요? 궁금한 것을 자유롭게 물어보세요..." class="chatbot-input" id="chatbot-input" required>
             <button type="submit" class="chatbot-send-btn" id="chatbot-send-btn">
                 <span class="btn-text">전송</span>
                 <span class="btn-loading" style="display: none;">
                     <span class="loading-spinner"></span>
                 </span>
             </button>
-            <!-- 🔽 자동완성 드롭다운 -->
-            <div id="autocomplete-dropdown" class="autocomplete-dropdown" style="display: none;"></div>
-
 
         </form>
     </div>
@@ -698,7 +602,6 @@
     window.user_id = "{{ request.user.user_id }}";
     window.department_id = "{{ request.user.department.department_id }}";
     window.fastapi_token = "{{ fastapi_token|default:'' }}";
-    window.api_base_url = "http://127.0.0.1:8001/api";  // ✅ 추가
     
     // 토큰이 있으면 localStorage에 저장
     if (window.fastapi_token) {
@@ -743,74 +646,72 @@ function displayMessage(type, text, time) {
 }
 
 // 챗봇 폼 AJAX 처리
-// document.addEventListener('DOMContentLoaded', function() {
-//     const chatForm = document.getElementById('chatbot-form');
-//     const chatInput = document.getElementById('chatbot-input');
-//     const sendBtn = document.getElementById('send-btn');
-//     const btnText = sendBtn.querySelector('.btn-text');
-//     const btnLoading = sendBtn.querySelector('.btn-loading');
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chatbot-form');
+    const chatInput = document.getElementById('chatbot-input');
+    const sendBtn = document.getElementById('send-btn');
+    const btnText = sendBtn.querySelector('.btn-text');
+    const btnLoading = sendBtn.querySelector('.btn-loading');
     
-//     if (chatForm) {
-//         chatForm.addEventListener('submit', async function(e) {
-//             e.preventDefault();
+    if (chatForm) {
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-//             // const formData = new FormData(chatForm);
-//             // const message = formData.get('message');
-//             const message = chatInput.innerText.trim();
-
+            const formData = new FormData(chatForm);
+            const message = formData.get('message');
             
-//             if (!message.trim()) return;
+            if (!message.trim()) return;
             
-//             // 로딩 상태 시작
-//             btnText.style.display = 'none';
-//             btnLoading.style.display = 'inline-flex';
-//             sendBtn.disabled = true;
-//             chatInput.disabled = true;
+            // 로딩 상태 시작
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            sendBtn.disabled = true;
+            chatInput.disabled = true;
             
-//             // 사용자 메시지 즉시 표시
-//             displayMessage('user', message);
-//             chatInput.value = '';
+            // 사용자 메시지 즉시 표시
+            displayMessage('user', message);
+            chatInput.value = '';
             
-//             try {
-//                 const response = await fetch(window.location.pathname, {
-//                     method: 'POST',
-//                     headers: {
-//                         'X-CSRFToken': getCookie('csrftoken'),
-//                         'X-Requested-With': 'XMLHttpRequest'
-//                     },
-//                     body: formData
-//                 });
+            try {
+                const response = await fetch(window.location.pathname, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
                 
-//                 if (response.ok) {
-//                     const result = await response.json();
-//                     if (result.success) {
-//                         // 봇 응답 표시
-//                         displayMessage('bot', result.response);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        // 봇 응답 표시
+                        displayMessage('bot', result.response);
                         
-//                         // 세션 정보 업데이트 (필요시)
-//                         if (result.session_id) {
-//                             document.getElementById('selected-session-id').value = result.session_id;
-//                         }
-//                     } else {
-//                         throw new Error(result.error || '메시지 전송에 실패했습니다.');
-//                     }
-//                 } else {
-//                     throw new Error('서버 오류가 발생했습니다.');
-//                 }
-//             } catch (error) {
-//                 console.error('챗봇 오류:', error);
-//                 displayMessage('bot', '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.');
-//             } finally {
-//                 // 로딩 상태 종료
-//                 btnText.style.display = 'inline';
-//                 btnLoading.style.display = 'none';
-//                 sendBtn.disabled = false;
-//                 chatInput.disabled = false;
-//                 chatInput.focus();
-//             }
-//         });
-//     }
-// });
+                        // 세션 정보 업데이트 (필요시)
+                        if (result.session_id) {
+                            document.getElementById('selected-session-id').value = result.session_id;
+                        }
+                    } else {
+                        throw new Error(result.error || '메시지 전송에 실패했습니다.');
+                    }
+                } else {
+                    throw new Error('서버 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('챗봇 오류:', error);
+                displayMessage('bot', '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.');
+            } finally {
+                // 로딩 상태 종료
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                sendBtn.disabled = false;
+                chatInput.disabled = false;
+                chatInput.focus();
+            }
+        });
+    }
+});
 
 // 로딩 스피너 스타일 추가
 const style = document.createElement('style');

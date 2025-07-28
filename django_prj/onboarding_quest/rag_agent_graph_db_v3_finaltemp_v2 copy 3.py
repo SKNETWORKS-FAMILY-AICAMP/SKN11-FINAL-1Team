@@ -18,7 +18,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import threading
 from contextlib import contextmanager
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue 
-from qdrant_client.models import MatchText
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -85,7 +85,6 @@ class AgentState(TypedDict, total=False):
     evaluation_details: str
     question_type: str
     user_department_id: int  # 부서 ID 추가
-    doc_filter: List[str]  # ✅ 이 줄 추가
 
 # 품질 평가 관리 클래스
 class QualityMetrics:
@@ -383,140 +382,43 @@ def search_documents_with_rerank(state: AgentState) -> AgentState:
     user_department_id = state.get("user_department_id")
     query_vec = embeddings.embed_query(query)
 
-    doc_filter = state.get("doc_filter")
-
-    # ✅ 조건에 따라 컬렉션 + 필터 설정
-    combined_results = []
-
-    # ✅ 항상 부서 + 공통 컬렉션 순회 (필터 여부는 내부에서 분기)
     collections_to_search = []
     if user_department_id:
         collections_to_search.append(f"rag_{user_department_id}")
     collections_to_search.append("rag_common")
 
-    # 컬렉션 대상 결정
-    collections_to_search = []
-
-    if doc_filter:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT DISTINCT original_file_name, department_id, common_doc
-                FROM core_docs
-                WHERE original_file_name = ANY(%s)
-                """,
-                (doc_filter,)
-            )
-            for row in cursor.fetchall():
-                if row["common_doc"]:
-                    collections_to_search.append("rag_common")
-                elif row["department_id"] is not None:
-                    collections_to_search.append(f"rag_{row['department_id']}")
-    else:
-        if user_department_id:
-            collections_to_search.append(f"rag_{user_department_id}")
-        collections_to_search.append("rag_common")
-
-    collections_to_search = list(set(collections_to_search))  # 중복 제거
-
-    # Qdrant 검색
     combined_results = []
 
     for col in collections_to_search:
         try:
-            if doc_filter:
-                logger.info(f"📎 필터 대상 파일명 목록: {doc_filter}")
-                logger.info(f"📎 컬렉션: {col}")
-                query_filter = Filter(
+            logger.info(f"파일여 해당 열리: {col}")
+
+            # 컬렉션별 루프 내부에서 필터 적용
+            filter = None
+            if state.get("doc_filter"):
+                filter = Filter(
                     must=[
                         FieldCondition(
-                            key="metadata.original_file_name",
-                            # match=MatchValue(value=filename)
-                            match=MatchText(text=filename)  # 변경
-                        ) for filename in doc_filter
+                            key="original_file_name",
+                            match=MatchValue(value=filename)
+                        ) for filename in state["doc_filter"]
                     ]
                 )
-            else:
-                query_filter = None
 
-            logger.info(f"📁 검색: {col} | 필터: {doc_filter}")
             result = client.search(
                 collection_name=col,
                 query_vector=query_vec,
-                query_filter=query_filter,
+                query_filter=filter,  # ✅ 필터 적용
                 limit=10,
                 with_payload=True
-            )
-            for r in result:
-                logger.info(f"📌 검색된 청크: {r.payload.get('metadata', {}).get('original_file_name')} / "
-                            f"{r.payload.get('metadata', {}).get('hierarchy_path')}")
+)
+
             combined_results.extend(result)
-
         except Exception as e:
-            logger.warning(f"⚠️ Qdrant 검색 실패 - 컬렉션: {col} | 이유: {e}")
+            logger.warning(f"⚠️ 해당 열리에서 어느 문제 발생: {e}")
 
-
-            logger.info(f"📁 정확 검색 - 컬렉션: {col} | 필터: {doc_filter}")
-            result = client.search(
-                collection_name=col,
-                query_vector=query_vec,
-                query_filter=query_filter,
-                limit=10,
-                with_payload=True
-            )
-            combined_results.extend(result)
-
-        except Exception as e:
-            logger.warning(f"⚠️ 컬렉션 '{col}' 검색 중 오류: {e}")
-
-
-
-
-    # if not combined_results:
-    #     return {**state, "contexts": []}
-        if not combined_results:
-            return {**state, "contexts": []}
-
-        # response = llm_smart.invoke(doc_prompt).content.strip()
-        # logger.warning(f"📤 GPT rerank 응답: {response}")
-
-        # selected_idxs = [int(x.strip()) for x in re.findall(r'\d+', response)]
-        # valid_idxs = [i for i in selected_idxs if 1 <= i <= len(document_candidates)]
-
-        # if not valid_idxs:
-        #     logger.warning(f"⚠️ GPT rerank가 문서 선택 안 함 → selected_idxs = {selected_idxs}")
-        #     logger.warning(f"📉 검색된 문서 수: {len(document_candidates)} / 검색된 청크 수: {len(combined_results)}")
-        #     fallback_contexts = []
-        #     combined_top = sorted(combined_results, key=lambda x: x.score, reverse=True)[:3]
-        #     for r in combined_top:
-        #         meta = r.payload.get("metadata", {})
-        #         title = meta.get("title", "무제")
-        #         text = r.payload.get("text", "")
-        #         file_name = meta.get("original_file_name", "unknown")
-        #         hierarchy_path = meta.get("hierarchy_path")
-        #         if hierarchy_path:
-        #             fallback_contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
-        #         else:
-        #             fallback_contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-        #     return {**state, "contexts": fallback_contexts}
-
-        # contexts = []
-        # for idx in valid_idxs:
-        #     chunk = document_candidates[idx - 1]
-        #     meta = chunk["metadata"]
-        #     title = meta.get("title", "무제")
-        #     text = chunk["text"]
-        #     file_name = meta.get("original_file_name", "unknown")
-        #     hierarchy_path = meta.get("hierarchy_path")
-        #     if hierarchy_path:
-        #         contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
-        #     else:
-        #         contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-
-        # return {**state, "contexts": contexts}
-
-
+    if not combined_results:
+        return {**state, "contexts": []}
 
     # 환경 설정: 문서 별 무료
     docs_map = collections.defaultdict(list)
@@ -540,104 +442,46 @@ def search_documents_with_rerank(state: AgentState) -> AgentState:
         document_candidates.append((i, file_name, chunks_text.strip(), results))
 
     doc_prompt = f"""
-    아래는 사용자의 질문에 관련될 수 있는 여러 문서입니다.
-    각 문서는 대표 청크 일부를 요약한 것이며, 관련된 문서를 고르세요.
+다음 질문과 같은 내용을 해결할 목적으로 내보인 문서들 간에서 가장 관련 있는 문서를 고르세요.
 
-    질문:
-    {query}
+질문:
+{query}
 
-    문서 후보:
-    """
+호분 문서:
+"""
     for idx, file_name, chunks, _ in document_candidates:
-        doc_prompt += f"\n문서 {idx} ({file_name}):\n{chunks}\n"
+        doc_prompt += f"\n\ud30c일 {idx} ({file_name}):\n{chunks}\n"
 
     doc_prompt += """
-    가장 관련 있는 문서 번호를 1개 또는 2개 선택하세요.
-    문서 번호만 쉼표로 구분해 출력하세요. (예: 1 또는 1,2)
-    다른 텍스트는 출력하지 마세요.
-    """
+
+발생한 문서 번호를 1개 또는 2개로 고르고, 번호만 순서대로 출력하세요. (예: 1,3)
+다른 설명은 제공하지 마세요.
+"""
 
     response = llm_smart.invoke(doc_prompt).content.strip()
-    logger.warning(f"📤 GPT rerank 응답: {response}")
-
     selected_idxs = [int(x.strip()) for x in re.findall(r'\d+', response)]
-    valid_idxs = [i for i in selected_idxs if 1 <= i <= len(document_candidates)]
-
-    if not valid_idxs:
-        logger.warning(f"⚠️ GPT rerank가 문서 선택 안 함 → selected_idxs = {selected_idxs}")
-        logger.warning(f"📉 검색된 문서 수: {len(document_candidates)} / 검색된 청크 수: {len(combined_results)}")
-        # return {**state, "contexts": []}  # fallback 제거
-        return {
-            **state,
-            "contexts": ["[안내] 선택한 문서에서 관련 정보를 찾지 못했습니다."]
-        }
-
-
-    # if not valid_idxs:
-    #     logger.warning(f"⚠️ GPT rerank가 문서 선택 안 함 → selected_idxs = {selected_idxs}")
-    #     logger.warning(f"📉 검색된 문서 수: {len(document_candidates)} / 검색된 청크 수: {len(combined_results)}")
-    #     fallback_contexts = []
-    #     combined_top = sorted(combined_results, key=lambda x: x.score, reverse=True)[:3]
-    #     for r in combined_top:
-    #         meta = r.payload.get("metadata", {})
-    #         title = meta.get("title", "무제")
-    #         text = r.payload.get("text", "")
-    #         file_name = meta.get("original_file_name", "unknown")
-    #         hierarchy_path = meta.get("hierarchy_path")
-    #         if hierarchy_path:
-    #             fallback_contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
-    #         else:
-    #             fallback_contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-    #     return {**state, "contexts": fallback_contexts}
 
     contexts = []
-    for idx in valid_idxs:
-        _, file_name, _, results = document_candidates[idx - 1]
-        for r in results[:3]:
-            meta = r.payload.get("metadata", {})
-            title = meta.get("title", "무제")
-            text = r.payload.get("text", "")
-            hierarchy_path = meta.get("hierarchy_path")
-            if hierarchy_path:
-                last_level = hierarchy_path.split('>')[-1].strip()
-                if last_level == title:
-                    contexts.append(f"[{hierarchy_path}] (출처: {file_name})\n{text}")
+    for idx in selected_idxs:
+        if 1 <= idx <= len(document_candidates):
+            _, file_name, _, results = document_candidates[idx - 1]
+            for r in results[:3]:
+                meta = r.payload.get("metadata", {})
+                title = meta.get("title", "무제")
+                text = r.payload.get("text", "")
+                hierarchy_path = meta.get("hierarchy_path")
+                if hierarchy_path:
+                    last_level = hierarchy_path.split('>')[-1].strip()
+                    if last_level == title:
+                        contexts.append(f"[{hierarchy_path}] (출처: {file_name})\n{text}")
+                    else:
+                        contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
                 else:
-                    contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
-            else:
-                contexts.append(f"[{title}] (출처: {file_name})\n{text}")
+                    contexts.append(f"[{title}] (출처: {file_name})\n{text}")
 
     elapsed = time.time() - start
-    logger.info(f"● search_documents_with_rerank 완료 - ⏱ {elapsed:.2f}초")
+    logger.info(f"\u25cf search_documents_with_rerank 완료 - \u231a {elapsed:.2f}초")
     return {**state, "contexts": contexts}
-
-    # response = llm_smart.invoke(doc_prompt).content.strip()
-    # selected_idxs = [int(x.strip()) for x in re.findall(r'\d+', response)]
-
-    # logger.warning(f"⚠️ GPT rerank가 문서 선택 안 함 → selected_idxs = {selected_idxs}")
-    # logger.warning(f"📉 검색된 문서 수: {len(document_candidates)} / 검색된 청크 수: {len(combined_results)}")
-
-    # contexts = []
-    # for idx in selected_idxs:
-    #     if 1 <= idx <= len(document_candidates):
-    #         _, file_name, _, results = document_candidates[idx - 1]
-    #         for r in results[:3]:
-    #             meta = r.payload.get("metadata", {})
-    #             title = meta.get("title", "무제")
-    #             text = r.payload.get("text", "")
-    #             hierarchy_path = meta.get("hierarchy_path")
-    #             if hierarchy_path:
-    #                 last_level = hierarchy_path.split('>')[-1].strip()
-    #                 if last_level == title:
-    #                     contexts.append(f"[{hierarchy_path}] (출처: {file_name})\n{text}")
-    #                 else:
-    #                     contexts.append(f"[{hierarchy_path} | {title}] (출처: {file_name})\n{text}")
-    #             else:
-    #                 contexts.append(f"[{title}] (출처: {file_name})\n{text}")
-
-    # elapsed = time.time() - start
-    # logger.info(f"\u25cf search_documents_with_rerank 완료 - \u231a {elapsed:.2f}초")
-    # return {**state, "contexts": contexts}
 
 
 
@@ -821,37 +665,15 @@ def generate_answer(state: AgentState) -> AgentState:
     start = time.time()
     logger.info("🟢 generate_answer 시작")
     logger.info("💬 generate_answer 실행")
-    # context = "\n---\n".join(state.get("contexts", []))
-    # question = state.get("rewritten_question") or state["question"]
-    # full_history = state.get("chat_history", [])
-    # recent_history = full_history[-WINDOW_SIZE:]
-    # history_text = "\n".join(recent_history)
-    context_list = state.get("contexts", [])
-    context = "\n---\n".join(context_list)
+    context = "\n---\n".join(state.get("contexts", []))
     question = state.get("rewritten_question") or state["question"]
     full_history = state.get("chat_history", [])
     recent_history = full_history[-WINDOW_SIZE:]
     history_text = "\n".join(recent_history)
-
-    # ✅ 안내 context만 있는 경우 fallback 안내 리턴
-    if (
-        len(context_list) == 1 and 
-        "[안내] 선택한 문서에서 관련 정보를 찾지 못했습니다." in context_list[0]
-    ):
-        answer_text = (
-            "선택하신 문서에는 질문과 관련된 정보가 없습니다.\n"
-            "📌 다른 문서를 선택하거나, 더 관련성 높은 문서를 추가로 선택해 주세요."
-        )
-        updated_history = full_history + [f"Q: {question}\nA: {answer_text}"]
-        elapsed = time.time() - start
-        logger.info(f"🟢 generate_answer (fallback 안내) 완료 - ⏱️ {elapsed:.2f}초")
-        return {**state, "answer": answer_text, "chat_history": updated_history}
-
     
     # 출처 정보: 파일명별로 (hierarchy_path, title) 튜플을 set으로 집계 (완전 중복 제거)
     ref_map = {}  # {file_name: set((hierarchy_path, title))}
-    # for c in state.get("contexts", []):
-    for c in context_list:
+    for c in state.get("contexts", []):
         if c.startswith("["):
             first_line = c.split("\n")[0]
             if "(출처: " in first_line:

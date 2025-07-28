@@ -87,20 +87,11 @@ initialize_rag_system()
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 # RAG 관련 Pydantic 모델
-# class RagChatRequest(BaseModel):
-#     question: str
-#     session_id: Optional[int] = None
-#     user_id: int
-#     department_id: int
-
 class RagChatRequest(BaseModel):
     question: str
     session_id: Optional[int] = None
     user_id: int
     department_id: int
-    doc_filter: Optional[List[str]] = []  # ✅ 추가됨
-
-
 
 class RagChatResponse(BaseModel):
     answer: str
@@ -212,8 +203,6 @@ async def chat_with_rag(request: RagChatRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="RAG 시스템이 로드되지 않았습니다.")
     
     try:
-        logger.info(f"🚨 프론트에서 받은 doc_filter: {request.doc_filter}")
-
         start_time = time.time()
         logger.info(f"RAG 요청 수신: {request.question[:50]}...")
         
@@ -259,21 +248,13 @@ async def chat_with_rag(request: RagChatRequest, db: Session = Depends(get_db)):
                 buffer = {}
         
         # 초기 상태 설정
-        # state = {
-        #     "question": request.question,
-        #     "chat_history": history,
-        #     "rewrite_count": 0,
-        #     "session_id": str(session_id),
-        #     "user_department_id": request.department_id
-        # }
         state = {
-    "question": request.question,
-    "chat_history": history,
-    "rewrite_count": 0,
-    "session_id": str(session_id),
-    "user_department_id": request.department_id,
-    "doc_filter": request.doc_filter  # ✅ 추가됨
-}
+            "question": request.question,
+            "chat_history": history,
+            "rewrite_count": 0,
+            "session_id": str(session_id),
+            "user_department_id": request.department_id
+        }
         
         # LangGraph 실행
         logger.info("LangGraph 실행 시작...")
@@ -435,9 +416,7 @@ async def autocomplete_docs(query: str = "", db: Session = Depends(get_db)):
         .limit(10)
         .all()
     )
-
-    print("[📄 DB 검색 결과]", [doc.original_file_name for doc in docs])
     return [
-    {"id": doc.docs_id, "name": doc.original_file_name}
-    for doc in docs
-]
+        {"id": doc.id, "name": doc.original_file_name}
+        for doc in docs
+    ]
