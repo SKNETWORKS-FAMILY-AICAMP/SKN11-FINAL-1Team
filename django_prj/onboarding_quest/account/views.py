@@ -796,7 +796,7 @@ def user_delete(request, user_id):
             return JsonResponse({'success': True})
 
         # 기본 리다이렉트 (단일 삭제 버튼)
-        messages.success(request, '사용자가 성공적으로 삭제되었습니다.')
+        messages.success(request, '사용자가 삭제되었습니다.')
         return redirect('account:supervisor')
 
     except AuthenticationError:

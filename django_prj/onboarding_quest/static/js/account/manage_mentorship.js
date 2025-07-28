@@ -167,7 +167,7 @@ function editMentorship(mentorshipId) {
         })
         .catch(error => {
             console.error('Error fetching mentorship data:', error);
-            alert('멘토쉽 정보를 가져오는 중 오류가 발생했습니다.');
+            showError('멘토쉽 정보를 가져오는 중 오류가 발생했습니다.');
         });
 }
 
@@ -224,15 +224,18 @@ function saveMentorship() {
         if (data.success) {
             // 모달 닫기
             closeEditModal();
-            // 페이지 새로고침으로 변경사항 즉시 반영
-            window.location.reload();
+            showSuccess('멘토쉽이 성공적으로 저장되었습니다.');
+            // 토스트 메시지가 표시될 시간을 주고 페이지 새로고침
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } else {
-            alert('저장 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
+            showError('저장 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
         }
     })
     .catch(error => {
         console.error('Error saving mentorship:', error);
-        alert('저장 중 오류가 발생했습니다: ' + error.message);
+        showError('저장 중 오류가 발생했습니다: ' + error.message);
         
         // 로딩 상태 해제
         const saveBtn = document.getElementById('save-btn');
@@ -245,8 +248,8 @@ function saveMentorship() {
     });
 }
 
-function deleteMentorship(mentorshipId) {
-    if (confirm('정말로 이 멘토쉽을 삭제하시겠습니까?')) {
+async function deleteMentorship(mentorshipId) {
+    if (await showCustomConfirm('정말로 이 멘토쉽을 삭제하시겠습니까?')) {
         fetch(`/account/mentorship/${mentorshipId}/delete/`, {
             method: 'POST',
             headers: {
@@ -262,16 +265,18 @@ function deleteMentorship(mentorshipId) {
         })
         .then(data => {
             if (data.success) {
-                alert('멘토쉽이 성공적으로 삭제되었습니다.');
-                // 페이지 새로고침으로 변경사항 즉시 반영
-                window.location.reload();
+                showSuccess('멘토쉽이 성공적으로 삭제되었습니다.');
+                // 토스트 메시지가 표시될 시간을 주고 페이지 새로고침
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             } else {
-                alert('삭제 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
+                showError('삭제 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
             }
         })
         .catch(error => {
             console.error('Error deleting mentorship:', error);
-            alert('삭제 중 오류가 발생했습니다.');
+            showError('삭제 중 오류가 발생했습니다.');
         });
     }
 }

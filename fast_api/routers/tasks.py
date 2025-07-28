@@ -510,22 +510,44 @@ async def generate_tasks_from_draft(input_data: dict):
         print(f"[DEBUG] Generating tasks for: {curriculum_input.curriculum_title}")
         
         # LangGraph 워크플로우 빌드 및 실행
-        workflow = build_langgraph()
-        app = workflow.compile()
-        result = app.invoke({"input_data": curriculum_input.__dict__})
-        all_tasks = result["tasks"]
-        
-        print(f"[DEBUG] Generated {len(all_tasks)} tasks using LangGraph")
-        return {"tasks": all_tasks}
+        try:
+            workflow = build_langgraph()
+            app = workflow.compile()
+            
+            print(f"[DEBUG] Starting LangGraph workflow execution...")
+            result = app.invoke({"input_data": curriculum_input.__dict__})
+            
+            if not result or "tasks" not in result:
+                raise ValueError("LangGraph workflow did not return expected task structure")
+            
+            all_tasks = result["tasks"]
+            
+            if not isinstance(all_tasks, list):
+                raise ValueError("Tasks should be a list")
+            
+            print(f"[DEBUG] Generated {len(all_tasks)} tasks using LangGraph")
+            return {"tasks": all_tasks, "success": True}
+            
+        except Exception as workflow_error:
+            print(f"[ERROR] LangGraph workflow error: {str(workflow_error)}")
+            raise workflow_error
         
     except ImportError as e:
-        error_msg = f"Import error: {str(e)}"
+        error_msg = f"필요한 모듈을 가져올 수 없습니다: {str(e)}"
         print(f"[ERROR] {error_msg}")
-        return {"error": error_msg, "type": "import_error"}
+        return {"error": error_msg, "type": "import_error", "success": False}
+    except FileNotFoundError as e:
+        error_msg = f"필요한 파일을 찾을 수 없습니다: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        return {"error": error_msg, "type": "file_error", "success": False}
+    except ValueError as e:
+        error_msg = f"입력 데이터 또는 처리 과정에서 오류가 발생했습니다: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        return {"error": error_msg, "type": "value_error", "success": False}
     except Exception as e:
         import traceback
-        error_msg = f"Error generating tasks: {str(e)}"
+        error_msg = f"Task 생성 중 예상치 못한 오류가 발생했습니다: {str(e)}"
         traceback_str = traceback.format_exc()
         print(f"[ERROR] {error_msg}")
         print(f"[ERROR] Traceback: {traceback_str}")
-        return {"error": error_msg, "traceback": traceback_str, "type": "general_error"}
+        return {"error": error_msg, "traceback": traceback_str, "type": "general_error", "success": False}

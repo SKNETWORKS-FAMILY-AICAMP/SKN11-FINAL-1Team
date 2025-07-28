@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Success result:', result); // 디버깅용
                     // FastAPI 응답 형태에 따른 성공 판단
                     if (result.user_id || result.id || result.success !== false) {
-                        const successMsg = editMode ? '사용자 정보가 정상적으로 수정되었습니다!' : '사용자가 성공적으로 생성되었습니다!';
+                        const successMsg = editMode ? '사용자 정보가 수정되었습니다!' : '사용자가 생성되었습니다!';
                         
                         // 수정 모드일 때 부모 창의 테이블 업데이트
                         if (editMode && window.opener && !window.opener.closed) {

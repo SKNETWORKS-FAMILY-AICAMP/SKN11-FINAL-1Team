@@ -285,3 +285,71 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0 !important;
 }
 
+/* 알림 패널 리사이즈 핸들 스타일 */
+#resizeHandle {
+  background: linear-gradient(90deg, transparent 0%, #d1d5db 50%, transparent 100%);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+#resizeHandle:hover {
+  background: linear-gradient(90deg, transparent 0%, #3b82f6 50%, transparent 100%);
+  opacity: 1 !important;
+  width: 3px;
+}
+
+#resizeHandle:active {
+  background: linear-gradient(90deg, transparent 0%, #1d4ed8 50%, transparent 100%);
+  width: 4px;
+}
+
+/* 드래그 중 선택 방지 */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 커스텀 모달 애니메이션 */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: scale(0.95) translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.modal-fade-in {
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+.modal-slide-in {
+  animation: modalSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.icon-pulse {
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
