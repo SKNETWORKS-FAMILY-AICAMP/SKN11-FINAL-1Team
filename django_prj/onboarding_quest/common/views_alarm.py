@@ -22,7 +22,8 @@ def get_alarms(request):
                 'id': alarm.id,
                 'message': alarm.message,
                 'created_at': alarm.created_at.isoformat() if alarm.created_at else None,
-                'is_active': alarm.is_active
+                'is_active': alarm.is_active,
+                'url_link': alarm.url_link
             })
             if alarm.is_active:
                 active_count += 1

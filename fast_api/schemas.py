@@ -310,12 +310,12 @@ class MemoBase(BaseModel):
 
 class MemoCreate(MemoBase):
     task_assign_id: int
-    user_id: int
+    user_id: Optional[int] = None
 
 class Memo(MemoBase):
     memo_id: int
     task_assign_id: int
-    user_id: int
+    user_id: Optional[int] = None
     user: Optional['User'] = None  # 사용자 정보 포함
     
     class Config:

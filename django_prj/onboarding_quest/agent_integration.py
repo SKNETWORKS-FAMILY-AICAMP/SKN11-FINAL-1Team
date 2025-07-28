@@ -140,7 +140,7 @@ class OnboardingAgentIntegrator:
             # 검토 요청 상태로 변경된 경우 자동 리뷰 트리거
             if new_status == '검토요청' and old_status in ['진행전', '진행중']:
                 if task_id not in self.reviewed_task_ids:
-                    self._trigger_auto_review(task_id, user_id)
+                    self._trigger_auto_review(task_id)
                     self.reviewed_task_ids.add(task_id)
                     # LangGraph Agent에도 즉시 체크 트리거
                     self.trigger_langgraph_check()
@@ -156,10 +156,10 @@ class OnboardingAgentIntegrator:
         except Exception as e:
             self.logger.error(f"❌ 상태 변화 이벤트 처리 실패: {e}")
     
-    def _trigger_auto_review(self, task_id: int, user_id: int):
+    def _trigger_auto_review(self, task_id: int):
         """자동 리뷰 생성 트리거 (Agent_LangGraph_final.py의 ReviewAgent 로직)"""
         try:
-            from core.models import TaskAssign, Mentorship, Memo, User
+            from core.models import TaskAssign, Memo, User
             
             # 태스크 정보 조회
             try:
@@ -200,21 +200,16 @@ class OnboardingAgentIntegrator:
                 try:
                     feedback = llm.invoke(prompt).content
                     
-                    # 멘토 객체 조회
-                    from core.models import User
-                    mentor = User.objects.get(user_id=mentorship.mentor_id)
-                    
                     # 피드백을 메모로 저장
                     Memo.objects.create(
                         task_assign=task_assign,
-                        # user=mentor,
                         comment=feedback
                     )
                     
                     self.logger.info(f"✅ 자동 리뷰 생성 완료: task_id={task_id}")
                     
-                    # 멘티에게 알림
-                    self._send_review_notification(task_assign.mentorship_id.mentee_id, task_assign.title)
+                    # 멘티에게 알림 (task_id 추가 전달)
+                    self._send_review_notification(task_assign.mentorship_id.mentee_id, task_assign.title, task_id)
                     
                 except Exception as llm_error:
                     self.logger.error(f"❌ LLM 피드백 생성 실패: {llm_error}")
@@ -244,25 +239,33 @@ class OnboardingAgentIntegrator:
                 )
                 
                 self.logger.info(f"✅ 기본 자동 리뷰 생성 완료: task_id={task_id}")
+                
+                # 멘티에게 알림 (task_id 추가 전달)
+                self._send_review_notification(task_assign.mentorship_id.mentee_id, task_assign.title, task_id)
             
         except Exception as e:
             self.logger.error(f"❌ 자동 리뷰 생성 실패: {e}")
     
-    def _send_review_notification(self, mentee_id: int, task_title: str):
+    def _send_review_notification(self, mentee_id: int, task_title: str, task_id: int):
         """멘티에게 리뷰 완료 알림 발송"""
         try:
-            from core.models import User, Alarm
+            from core.models import User, Alarm, TaskAssign
             
             mentee = User.objects.get(user_id=mentee_id)
+            task_assign = TaskAssign.objects.get(task_assign_id=task_id)
             
-            # 내부 알림 생성
+            # 태스크로 이동할 수 있는 URL 생성 (mentorship_id 포함)
+            task_url = f"/mentee/task_list/?mentorship_id={task_assign.mentorship_id.mentorship_id}&task_id={task_id}"
+            
+            # 내부 알림 생성 (URL 포함)
             Alarm.objects.create(
                 user=mentee,
                 message=f"'{task_title}' 태스크에 대한 멘토의 리뷰가 작성되었습니다. 확인해 주세요.",
+                url_link=task_url,
                 is_active=True
             )
             
-            self.logger.info(f"✅ 리뷰 완료 알림 발송: mentee_id={mentee_id}")
+            self.logger.info(f"✅ 리뷰 완료 알림 발송: mentee_id={mentee_id}, url={task_url}")
             
         except Exception as e:
             self.logger.error(f"❌ 리뷰 완료 알림 발송 실패: {e}")

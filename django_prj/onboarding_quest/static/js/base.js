@@ -138,18 +138,27 @@ function displayAlarms(alarms) {
         return;
     }
     
-    const alarmHTML = alarms.map(alarm => `
-        <div class="bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors ${alarm.is_active ? 'border-l-4 border-l-blue-500' : 'opacity-60'}">
+    const alarmHTML = alarms.map(alarm => {
+        const hasUrl = alarm.url_link && alarm.url_link.trim() !== '';
+        const clickableClass = hasUrl ? 'cursor-pointer hover:bg-blue-50' : '';
+        
+        return `
+        <div class="bg-white border border-gray-200 rounded-lg p-3 transition-colors ${alarm.is_active ? 'border-l-4 border-l-blue-500' : 'opacity-60'} ${clickableClass}" 
+             data-alarm-id="${alarm.id}" 
+             data-alarm-url="${hasUrl ? alarm.url_link : ''}"
+             data-has-url="${hasUrl}">
             <div class="flex items-start justify-between gap-3">
                 <div class="flex items-start gap-3 flex-1 min-w-0">
                     <div class="w-2 h-2 ${alarm.is_active ? 'bg-blue-500' : 'bg-gray-300'} rounded-full mt-2 flex-shrink-0"></div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm ${alarm.is_active ? 'text-gray-900 font-medium' : 'text-gray-500'} break-words">${alarm.message}</p>
+                    <div class="flex-1 min-w-0 ${hasUrl ? 'cursor-pointer' : ''}">
+                        <p class="text-sm ${alarm.is_active ? 'text-gray-900 font-medium' : 'text-gray-500'} break-words ${hasUrl ? 'hover:text-blue-600' : ''}">
+                            ${alarm.message}
+                        </p>
                         <p class="text-xs text-gray-500 mt-1">${formatDate(alarm.created_at)}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                    <button onclick="toggleAlarmStatus(${alarm.id}, ${!alarm.is_active})" 
+                    <button onclick="event.stopPropagation(); toggleAlarmStatus(${alarm.id}, ${!alarm.is_active})" 
                             class="p-1 rounded-full text-xs transition-colors ${alarm.is_active ? 'text-blue-600 hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-50'}" 
                             title="${alarm.is_active ? '읽음으로 표시' : '읽지않음으로 표시'}">
                         ${alarm.is_active ? 
@@ -157,7 +166,7 @@ function displayAlarms(alarms) {
                             '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
                         }
                     </button>
-                    <button onclick="deleteAlarm(${alarm.id})" 
+                    <button onclick="event.stopPropagation(); deleteAlarm(${alarm.id})" 
                             class="p-1 rounded-full text-xs text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" 
                             title="알림 삭제">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +176,8 @@ function displayAlarms(alarms) {
                 </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
     
     // 모든 알림 읽음 처리 버튼 추가
     const hasActiveAlarms = alarms.some(alarm => alarm.is_active);
@@ -185,6 +195,26 @@ function displayAlarms(alarms) {
     ` : '';
     
     alarmList.innerHTML = headerHTML + alarmHTML;
+    
+    // 알림 클릭 이벤트 리스너 추가
+    const alarmItems = alarmList.querySelectorAll('[data-alarm-id]');
+    alarmItems.forEach(item => {
+        const hasUrl = item.getAttribute('data-has-url') === 'true';
+        if (hasUrl) {
+            item.addEventListener('click', function(e) {
+                // 버튼 클릭 시에는 이벤트 전파 중지 (이미 stopPropagation 처리됨)
+                if (e.target.closest('button')) {
+                    return;
+                }
+                
+                const alarmId = this.getAttribute('data-alarm-id');
+                const alarmUrl = this.getAttribute('data-alarm-url');
+                
+                console.log('알림 클릭 (이벤트 리스너):', alarmUrl, alarmId);
+                handleAlarmClick(alarmUrl, parseInt(alarmId));
+            });
+        }
+    });
 }
 
 // 알람 상태 토글
@@ -340,6 +370,39 @@ function createTestAlarm() {
         console.error('알람 생성 실패:', error);
         showError('알림 생성에 실패했습니다.');
     });
+}
+
+// 알림 클릭 처리 함수
+function handleAlarmClick(url, alarmId) {
+    console.log('알림 클릭 처리:', url, alarmId);
+    
+    // 알림을 읽음으로 표시 (비동기로 처리하되 페이지 이동은 바로 진행)
+    fetch(`/common/api/alarms/${alarmId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ is_active: false })
+    }).catch(error => {
+        console.error('알림 읽음 처리 실패:', error);
+    });
+    
+    // URL로 이동
+    if (url && url.trim() !== '') {
+        console.log('페이지 이동 시작:', url);
+        
+        // 알림 패널 닫기
+        closeAlarmPanel();
+        
+        // 즉시 페이지 이동
+        setTimeout(() => {
+            console.log('페이지 이동 실행:', url);
+            window.location.href = url;
+        }, 100);
+    } else {
+        console.log('URL이 없어서 이동하지 않습니다.');
+    }
 }
 
 // 페이지 로드 시 알람 개수 확인
