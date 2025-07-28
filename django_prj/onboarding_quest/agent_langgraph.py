@@ -237,10 +237,27 @@ class EventAgent:
                     messages=[{"role": "user", "content": prompt}]
                 )
                 message = alert.choices[0].message.content.strip()
+                
+                # 멘토십 ID 조회를 위한 추가 쿼리
+                conn_temp = psycopg2.connect(**DB_CONFIG)
+                cur_temp = conn_temp.cursor()
+                cur_temp.execute("SELECT mentorship_id_id FROM core_taskassign WHERE task_assign_id = %s", (task_id,))
+                mentorship_row = cur_temp.fetchone()
+                conn_temp.close()
+                
+                # 태스크로 이동할 수 있는 URL 생성 (mentorship_id 포함)
+                if mentorship_row:
+                    mentorship_id = mentorship_row[0]
+                    task_url = f"/mentee/task_list/?mentorship_id={mentorship_id}&task_id={task_id}"
+                else:
+                    task_url = f"/mentee/task_list/?task_id={task_id}"  # fallback
+                
                 alarm_events.append({
                     "event_type": "task_review_requested",
                     # user_id가 필요하다면 별도 쿼리 필요
-                    "message": message
+                    "message": message,
+                    "task_id": task_id,
+                    "url": task_url
                 })
                 detected_task_id = task_id
                 pending_review = True
@@ -378,23 +395,25 @@ class ReviewAgent:
         feedback = llm.invoke(prompt).content
         print("📝 [review] 피드백 생성 완료")
 
-        # DB에 피드백 저장 -> memo 테이블에 저장
+        # DB에 피드백 저장 -> memo 테이블에 저장 (mentor_id를 null로 설정)
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute(
             "INSERT INTO core_memo (task_assign_id, comment, user_id) VALUES (%s, %s, %s)",
-            (task_id, feedback, mentor_id)
+            (task_id, feedback, None)  # mentor_id 대신 None(null) 사용
         )
         conn.commit()
         conn.close()
-        print(f"✅ [review] memo 저장 완료 (mentor_id={mentor_id}, task_id={task_id})")
+        print(f"✅ [review] memo 저장 완료 (user_id=null, task_id={task_id})")
 
-        # ✅ 알람 이벤트 생성
+        # ✅ 알람 이벤트 생성 (mentorship_id 포함 URL)
+        task_url = f"/mentee/task_list/?mentorship_id={mentorship_id}&task_id={task_id}"
         alarm_events = state.get("alarm_events", [])
         alarm_events.append({
             "event_type": "task_review_completed",
             "mentee_id": mentee_id,
-            "message": f"{task_title} 태스크에 대한 멘토의 리뷰가 작성되었습니다. 확인해 주세요."
+            "message": f"{task_title} 태스크에 대한 멘토의 리뷰가 작성되었습니다. 확인해 주세요.",
+            "url": task_url
         })
 
         return {
@@ -738,7 +757,7 @@ class AlarmAgent:
         self.db_config = db_config or DB_CONFIG
 
 
-    def send_to_alarm(self, user_id: int, message: str):
+    def send_to_alarm(self, user_id: int, message: str, url_link: str = None):
         """📩 알림 테이블에 알림 저장 (core_alarm 사용)"""
         try:
             conn = psycopg2.connect(**self.db_config)
@@ -746,12 +765,12 @@ class AlarmAgent:
             # datetime을 문자열로 명시적 변환
             created_at = str(datetime.now().isoformat())
             cur.execute("""
-                INSERT INTO core_alarm (user_id, message, created_at, is_active)
-                VALUES (%s, %s, %s, true)
-            """, (int(user_id), str(message), created_at))
+                INSERT INTO core_alarm (user_id, message, created_at, is_active, url_link)
+                VALUES (%s, %s, %s, true, %s)
+            """, (int(user_id), str(message), created_at, url_link))
             conn.commit()
             conn.close()
-            print(f"📨 [알림 저장 완료] → 사용자 {user_id}")
+            print(f"📨 [알림 저장 완료] → 사용자 {user_id}, URL: {url_link or 'None'}")
         except Exception as e:
             print(f"❌ [알림 저장 실패]: {e}")
 
@@ -869,33 +888,62 @@ class AlarmAgent:
             # 알림 대상 결정
             if event_type == "final_report_ready":
                 user_id = event.get("user_id")
+                url = event.get("url")
                 self.send_final_report_email(user_id)
-                self.send_to_alarm(user_id, message)
+                self.send_to_alarm(user_id, message, url)
                 self.save_alarm_log(user_id, message, event_type)
 
             elif event_type == "task_completed_by_mentor":
                 user_id = event.get("mentee_id")
-                self.send_to_alarm(user_id, message)
+                url = event.get("url")
+                self.send_to_alarm(user_id, message, url)
                 self.save_alarm_log(user_id, message, event_type)
 
             elif event_type == "task_review_requested":
-                user_id = event.get("mentor_id")
-                self.send_to_alarm(user_id, message)
-                self.save_alarm_log(user_id, message, event_type)
+                # 멘토 ID를 task_id로부터 조회
+                task_id = event.get("task_id")
+                url = event.get("url")
+                if task_id:
+                    try:
+                        conn = psycopg2.connect(**self.db_config)
+                        cur = conn.cursor()
+                        # task_assign -> mentorship -> mentor_id 조회
+                        cur.execute("""
+                            SELECT m.mentor_id 
+                            FROM core_taskassign ta 
+                            JOIN core_mentorship m ON ta.mentorship_id_id = m.mentorship_id 
+                            WHERE ta.task_assign_id = %s
+                        """, (task_id,))
+                        mentor_row = cur.fetchone()
+                        conn.close()
+                        
+                        if mentor_row:
+                            mentor_id = mentor_row[0]
+                            self.send_to_alarm(mentor_id, message, url)
+                            self.save_alarm_log(mentor_id, message, event_type)
+                        else:
+                            print(f"❌ [멘토 ID 조회 실패] task_id: {task_id}")
+                    except Exception as e:
+                        print(f"❌ [멘토 ID 조회 오류]: {e}")
+                else:
+                    print("❌ [task_id 없음] task_review_requested 이벤트")
 
             elif event_type == "review_written":
                 user_id = event.get("mentee_id")
-                self.send_to_alarm(user_id, message)
+                url = event.get("url")
+                self.send_to_alarm(user_id, message, url)
                 self.save_alarm_log(user_id, message, event_type)
 
             elif event_type == "deadline_reminder":
                 user_id = event.get("user_id")
-                self.send_to_alarm(user_id, message)
+                url = event.get("url")
+                self.send_to_alarm(user_id, message, url)
                 self.save_alarm_log(user_id, message, event_type)
             
             elif event_type == "task_review_completed":
                 user_id = event.get("mentee_id")
-                self.send_to_alarm(user_id, message)
+                url = event.get("url")
+                self.send_to_alarm(user_id, message, url)
                 self.save_alarm_log(user_id, message, event_type)
 
             else:

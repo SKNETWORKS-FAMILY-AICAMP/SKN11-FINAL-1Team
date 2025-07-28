@@ -10,7 +10,11 @@ from langgraph.graph import StateGraph, END
 import psycopg2
 import psycopg2.extras
 import asyncio
+import re
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from core.models import Mentorship
+
+
 
 # ✅ 환경 설정
 load_dotenv()
@@ -114,6 +118,8 @@ class ReportNodes:
         state["onboarding_due"] = False
         state["last_onboarding_check"] = today_str
         return state
+    
+    
 
     def generate_report(self, state: GraphState) -> GraphState:
         """보고서 생성 노드"""
@@ -180,25 +186,31 @@ class ReportNodes:
             
             # GPT를 사용한 보고서 생성
             prompt = f"""
-            다음 정보를 바탕으로 {report_data['mentee_name']} 멘티의 온보딩 최종 보고서를 작성해주세요:
-            
+            다음 정보를 바탕으로 {report_data['mentee_name']} 멘티의 온보딩 최종 보고서를 작성해주세요.
+
+            **요구사항:**
+            - 마크다운 문법(##, **, - 등)을 절대 사용하지 말고, 문단 단위의 평문으로 작성할 것.
+            - 태스크 수행 내용이 없거나 미흡한 경우, 해당 내용을 명시적으로 평가에 반영할 것.
+            - 멘티가 수행한 태스크와 상태를 기반으로 성실도, 진행 상황, 개선점을 분석할 것.
+            - 최종 평가 보고서는 아래의 네 가지 항목 구조를 반드시 유지할 것:
+            1. 전체 온보딩 과정 요약
+            2. 주요 성과 및 습득 역량
+            3. 개선 필요 사항
+            4. 종합 평가
+
             멘티 정보:
-            - 이름: {report_data['mentee_name']}
-            - 역할: {report_data['role']}
-            - 담당 멘토: {report_data['mentor_name']}
-            
+            이름: {report_data['mentee_name']}
+            역할: {report_data['role']}
+            담당 멘토: {report_data['mentor_name']}
+
             수행한 태스크:
             {chr(10).join([
                 f"- {t['title']}: {t['status']}" +
                 (f" (시작: {t['real_start_date']}, 완료: {t['real_end_date']})" if t['real_end_date'] else "")
                 for t in report_data['tasks']
             ])}
-            
-            다음 구조로 작성해주세요:
-            1. 전체 온보딩 과정 요약
-            2. 주요 성과 및 습득 역량
-            3. 개선 필요 사항
-            4. 종합 평가
+
+            위 정보를 바탕으로 태스크 수행 여부를 객관적으로 평가하고, 수행 기록이 부족하거나 없을 경우 그 점을 언급하며 최종 보고서를 작성하세요.
             """
             
             report = llm.invoke(prompt).content
@@ -218,6 +230,7 @@ class ReportNodes:
                 "user_id": user_id,
                 "mentor_id": user_row['mentor_id'],
                 "mentor_email": user_row['mentor_email'],
+                "mentorship_id": user_row['mentorship_id'],
                 "message": f"{report_data['mentee_name']} 멘티의 최종 평가 보고서가 생성되었습니다."
             })
             
@@ -247,18 +260,23 @@ class ReportNodes:
             cur = conn.cursor()
             
             for event in alarm_events:
-                # 알림 저장
+                # URL 생성 (최종 보고서용)
+                url_link = None
+                if event.get("event_type") == "final_report_ready" and event.get("mentorship_id"):
+                    url_link = f"/mentee/task_list/?mentorship_id={event['mentorship_id']}&open=final_report"
+                
+                # 멘티에게 알림 저장
                 cur.execute("""
-                    INSERT INTO core_alarm (user_id, message, created_at, is_active)
-                    VALUES (%s, %s, CURRENT_TIMESTAMP, true)
-                """, (event["user_id"], event["message"]))
+                    INSERT INTO core_alarm (user_id, message, created_at, is_active, url_link)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP, true, %s)
+                """, (event["user_id"], event["message"], url_link))
                 
                 if event.get("mentor_id"):
-                    # 멘토에게도 알림
+                    # 멘토에게도 알림 (같은 URL 사용)
                     cur.execute("""
-                        INSERT INTO core_alarm (user_id, message, created_at, is_active)
-                        VALUES (%s, %s, CURRENT_TIMESTAMP, true)
-                    """, (event["mentor_id"], event["message"]))
+                        INSERT INTO core_alarm (user_id, message, created_at, is_active, url_link)
+                        VALUES (%s, %s, CURRENT_TIMESTAMP, true, %s)
+                    """, (event["mentor_id"], event["message"], url_link))
             
             conn.commit()
             conn.close()
@@ -294,25 +312,32 @@ class ReportNodes:
             recipient_email = str(to_email) if not isinstance(to_email, dict) else to_email.get('email', '')
             
             # HTML 형식의 이메일 본문 생성
+            def markdown_to_html(text: str) -> str:
+                text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)  # **bold**
+                text = text.replace('\n', '<br>')  # 줄바꿈 처리
+                return text
+
+            report_html = markdown_to_html(report_content)
+
             email_body = f"""
-            <h2>{mentee_name} 멘티 온보딩 최종 평가 보고서</h2>
-            
-            <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
-                <h3>보고서 내용</h3>
-                <div style="white-space: pre-wrap; font-family: Arial, sans-serif;">
-                    {report_content}
+                <h2>{mentee_name} 멘티 온보딩 최종 평가 보고서</h2>
+                
+                <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
+                    <h3>보고서 내용</h3>
+                    <div style="font-family: Arial, sans-serif;">
+                        {report_html}
+                    </div>
                 </div>
-            </div>
-            
-            <p>자세한 내용은 아래 링크에서 확인하실 수 있습니다:</p>
-            <a href="{report_url}" style="display: inline-block; margin: 20px 0; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
-                보고서 상세 보기
-            </a>
-            
-            <p style="color: #6c757d; font-size: 0.9em; margin-top: 30px;">
-                본 이메일은 자동으로 발송되었습니다.<br>
-                문의사항이 있으시면 관리자에게 연락해 주세요.
-            </p>
+                
+                <p>자세한 내용은 아래 링크에서 확인하실 수 있습니다:</p>
+                <a href="{report_url}" style="display: inline-block; margin: 20px 0; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+                    보고서 상세 보기
+                </a>
+                
+                <p style="color: #6c757d; font-size: 0.9em; margin-top: 30px;">
+                    본 이메일은 자동으로 발송되었습니다.<br>
+                    문의사항이 있으시면 관리자에게 연락해 주세요.
+                </p>
             """
             
             message = MessageSchema(
@@ -371,8 +396,23 @@ class ReportNodes:
                     mentorship_row = cur.fetchone()
                     
                     if mentorship_row and mentorship_row['report']:
-                        report_url = f"https://sinip.company/report/{mentorship_row['mentorship_id']}"
-                        
+                        report_url = f"http://127.0.0.1:8000/mentee/task_list/?mentorship_id={mentorship_row['mentorship_id']}&open=final_report"
+
+                        # DB에 url_link 저장
+                        # Django ORM을 사용하여 url_link 업데이트
+                        try:
+                            mentorship_obj = Mentorship.objects.get(mentorship_id=mentorship_row['mentorship_id'])
+                            mentorship_obj.url_link = report_url
+                            mentorship_obj.save(update_fields=['url_link'])
+                            print(f"✅ DB에 report_url 저장 완료: {report_url}")
+                        except Mentorship.DoesNotExist:
+                            print(f"❌ Mentorship ID={mentorship_row['mentorship_id']}를 찾을 수 없습니다.")
+                        except Exception as db_error:
+                            import traceback
+                            print(f"❌ DB url_link 저장 실패: {db_error}")
+                            traceback.print_exc()
+                             
+
                         try:
                             asyncio.run(self.send_email_async(
                                 to_email=mentor_email,

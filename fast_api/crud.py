@@ -707,6 +707,14 @@ def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optio
     db.refresh(db_memo)
     return db_memo
 
+def delete_memo(db: Session, memo_id: int):
+    """메모(댓글) 삭제"""
+    db_memo = get_memo(db, memo_id)
+    if db_memo:
+        db.delete(db_memo)
+        db.commit()
+    return db_memo
+
 
 # Mentorship CRUD
 def create_mentorship(db: Session, mentorship: schemas.MentorshipCreate):
@@ -769,55 +777,25 @@ def get_mentorships_with_filters(
 
 def get_task_counts_by_mentorship(db: Session, mentorship_id: int) -> dict:
     """
-    Retrieve total and completed task counts for a given mentorship.
+    멘토십에 대한 상위 과제들만 기준으로 전체/완료 수 계산
     """
-    # 디버깅을 위한 로그 추가
-    print(f"[DEBUG] get_task_counts_by_mentorship called with mentorship_id: {mentorship_id}")
-    
-    total_tasks = (
-        db.query(models.TaskAssign)
-        .filter(models.TaskAssign.mentorship_id == mentorship_id)
-        .count()
-    )
-    print(f"[DEBUG] Total tasks found: {total_tasks}")
-    
-    # 실제 상태값들 확인
-    all_statuses = (
-        db.query(models.TaskAssign.status)
-        .filter(models.TaskAssign.mentorship_id == mentorship_id)
-        .distinct()
-        .all()
-    )
-    status_list = [status[0] for status in all_statuses if status[0] is not None]
-    print(f"[DEBUG] All statuses in DB for mentorship {mentorship_id}: {status_list}")
-    
-    # 모든 태스크와 그 상태를 확인
-    all_tasks = (
-        db.query(models.TaskAssign.task_assign_id, models.TaskAssign.title, models.TaskAssign.status)
-        .filter(models.TaskAssign.mentorship_id == mentorship_id)
-        .all()
-    )
-    print(f"[DEBUG] All tasks for mentorship {mentorship_id}:")
-    for task in all_tasks:
-        print(f"  Task ID: {task[0]}, Title: {task[1]}, Status: {task[2]}")
-    
-    # 모델 주석에 따른 완료 상태: "진행전/진행중/검토요청/완료"
-    # 가능한 완료 상태들을 모두 포함
-    completed_tasks = (
-        db.query(models.TaskAssign)
-        .filter(
-            models.TaskAssign.mentorship_id == mentorship_id,
-            models.TaskAssign.status.in_(["완료", "완료됨", "COMPLETED", "completed", "Complete", "DONE", "done"])
-        )
-        .count()
-    )
-    
-    print(f"[DEBUG] Final completed tasks count: {completed_tasks}")
-    
-    result = {"total_tasks": total_tasks, "completed_tasks": completed_tasks}
-    print(f"[DEBUG] Returning result: {result}")
-    
-    return result
+    total_tasks = db.query(models.TaskAssign).filter(
+        models.TaskAssign.mentorship_id == mentorship_id,
+        models.TaskAssign.parent_id == None
+    ).count()
+
+    completed_tasks = db.query(models.TaskAssign).filter(
+        models.TaskAssign.mentorship_id == mentorship_id,
+        models.TaskAssign.parent_id == None,
+        models.TaskAssign.status.in_([
+            "완료", "완료됨", "COMPLETED", "completed", "Complete", "DONE", "done"
+        ])
+    ).count()
+
+    return {
+        "total_tasks": total_tasks,
+        "completed_tasks": completed_tasks
+    }
 
 def debug_task_statuses(db: Session, mentorship_id: int = None):
     """
@@ -983,14 +961,22 @@ def update_mentorship(db: Session, mentorship_id: int, mentorship_update: schema
     return db_mentorship
 
 def update_mentorship_report(db: Session, mentorship_id: int, report: str, url_link: Optional[str] = None):
-    """멘토십 리포트 업데이트"""
+    """멘토십 리포트 및 URL 링크 업데이트"""
     db_mentorship = get_mentorship(db, mentorship_id)
-    if db_mentorship:
-        db_mentorship.report = report
-        if url_link:
-            db_mentorship.url_link = url_link
-        db.commit()
-        db.refresh(db_mentorship)
+    if not db_mentorship:
+        print(f"Mentorship ID {mentorship_id}를 찾을 수 없습니다.")
+        return None
+
+    # 보고서 내용 업데이트
+    db_mentorship.report = report
+
+    # URL 링크 업데이트 (빈 문자열도 허용)
+    if url_link is not None:
+        db_mentorship.url_link = url_link
+
+    db.commit()
+    db.refresh(db_mentorship)
+    print(f"Mentorship {mentorship_id} 보고서 및 링크 업데이트 완료")
     return db_mentorship
 
 
@@ -1008,32 +994,32 @@ def create_memo(db: Session, memo: schemas.MemoCreate):
         raise e
 
 def get_memo(db: Session, memo_id: int):
-    """메모 단일 조회 - 사용자 정보 포함"""
+    """메모 단일 조회 - 사용자 정보 포함 (user_id가 null인 경우도 조회)"""
     try:
-        return db.query(models.Memo).join(models.User).filter(
+        return db.query(models.Memo).outerjoin(models.User).filter(
             models.Memo.memo_id == memo_id
         ).first()
     except Exception as e:
         raise e
 
 def get_memos(db: Session, skip: int = 0, limit: int = 100):
-    """메모 목록 조회 - 사용자 정보 포함"""
+    """메모 목록 조회 - 사용자 정보 포함 (user_id가 null인 경우도 조회)"""
     try:
-        return db.query(models.Memo).join(models.User).offset(skip).limit(limit).all()
+        return db.query(models.Memo).outerjoin(models.User).offset(skip).limit(limit).all()
     except Exception as e:
         raise e
 
 def get_memos_by_task(db: Session, task_assign_id: int):
-    """과제별 메모 조회 - 사용자 정보 포함"""
+    """과제별 메모 조회 - 사용자 정보 포함 (user_id가 null인 경우도 조회)"""
     try:
-        return db.query(models.Memo).join(models.User).filter(
+        return db.query(models.Memo).outerjoin(models.User).filter(
             models.Memo.task_assign_id == task_assign_id
         ).all()
     except Exception as e:
         raise e
 
 def get_memos_by_user(db: Session, user_id: int):
-    """사용자별 메모 조회 - 사용자 정보 포함"""
+    """사용자별 메모 조회 - 사용자 정보 포함 (특정 user_id만 조회)"""
     try:
         return db.query(models.Memo).join(models.User).filter(
             models.Memo.user_id == user_id

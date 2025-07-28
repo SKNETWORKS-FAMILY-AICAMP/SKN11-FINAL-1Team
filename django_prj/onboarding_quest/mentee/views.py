@@ -303,7 +303,7 @@ def task_update(request, task_assign_id):
          # 🔔 검토요청 상태일 때 알람 생성
         if new_status == '검토요청':
             try:
-                create_review_request_alarm(task_info.get('mentorship_id'), task_info.get('title'))
+                create_review_request_alarm(task_info.get('mentorship_id'), task_info.get('title'), task_assign_id)
             except Exception as e:
                 print(f"검토요청 알람 생성 실패: {e}")
         
@@ -662,7 +662,7 @@ def mentee(request):
                     if isinstance(memos_response, list):
                         for memo in memos_response:
                             user_info = memo.get('user', {})
-                            user_name = '익명'
+                            user_name = '🤖 리뷰 에이전트'
                             if user_info:
                                 last_name = user_info.get('last_name', '')
                                 first_name = user_info.get('first_name', '')
@@ -776,6 +776,7 @@ def mentee(request):
 def task_list(request):
     try:
         mentorship_id = request.GET.get('mentorship_id')
+        selected_task_id = request.GET.get('selected_task')  # URL 파라미터로 전달된 선택할 태스크 ID
         week_tasks = defaultdict(list)
         selected_task = None
         
@@ -797,8 +798,9 @@ def task_list(request):
         mentorship_obj = Mentorship.objects.filter(mentorship_id=mentorship_id).first()
 
         print(f"🔍 DEBUG - 현재 사용자({user_id})의 멘토십 정보: {mentorship_obj}")
-        if mentorship_obj and mentorship_obj.is_active is False:
-            # 온보딩 종료 시 레포트 가져오기
+        if mentorship_obj:
+            # 레포트 내용 가져오기 (is_active 여부 상관없이)
+            # 이게 맞나..?
             raw_report = getattr(mentorship_obj, 'report', None)
             if raw_report:
                 # 상세 보기용 HTML 마크다운 변환
@@ -885,7 +887,7 @@ def task_list(request):
                     dday = diff
                 
                 task_data = {
-                    'task_id': task.get('task_assign_id'),  # 🚨 task_id 필드 추가
+                    'task_id': task.get('task_assign_id'),  # task_id 필드 추가
                     'task_assign_id': task.get('task_assign_id'),
                     'title': task.get('title'),
                     'desc': task.get('description'),
@@ -905,8 +907,18 @@ def task_list(request):
                 }
                 week_tasks[task.get('week', 1)].append(task_data)
             
-            # 첫 번째 주의 첫 번째 Task를 기본 선택
-            if week_tasks:
+            # URL 파라미터로 전달된 selected_task가 있는 경우 해당 태스크를 선택
+            if selected_task_id:
+                for week, tasks in week_tasks.items():
+                    for task in tasks:
+                        if str(task.get('task_assign_id')) == str(selected_task_id):
+                            selected_task = task
+                            break
+                    if selected_task:
+                        break
+            
+            # selected_task가 없는 경우 첫 번째 주의 첫 번째 Task를 기본 선택
+            if not selected_task and week_tasks:
                 first_week = sorted(week_tasks.keys())[0]
                 if week_tasks[first_week]:
                     selected_task = week_tasks[first_week][0]
@@ -919,6 +931,7 @@ def task_list(request):
             'final_report': final_report,
             'final_report_summary': final_report_summary,
             'is_active': mentorship_obj.is_active if mentorship_obj else False,
+            'final_report_link': getattr(mentorship_obj, 'url_link', None), # url 추가!!
         }
         return render(request, 'mentee/task_list.html', context)
         
@@ -967,7 +980,8 @@ def task_detail(request, task_assign_id):
                     'success': True,
                     'task': {
                         'title': "최종 평가 보고서",
-                        'description': final_report  # 변환된 HTML
+                        'description': final_report,  # 변환된 HTML
+                        'url_link': getattr(mentorship_obj, 'url_link', None) # 최종 평가 보고서 url
                     }
                 })
         
@@ -1008,7 +1022,7 @@ def task_detail(request, task_assign_id):
             if isinstance(memos_response, list):
                 for memo in memos_response:
                     user_info = memo.get('user', {})
-                    user_name = '익명'
+                    user_name = '🤖 리뷰 에이전트'
                     if user_info:
                         last_name = user_info.get('last_name', '')
                         first_name = user_info.get('first_name', '')
@@ -1034,7 +1048,7 @@ def task_detail(request, task_assign_id):
                 django_memos = Memo.objects.filter(task_assign__task_assign_id=task_assign_id).select_related('user').order_by('create_date')
                 
                 for memo in django_memos:
-                    user_name = '알 수 없음'
+                    user_name = '🤖 리뷰 에이전트'
                     if memo.user:
                         user_name = f"{memo.user.last_name}{memo.user.first_name}"
                     
@@ -1064,6 +1078,7 @@ def task_detail(request, task_assign_id):
     except Exception as e:
         logger.error(f"예상치 못한 오류 - task_assign_id: {task_assign_id}, 오류: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'error': f'서버 오류가 발생했습니다: {str(e)}'}, status=500)
+    
 
 # 태스크 상태 업데이트 API (Drag&Drop용) - 🔧 강화된 인증 및 오류 처리
 @csrf_exempt
@@ -1293,7 +1308,7 @@ def update_task_status(request, task_id):
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
-                        create_review_request_alarm(mentorship_id, task_result.get('title'))
+                        create_review_request_alarm(mentorship_id, task_result.get('title'), task_id)
                     except Exception as alarm_error:
                         logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
                 
@@ -1374,7 +1389,7 @@ def update_task_status(request, task_id):
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
-                        create_review_request_alarm(mentorship_id, task_result.get('title'))
+                        create_review_request_alarm(mentorship_id, task_result.get('title'), task_id)
                     except Exception as alarm_error:
                         logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
                 
@@ -1420,7 +1435,7 @@ def update_task_status(request, task_id):
     
 
     
-def create_review_request_alarm(mentorship_id, task_title):
+def create_review_request_alarm(mentorship_id, task_title, task_id=None):
     import logging
     logger = logging.getLogger(__name__)
     try:
@@ -1433,10 +1448,17 @@ def create_review_request_alarm(mentorship_id, task_title):
             mentee = User.objects.get(user_id=mentorship_obj.mentee_id)
             mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
             full_name = f"{mentee.last_name}{mentee.first_name}"
+            
+            # URL 링크 생성
+            url_link = None
+            if task_id:
+                url_link = f"/mentee/task_list/?mentorship_id={mentorship_id}&task_id={task_id}"
+
             Alarm.objects.create(
                 user=mentor,
                 message=f"{full_name} 멘티가 '{task_title}' 태스크를 검토요청했습니다.",
-                is_active=True
+                is_active=True,
+                url_link=url_link
             )
             return True
     except Exception as e:

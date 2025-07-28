@@ -367,13 +367,19 @@
 # ...
 
 위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
-        <div style="display: flex; justify-content: flex-end;">
+        <div style="display: flex; justify-content: flex-end; gap: 8px; align-items: center;">
+          <small style="color: #666; font-size: 12px; margin-right: 10px;">
+            💡 AI 생성은 시간이 걸릴 수 있습니다 (최대 1분)
+          </small>
           <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">
             <span class="btn-text">✨AI 세부 Task 생성</span>
             <span class="btn-loading" style="display: none;">
               <div class="loading-spinner"></div>
               생성중...
             </span>
+          </button>
+          <button type="button" class="template-btn" id="retry-task-btn" style="margin-top: 12px; padding: 8px 16px; font-size: 14px; background: #ff9800; color: white; display: none;">
+            🔄 재시도
           </button>
         </div>
       </div>
@@ -588,6 +594,14 @@ document.addEventListener('DOMContentLoaded', function() {
     this.disabled = true;
     
     try {
+      // AbortController를 사용하여 타임아웃 설정 (60초)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 60000); // 60초 타임아웃
+
+      showMessage('AI가 Task를 생성하고 있습니다. 최대 1분 정도 소요될 수 있습니다...', 'success');
+      
       // API 호출하여 세부 Task 생성 - FastAPI로 직접 요청
       const response = await fetch('{{ FASTAPI_BASE_URL }}/api/tasks/generate_tasks_from_draft/', {
         method: 'POST',
@@ -601,31 +615,87 @@ document.addEventListener('DOMContentLoaded', function() {
           weeks: 12,
           goal: '신입사원의 성공적인 온보딩과 조직 적응'
         }),
+        signal: controller.signal
       });
 
+      // 타임아웃 타이머 해제
+      clearTimeout(timeoutId);
+
+      // 응답 상태 체크
       if (!response.ok) {
+        if (response.status === 0) {
+          throw new Error('서버에 연결할 수 없습니다. FastAPI 서버가 실행 중인지 확인해주세요.');
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      // 응답 본문이 비어있는지 확인
+      const responseText = await response.text();
+      if (!responseText.trim()) {
+        throw new Error('서버에서 빈 응답을 받았습니다. 서버 로그를 확인해주세요.');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON 파싱 오류:', parseError);
+        console.error('응답 내용:', responseText);
+        throw new Error('서버 응답을 파싱할 수 없습니다.');
+      }
       
       // 에러 응답인지 확인
       if (result.error) {
-        throw new Error(`API Error: ${result.error}`);
+        throw new Error(`서버 오류: ${result.error}`);
+      }
+      
+      // tasks 배열이 있는지 확인
+      if (!result.tasks || !Array.isArray(result.tasks)) {
+        throw new Error('올바른 Task 데이터를 받지 못했습니다.');
       }
       
       const tasks = result.tasks;
+      
+      if (tasks.length === 0) {
+        showMessage('생성된 Task가 없습니다. 입력 내용을 확인해주세요.', 'error');
+        return;
+      }
       
       // 생성된 tasks를 window.tasks_json에 저장
       window.tasks_json = tasks;
       
       // Task 목록 렌더링
       renderTasksByWeek(tasks);
-      showMessage('세부 Task가 성공적으로 생성되었습니다!');
+      showMessage(`${tasks.length}개의 세부 Task가 성공적으로 생성되었습니다!`);
+      
+      // 성공 시 재시도 버튼 숨기기
+      const retryBtn = document.getElementById('retry-task-btn');
+      if (retryBtn) {
+        retryBtn.style.display = 'none';
+      }
       
     } catch (error) {
       console.error('Task 생성 오류:', error);
-      showMessage(`Task 생성 중 오류가 발생했습니다: ${error.message}`, 'error');
+      
+      // 구체적인 오류 메시지 제공
+      let errorMessage = '';
+      if (error.name === 'AbortError') {
+        errorMessage = '요청 시간이 초과되었습니다. 다시 시도해주세요.';
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('ERR_EMPTY_RESPONSE')) {
+        errorMessage = 'FastAPI 서버와의 연결에 실패했습니다. 서버가 실행 중인지 확인해주세요.';
+      } else if (error.message.includes('NetworkError')) {
+        errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
+      } else {
+        errorMessage = error.message || '알 수 없는 오류가 발생했습니다.';
+      }
+      
+      showMessage(`Task 생성 중 오류가 발생했습니다: ${errorMessage}`, 'error');
+      
+      // 오류 발생 시 재시도 버튼 표시
+      const retryBtn = document.getElementById('retry-task-btn');
+      if (retryBtn) {
+        retryBtn.style.display = 'inline-block';
+      }
     } finally {
       // 로딩 상태 종료
       btnText.style.display = 'inline';
@@ -633,6 +703,17 @@ document.addEventListener('DOMContentLoaded', function() {
       this.disabled = false;
     }
   });
+
+  // 재시도 버튼 이벤트 리스너 추가
+  const retryTaskBtn = document.getElementById('retry-task-btn');
+  if (retryTaskBtn) {
+    retryTaskBtn.addEventListener('click', function() {
+      // 재시도 버튼 숨기기
+      this.style.display = 'none';
+      // Task 생성 버튼 클릭 이벤트 트리거
+      document.getElementById('generate-task-btn').click();
+    });
+  }
 
   // '주차 추가' 버튼 동작 구현
   document.getElementById('add-week-btn').addEventListener('click', function(e) {

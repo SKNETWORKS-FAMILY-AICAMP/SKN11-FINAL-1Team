@@ -140,7 +140,7 @@ class OnboardingAgentIntegrator:
             # 검토 요청 상태로 변경된 경우 자동 리뷰 트리거
             if new_status == '검토요청' and old_status in ['진행전', '진행중']:
                 if task_id not in self.reviewed_task_ids:
-                    self._trigger_auto_review(task_id, user_id)
+                    self._trigger_auto_review(task_id)
                     self.reviewed_task_ids.add(task_id)
                     # LangGraph Agent에도 즉시 체크 트리거
                     self.trigger_langgraph_check()
@@ -156,10 +156,10 @@ class OnboardingAgentIntegrator:
         except Exception as e:
             self.logger.error(f"❌ 상태 변화 이벤트 처리 실패: {e}")
     
-    def _trigger_auto_review(self, task_id: int, user_id: int):
+    def _trigger_auto_review(self, task_id: int):
         """자동 리뷰 생성 트리거 (Agent_LangGraph_final.py의 ReviewAgent 로직)"""
         try:
-            from core.models import TaskAssign, Mentorship, Memo, User
+            from core.models import TaskAssign, Memo, User
             
             # 태스크 정보 조회
             try:
@@ -180,6 +180,19 @@ class OnboardingAgentIntegrator:
             if not subtasks.exists() and not llm:
                 self.logger.warning(f"⚠️ 하위 태스크가 없고 LLM이 설정되지 않아 자동 리뷰를 생성할 수 없습니다.")
                 return
+
+            schedule_end_date = TaskAssign.objects.get(task_assign_id=task_id)
+            end_date = schedule_end_date.scheduled_end_date
+            make_it = ""
+
+            if not schedule_end_date:
+                self.logger.error(f"❌ 태스크 {task_id}의 마감일이 없습니다.")
+                return
+            
+            if end_date > datetime.now().date():
+                make_it ="날짜를 준수하여 업무를 수행하였습니다"
+            else:
+                make_it = "업무 수행 중 날짜를 초과하였습니다"
             
             # 자동 피드백 생성
             if llm:
@@ -188,33 +201,72 @@ class OnboardingAgentIntegrator:
                     for subtask in subtasks
                 ]) if subtasks.exists() else "하위 태스크 없음"
                 
-                prompt = f"""너는 IT 멘토입니다. 상위 업무는 '{task_assign.title}'이고, 하위 작업은 다음과 같습니다:
+                prompt = f'''
+너는 멘토링 분야의 전문가이자, 사내 온보딩 과제를 평가하는 멘토이자 HR 담당자야.
+상위 업무 제목은 '{task_assign.title}'야. 
+
+=== 평가 원칙 ===
+- 너의 피드백은 **건설적이고 명확**해야 해
+- 신입사원의 성장 관점에서 잘된 부분은 구체적으로 인정하되, 부족한 부분은 개선 방향을 제시
+- 기본 요구사항 미충족 시 명확히 지적하되, 학습 기회로 접근
+- 개선점:우수점 = 3:2 비율로 균형 유지
+- 구체적 예시와 근거 필수, 추상적 표현 금지
+
+=== 하위 작업 목록 ===
 {subtask_text}
 
-다음 형식으로 피드백 작성:
-- 👍 잘한 점:
-- 🔧 개선할 점:
-- 🧾 요약 피드백:
----"""
-                
+=== 평가 체크리스트 ===
+
+- 하기 체크리스트와 평가 지표를 종합적으로 고려하여 평가하세요.
+□ 개선 정도  □ 문제해결력 □ 실무 적용성 □ 일정 준수
+
+A : 개선 정도 80~100% 문제해결력 80~100% 실무 적용성 80~100% 
+B : 개선 정도 60~80% 문제해결력 60~80% 실무 적용성 60~80% 
+C : 개선 정도 40~60% 문제해결력 40~60% 실무 적용성 40~60%
+D : 개선 정도 0~40% 문제해결력 0~40% 실무 적용성 0~40%
+
+100% : 요구사항을 전부 충족함, 문제를 해결함, 실무 적용 가능
+
+=== 출력 형식 ===
+
+📋 구현 현황
+- 완성된 핵심 기능과 기술적 접근법 요약 (1-2문장)
+
+👍 우수한 점 (1-2가지)
+1. 구현 과정에서 잘 수행된 부분 (구체적 근거 포함)
+2. 기술적 시도나 문제 해결 접근법에서 긍정적인 부분
+
+🔧 개선 필요사항 (2-3가지, 중요도순)
+1. [핵심 개선점] → [단계별 해결방법]
+2. [두 번째 개선점] → [구체적 가이드라인] 
+3. [세 번째 개선점] → [학습 리소스 제안]
+
+💡 성장 방향 제언 (1가지)
+- 다음 단계 발전을 위한 핵심 학습 포인트
+
+🧾 종합 평가
+- 신입사원 수준에서의 전반적 완성도 평가
+- 향후 발전 가능성과 현재 역량 수준 종합 판단
+- 일정 준수 여부: {make_it}
+
+평가는 **신입사원의 성장 잠재력을 고려한 발전적 관점**에서 진행해. 
+현재 수준을 정확히 진단하되, 개선 가능성과 학습 의지를 함께 평가해.
+코드 리뷰 시에는 "개선이 필요하지만 기본 이해도는 확인됨" 같은 균형잡힌 표현 사용.
+**답변에 마크다운 형식은 사용하면 안돼**
+'''     
                 try:
                     feedback = llm.invoke(prompt).content
-                    
-                    # 멘토 객체 조회
-                    from core.models import User
-                    mentor = User.objects.get(user_id=mentorship.mentor_id)
                     
                     # 피드백을 메모로 저장
                     Memo.objects.create(
                         task_assign=task_assign,
-                        user=mentor,
                         comment=feedback
                     )
                     
                     self.logger.info(f"✅ 자동 리뷰 생성 완료: task_id={task_id}")
                     
-                    # 멘티에게 알림
-                    self._send_review_notification(task_assign.mentorship_id.mentee_id, task_assign.title)
+                    # 멘티에게 알림 (task_id 추가 전달)
+                    self._send_review_notification(task_assign.mentorship_id.mentee_id, task_assign.title, task_id)
                     
                 except Exception as llm_error:
                     self.logger.error(f"❌ LLM 피드백 생성 실패: {llm_error}")
@@ -239,30 +291,38 @@ class OnboardingAgentIntegrator:
                 
                 Memo.objects.create(
                     task_assign=task_assign,
-                    user=mentor,
+                    # user=mentor,
                     comment=basic_feedback
                 )
                 
                 self.logger.info(f"✅ 기본 자동 리뷰 생성 완료: task_id={task_id}")
+                
+                # 멘티에게 알림 (task_id 추가 전달)
+                self._send_review_notification(task_assign.mentorship_id.mentee_id, task_assign.title, task_id)
             
         except Exception as e:
             self.logger.error(f"❌ 자동 리뷰 생성 실패: {e}")
     
-    def _send_review_notification(self, mentee_id: int, task_title: str):
+    def _send_review_notification(self, mentee_id: int, task_title: str, task_id: int):
         """멘티에게 리뷰 완료 알림 발송"""
         try:
-            from core.models import User, Alarm
+            from core.models import User, Alarm, TaskAssign
             
             mentee = User.objects.get(user_id=mentee_id)
+            task_assign = TaskAssign.objects.get(task_assign_id=task_id)
             
-            # 내부 알림 생성
+            # 태스크로 이동할 수 있는 URL 생성 (mentorship_id 포함)
+            task_url = f"/mentee/task_list/?mentorship_id={task_assign.mentorship_id.mentorship_id}&task_id={task_id}"
+            
+            # 내부 알림 생성 (URL 포함)
             Alarm.objects.create(
                 user=mentee,
                 message=f"'{task_title}' 태스크에 대한 멘토의 리뷰가 작성되었습니다. 확인해 주세요.",
+                url_link=task_url,
                 is_active=True
             )
             
-            self.logger.info(f"✅ 리뷰 완료 알림 발송: mentee_id={mentee_id}")
+            self.logger.info(f"✅ 리뷰 완료 알림 발송: mentee_id={mentee_id}, url={task_url}")
             
         except Exception as e:
             self.logger.error(f"❌ 리뷰 완료 알림 발송 실패: {e}")
@@ -353,7 +413,7 @@ class OnboardingAgentIntegrator:
             self._save_final_report(user_id, mentorship.mentorship_id, final_report)
             
             # 멘토에게 보고서 완성 알림
-            self._notify_mentor_report_ready(mentorship.mentor_id, full_name)
+            self._notify_mentor_report_ready(mentorship.mentor_id, full_name, mentorship.mentorship_id)
             
             self.logger.info(f"✅ 최종 보고서 생성 완료: user_id={user_id}")
             
@@ -400,20 +460,24 @@ class OnboardingAgentIntegrator:
         except Exception as e:
             self.logger.error(f"❌ 보고서 저장 실패: {e}")
     
-    def _notify_mentor_report_ready(self, mentor_id: int, mentee_name: str):
+    def _notify_mentor_report_ready(self, mentor_id: int, mentee_name: str, mentorship_id: int):
         """멘토에게 보고서 완성 알림"""
         try:
             from core.models import User, Alarm
             
             mentor = User.objects.get(user_id=mentor_id)
             
+            # 최종 보고서로 이동할 수 있는 URL 생성
+            report_url = f"/mentee/task_list/?mentorship_id={mentorship_id}&open=final_report"
+            
             Alarm.objects.create(
                 user=mentor,
                 message=f"{mentee_name} 멘티의 온보딩 과정이 완료되어 최종 평가 보고서가 생성되었습니다.",
-                is_active=True
+                is_active=True,
+                url_link=report_url
             )
             
-            self.logger.info(f"✅ 멘토 보고서 완성 알림 발송: mentor_id={mentor_id}")
+            self.logger.info(f"✅ 멘토 보고서 완성 알림 발송: mentor_id={mentor_id}, url={report_url}")
             
         except Exception as e:
             self.logger.error(f"❌ 멘토 보고서 완성 알림 발송 실패: {e}")

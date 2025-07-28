@@ -1175,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', function() {
               messageDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                   <div>
-                    <strong style="color: #333;">${memo.user || '익명'}</strong>: ${memo.comment || ''}
+                    <strong style="color: #333;">${memo.user || '🤖 리뷰 에이전트'}</strong>: ${memo.comment || ''}
                   </div>
                   <small style="color: #666; font-size: 12px; white-space: nowrap; margin-left: 10px;">
                     ${memo.create_date || ''}
