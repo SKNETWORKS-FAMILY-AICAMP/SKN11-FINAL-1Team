@@ -303,7 +303,7 @@ def task_update(request, task_assign_id):
          # 🔔 검토요청 상태일 때 알람 생성
         if new_status == '검토요청':
             try:
-                create_review_request_alarm(task_info.get('mentorship_id'), task_info.get('title'))
+                create_review_request_alarm(task_info.get('mentorship_id'), task_info.get('title'), task_assign_id)
             except Exception as e:
                 print(f"검토요청 알람 생성 실패: {e}")
         
@@ -662,7 +662,7 @@ def mentee(request):
                     if isinstance(memos_response, list):
                         for memo in memos_response:
                             user_info = memo.get('user', {})
-                            user_name = '익명'
+                            user_name = '🤖 리뷰 에이전트'
                             if user_info:
                                 last_name = user_info.get('last_name', '')
                                 first_name = user_info.get('first_name', '')
@@ -1022,7 +1022,7 @@ def task_detail(request, task_assign_id):
             if isinstance(memos_response, list):
                 for memo in memos_response:
                     user_info = memo.get('user', {})
-                    user_name = '익명'
+                    user_name = '🤖 리뷰 에이전트'
                     if user_info:
                         last_name = user_info.get('last_name', '')
                         first_name = user_info.get('first_name', '')
@@ -1308,7 +1308,7 @@ def update_task_status(request, task_id):
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
-                        create_review_request_alarm(mentorship_id, task_result.get('title'))
+                        create_review_request_alarm(mentorship_id, task_result.get('title'), task_id)
                     except Exception as alarm_error:
                         logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
                 
@@ -1389,7 +1389,7 @@ def update_task_status(request, task_id):
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
-                        create_review_request_alarm(mentorship_id, task_result.get('title'))
+                        create_review_request_alarm(mentorship_id, task_result.get('title'), task_id)
                     except Exception as alarm_error:
                         logger.error(f"❌ 검토요청 알람 생성 실패: {alarm_error}")
                 
@@ -1435,7 +1435,7 @@ def update_task_status(request, task_id):
     
 
     
-def create_review_request_alarm(mentorship_id, task_title):
+def create_review_request_alarm(mentorship_id, task_title, task_id=None):
     import logging
     logger = logging.getLogger(__name__)
     try:
@@ -1448,10 +1448,17 @@ def create_review_request_alarm(mentorship_id, task_title):
             mentee = User.objects.get(user_id=mentorship_obj.mentee_id)
             mentor = User.objects.get(user_id=mentorship_obj.mentor_id)
             full_name = f"{mentee.last_name}{mentee.first_name}"
+            
+            # URL 링크 생성
+            url_link = None
+            if task_id:
+                url_link = f"/mentee/task_list/?mentorship_id={mentorship_id}&task_id={task_id}"
+
             Alarm.objects.create(
                 user=mentor,
                 message=f"{full_name} 멘티가 '{task_title}' 태스크를 검토요청했습니다.",
-                is_active=True
+                is_active=True,
+                url_link=url_link
             )
             return True
     except Exception as e:

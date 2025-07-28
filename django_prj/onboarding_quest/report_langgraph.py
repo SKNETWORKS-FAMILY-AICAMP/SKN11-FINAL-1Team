@@ -222,6 +222,7 @@ class ReportNodes:
                 "user_id": user_id,
                 "mentor_id": user_row['mentor_id'],
                 "mentor_email": user_row['mentor_email'],
+                "mentorship_id": user_row['mentorship_id'],
                 "message": f"{report_data['mentee_name']} 멘티의 최종 평가 보고서가 생성되었습니다."
             })
             
@@ -251,18 +252,23 @@ class ReportNodes:
             cur = conn.cursor()
             
             for event in alarm_events:
-                # 알림 저장
+                # URL 생성 (최종 보고서용)
+                url_link = None
+                if event.get("event_type") == "final_report_ready" and event.get("mentorship_id"):
+                    url_link = f"/mentee/task_list/?mentorship_id={event['mentorship_id']}&open=final_report"
+                
+                # 멘티에게 알림 저장
                 cur.execute("""
-                    INSERT INTO core_alarm (user_id, message, created_at, is_active)
-                    VALUES (%s, %s, CURRENT_TIMESTAMP, true)
-                """, (event["user_id"], event["message"]))
+                    INSERT INTO core_alarm (user_id, message, created_at, is_active, url_link)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP, true, %s)
+                """, (event["user_id"], event["message"], url_link))
                 
                 if event.get("mentor_id"):
-                    # 멘토에게도 알림
+                    # 멘토에게도 알림 (같은 URL 사용)
                     cur.execute("""
-                        INSERT INTO core_alarm (user_id, message, created_at, is_active)
-                        VALUES (%s, %s, CURRENT_TIMESTAMP, true)
-                    """, (event["mentor_id"], event["message"]))
+                        INSERT INTO core_alarm (user_id, message, created_at, is_active, url_link)
+                        VALUES (%s, %s, CURRENT_TIMESTAMP, true, %s)
+                    """, (event["mentor_id"], event["message"], url_link))
             
             conn.commit()
             conn.close()

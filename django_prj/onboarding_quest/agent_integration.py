@@ -356,7 +356,7 @@ class OnboardingAgentIntegrator:
             self._save_final_report(user_id, mentorship.mentorship_id, final_report)
             
             # 멘토에게 보고서 완성 알림
-            self._notify_mentor_report_ready(mentorship.mentor_id, full_name)
+            self._notify_mentor_report_ready(mentorship.mentor_id, full_name, mentorship.mentorship_id)
             
             self.logger.info(f"✅ 최종 보고서 생성 완료: user_id={user_id}")
             
@@ -403,20 +403,24 @@ class OnboardingAgentIntegrator:
         except Exception as e:
             self.logger.error(f"❌ 보고서 저장 실패: {e}")
     
-    def _notify_mentor_report_ready(self, mentor_id: int, mentee_name: str):
+    def _notify_mentor_report_ready(self, mentor_id: int, mentee_name: str, mentorship_id: int):
         """멘토에게 보고서 완성 알림"""
         try:
             from core.models import User, Alarm
             
             mentor = User.objects.get(user_id=mentor_id)
             
+            # 최종 보고서로 이동할 수 있는 URL 생성
+            report_url = f"/mentee/task_list/?mentorship_id={mentorship_id}&open=final_report"
+            
             Alarm.objects.create(
                 user=mentor,
                 message=f"{mentee_name} 멘티의 온보딩 과정이 완료되어 최종 평가 보고서가 생성되었습니다.",
-                is_active=True
+                is_active=True,
+                url_link=report_url
             )
             
-            self.logger.info(f"✅ 멘토 보고서 완성 알림 발송: mentor_id={mentor_id}")
+            self.logger.info(f"✅ 멘토 보고서 완성 알림 발송: mentor_id={mentor_id}, url={report_url}")
             
         except Exception as e:
             self.logger.error(f"❌ 멘토 보고서 완성 알림 발송 실패: {e}")

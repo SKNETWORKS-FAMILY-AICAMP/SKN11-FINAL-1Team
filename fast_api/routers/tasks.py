@@ -166,7 +166,7 @@ async def get_task_detail(task_id: int, db: Session = Depends(get_db)):
             "order": task.order,
             "memos": [
                 {
-                    "user": memo.user_name if hasattr(memo, "user_name") else "익명",
+                    "user": memo.user_name if hasattr(memo, "user_name") else "🤖 리뷰 에이전트",
                     "comment": memo.comment,
                     "create_date": memo.create_date
                 } for memo in memos
