@@ -1037,7 +1037,7 @@ def task_detail(request, task_assign_id):
                 django_memos = Memo.objects.filter(task_assign__task_assign_id=task_assign_id).select_related('user').order_by('create_date')
                 
                 for memo in django_memos:
-                    user_name = '알 수 없음'
+                    user_name = '🤖 리뷰 에이전트'
                     if memo.user:
                         user_name = f"{memo.user.last_name}{memo.user.first_name}"
                     

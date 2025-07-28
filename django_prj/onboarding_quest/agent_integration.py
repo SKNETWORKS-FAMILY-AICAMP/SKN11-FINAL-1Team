@@ -207,7 +207,7 @@ class OnboardingAgentIntegrator:
                     # 피드백을 메모로 저장
                     Memo.objects.create(
                         task_assign=task_assign,
-                        user=mentor,
+                        # user=mentor,
                         comment=feedback
                     )
                     
@@ -239,7 +239,7 @@ class OnboardingAgentIntegrator:
                 
                 Memo.objects.create(
                     task_assign=task_assign,
-                    user=mentor,
+                    # user=mentor,
                     comment=basic_feedback
                 )
                 

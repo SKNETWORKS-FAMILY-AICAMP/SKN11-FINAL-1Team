@@ -994,32 +994,32 @@ def create_memo(db: Session, memo: schemas.MemoCreate):
         raise e
 
 def get_memo(db: Session, memo_id: int):
-    """메모 단일 조회 - 사용자 정보 포함"""
+    """메모 단일 조회 - 사용자 정보 포함 (user_id가 null인 경우도 조회)"""
     try:
-        return db.query(models.Memo).join(models.User).filter(
+        return db.query(models.Memo).outerjoin(models.User).filter(
             models.Memo.memo_id == memo_id
         ).first()
     except Exception as e:
         raise e
 
 def get_memos(db: Session, skip: int = 0, limit: int = 100):
-    """메모 목록 조회 - 사용자 정보 포함"""
+    """메모 목록 조회 - 사용자 정보 포함 (user_id가 null인 경우도 조회)"""
     try:
-        return db.query(models.Memo).join(models.User).offset(skip).limit(limit).all()
+        return db.query(models.Memo).outerjoin(models.User).offset(skip).limit(limit).all()
     except Exception as e:
         raise e
 
 def get_memos_by_task(db: Session, task_assign_id: int):
-    """과제별 메모 조회 - 사용자 정보 포함"""
+    """과제별 메모 조회 - 사용자 정보 포함 (user_id가 null인 경우도 조회)"""
     try:
-        return db.query(models.Memo).join(models.User).filter(
+        return db.query(models.Memo).outerjoin(models.User).filter(
             models.Memo.task_assign_id == task_assign_id
         ).all()
     except Exception as e:
         raise e
 
 def get_memos_by_user(db: Session, user_id: int):
-    """사용자별 메모 조회 - 사용자 정보 포함"""
+    """사용자별 메모 조회 - 사용자 정보 포함 (특정 user_id만 조회)"""
     try:
         return db.query(models.Memo).join(models.User).filter(
             models.Memo.user_id == user_id

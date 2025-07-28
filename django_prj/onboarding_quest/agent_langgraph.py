@@ -378,16 +378,16 @@ class ReviewAgent:
         feedback = llm.invoke(prompt).content
         print("📝 [review] 피드백 생성 완료")
 
-        # DB에 피드백 저장 -> memo 테이블에 저장
+        # DB에 피드백 저장 -> memo 테이블에 저장 (mentor_id를 null로 설정)
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute(
             "INSERT INTO core_memo (task_assign_id, comment, user_id) VALUES (%s, %s, %s)",
-            (task_id, feedback, mentor_id)
+            (task_id, feedback, None)  # mentor_id 대신 None(null) 사용
         )
         conn.commit()
         conn.close()
-        print(f"✅ [review] memo 저장 완료 (mentor_id={mentor_id}, task_id={task_id})")
+        print(f"✅ [review] memo 저장 완료 (user_id=null, task_id={task_id})")
 
         # ✅ 알람 이벤트 생성
         alarm_events = state.get("alarm_events", [])
