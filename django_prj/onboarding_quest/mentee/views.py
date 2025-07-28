@@ -776,6 +776,7 @@ def mentee(request):
 def task_list(request):
     try:
         mentorship_id = request.GET.get('mentorship_id')
+        selected_task_id = request.GET.get('selected_task')  # URL 파라미터로 전달된 선택할 태스크 ID
         week_tasks = defaultdict(list)
         selected_task = None
         
@@ -906,8 +907,18 @@ def task_list(request):
                 }
                 week_tasks[task.get('week', 1)].append(task_data)
             
-            # 첫 번째 주의 첫 번째 Task를 기본 선택
-            if week_tasks:
+            # URL 파라미터로 전달된 selected_task가 있는 경우 해당 태스크를 선택
+            if selected_task_id:
+                for week, tasks in week_tasks.items():
+                    for task in tasks:
+                        if str(task.get('task_assign_id')) == str(selected_task_id):
+                            selected_task = task
+                            break
+                    if selected_task:
+                        break
+            
+            # selected_task가 없는 경우 첫 번째 주의 첫 번째 Task를 기본 선택
+            if not selected_task and week_tasks:
                 first_week = sorted(week_tasks.keys())[0]
                 if week_tasks[first_week]:
                     selected_task = week_tasks[first_week][0]
@@ -1037,7 +1048,7 @@ def task_detail(request, task_assign_id):
                 django_memos = Memo.objects.filter(task_assign__task_assign_id=task_assign_id).select_related('user').order_by('create_date')
                 
                 for memo in django_memos:
-                    user_name = '알 수 없음'
+                    user_name = '🤖 리뷰 에이전트'
                     if memo.user:
                         user_name = f"{memo.user.last_name}{memo.user.first_name}"
                     

@@ -791,7 +791,10 @@ function updateMemoList(memos) {
             let displayDate = '';
             let displayComment = '';
             
-            if (memo.user && typeof memo.user === 'object') {
+            // user_id가 null인 경우 리뷰 에이전트로 표시
+            if (!memo.user || memo.user === null) {
+                displayUser = '🤖 리뷰 에이전트';
+            } else if (memo.user && typeof memo.user === 'object') {
                 const lastName = memo.user.last_name || '';
                 const firstName = memo.user.first_name || '';
                 if (lastName || firstName) {
@@ -819,9 +822,24 @@ function updateMemoList(memos) {
             displayComment = memo.comment || '';
             console.log('🔍 메모 데이터:', { user: memo.user, create_date: memo.create_date, comment: memo.comment });
             
+            // 리뷰 에이전트인 경우 다른 스타일 적용
+            const isReviewAgent = !memo.user || memo.user === null;
+            const userColor = isReviewAgent ? '#ff6b35' : '#1976d2';  // 주황색 vs 파란색
+            const backgroundColor = isReviewAgent ? '#fff3f0' : 'white';  // 연한 주황 vs 흰색
+            const borderLeft = isReviewAgent ? '4px solid #ff6b35' : 'none';
+            
+            memoElement.style.cssText = `
+                margin-bottom: 16px;
+                padding: 16px 20px;
+                background: ${backgroundColor};
+                border-radius: 8px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                border-left: ${borderLeft};
+            `;
+            
             memoElement.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="font-weight: bold; color: #1976d2; font-size: 15px;">${displayUser}</span>
+                    <span style="font-weight: bold; color: ${userColor}; font-size: 15px;">${displayUser}</span>
                     <span style="color: #888; font-size: 13px;">${displayDate}</span>
                 </div>
                 <div style="color: #222; font-size: 15px; line-height: 1.6; margin-top: 2px; white-space: pre-wrap;">${displayComment}</div>
