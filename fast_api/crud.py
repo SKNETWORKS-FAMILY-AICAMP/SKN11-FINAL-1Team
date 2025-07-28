@@ -199,8 +199,8 @@ def get_users_with_filters(
     role: str = None,
     is_active: bool = None
 ):
-    """필터링된 사용자 목록 조회 with 기본값 처리"""
-    query = db.query(models.User)
+    """필터링된 사용자 목록 조회 with 검색 기능 강화"""
+    query = db.query(models.User).join(models.Department, models.User.department_id == models.Department.department_id, isouter=True)
     
     # 필터 적용
     if company_id:
@@ -211,12 +211,25 @@ def get_users_with_filters(
         query = query.filter(models.User.role == role)
     if is_active is not None:
         query = query.filter(models.User.is_active == is_active)
+    
+    # 강화된 검색 기능: 사번, 성+이름, 이메일, 부서, 직급
     if search:
+        search_pattern = f"%{search}%"
         search_filter = or_(
-            models.User.email.ilike(f"%{search}%"),
-            models.User.first_name.ilike(f"%{search}%"),
-            models.User.last_name.ilike(f"%{search}%"),
-            cast(models.User.employee_number, String).ilike(f"%{search}%")
+            # 사번 검색
+            cast(models.User.employee_number, String).ilike(search_pattern),
+            # 이메일 검색
+            models.User.email.ilike(search_pattern),
+            # 성 검색
+            models.User.last_name.ilike(search_pattern),
+            # 이름 검색
+            models.User.first_name.ilike(search_pattern),
+            # 성+이름 검색 (CONCAT 함수 사용)
+            (models.User.last_name + models.User.first_name).ilike(search_pattern),
+            # 부서명 검색
+            models.Department.department_name.ilike(search_pattern),
+            # 직급 검색
+            models.User.position.ilike(search_pattern)
         )
         query = query.filter(search_filter)
     
@@ -234,39 +247,6 @@ def get_users_with_filters(
             user.join_date = date(2024, 1, 1)
     
     return users
-    """필터링 옵션이 있는 사용자 목록 조회"""
-    query = db.query(models.User)
-    
-    if company_id:
-        query = query.filter(models.User.company_id == company_id)
-    
-    if department_id:
-        query = query.filter(models.User.department_id == department_id)
-    
-    if search:
-        # 검색어를 이메일, 성, 이름, 사번에 대해 부분 일치로 필터링
-        search_pattern = f"%{search}%"
-        query = query.filter(
-            or_(
-                models.User.email.ilike(search_pattern),
-                models.User.last_name.ilike(search_pattern),
-                models.User.first_name.ilike(search_pattern),
-                cast(models.User.employee_number, String).ilike(search_pattern),
-                # 성+이름 조합 검색 추가
-                (models.User.last_name + models.User.first_name).ilike(search_pattern),
-                # 이름+성 조합도 검색 (순서가 바뀌어도 검색되도록)
-                (models.User.first_name + models.User.last_name).ilike(search_pattern)
-            )
-        )
-    
-    if role:
-        query = query.filter(models.User.role == role)
-    
-    if is_active is not None:
-        query = query.filter(models.User.is_active == is_active)
-    
-    return query.offset(skip).limit(limit).all()
-
 def get_mentors(db: Session, skip: int = 0, limit: int = 100):
     """멘토 목록 조회 - 활성 멘토만 반환"""
     return db.query(models.User).filter(
