@@ -1305,6 +1305,16 @@ def update_task_status(request, task_id):
             try:
                 result = fastapi_client.update_task_assign(task_id, update_data)
                 logger.info(f"✅ FastAPI 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
+                
+                # 🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
+                if new_status == '완료' and not task_result.get('parent_id'):
+                    logger.info(f"🔥 상위 태스크 {task_id} 완료 감지 - 하위 태스크 자동 완료 처리 시작")
+                    try:
+                        auto_complete_subtasks(task_id, mentorship_id)
+                        logger.info(f"✅ 하위 태스크 자동 완료 처리 완료")
+                    except Exception as subtask_error:
+                        logger.error(f"❌ 하위 태스크 자동 완료 처리 실패: {subtask_error}")
+                
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
@@ -1386,6 +1396,15 @@ def update_task_status(request, task_id):
                 task_obj.save()
                 logger.info(f"✅ Django ORM 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
                 
+                # 🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
+                if new_status == '완료' and not task_obj.parent_id:
+                    logger.info(f"🔥 상위 태스크 {task_id} 완료 감지 (Django ORM) - 하위 태스크 자동 완료 처리 시작")
+                    try:
+                        auto_complete_subtasks(task_id, mentorship_id)
+                        logger.info(f"✅ 하위 태스크 자동 완료 처리 완료 (Django ORM)")
+                    except Exception as subtask_error:
+                        logger.error(f"❌ 하위 태스크 자동 완료 처리 실패 (Django ORM): {subtask_error}")
+                
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
@@ -1464,6 +1483,137 @@ def create_review_request_alarm(mentorship_id, task_title, task_id=None):
     except Exception as e:
         logger.error(f"검토요청 알람 생성 실패: {e}")
     return False
+
+
+def auto_complete_subtasks(parent_task_id, mentorship_id):
+    """상위 태스크가 완료될 때 하위 태스크들을 자동으로 완료 처리하는 함수"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"🔥 상위 태스크 {parent_task_id} 완료 - 하위 태스크들 자동 완료 처리 시작")
+        
+        # FastAPI로 하위 태스크들 찾기
+        try:
+            tasks_result = fastapi_client.get_task_assigns(mentorship_id=mentorship_id)
+            all_tasks = tasks_result.get('task_assigns', [])
+            
+            # 하위 태스크들 필터링 (parent_id가 현재 완료된 태스크인 것들)
+            subtasks = [task for task in all_tasks if task.get('parent_id') == parent_task_id]
+            
+            if not subtasks:
+                logger.info(f"✅ 상위 태스크 {parent_task_id}에 하위 태스크가 없습니다.")
+                return True
+            
+            logger.info(f"🔍 찾은 하위 태스크 개수: {len(subtasks)}")
+            
+            # 각 하위 태스크를 완료 상태로 변경
+            completed_count = 0
+            for subtask in subtasks:
+                subtask_id = subtask.get('task_assign_id')
+                current_status = subtask.get('status')
+                
+                # 이미 완료된 하위 태스크는 스킵
+                if current_status == '완료':
+                    logger.info(f"⏭️ 하위 태스크 {subtask_id}는 이미 완료 상태입니다.")
+                    continue
+                
+                try:
+                    # FastAPI로 하위 태스크 상태 업데이트
+                    update_data = {
+                        'title': subtask.get('title'),
+                        'description': subtask.get('description', ''),
+                        'guideline': subtask.get('guideline', ''),
+                        'week': subtask.get('week', 1),
+                        'order': subtask.get('order', 1),
+                        'scheduled_start_date': subtask.get('scheduled_start_date'),
+                        'scheduled_end_date': subtask.get('scheduled_end_date'),
+                        'real_start_date': subtask.get('real_start_date'),
+                        'real_end_date': subtask.get('real_end_date'),
+                        'status': '완료',  # 완료 상태로 변경
+                        'priority': subtask.get('priority'),
+                        'mentorship_id': mentorship_id,
+                        'parent_id': parent_task_id
+                    }
+                    
+                    # 실제 완료일이 없으면 현재 날짜로 설정
+                    if not update_data['real_end_date']:
+                        from datetime import datetime
+                        update_data['real_end_date'] = datetime.now().date().isoformat()
+                    
+                    # None 값 제거
+                    clean_update_data = {k: v for k, v in update_data.items() if v is not None}
+                    
+                    result = fastapi_client.update_task_assign(subtask_id, clean_update_data)
+                    logger.info(f"✅ FastAPI로 하위 태스크 {subtask_id} 완료 처리 성공: {current_status} -> 완료")
+                    completed_count += 1
+                    
+                except Exception as fastapi_error:
+                    logger.error(f"❌ FastAPI로 하위 태스크 {subtask_id} 완료 처리 실패: {fastapi_error}")
+                    
+                    # FastAPI 실패 시 Django ORM으로 fallback
+                    try:
+                        from core.models import TaskAssign
+                        from datetime import datetime
+                        
+                        subtask_obj = TaskAssign.objects.get(task_assign_id=subtask_id)
+                        subtask_obj.status = '완료'
+                        
+                        if not subtask_obj.real_end_date:
+                            subtask_obj.real_end_date = datetime.now().date()
+                        
+                        subtask_obj.save()
+                        logger.info(f"✅ Django ORM으로 하위 태스크 {subtask_id} 완료 처리 성공: {current_status} -> 완료")
+                        completed_count += 1
+                        
+                    except Exception as orm_error:
+                        logger.error(f"❌ Django ORM으로도 하위 태스크 {subtask_id} 완료 처리 실패: {orm_error}")
+            
+            logger.info(f"🎉 하위 태스크 자동 완료 처리 완료: {completed_count}/{len(subtasks)}개 성공")
+            return completed_count > 0
+            
+        except Exception as get_tasks_error:
+            logger.error(f"❌ 하위 태스크 조회 실패: {get_tasks_error}")
+            
+            # FastAPI 실패 시 Django ORM으로 fallback
+            try:
+                from core.models import TaskAssign
+                from datetime import datetime
+                
+                subtasks = TaskAssign.objects.filter(parent_id=parent_task_id)
+                
+                if not subtasks.exists():
+                    logger.info(f"✅ 상위 태스크 {parent_task_id}에 하위 태스크가 없습니다. (Django ORM 조회)")
+                    return True
+                
+                logger.info(f"🔍 Django ORM으로 찾은 하위 태스크 개수: {subtasks.count()}")
+                
+                completed_count = 0
+                for subtask in subtasks:
+                    if subtask.status == '완료':
+                        logger.info(f"⏭️ 하위 태스크 {subtask.task_assign_id}는 이미 완료 상태입니다.")
+                        continue
+                    
+                    old_status = subtask.status
+                    subtask.status = '완료'
+                    
+                    if not subtask.real_end_date:
+                        subtask.real_end_date = datetime.now().date()
+                    
+                    subtask.save()
+                    logger.info(f"✅ 하위 태스크 {subtask.task_assign_id} 완료 처리 성공: {old_status} -> 완료")
+                    completed_count += 1
+                
+                logger.info(f"🎉 하위 태스크 자동 완료 처리 완료 (Django ORM): {completed_count}/{subtasks.count()}개 성공")
+                return completed_count > 0
+                
+            except Exception as orm_error:
+                logger.error(f"❌ Django ORM 하위 태스크 처리도 실패: {orm_error}")
+                return False
+    
+    except Exception as e:
+        logger.error(f"❌ 하위 태스크 자동 완료 처리 중 예상치 못한 오류: {e}")
+        return False
 
 
 

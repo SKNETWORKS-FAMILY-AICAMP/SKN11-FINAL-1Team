@@ -1586,7 +1586,7 @@ setTimeout(() => {
                         // 설명 업데이트
                         const descElement = taskCard.querySelector('.task-desc');
                         if (descElement) {
-                            descElement.textContent = payload.description || '';
+                            descElement.textContent = payload.guideline || '';
                         }
                         
                         // 카드 전체 상태 클래스 업데이트
@@ -1597,6 +1597,39 @@ setTimeout(() => {
                         else if (payload.status === '완료' || payload.status === '완료됨') taskCard.classList.add('done');
                         
                         console.log('✅ 왼쪽 태스크 카드 업데이트 완료');
+                    }
+                    
+                    // 🔥 상위 태스크가 완료되면 하위 태스크들도 업데이트
+                    if (payload.status === '완료' && !currentTask.parent_id) {
+                        console.log('🔥 상위 태스크 완료 - 하위 태스크들 UI 업데이트 시작');
+                        
+                        // 현재 태스크의 하위 태스크들 찾기
+                        const subtaskItems = document.querySelectorAll(`.subtask-item[data-task-id]`);
+                        subtaskItems.forEach(subtaskItem => {
+                            // 하위 태스크가 현재 완료된 상위 태스크에 속하는지 확인
+                            const parentCard = subtaskItem.closest('.task-card');
+                            if (parentCard && parentCard.getAttribute('data-task-id') == currentTask.id) {
+                                // 하위 태스크 상태 뱃지 업데이트
+                                const subtaskStatusBadge = subtaskItem.querySelector('.status-badge');
+                                if (subtaskStatusBadge) {
+                                    subtaskStatusBadge.textContent = '완료';
+                                    subtaskStatusBadge.className = 'status-badge done';
+                                }
+                                
+                                // 하위 태스크 제목에 완료 스타일 적용
+                                const subtaskTitle = subtaskItem.querySelector('.subtask-title');
+                                if (subtaskTitle) {
+                                    subtaskTitle.classList.add('done');
+                                }
+                                
+                                // 하위 태스크 data 속성 업데이트
+                                subtaskItem.setAttribute('data-status', '완료');
+                                
+                                console.log(`✅ 하위 태스크 ${subtaskItem.getAttribute('data-task-id')} UI 업데이트 완료`);
+                            }
+                        });
+                        
+                        console.log('✅ 모든 하위 태스크 UI 업데이트 완료');
                     }
                     
                     // 성공 메시지 표시
