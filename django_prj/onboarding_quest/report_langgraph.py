@@ -266,10 +266,10 @@ class ReportNodes:
                     url_link = f"/mentee/task_list/?mentorship_id={event['mentorship_id']}&open=final_report"
                 
                 # 멘티에게 알림 저장
-                cur.execute("""
-                    INSERT INTO core_alarm (user_id, message, created_at, is_active, url_link)
-                    VALUES (%s, %s, CURRENT_TIMESTAMP, true, %s)
-                """, (event["user_id"], event["message"], url_link))
+                # cur.execute("""
+                #     INSERT INTO core_alarm (user_id, message, created_at, is_active, url_link)
+                #     VALUES (%s, %s, CURRENT_TIMESTAMP, true, %s)
+                # """, (event["user_id"], event["message"], url_link))
                 
                 if event.get("mentor_id"):
                     # 멘토에게도 알림 (같은 URL 사용)
