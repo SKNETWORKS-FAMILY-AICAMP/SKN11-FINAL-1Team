@@ -336,7 +336,9 @@ class ChatBot {
 
         const keyword = match[1];
 
-        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
+        // fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
+        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}&user_id=${encodeURIComponent(user_id)}`)
+
 
 
             .then(res => {

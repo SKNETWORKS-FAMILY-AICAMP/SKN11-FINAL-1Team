@@ -426,18 +426,47 @@ async def get_chat_messages_rag(session_id: int, db: Session = Depends(get_db)):
 
 
 
+# @router.get("/autocomplete", tags=["chat"])
+# async def autocomplete_docs(query: str = "", db: Session = Depends(get_db)):
+#     """문서 이름 자동완성 (original_file_name 기준 검색)"""
+#     docs = (
+#         db.query(Docs)
+#         .filter(Docs.original_file_name.ilike(f"%{query}%"))
+#         .limit(10)
+#         .all()
+#     )
+
+#     print("[📄 DB 검색 결과]", [doc.original_file_name for doc in docs])
+#     return [
+#     {"id": doc.docs_id, "name": doc.original_file_name}
+#     for doc in docs
+# ]
+from sqlalchemy import or_
+
 @router.get("/autocomplete", tags=["chat"])
-async def autocomplete_docs(query: str = "", db: Session = Depends(get_db)):
-    """문서 이름 자동완성 (original_file_name 기준 검색)"""
+async def autocomplete_docs(query: str = "", user_id: int = None, db: Session = Depends(get_db)):
+    """문서 자동완성 (자기 부서 + 공통문서만 검색)"""
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id가 필요합니다")
+
+    user = crud.get_user(db, user_id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+
+    user_dept_id = int(user.department_id or 0)
+
     docs = (
         db.query(Docs)
-        .filter(Docs.original_file_name.ilike(f"%{query}%"))
+        .filter(
+            Docs.original_file_name.ilike(f"%{query}%"),
+            or_(
+                Docs.common_doc.is_(True),
+                Docs.department_id == user_dept_id
+            )
+        )
+        .order_by(Docs.create_time.desc())
         .limit(10)
         .all()
     )
 
-    print("[📄 DB 검색 결과]", [doc.original_file_name for doc in docs])
-    return [
-    {"id": doc.docs_id, "name": doc.original_file_name}
-    for doc in docs
-]
+    return [{"id": doc.docs_id, "name": doc.original_file_name} for doc in docs]
