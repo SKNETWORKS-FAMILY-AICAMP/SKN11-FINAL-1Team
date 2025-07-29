@@ -89,9 +89,7 @@ class ChatBot {
     async loadMessagesFromAPI(sessionId) {
         try {
             // const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/messages/${sessionId}`);
-            // const res = await fetch(`${window.api_base_url}/chat/messages/${sessionId}`);
-            const res = await fetch(`${window.api_base_url}/chat/messages/${sessionId}`);
-
+            const res = await fetch(`${this.apiBaseUrl}/chat/messages/${sessionId}`);
 
             const data = await res.json();
 
@@ -128,8 +126,8 @@ class ChatBot {
 
         try {
             // const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/sessions/${user_id}`);
-            // const res = await fetch(`${window.api_base_url}/chat/sessions/${user_id}`);
-            const res = await fetch(`${window.api_base_url}/chat/sessions/${user_id}`);
+            // const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/messages/${sessionId}`);
+            const res = await fetch(`${this.apiBaseUrl}/chat/sessions/${user_id}`);
 
 
             const data = await res.json();
@@ -562,9 +560,7 @@ class ChatBot {
             });
             
             // const response = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/rag`, {
-            // const response = await fetch(`${window.api_base_url}/chat/rag`, {
-            const response = await fetch(`${window.api_base_url}/chat/rag`, {
-
+            const response = await fetch(`${this.apiBaseUrl}/chat/rag`, {
 
                 method: 'POST',
                 headers: {
@@ -730,9 +726,7 @@ class ChatBot {
     async loadSessionMessages(sessionId) {
         try {
             // const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/messages/${sessionId}`);
-            // const res = await fetch(`${window.api_base_url}/chat/messages/${sessionId}`);
-            const res = await fetch(`${window.api_base_url}/chat/messages/${sessionId}`);
-
+            const res = await fetch(`${this.apiBaseUrl}/chat/messages/${sessionId}`);
 
             const data = await res.json();
 
@@ -835,9 +829,7 @@ class ChatBot {
     async executeDelete() {
         try {
             // const response = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/session/delete`, {
-            // const response = await fetch(`${window.api_base_url}/chat/session/delete`, {
-            const response = await fetch(`${window.api_base_url}/chat/session/delete`, {
-
+            const response = await fetch(`${this.apiBaseUrl}/chat/session/delete`, {
 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -880,9 +872,7 @@ class ChatBot {
 async function createNewSession() {
     try {
         // const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/session/create`, {
-        // const res = await fetch(`${window.api_base_url}/chat/session/create`, {
         const res = await fetch(`${window.api_base_url}/chat/session/create`, {
-
 
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
