@@ -996,10 +996,33 @@ function getCsrfToken() {
     return csrfToken ? csrfToken.value : '';
 }
 
+// document.addEventListener('DOMContentLoaded', function () {
+//     if (!window.chatBot) {
+//         window.chatBot = new ChatBot();  // ✅ 한 번만 실행되도록 보장
+//     }
+// });
+
 document.addEventListener('DOMContentLoaded', function () {
     if (!window.chatBot) {
-        window.chatBot = new ChatBot();  // ✅ 한 번만 실행되도록 보장
+        window.chatBot = new ChatBot();
     }
+
+    // 기존 서버 렌더링된 세션 아이템들에 클릭 이벤트 바인딩
+    const items = document.querySelectorAll('.chatbot-session-item');
+    items.forEach((item) => {
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-session-btn')) return;
+            window.chatBot.selectSession(item);  // ✅ 세션 선택
+        });
+
+        const deleteBtn = item.querySelector('.delete-session-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.chatBot.openDeleteModal(deleteBtn.getAttribute('data-session-id'));
+            });
+        }
+    });
 });
 
 
