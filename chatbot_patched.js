@@ -7,7 +7,7 @@ class ChatBot {
         // DOM 요소들이 존재하는지 확인 후 초기화
         this.chatArea = document.getElementById('chatbot-chat-area');
         this.selectedSessionInput = document.getElementById('selected-session-id');
-        
+
         if (!this.chatArea || !this.selectedSessionInput) {
             console.error('필수 DOM 요소를 찾을 수 없습니다:', {
                 chatArea: !!this.chatArea,
@@ -16,6 +16,7 @@ class ChatBot {
             return;
         }
         this.savedRange = null;
+        this.typingFrameId = null; // 🔥 추가
         this.activeAutocompleteIndex = -1;  // ✅ 추가
         this.deleteModalSessionId = null;
         this.isSubmitting = false;
@@ -336,9 +337,7 @@ class ChatBot {
 
         const keyword = match[1];
 
-        // fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
-        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}&user_id=${encodeURIComponent(user_id)}`)
-
+        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
 
 
             .then(res => {
@@ -426,7 +425,7 @@ class ChatBot {
                 });
 
 
-                
+
                 // 위치 계산
                 const inputRect = this.autocompleteInput.getBoundingClientRect();
                 const parentRect = this.autocompleteInput.offsetParent.getBoundingClientRect();
@@ -459,7 +458,7 @@ class ChatBot {
 
     bindEvents() {
         if (!this.sessionItems) return;
-        
+
         this.sessionItems.forEach((item) => {
             item.addEventListener('click', (e) => {
                 if (e.target.closest('.delete-session-btn')) return;
@@ -553,6 +552,7 @@ class ChatBot {
         this.showLoadingAnimation();
 
         const sessionId = this.selectedSessionInput ? this.selectedSessionInput.value : null;
+        this.typingSessionId = sessionId;  // 🔥 추가
 
         try {
             console.log('📤 최종 fetch 전송 payload:', {
@@ -562,7 +562,7 @@ class ChatBot {
                 user_id: parseInt(user_id),
                 department_id: parseInt(department_id)
             });
-            
+
             // const response = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/rag`, {
             // const response = await fetch(`${window.api_base_url}/chat/rag`, {
             const response = await fetch(`${window.api_base_url}/chat/rag`, {
@@ -649,18 +649,98 @@ class ChatBot {
         this.loadingMessageElement = messageContent;
     }
 
+    // async typeText(element, fullText, speed = 15) {
+    //     const converter = new showdown.Converter({
+    //         simpleLineBreaks: true,
+    //         tables: true
+    //     });
+
+    //     let i = 0;
+    //     let currentText = '';
+    //     const total = fullText.length;
+    //     const start = performance.now();
+
+    //     const loop = (now) => {
+    //         const elapsed = now - start;
+    //         const expectedChars = Math.floor(elapsed / speed);
+
+    //         while (i < expectedChars && i < total) {
+    //             currentText += fullText[i];
+    //             i++;
+    //         }
+
+    //         element.innerHTML = converter.makeHtml(currentText);
+    //         // this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    //         if (!this.userScrolling) {
+    //             this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    //         }
+
+    //         if (i < total) {
+    //             requestAnimationFrame(loop);
+    //         }
+    //     };
+
+    //     requestAnimationFrame(loop);
+    // }
+    // async typeText(element, fullText, speed = 15) {
+    //     const converter = new showdown.Converter({ simpleLineBreaks: true, tables: true });
+
+    //     let i = 0;
+    //     let currentText = '';
+    //     const total = fullText.length;
+    //     const start = performance.now();
+    //     const originalElement = element;
+
+    //     const loop = (now) => {
+    //         // 🔥 1. 이미 다른 세션으로 바뀌어서 element가 DOM에서 제거된 경우 중단
+    //         if (!document.body.contains(originalElement)) {
+    //             console.warn("[❌ 중단] element가 제거됨. 세션 전환 중일 가능성.");
+    //             return;
+    //         }
+
+    //         const elapsed = now - start;
+    //         const expectedChars = Math.floor(elapsed / speed);
+
+    //         while (i < expectedChars && i < total) {
+    //             currentText += fullText[i];
+    //             i++;
+    //         }
+
+    //         element.innerHTML = converter.makeHtml(currentText);
+
+    //         if (!this.userScrolling) {
+    //             this.chatArea.scrollTop = this.chatArea.scrollHeight;
+    //         }
+
+    //         if (i < total) {
+    //             this.typingFrameId = requestAnimationFrame(loop);
+    //         }
+    //     };
+
+    //     this.typingFrameId = requestAnimationFrame(loop);
+    // }
     async typeText(element, fullText, speed = 15) {
-        const converter = new showdown.Converter({
-            simpleLineBreaks: true,
-            tables: true
-        });
+        const converter = new showdown.Converter({ simpleLineBreaks: true, tables: true });
 
         let i = 0;
         let currentText = '';
         const total = fullText.length;
         const start = performance.now();
+        const originalElement = element;
 
         const loop = (now) => {
+            // 🔥 세션 바뀐 경우 중단
+            if (this.typingSessionId !== this.selectedSessionInput.value) {
+                console.warn("[❌ 중단] 세션 전환 감지됨. 출력 중단.");
+                return;
+            }
+
+            // 🔥 DOM 제거된 경우 중단
+            if (!document.body.contains(originalElement)) {
+                console.warn("[❌ 중단] element 제거됨");
+                return;
+            }
+
             const elapsed = now - start;
             const expectedChars = Math.floor(elapsed / speed);
 
@@ -670,18 +750,19 @@ class ChatBot {
             }
 
             element.innerHTML = converter.makeHtml(currentText);
-            // this.chatArea.scrollTop = this.chatArea.scrollHeight;
             if (!this.userScrolling) {
                 this.chatArea.scrollTop = this.chatArea.scrollHeight;
             }
 
             if (i < total) {
-                requestAnimationFrame(loop);
+                this.typingFrameId = requestAnimationFrame(loop);
             }
         };
 
-        requestAnimationFrame(loop);
+        this.typingFrameId = requestAnimationFrame(loop);
     }
+
+
 
 
 
@@ -706,16 +787,35 @@ class ChatBot {
         }
     }
 
+    // handleSessionClick(e, item) {
+    //     if (this.isSubmitting) {
+    //         this.isSubmitting = false;
+    //         this.loadingMessageElement = null;
+
+    //         const loadingRow = this.chatArea.querySelector('.chatbot-msg-row.bot.loading');
+    //         if (loadingRow) loadingRow.remove();
+    //     }
+    //     this.selectSession(item);
+    // }
     handleSessionClick(e, item) {
         if (this.isSubmitting) {
             this.isSubmitting = false;
+
+            // 🔥 typeText 중단
+            if (this.typingFrameId) {
+                cancelAnimationFrame(this.typingFrameId);
+                this.typingFrameId = null;
+            }
+
             this.loadingMessageElement = null;
 
             const loadingRow = this.chatArea.querySelector('.chatbot-msg-row.bot.loading');
             if (loadingRow) loadingRow.remove();
         }
+
         this.selectSession(item);
     }
+
 
     selectSession(item) {
         this.sessionItems.forEach(i => i.classList.remove('selected'));
@@ -764,18 +864,18 @@ class ChatBot {
         }
 
         // ✅ 타입 정규화 및 순서대로 렌더링
-    messages.forEach(message => {
-        // 타입 정규화 처리
-        let messageType = 'bot'; // 기본값
-        if (message.type === 'user') {
-            messageType = 'user';
-        } else if (message.type === 'chatbot' || message.type === 'bot') {
-            messageType = 'bot';
-        }
-        
-        console.log(`렌더링: ${messageType} - ${message.text.substring(0, 50)}...`);
-        this.addMessageToChat(messageType, message.text);
-    });
+        messages.forEach(message => {
+            // 타입 정규화 처리
+            let messageType = 'bot'; // 기본값
+            if (message.type === 'user') {
+                messageType = 'user';
+            } else if (message.type === 'chatbot' || message.type === 'bot') {
+                messageType = 'bot';
+            }
+
+            console.log(`렌더링: ${messageType} - ${message.text.substring(0, 50)}...`);
+            this.addMessageToChat(messageType, message.text);
+        });
 
         // ✅ 항상 아래로 스크롤
         this.chatArea.scrollTop = this.chatArea.scrollHeight;

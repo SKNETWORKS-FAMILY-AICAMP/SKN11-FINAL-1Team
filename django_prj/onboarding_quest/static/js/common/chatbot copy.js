@@ -7,7 +7,7 @@ class ChatBot {
         // DOM 요소들이 존재하는지 확인 후 초기화
         this.chatArea = document.getElementById('chatbot-chat-area');
         this.selectedSessionInput = document.getElementById('selected-session-id');
-        
+
         if (!this.chatArea || !this.selectedSessionInput) {
             console.error('필수 DOM 요소를 찾을 수 없습니다:', {
                 chatArea: !!this.chatArea,
@@ -336,9 +336,7 @@ class ChatBot {
 
         const keyword = match[1];
 
-        // fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
-        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}&user_id=${encodeURIComponent(user_id)}`)
-
+        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
 
 
             .then(res => {
@@ -426,7 +424,7 @@ class ChatBot {
                 });
 
 
-                
+
                 // 위치 계산
                 const inputRect = this.autocompleteInput.getBoundingClientRect();
                 const parentRect = this.autocompleteInput.offsetParent.getBoundingClientRect();
@@ -459,7 +457,7 @@ class ChatBot {
 
     bindEvents() {
         if (!this.sessionItems) return;
-        
+
         this.sessionItems.forEach((item) => {
             item.addEventListener('click', (e) => {
                 if (e.target.closest('.delete-session-btn')) return;
@@ -562,7 +560,7 @@ class ChatBot {
                 user_id: parseInt(user_id),
                 department_id: parseInt(department_id)
             });
-            
+
             // const response = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/rag`, {
             // const response = await fetch(`${window.api_base_url}/chat/rag`, {
             const response = await fetch(`${window.api_base_url}/chat/rag`, {
@@ -764,18 +762,18 @@ class ChatBot {
         }
 
         // ✅ 타입 정규화 및 순서대로 렌더링
-    messages.forEach(message => {
-        // 타입 정규화 처리
-        let messageType = 'bot'; // 기본값
-        if (message.type === 'user') {
-            messageType = 'user';
-        } else if (message.type === 'chatbot' || message.type === 'bot') {
-            messageType = 'bot';
-        }
-        
-        console.log(`렌더링: ${messageType} - ${message.text.substring(0, 50)}...`);
-        this.addMessageToChat(messageType, message.text);
-    });
+        messages.forEach(message => {
+            // 타입 정규화 처리
+            let messageType = 'bot'; // 기본값
+            if (message.type === 'user') {
+                messageType = 'user';
+            } else if (message.type === 'chatbot' || message.type === 'bot') {
+                messageType = 'bot';
+            }
+
+            console.log(`렌더링: ${messageType} - ${message.text.substring(0, 50)}...`);
+            this.addMessageToChat(messageType, message.text);
+        });
 
         // ✅ 항상 아래로 스크롤
         this.chatArea.scrollTop = this.chatArea.scrollHeight;
