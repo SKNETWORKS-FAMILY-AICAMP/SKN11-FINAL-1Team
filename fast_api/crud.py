@@ -632,6 +632,7 @@ def get_task_memos(db: Session, task_assign_id: int):
     """특정 태스크의 메모 목록 조회"""
     return db.query(models.Memo).filter(models.Memo.task_assign_id == task_assign_id).all()
 
+
 def update_task_status(
     db: Session,
     task_id: int,
@@ -643,9 +644,15 @@ def update_task_status(
     scheduled_end_date: str = None
 ):
     db_task = get_task_assign(db, task_id)
-    # 변경 전 우선순위, 날짜
     print(f"DEBUG [crud.update_task_status] Before: priority={db_task.priority}, scheduled_end_date={db_task.scheduled_end_date}")
 
+    # parent_id는 변경하지 않음
+    if status is not None:
+        db_task.status = status
+    if description is not None:
+        db_task.description = description
+    if guideline is not None:
+        db_task.guideline = guideline
     if priority is not None:
         db_task.priority = priority
     if scheduled_start_date:
@@ -662,16 +669,9 @@ def update_task_status(
     db.commit()
     db.refresh(db_task)
 
-    # 변경 후 우선순위 , 날짜 출력 
     print(f"DEBUG [crud.update_task_status] After: priority={db_task.priority}, scheduled_end_date={db_task.scheduled_end_date}")
     return db_task
 
-
-
-    
-    db.commit()
-    db.refresh(db_task)
-    return db_task
 
 
 def add_task_memo(db: Session, task_assign_id: int, comment: str, user_id: Optional[int] = None):

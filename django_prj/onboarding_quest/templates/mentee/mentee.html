@@ -332,7 +332,7 @@ body, html {
                 <div class="kanban-card-row">
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
-                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+                <div class="kanban-desc">{{ task.guideline|default:'' }}</div>
               </div>
             {% endfor %}
           </div>
@@ -368,7 +368,7 @@ body, html {
                 <div class="kanban-card-row">
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
-                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+                <div class="kanban-desc">{{ task.guideline|default:'' }}</div>
               </div>
             {% endfor %}
           </div>
@@ -404,7 +404,7 @@ body, html {
                 <div class="kanban-card-row">
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
-                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+                <div class="kanban-desc">{{ task.guideline|default:'' }}</div>
               </div>
             {% endfor %}
           </div>
@@ -440,7 +440,7 @@ body, html {
                 <div class="kanban-card-row">
                   <span class="kanban-title">{{ task.title|default:'제목 없음' }}</span>
                 </div>
-                <div class="kanban-desc">{{ task.description|default:'설명이 없습니다.' }}</div>
+                <div class="kanban-desc">{{ task.guideline|default:'' }}</div>
               </div>
             {% endfor %}
           </div>
