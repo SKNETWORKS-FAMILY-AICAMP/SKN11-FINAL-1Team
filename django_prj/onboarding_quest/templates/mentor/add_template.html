@@ -369,7 +369,7 @@
 위와 같은 형태로 주차별 커리큘럼을 입력해주세요."></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 8px; align-items: center;">
           <small style="color: #666; font-size: 12px; margin-right: 10px;">
-            💡 AI 생성은 시간이 걸릴 수 있습니다 (최대 1분)
+            💡 AI 생성은 시간이 걸릴 수 있습니다 (완료까지 대기)
           </small>
           <button type="button" class="template-btn" id="generate-task-btn" style="margin-top: 12px; padding: 8px 24px; font-size: 14px; background: #2196f3; color: white;">
             <span class="btn-text">✨AI 세부 Task 생성</span>
@@ -594,13 +594,7 @@ document.addEventListener('DOMContentLoaded', function() {
     this.disabled = true;
     
     try {
-      // AbortController를 사용하여 타임아웃 설정 (60초)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, 60000); // 60초 타임아웃
-
-      showMessage('AI가 Task를 생성하고 있습니다. 최대 1분 정도 소요될 수 있습니다...', 'success');
+      showMessage('AI가 Task를 생성하고 있습니다. 완료까지 시간이 걸릴 수 있으니 잠시만 기다려주세요...', 'success');
       
       // API 호출하여 세부 Task 생성 - FastAPI로 직접 요청
       const response = await fetch('{{ FASTAPI_BASE_URL }}/api/tasks/generate_tasks_from_draft/', {
@@ -614,12 +608,8 @@ document.addEventListener('DOMContentLoaded', function() {
           job_role: '신입사원',
           weeks: 12,
           goal: '신입사원의 성공적인 온보딩과 조직 적응'
-        }),
-        signal: controller.signal
+        })
       });
-
-      // 타임아웃 타이머 해제
-      clearTimeout(timeoutId);
 
       // 응답 상태 체크
       if (!response.ok) {
@@ -679,9 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // 구체적인 오류 메시지 제공
       let errorMessage = '';
-      if (error.name === 'AbortError') {
-        errorMessage = '요청 시간이 초과되었습니다. 다시 시도해주세요.';
-      } else if (error.message.includes('Failed to fetch') || error.message.includes('ERR_EMPTY_RESPONSE')) {
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_EMPTY_RESPONSE')) {
         errorMessage = 'FastAPI 서버와의 연결에 실패했습니다. 서버가 실행 중인지 확인해주세요.';
       } else if (error.message.includes('NetworkError')) {
         errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
