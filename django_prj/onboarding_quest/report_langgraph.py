@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime, date
 from dotenv import load_dotenv
 from openai import OpenAI
-from typing import Tuple
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langgraph.graph import StateGraph, END
@@ -60,9 +59,8 @@ class ComprehensiveReportData:
     all_tasks: List[TaskInfo]
     overall_stats: Dict
 
-
 # ✅ 노드 정의
-class ReportAgent:
+class ReportNodes:
     def check_completion(self, state: GraphState) -> GraphState:
         """온보딩 완료 여부 확인하는 노드"""
         print(f"check_completion() 실행 시작 : user_id={state.get('user_id')}")
@@ -122,331 +120,231 @@ class ReportAgent:
         return state
     
     
-    def __init__(self, db_config: dict = None):
-        self.db_config = db_config or DB_CONFIG
-        self.llm = llm
 
-    def get_connection(self) -> psycopg2.extensions.connection:
-        conn = psycopg2.connect(**self.db_config)
-        return conn
-
-    def get_user_tasks(self, user_id: int) -> List[Tuple[int, str]]:
-        with self.get_connection() as conn:
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute("""
-                SELECT DISTINCT ta.task_assign_id, ta.title
-                FROM core_taskassign ta
-                JOIN core_mentorship m ON ta.mentorship_id_id = m.mentorship_id
-                WHERE m.mentee_id = %s OR m.mentor_id = %s
-                ORDER BY ta.task_assign_id
-            """, (user_id, user_id))
-            return [(row['task_assign_id'], row['title']) for row in cur.fetchall()]
-
-    def fetch_single_task_data(self, task_id: int) -> Optional[TaskInfo]:
-        with self.get_connection() as conn:
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute("""
-                SELECT ta.*, 
-                       CONCAT(u_mentee.last_name, u_mentee.first_name) as mentee_name, 
-                       CONCAT(u_mentor.last_name, u_mentor.first_name) as mentor_name
-                FROM core_taskassign ta
-                JOIN core_mentorship m ON ta.mentorship_id_id = m.mentorship_id
-                JOIN core_user u_mentee ON m.mentee_id = u_mentee.user_id
-                JOIN core_user u_mentor ON m.mentor_id = u_mentor.user_id
-                WHERE ta.task_assign_id = %s
-            """, (task_id,))
-            task_row = cur.fetchone()
-            if not task_row:
-                return None
-
-            # 하위 태스크들과 메모, 리뷰 조회
-            cur.execute("""
-                SELECT s.task_assign_id, s.title, s.description, s.guideline,
-                       s.scheduled_start_date, s.status
-                FROM core_taskassign s
-                WHERE s.parent_id = %s
-                ORDER BY s.task_assign_id
-            """, (task_id,))
-
-            subtasks = []
-            for row in cur.fetchall():
-                # 각 서브태스크의 메모 조회
-                cur.execute("""
-                    SELECT comment FROM core_memo
-                    WHERE task_assign_id = %s
-                    ORDER BY create_date
-                """, (row['task_assign_id'],))
-                memos = [memo['comment'] for memo in cur.fetchall()]
-
-                subtasks.append({
-                    'subtask_id': row['task_assign_id'],
-                    'title': row['title'],
-                    'guide': row['guideline'],
-                    'date': str(row['scheduled_start_date']) if row['scheduled_start_date'] else '',
-                    'content': row['description'] or '',
-                    'status': row['status'],
-                    'memos': memos,
-                    'reviews': [],  # 리뷰 시스템이 없으므로 빈 배열
-                })
-
-            # 태스크 레벨 메모 조회
-            cur.execute("""
-                SELECT comment, create_date FROM core_memo
-                WHERE task_assign_id = %s
-                ORDER BY create_date
-            """, (task_id,))
-            task_memos = [{'content': r['comment'], 'date': str(r['create_date'])} for r in cur.fetchall()]
-
-            # 태스크 레벨 리뷰는 별도 테이블이 없으므로 빈 배열
-            task_reviews = []
-
-            return TaskInfo(
-                task_id=task_row['task_assign_id'],
-                title=task_row['title'],
-                guide=task_row['guideline'] or '',
-                date=str(task_row['scheduled_start_date']) if task_row['scheduled_start_date'] else '',
-                content=task_row['description'] or '',
-                mentor_name=task_row['mentor_name'],
-                subtasks=subtasks,
-                task_memos=task_memos,
-                task_reviews=task_reviews
-            )
-
-    def fetch_comprehensive_data(self, user_id: int) -> Optional[ComprehensiveReportData]:
-        with self.get_connection() as conn:
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute("SELECT first_name, last_name, role FROM core_user WHERE user_id = %s", (user_id,))
-            user_row = cur.fetchone()
-
-            if not user_row:
-                return None
-
-            full_name = f"{user_row['last_name']}{user_row['first_name']}"
-            task_list = self.get_user_tasks(user_id)
-            all_tasks = []
-            total_tasks, total_subtasks, completed_subtasks = len(task_list), 0, 0
-
-
-            for task_id, _ in task_list:
-                task_info = self.fetch_single_task_data(task_id)
-                if task_info:
-                    all_tasks.append(task_info)
-                    total_subtasks += len(task_info.subtasks)
-                    completed_subtasks += len([s for s in task_info.subtasks if s['status'] == '완료'])
-
-
-            overall_stats = {
-                'total_tasks': total_tasks,
-                'total_subtasks': total_subtasks,
-                'completed_subtasks': completed_subtasks,
-                'completion_rate': (completed_subtasks / total_subtasks * 100) if total_subtasks > 0 else 0,
-            }
-
-            return ComprehensiveReportData(
-                user_name=full_name,
-                user_role=user_row['role'],
-                all_tasks=all_tasks,
-                overall_stats=overall_stats
-            )
-        
-    def generate_comprehensive_report_prompt(self, report_data: ComprehensiveReportData) -> str:
-            """전체 종합 리포트 생성을 위한 프롬프트 생성"""
-            prompt = f"""
-                다음 정보를 바탕으로 "{report_data.user_name}" 사용자의 전체 학습 과정에 대한 종합 리포트를 생성해주세요.
-
-                === 학습자 기본 정보 ===
-                - 멘티: {report_data.user_name} ({report_data.user_role})
-                - 총 과제 수: {report_data.overall_stats['total_tasks']}개
-                - 총 하위 과제 수: {report_data.overall_stats['total_subtasks']}개
-                - 완료된 하위 과제: {report_data.overall_stats['completed_subtasks']}개
-
-                === 상위 과제별 상세 정보 ===
-                """
-            
-            for i, task in enumerate(report_data.all_tasks, 1):
-                # 해당 과제의 점수 추출
-                task_score = 0
-                for review in task.task_reviews:
-                    if review['score']:
-                        task_score = review['score']
-                        break
-                
-                prompt += f"""
-                [상위 과제 {i}] {task.title}
-                - 과제 날짜: {task.date}
-                - 담당 멘토: {task.mentor_name}
-                - 과제 가이드: {task.guide}
-                - 과제 상세 내용: {task.content}
-
-                하위 과제 상세 정보:
-                """
-                
-                for j, subtask in enumerate(task.subtasks, 1):
-                    status = "완료" if subtask['content'] else "미완료"
-                    prompt += f"""  [{j}] {subtask['title']} ({status})
-        - 가이드: {subtask['guide']}
-        - 제출일: {subtask['date']}
-        - 제출 내용: {subtask['content'][:200]}{'...' if len(subtask['content']) > 200 else ''}
-    """
-                    
-                    # 하위 과제별 피드백 정보
-                    if subtask['memos']:
-                        prompt += f"     - 메모: {'; '.join(subtask['memos'])}\n"
-                    if subtask['reviews']:
-                        prompt += f"     - 리뷰: {'; '.join(subtask['reviews'])}\n"
-                
-                # 상위 과제 전체 피드백
-                if task.task_memos:
-                    prompt += f"\n상위 과제 멘토 피드백:\n"
-                    for memo in task.task_memos:
-                        prompt += f"- {memo['content']} ({memo['date']})\n"
-                
-                if task.task_reviews:
-                    prompt += f"\n상위 과제 리뷰봇 평가:\n"
-                    for review in task.task_reviews:
-                        prompt += f"- {review['content']} (점수: {review['score']}, {review['date']})\n"
-                
-                prompt += "\n" + "="*50 + "\n"
-            
-            prompt += f"""
-            === 종합 요청사항 ===
-            위의 모든 상위 과제와 하위 과제 정보를 바탕으로 다음 구조의 종합 리포트를 작성해주세요:
-
-            1. **전체 학습 여정 종합 분석**
-            - 모든 과제를 통해 학습한 핵심 기술과 개념
-            - 과제 간 연계성과 점진적 발전 과정
-            - 학습 목표 달성도 평가
-
-            2. **핵심 성취 및 우수 성과**
-            - 각 상위/하위 과제에서 보여준 뛰어난 성과
-            - 지속적으로 나타나는 강점과 역량
-            - 특별히 성장이 뚜렷한 영역
-
-            3. **개선 필요 영역 및 보완점**
-            - 여러 과제에서 반복적으로 나타나는 어려움
-            - 기술적/학습적 보완이 필요한 부분
-            - 학습 방법론상의 개선 방향
-
-            4. **과제별 핵심 학습 성과 요약**
-            - 각 상위 과제의 주요 학습 성과
-            - 하위 과제를 통한 세부 역량 발전
-            - 과제 수행 과정에서의 성장 포인트
-
-            5. **종합 평가 및 미래 학습 로드맵**
-            - 전체 학습 과정에 대한 종합 평가
-            - 현재 수준에서의 강점과 약점 분석
-            - 다음 단계 학습 방향 제시
-            - 장기적 커리어 발전을 위한 추천 사항
-
-            리포트는 학습자의 노력을 인정하고 격려하는 톤으로, 구체적인 근거와 함께 건설적인 피드백을 제공해주세요.
-            모든 상위 과제와 하위 과제의 내용을 균형 있게 반영하여 종합적인 분석을 진행해주세요.
-            """
-            return prompt
-    
-    def generate_comprehensive_report(self, user_id: int) -> Optional[str]:
-        """전체 종합 리포트 생성 메인 함수"""
-        print(f"사용자 {user_id}의 전체 학습 데이터 조회 중...")
-        
-        # 전체 데이터 조회
-        report_data = self.fetch_comprehensive_data(user_id)
-        if not report_data:
-            print("사용자 데이터를 찾을 수 없습니다.")
-            return None
-        
-        print(f"총 {len(report_data.all_tasks)}개 과제 데이터 로드 완료")
-
-        # 프롬프트 생성
-        prompt = self.generate_comprehensive_report_prompt(report_data)
-        
-        print("AI 종합 리포트 생성 중...")
-        
-        # LLM을 통한 종합 리포트 생성
-        messages = [
-            SystemMessage(content="""당신은 멘티의 전체 학습 과정을 분석하고 종합적인 피드백을 제공하는 교육 전문가입니다. 
-            모든 상위 과제와 하위 과제의 내용을 면밀히 분석하여 학습자의 성장 과정을 정확히 파악하고, 
-            구체적이고 실용적인 피드백을 제공해주세요. 그리고 태스크 수행 내용이 부족하거나 미흡한 부분은 객관적으로 지적하고, 개선 방향을 구체적으로 제시해주세요. 
-            **각 항목(1~4번)은 최소 400자 이상 작성하여, 전체 글자 수가 2000자 이상이 되도록 해주세요.** """),
-            HumanMessage(content=prompt)
-        ]
-        
-        try:
-            response = self.llm.invoke(messages)
-            return response.content
-        except Exception as e:
-            print(f"리포트 생성 중 오류 발생: {e}")
-            return None
-        
-    def get_user_stats(self, user_id: int) -> Optional[Dict]:
-        report_data = self.fetch_comprehensive_data(user_id)
-        if not report_data:
-            return None
-        return {
-            'user_name': report_data.user_name,
-            'user_role': report_data.user_role,
-            'stats': report_data.overall_stats,
-            'task_count': len(report_data.all_tasks)
-        }    
-
-    def generate_comprehensive_report_node(self, state: dict) -> dict:
+    def generate_report(self, state: GraphState) -> GraphState:
+        """보고서 생성 노드"""
         user_id = state.get("user_id")
+        print(f"generate_report() 실행 시작 - user_id: {user_id}")
         if not user_id:
             return state
 
-        report = self.generate_comprehensive_report(user_id)
-        if not report:
-            return state
-
         try:
-            with self.get_connection() as conn:
-                cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            conn = psycopg2.connect(**DB_CONFIG)
+            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            
+            # 사용자 정보 조회 - 멘토십 정보와 함께
+            cur.execute("""
+                SELECT 
+                    u.first_name, u.last_name, u.role,
+                    m.mentorship_id, m.mentor_id, m.is_active,
+                    mentor.email as mentor_email,
+                    mentor.first_name as mentor_first_name,
+                    mentor.last_name as mentor_last_name
+                FROM core_user u
+                JOIN core_mentorship m ON u.user_id = m.mentee_id
+                JOIN core_user mentor ON mentor.user_id = m.mentor_id
+                WHERE u.user_id = %s
+                ORDER BY m.is_active DESC
+                LIMIT 1
+            """, (user_id,))
+            user_row = cur.fetchone()
+            
+            if not user_row:
+                print("❌ 사용자 정보를 찾을 수 없습니다.")
+                return state
+            
+            print(f"✅ 사용자 정보 조회 성공: {user_row['first_name']}{user_row['last_name']}")
+            print(f"✅ 멘토 정보: {user_row['mentor_last_name']}{user_row['mentor_first_name']} ({user_row['mentor_email']})")
+            
+            # 태스크 정보 조회
+            cur.execute("""
+                SELECT ta.task_assign_id, ta.title, ta.description, ta.status,
+                       ta.scheduled_start_date, ta.scheduled_end_date,
+                       ta.real_start_date, ta.real_end_date
+                FROM core_taskassign ta
+                WHERE ta.mentorship_id_id = %s AND ta.parent_id IS NULL
+                ORDER BY ta.task_assign_id
+            """, (user_row['mentorship_id'],))
+            tasks = cur.fetchall()
+            
+            # 보고서 생성을 위한 데이터 구성
+            # report_tasks = []
+            # for task in tasks:
+            #     task_data = {
+            #         'mentee_name': f"{user_row['last_name']}{user_row['first_name']}",
+            #         'role': user_row['role'],
+            #         'mentor_name': f"{user_row['mentor_last_name']}{user_row['mentor_first_name']}",
+            #         'tasks': [{
+            #             'id': task['task_assign_id'],
+            #             'title': task['title'],
+            #             'description': task['description'],
+            #             'status': task['status'],
+            #             'start_date': task['scheduled_start_date'],
+            #             'end_date': task['scheduled_end_date'],
+            #             'real_start_date': task['real_start_date'],
+            #             'real_end_date': task['real_end_date'],
+            #             'memos': [],
+            #             'reviews': [],
+            #             'subtasks': []
+            #         } for task in tasks]
+            #     }
 
-                # 멘티 이름 조회
+            report_tasks = []
+            for task in tasks:
+                task_data = {
+                    'id': task['task_assign_id'],
+                    'title': task['title'],
+                    'description': task['description'],
+                    'status': task['status'],
+                    'start_date': task['scheduled_start_date'],
+                    'end_date': task['scheduled_end_date'],
+                    'real_start_date': task['real_start_date'],
+                    'real_end_date': task['real_end_date'],
+                    'memos': [],
+                    'reviews': [],
+                    'subtasks': []
+                }
+                # 이후 task_data에 memos, reviews, subtasks를 채움
+                report_tasks.append(task_data)
+                
+                # 메모(댓글)
                 cur.execute("""
-                    SELECT first_name, last_name 
-                    FROM core_user 
-                    WHERE user_id = %s
-                """, (user_id,))
-                user_row = cur.fetchone()
-                mentee_name = f"{user_row['last_name']}{user_row['first_name']}" if user_row else f"사용자 {user_id}"
+                    SELECT comment, create_date, user_id 
+                    FROM core_memo
+                    WHERE task_assign_id = %s
+                    ORDER BY create_date
+                """, (task['task_assign_id'],))
+                memos = cur.fetchall()
+                task_data['memos'] = [{'comment': m['comment'], 'date': m['create_date']} for m in memos]
+                task_data['reviews'] = [{'content': m['comment'], 'date': m['create_date']} for m in memos if m['user_id'] is None]
 
-                # 멘토 정보 조회
+                # 하위태스크
                 cur.execute("""
-                    SELECT m.mentor_id, u.email
-                    FROM core_mentorship m
-                    JOIN core_user u ON m.mentor_id = u.user_id
-                    WHERE m.mentee_id = %s
-                    ORDER BY m.is_active DESC
-                    LIMIT 1
-                """, (user_id,))
-                mentor_info = cur.fetchone()
+                    SELECT st.task_assign_id, st.title, st.description, st.status,
+                           st.scheduled_start_date, st.scheduled_end_date,
+                           st.real_start_date, st.real_end_date
+                    FROM core_taskassign st
+                    WHERE st.parent_id = %s
+                    ORDER BY st.task_assign_id
+                """, (task['task_assign_id'],))
+                subtasks = cur.fetchall()
 
-                mentor_id = mentor_info['mentor_id'] if mentor_info else None
-                mentor_email = mentor_info['email'] if mentor_info else None
+                for sub in subtasks:
+                    sub_data = {
+                        'id': sub['task_assign_id'],
+                        'title': sub['title'],
+                        'description': sub['description'],
+                        'status': sub['status'],
+                        'start_date': sub['scheduled_start_date'],
+                        'end_date': sub['scheduled_end_date'],
+                        'real_start_date': sub['real_start_date'],
+                        'real_end_date': sub['real_end_date'],
+                        'memos': []
+                    }
+                    cur.execute("""
+                        SELECT comment, create_date FROM core_memo
+                        WHERE task_assign_id = %s
+                        ORDER BY create_date
+                    """, (sub['task_assign_id'],))
+                    sub_memos = cur.fetchall()
+                    sub_data['memos'] = [{'comment': sm['comment'], 'date': sm['create_date']} for sm in sub_memos]
+                    task_data['subtasks'].append(sub_data)
 
-                cur.execute("""
-                    UPDATE core_mentorship SET report = %s WHERE mentee_id = %s
-                """, (report, user_id))
-                conn.commit()
-            print("✅ 리포트 DB 저장 완료")
+                report_tasks.append(task_data)
+
+            report_data = {
+                'mentee_name': f"{user_row['last_name']}{user_row['first_name']}",
+                'role': user_row['role'],
+                'mentor_name': f"{user_row['mentor_last_name']}{user_row['mentor_first_name']}",
+                'tasks': report_tasks
+            }
+
+            def format_task_info(tasks):
+                lines = []
+                for t in tasks:
+                    lines.append(f"- {t['title']} ({t['status']})")
+                    if t['memos']:
+                        lines.append(f"  메모: {'; '.join([m['comment'] for m in t['memos']])}")
+                    if t['reviews']:
+                        lines.append(f"  리뷰: {'; '.join([r['content'] for r in t['reviews']])}")
+                    for s in t['subtasks']:
+                        lines.append(f"   · 하위태스크: {s['title']} ({s['status']})")
+                        if s['memos']:
+                            lines.append(f"     메모: {'; '.join([m['comment'] for m in s['memos']])}")
+                return "\n".join(lines)
+
+            
+            # GPT를 사용한 보고서 생성
+            prompt = f"""
+            다음 정보를 바탕으로 멘티의 온보딩 최종 평가 보고서를 작성해주세요.
+
+            **작성 지침:**
+            1. 보고서는 서두 문구(예: "~를 작성하겠습니다") 없이 1번 항목부터 바로 시작할 것.
+            2. 모든 문장은 존칭형으로 작성할 것. ('~했다' 대신 '~했습니다', '~하였다' 대신 '~하였습니다' 사용)
+            3. 마크다운 문법(##, **, - 등)은 쓰지 말고 평문으로 작성할 것.
+            4. HR 평가자가 참고할 수 있도록 업무 성실도, 문제 해결 능력, 협업 태도, 자기 주도성, 시간 관리 능력 등을 구체적으로 평가할 것.
+            5. 태스크 수행 내용이 부족하거나 미흡한 부분은 객관적으로 지적하고, 개선 방향을 구체적으로 제시할 것.
+            6. 태스크 수행 과정에서 나타난 강점(예: 주도성, 학습 속도, 협업 능력 등)은 실제 사례를 들어 설명할 것.
+            7. 문장 간 자연스러운 흐름을 위해 접속사(예: 또한, 더 나아가, 이에 따라, 결과적으로 등)와 전환 문구(예: 이 과정에서, 특히, 한편)를 활용할 것.
+            8. 같은 의미의 단어 반복을 피하고, 대명사와 유사 표현을 적절히 사용하여 문장을 부드럽게 이어갈 것.
+            9. 항목 간 자연스러운 연결을 위해 '먼저', '다음으로', '마지막으로' 등 순서 표현을 적극 활용할 것.
+            10. 각 항목(1~4번)은 최소 500자 이상 작성하며, 전체 글자 수는 2000자 이상이 되도록 할 것.
+
+            **항목별 작성 가이드:**
+            1) 전체 온보딩 과정 요약: 온보딩 기간 동안 수행한 주요 태스크와 진행 과정을 체계적으로 요약.
+            2) 주요 성과 및 습득 역량: 멘티가 얻은 기술적 역량, 협업 능력, 문제 해결 능력 등을 구체적으로 기술.
+            3) 개선 필요 사항: 부족한 부분과 향후 개선 방향을 구체적으로 제안.
+            4) 종합 평가: 멘티의 전반적인 평가와 성장 가능성을 평가자의 시각에서 종합적으로 서술. (1번 요약 내용 반복 금지)
+
+            멘티 정보:
+            이름: {report_data['mentee_name']}
+            역할: {report_data['role']}
+            담당 멘토: {report_data['mentor_name']}
+
+            수행한 태스크:
+            {chr(10).join([
+                f"- {t['title']}: {t['status']}" +
+                (f" (시작: {t['real_start_date']}, 완료: {t['real_end_date']})" if t['real_end_date'] else "")
+                for t in report_data['tasks']
+            ])}
+
+            위 정보를 바탕으로 HR팀이 참고할 수 있는 실무적 최종 평가 보고서를 작성하세요.
+            """
+
+
+            
+            report = llm.invoke(prompt).content
+            
+            # 보고서 저장
+            cur.execute("""
+                UPDATE core_mentorship 
+                SET report = %s 
+                WHERE mentorship_id = %s
+            """, (report, user_row['mentorship_id']))
+            conn.commit()
+            
+            # 알림 이벤트 생성
+            alarm_events = state.get("alarm_events", [])
+            alarm_events.append({
+                "event_type": "final_report_ready",
+                "user_id": user_id,
+                "mentor_id": user_row['mentor_id'],
+                "mentor_email": user_row['mentor_email'],
+                "mentorship_id": user_row['mentorship_id'],
+                "message": f"{report_data['mentee_name']} 멘티의 최종 평가 보고서가 생성되었습니다."
+            })
+            
+            conn.close()
+            
+            return {
+                **state,
+                "report_generated_ids": state.get("report_generated_ids", []) + [user_id],
+                "alarm_events": alarm_events
+            }
+            
         except Exception as e:
-            print(f"❌ 리포트 저장 실패: {e}")
-            mentor_id, mentor_email, mentee_name = None, None, f"사용자 {user_id}"
-
-        alarm_events = state.get("alarm_events", [])
-        alarm_events.append({
-            "event_type": "final_report_ready",
-            "user_id": user_id,
-            "mentor_id": mentor_id,
-            "mentor_email": mentor_email,
-            "message": f"{mentee_name} 멘티의 최종 평가 보고서가 생성되었습니다. 확인해 주세요."
-        })
-
-        return {
-            **state,
-            "report_generated_ids": state.get("report_generated_ids", []) + [user_id],
-            "alarm_events": alarm_events
-        }
-
+            print(f"❌ 보고서 생성 실패: {e}")
+            return state
 
     def send_alarm(self, state: GraphState) -> GraphState:
         """알림 발송 노드"""
@@ -639,12 +537,12 @@ class ReportAgent:
 
 # ✅ 그래프 구성
 def create_report_graph():
-    nodes = ReportAgent()
+    nodes = ReportNodes()
     builder = StateGraph(GraphState)
     
     # 노드 추가
     builder.add_node("check_completion", nodes.check_completion)
-    builder.add_node("generate_report", nodes.generate_comprehensive_report_node)
+    builder.add_node("generate_report", nodes.generate_report)
     builder.add_node("send_alarm", nodes.send_alarm)
     builder.add_node("send_email", nodes.send_email)
     
