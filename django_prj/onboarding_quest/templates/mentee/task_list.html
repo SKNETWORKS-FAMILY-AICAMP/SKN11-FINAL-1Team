@@ -4,12 +4,37 @@
 {% block title %}태스크 목록 페이지{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/common/mentee_task_list.css' %}">
+<style>
+    /* 로딩 스피너 스타일 */
+    .loading-spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #1976d2;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 6px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+        display: inline-flex;
+        align-items: center;
+        font-size: 15px;
+    }
+</style>
 {% endblock %}
 {% block content %}
 
 <script>
     // 사용자 역할(멘토/멘티)을 JS 변수로 전달
-    window.userRole = "{{ user.role }}";  // "mentor" 또는 "mentee"
+    window.userRole = "{{ user_role|default:user.role }}";  // "mentor" 또는 "mentee"
+    window.currentUserId = {{ user.user_id|default:'null' }};  // 현재 사용자 ID
 
     const finalReport = "{{ final_report|default_if_none:''|escapejs }}";
 </script>
@@ -190,9 +215,9 @@
       <div id="chat-messages" style="padding:12px; margin-bottom:12px; background:#fafafa; border:none; border-radius:8px;">
         <!-- 메모 목록이 여기 표시됩니다 -->
       </div>
-      <div class="chat-input-row" style="display:flex; align-items:center;">
-        <input type="text" class="chat-input" id="chat-input" placeholder="댓글을 입력하세요..." style="flex:1; padding:10px; border:1px solid #ccc; border-radius:6px 0 0 6px; font-size:14px;">
-        <button class="chat-send-btn" id="chat-send-btn" style="background:#1976d2; color:#ffffff; font-weight:bold; border:none; border-radius:8px; padding:5px 11px; font-size:15px; cursor:pointer;">등록</button>
+      <div class="chat-input-row" style="display:flex; align-items:flex-end; background:#fafafa; padding:12px; border-radius:8px; gap:8px;">
+        <textarea class="chat-input" id="chat-input" placeholder="댓글을 입력하세요" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:14px; resize:vertical; min-height:42px; max-height:120px; font-family:inherit; background:white;"></textarea>
+        <button class="chat-send-btn" id="chat-send-btn" style="background:#1976d2; color:#ffffff; font-weight:bold; border:none; border-radius:6px; padding:11px 15px; font-size:15px; cursor:pointer; height:42px; min-width:60px;">등록</button>
       </div>
     </div>
   </div>
@@ -773,18 +798,16 @@ function updateMemoList(memos) {
     messagesContainer.innerHTML = '';
     
     if (Array.isArray(memos) && memos.length > 0) {
-    // 날짜 기준 오래된 순서로 정렬
+        // 날짜 기준 오래된 순서로 정렬
         memos.sort((a, b) => new Date(a.create_date) - new Date(b.create_date));
+        
+        // 현재 사용자 정보 (전역 변수에서 가져오기)
+        const currentUserId = getCurrentUserId();
+        
         memos.forEach(memo => {
             const memoElement = document.createElement('div');
             memoElement.className = 'memo-item';
-            memoElement.style.cssText = `
-            margin-bottom: 16px;       /* 댓글 간격 증가 */
-            padding: 16px 20px;        /* 내부 여백을 더 크게 */
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        `;
+            memoElement.setAttribute('data-memo-id', memo.id || memo.memo_id);
             
             // 작성자, 생성시간, 내용 분리해서 표시
             let displayUser = '🤖 리뷰 에이전트';
@@ -820,13 +843,15 @@ function updateMemoList(memos) {
             }
             
             displayComment = memo.comment || '';
-            console.log('🔍 메모 데이터:', { user: memo.user, create_date: memo.create_date, comment: memo.comment });
             
             // 리뷰 에이전트인 경우 다른 스타일 적용
             const isReviewAgent = !memo.user || memo.user === null;
-            const userColor = isReviewAgent ? '#ff6b35' : '#1976d2';  // 주황색 vs 파란색
-            const backgroundColor = isReviewAgent ? '#fff3f0' : 'white';  // 연한 주황 vs 흰색
+            const userColor = isReviewAgent ? '#ff6b35' : '#1976d2';
+            const backgroundColor = isReviewAgent ? '#fff3f0' : 'white';
             const borderLeft = isReviewAgent ? '4px solid #ff6b35' : 'none';
+            
+            // 현재 사용자가 작성한 메모인지 확인 (수정/삭제 권한)
+            const canEdit = memo.user_id && currentUserId && memo.user_id == currentUserId;
             
             memoElement.style.cssText = `
                 margin-bottom: 16px;
@@ -835,15 +860,28 @@ function updateMemoList(memos) {
                 border-radius: 8px;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                 border-left: ${borderLeft};
+                position: relative;
             `;
+            
+            // 수정/삭제 액션 HTML (권한이 있는 경우에만)
+            const actionText = canEdit ? `
+                <div class="memo-actions" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; text-align: right;">
+                    <span onclick="editMemo('${memo.id || memo.memo_id}', '${displayComment.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" 
+                          style="color: #4CAF50; cursor: pointer; font-size: 12px; margin-right: 8px; text-decoration: underline;">수정</span>
+                    <span onclick="deleteMemo('${memo.id || memo.memo_id}')" 
+                          style="color: #f44336; cursor: pointer; font-size: 12px; text-decoration: underline;">삭제</span>
+                </div>
+            ` : '';
             
             memoElement.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-weight: bold; color: ${userColor}; font-size: 15px;">${displayUser}</span>
                     <span style="color: #888; font-size: 13px;">${displayDate}</span>
                 </div>
-                <div style="color: #222; font-size: 15px; line-height: 1.6; margin-top: 2px; white-space: pre-wrap;">${displayComment}</div>
+                <div class="memo-content" style="color: #222; font-size: 15px; line-height: 1.6; margin-top: 2px; white-space: pre-wrap;">${displayComment}</div>
+                ${actionText}
             `;
+            
             messagesContainer.appendChild(memoElement);
         });
         
@@ -851,7 +889,7 @@ function updateMemoList(memos) {
     } else {
         messagesContainer.innerHTML = `
             <div style="text-align: center; color: #999; font-style: italic; padding: 20px;">
-                아직 메모가 없습니다.
+                아직 댓글이 없습니다.
             </div>
         `;
     }
@@ -881,7 +919,7 @@ async function sendMessage() {
         // 로딩 상태
         const sendBtn = document.getElementById('chat-send-btn');
         const originalText = sendBtn.innerHTML;
-        sendBtn.innerHTML = '<span style="font-size:15px;">전송중...</span>';
+        sendBtn.innerHTML = '<span class="loading-text"><span class="loading-spinner"></span>등록중</span>';
         sendBtn.disabled = true;
         chatInput.disabled = true;
         
@@ -1195,8 +1233,8 @@ async function createSubtask() {
     try {
         // 로딩 상태
         const createBtn = document.getElementById('subtask-create-btn');
-        const originalText = createBtn.textContent;
-        createBtn.textContent = '생성 중...';
+        const originalText = createBtn.innerHTML;
+        createBtn.innerHTML = '<span class="loading-text"><span class="loading-spinner"></span>생성 중</span>';
         createBtn.disabled = true;
         
         // 멘토십 ID를 URL에서 직접 가져오기 
@@ -1268,7 +1306,7 @@ async function createSubtask() {
     } finally {
         // 로딩 상태 해제
         const createBtn = document.getElementById('subtask-create-btn');
-        createBtn.textContent = '생성';
+        createBtn.innerHTML = '생성';
         createBtn.disabled = false;
     }
 }
@@ -1513,6 +1551,12 @@ setTimeout(() => {
             try {
                 console.log('🚀 FastAPI로 태스크 업데이트 시작:', currentTask.id);
                 
+                // 로딩 상태 표시
+                const saveBtn = document.getElementById('edit-save-btn');
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<span class="loading-text"><span class="loading-spinner"></span>저장 중</span>';
+                saveBtn.disabled = true;
+                
                 const resp = await fetch(`/mentee/update_task_status/${currentTask.id}/`, {
                 method: 'POST',
                 headers: {
@@ -1543,14 +1587,47 @@ setTimeout(() => {
                     currentTask.scheduled_start_date = payload.scheduled_start_date;
                     currentTask.scheduled_end_date = payload.scheduled_end_date;
 
-                    // 태스크 정보 업데이트
-                    updateTaskInfo(currentTask);
-                    updateGuideline(currentTask.guideline);
+                    // 우측 패널 태스크 정보 업데이트 (현재 선택된 태스크와 일치할 때만)
+                    if (currentTask.id === currentSelectedTaskId) {
+                        updateTaskInfo(currentTask);
+                        updateGuideline(currentTask.guideline);
+                        console.log('🔍 우측 패널 정보 업데이트:', currentTask.id);
+                    } else {
+                        console.log('🔍 현재 선택된 태스크와 다름 - 우측 패널 업데이트 생략:', currentTask.id, 'vs', currentSelectedTaskId);
+                    }
                     
-                    // 왼쪽 태스크 카드 리스트 새로고침
-                    const taskCard = document.querySelector(`[data-task-id="${currentTask.id}"]`);
+                    // 왼쪽 태스크 카드 리스트 새로고침 (하위/상위 태스크 엄격 구분)
+                    let taskCard;
+                    if (currentTask.parent_id) {
+                        // 하위 태스크인 경우: 특정 상위 태스크 내부의 subtask-item만 선택
+                        taskCard = document.querySelector(`.task-card[data-task-id="${currentTask.parent_id}"] .subtask-item[data-task-id="${currentTask.id}"]`);
+                        console.log('🔍 하위 태스크 카드 업데이트:', currentTask.id, '(상위:', currentTask.parent_id, ')');
+                        
+                        if (!taskCard) {
+                            // 대안: 전체에서 subtask-item 찾기
+                            taskCard = document.querySelector(`.subtask-item[data-task-id="${currentTask.id}"]`);
+                            console.log('🔍 하위 태스크 카드 대안 선택:', currentTask.id);
+                        }
+                    } else {
+                        // 상위 태스크인 경우: .task-card만 선택 (.subtask-item 제외)
+                        taskCard = document.querySelector(`.task-card[data-task-id="${currentTask.id}"]:not(.subtask-item)`);
+                        console.log('🔍 상위 태스크 카드 업데이트:', currentTask.id);
+                        
+                        if (!taskCard) {
+                            // 대안: 일반적인 .task-card 선택
+                            taskCard = document.querySelector(`.task-card[data-task-id="${currentTask.id}"]`);
+                            console.log('🔍 상위 태스크 카드 대안 선택:', currentTask.id);
+                        }
+                    }
+                    
                     if (taskCard) {
-                        // 카드의 data 속성 업데이트
+                        // 🚨 중요: 하위 태스크 업데이트 시 상위 태스크 카드가 선택되지 않았는지 이중 확인
+                        if (currentTask.parent_id && taskCard.classList.contains('task-card') && !taskCard.classList.contains('subtask-item')) {
+                            console.error('❌ 오류: 하위 태스크 업데이트 중 상위 태스크 카드가 선택됨. 업데이트 중단.');
+                            return;
+                        }
+                        
+                        // 카드의 data 속성 업데이트 (안전 확인 후)
                         taskCard.setAttribute('data-title', payload.title);
                         taskCard.setAttribute('data-status', payload.status);
                         taskCard.setAttribute('data-priority', payload.priority);
@@ -1561,7 +1638,7 @@ setTimeout(() => {
                             taskCard.setAttribute('data-scheduled_end_date', payload.scheduled_end_date);
                         }
                         
-                        // 상태 뱃지 업데이트
+                        // 상태 뱃지 업데이트 (하위 태스크와 상위 태스크 구분)
                         const statusBadge = taskCard.querySelector('.status-badge');
                         if (statusBadge) {
                             statusBadge.textContent = payload.status;
@@ -1572,8 +1649,8 @@ setTimeout(() => {
                             else if (payload.status === '완료' || payload.status === '완료됨') statusBadge.classList.add('done');
                         }
                         
-                        // 제목 업데이트
-                        const titleElement = taskCard.querySelector('.task-title');
+                        // 제목 업데이트 (하위 태스크용 클래스 고려)
+                        const titleElement = taskCard.querySelector(currentTask.parent_id ? '.subtask-title' : '.task-title');
                         if (titleElement) {
                             titleElement.textContent = payload.title;
                             if (payload.status === '완료' || payload.status === '완료됨') {
@@ -1583,54 +1660,35 @@ setTimeout(() => {
                             }
                         }
                         
-                        // 설명 업데이트
-                        const descElement = taskCard.querySelector('.task-desc');
-                        if (descElement) {
-                            descElement.textContent = payload.guideline || '';
+                        // 설명 업데이트 (하위 태스크는 설명 업데이트 생략)
+                        if (!currentTask.parent_id) {
+                            const descElement = taskCard.querySelector('.task-desc');
+                            if (descElement) {
+                                descElement.textContent = payload.guideline || '';
+                            }
                         }
                         
-                        // 카드 전체 상태 클래스 업데이트
+                        // 카드 전체 상태 클래스 업데이트 (하위/상위 태스크 모두 적용)
                         taskCard.classList.remove('not-started', 'in-progress', 'review-requested', 'done');
                         if (payload.status === '진행전') taskCard.classList.add('not-started');
                         else if (payload.status === '진행중') taskCard.classList.add('in-progress');
                         else if (payload.status === '검토요청') taskCard.classList.add('review-requested');
                         else if (payload.status === '완료' || payload.status === '완료됨') taskCard.classList.add('done');
                         
-                        console.log('✅ 왼쪽 태스크 카드 업데이트 완료');
+                        console.log(`✅ ${currentTask.parent_id ? '하위' : '상위'} 태스크 카드 업데이트 완료`);
+                    } else {
+                        console.warn(`⚠️ 태스크 카드를 찾을 수 없습니다: ${currentTask.id} (${currentTask.parent_id ? '하위' : '상위'} 태스크)`);
                     }
                     
-                    // 🔥 상위 태스크가 완료되면 하위 태스크들도 업데이트
+                    // 🔥 상위 태스크와 하위 태스크는 독립적으로 동작
+                    // 상위 태스크 완료 시 하위 태스크 상태는 변경하지 않음
+                    // 단, 상위 태스크가 완료되면 전체 태스크는 완료로 간주
                     if (payload.status === '완료' && !currentTask.parent_id) {
-                        console.log('🔥 상위 태스크 완료 - 하위 태스크들 UI 업데이트 시작');
-                        
-                        // 현재 태스크의 하위 태스크들 찾기
-                        const subtaskItems = document.querySelectorAll(`.subtask-item[data-task-id]`);
-                        subtaskItems.forEach(subtaskItem => {
-                            // 하위 태스크가 현재 완료된 상위 태스크에 속하는지 확인
-                            const parentCard = subtaskItem.closest('.task-card');
-                            if (parentCard && parentCard.getAttribute('data-task-id') == currentTask.id) {
-                                // 하위 태스크 상태 뱃지 업데이트
-                                const subtaskStatusBadge = subtaskItem.querySelector('.status-badge');
-                                if (subtaskStatusBadge) {
-                                    subtaskStatusBadge.textContent = '완료';
-                                    subtaskStatusBadge.className = 'status-badge done';
-                                }
-                                
-                                // 하위 태스크 제목에 완료 스타일 적용
-                                const subtaskTitle = subtaskItem.querySelector('.subtask-title');
-                                if (subtaskTitle) {
-                                    subtaskTitle.classList.add('done');
-                                }
-                                
-                                // 하위 태스크 data 속성 업데이트
-                                subtaskItem.setAttribute('data-status', '완료');
-                                
-                                console.log(`✅ 하위 태스크 ${subtaskItem.getAttribute('data-task-id')} UI 업데이트 완료`);
-                            }
-                        });
-                        
-                        console.log('✅ 모든 하위 태스크 UI 업데이트 완료');
+                        console.log('🔥 상위 태스크 완료 - 하위 태스크 상태는 독립적으로 유지');
+                        // 하위 태스크 상태 변경 로직 제거 - 독립적으로 동작
                     }
+                    
+                    // 🚨 하위 태스크와 상위 태스크는 서로 영향을 주지 않음
                     
                     // 성공 메시지 표시
                     showSuccessMessage('태스크가 성공적으로 업데이트되었습니다.');
@@ -1640,10 +1698,217 @@ setTimeout(() => {
             } catch (err) {
                 console.error('❌ FastAPI 태스크 업데이트 실패:', err);
                 showErrorMessage('태스크 업데이트 중 오류가 발생했습니다: ' + err.message);
+            } finally {
+                // 로딩 상태 해제
+                const saveBtn = document.getElementById('edit-save-btn');
+                if (saveBtn) {
+                    saveBtn.innerHTML = '저장';
+                    saveBtn.disabled = false;
+                }
             }
         });
     }
 }, 500);
+
+// 💬 메모 수정, 삭제 관련 함수들
+
+// 현재 사용자 ID 가져오기 (세션 또는 전역 변수에서)
+function getCurrentUserId() {
+    // Django 템플릿에서 사용자 정보를 JavaScript 변수로 전달받을 수 있도록 수정 필요
+    // 임시로 세션에서 가져오는 방식 구현
+    if (window.currentUserId) {
+        return window.currentUserId;
+    }
+    
+    // 또는 Ajax로 현재 사용자 정보를 가져올 수도 있음
+    return null;
+}
+
+// 메모 수정 함수
+async function editMemo(memoId, currentComment) {
+    try {
+        // 해당 메모 요소 찾기
+        const memoElement = document.querySelector(`[data-memo-id="${memoId}"]`);
+        if (!memoElement) {
+            console.error('메모 요소를 찾을 수 없습니다.');
+            return;
+        }
+
+        const memoContentDiv = memoElement.querySelector('.memo-content');
+        const memoActionsDiv = memoElement.querySelector('.memo-actions');
+        
+        if (!memoContentDiv) {
+            console.error('메모 내용 요소를 찾을 수 없습니다.');
+            return;
+        }
+
+        // 기존 내용을 백업하고 편집 UI로 변경
+        const originalContent = memoContentDiv.innerHTML;
+        
+        // 편집 UI 생성 (기존 메모와 동일한 디자인으로 텍스트만 수정 가능)
+        memoContentDiv.innerHTML = `
+            <textarea class="memo-edit-textarea" style="width:100%; padding:0; border:none; font-size:15px; resize:none; background:transparent; font-family:inherit; line-height:1.6; color:#222; outline:none; white-space:pre-wrap;" placeholder="메모를 수정하세요...">${currentComment}</textarea>
+        `;
+        
+        // 액션 버튼을 수정/삭제에서 등록/취소로 변경
+        if (memoActionsDiv) {
+            memoActionsDiv.innerHTML = `
+                <span class="memo-save-btn" style="color:#4CAF50; cursor:pointer; font-size:12px; margin-right:8px; text-decoration:underline; font-weight:bold;">등록</span>
+                <span class="memo-cancel-btn" style="color:#f44336; cursor:pointer; font-size:12px; text-decoration:underline; font-weight:bold;">취소</span>
+            `;
+        }
+        
+        const textarea = memoContentDiv.querySelector('.memo-edit-textarea');
+        const saveBtn = memoActionsDiv.querySelector('.memo-save-btn');
+        const cancelBtn = memoActionsDiv.querySelector('.memo-cancel-btn');
+        
+        // 텍스트 영역 자동 크기 조정
+        function autoResizeTextarea() {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+        
+        textarea.addEventListener('input', autoResizeTextarea);
+        autoResizeTextarea(); // 초기 크기 설정
+        
+        // 포커스 설정
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        
+        // Enter/Shift+Enter 처리
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                saveBtn.click();
+            }
+        });
+        
+        // 등록 버튼 클릭
+        saveBtn.addEventListener('click', async function() {
+            const newComment = textarea.value.trim();
+            
+            if (newComment === '') {
+                showErrorMessage('메모 내용을 입력해주세요.');
+                return;
+            }
+            
+            if (newComment === currentComment.trim()) {
+                // 내용이 변경되지 않은 경우 취소 처리
+                cancelEdit();
+                return;
+            }
+            
+            // 로딩 상태 표시
+            const originalSaveText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '등록중...';
+            saveBtn.style.color = '#999';
+            saveBtn.style.cursor = 'default';
+            cancelBtn.style.display = 'none';
+            
+            try {
+                console.log(`📝 메모 수정 시작 - ID: ${memoId}`);
+                
+                const response = await fetch(`/mentee/memo_update/${memoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ comment: newComment }),
+                    credentials: 'same-origin'
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 성공 시 메모 목록 새로고침
+                    await updateTaskDetailPanel(currentSelectedTaskId);
+                    showSuccessMessage('메모가 수정되었습니다.');
+                    console.log('✅ 메모 수정 성공');
+                } else {
+                    throw new Error(data.error || '메모 수정에 실패했습니다.');
+                }
+                
+            } catch (error) {
+                console.error(`❌ 메모 수정 실패: ${error}`);
+                showErrorMessage('메모 수정에 실패했습니다. 다시 시도해주세요.');
+                
+                // 오류 시 원래 상태로 복원
+                cancelEdit();
+            }
+        });
+        
+        // 취소 버튼 클릭
+        cancelBtn.addEventListener('click', cancelEdit);
+        
+        // 취소 함수
+        function cancelEdit() {
+            memoContentDiv.innerHTML = originalContent;
+            if (memoActionsDiv) {
+                memoActionsDiv.innerHTML = `
+                    <span onclick="editMemo('${memoId}', '${currentComment.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" 
+                          style="color: #4CAF50; cursor: pointer; font-size: 12px; margin-right: 8px; text-decoration: underline;">수정</span>
+                    <span onclick="deleteMemo('${memoId}')" 
+                          style="color: #f44336; cursor: pointer; font-size: 12px; text-decoration: underline;">삭제</span>
+                `;
+            }
+        }
+        
+    } catch (error) {
+        console.error(`❌ 메모 수정 UI 생성 실패: ${error}`);
+        showErrorMessage('메모 수정 화면을 열 수 없습니다.');
+    }
+}
+
+// 메모 삭제 함수
+async function deleteMemo(memoId) {
+    try {
+        if (!confirm('정말로 이 메모를 삭제하시겠습니까?')) {
+            return;
+        }
+        
+        console.log(`🗑️ 메모 삭제 시작 - ID: ${memoId}`);
+        
+        // API 호출
+        const response = await fetch(`/mentee/memo_delete/${memoId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // 성공 시 메모 목록 새로고침
+            await updateTaskDetailPanel(currentSelectedTaskId);
+            showSuccessMessage('메모가 삭제되었습니다.');
+            console.log('✅ 메모 삭제 성공');
+        } else {
+            throw new Error(data.error || '메모 삭제에 실패했습니다.');
+        }
+        
+    } catch (error) {
+        console.error(`❌ 메모 삭제 실패: ${error}`);
+        showErrorMessage('메모 삭제에 실패했습니다. 다시 시도해주세요.');
+    }
+}
 
 </script>
 <!-- 기존 JavaScript 파일은 주석 처리하여 충돌 방지 -->
