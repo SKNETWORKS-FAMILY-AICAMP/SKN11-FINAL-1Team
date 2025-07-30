@@ -185,36 +185,17 @@ def advanced_embed_and_upsert(file_path, department_id=None, common_doc=False, o
                             hierarchy_state[l] = None
                     updated_level = level
                     break
-            # if not updated_level:
-            #     for l in reversed([lvl for lvl, _ in hierarchy_levels]):
-            #         if hierarchy_state[l] is None:
-            #             hierarchy_state[l] = title.strip()
-            #             break
-
-            # hierarchy_path = " > ".join([hierarchy_state[l] for l, _ in hierarchy_levels if hierarchy_state[l]])
-            # chunks = text_splitter.split_text(content)
-            # for chunk in chunks:
-            #     combined_text = f"이 내용은 '{title}'에 대한 설명입니다.\n\n{chunk}"
-            #     split_docs.append(Document(page_content=combined_text, metadata={"title": title, "hierarchy_path": hierarchy_path}))
             if not updated_level:
-                # 계층 실패 시 모든 계층 초기화
-                for l in hierarchy_state:
-                    hierarchy_state[l] = None
+                for l in reversed([lvl for lvl, _ in hierarchy_levels]):
+                    if hierarchy_state[l] is None:
+                        hierarchy_state[l] = title.strip()
+                        break
 
-            has_valid_hierarchy = updated_level is not None
-            if has_valid_hierarchy:
-                hierarchy_path = " > ".join([
-                    hierarchy_state[l] for l, _ in hierarchy_levels if hierarchy_state[l]
-                ])
-
+            hierarchy_path = " > ".join([hierarchy_state[l] for l, _ in hierarchy_levels if hierarchy_state[l]])
             chunks = text_splitter.split_text(content)
             for chunk in chunks:
                 combined_text = f"이 내용은 '{title}'에 대한 설명입니다.\n\n{chunk}"
-                meta = {"title": title}
-                if has_valid_hierarchy:
-                    meta["hierarchy_path"] = hierarchy_path
-                split_docs.append(Document(page_content=combined_text, metadata=meta))
-
+                split_docs.append(Document(page_content=combined_text, metadata={"title": title, "hierarchy_path": hierarchy_path}))
 
         logging.info(f"최종 청크 개수: {len(split_docs)}")
 

@@ -207,76 +207,76 @@ class ChatBot {
 
 
 
-    //     async loadSessionsFromAPI() {
-    //         console.log("📥 세션 로드 시작");
+//     async loadSessionsFromAPI() {
+//         console.log("📥 세션 로드 시작");
 
-    //         try {
-    //             // const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/sessions/${user_id}`);
-    //             // const res = await fetch(`${window.api_base_url}/chat/sessions/${user_id}`);
-    //             const res = await fetch(`${window.api_base_url}/chat/sessions/${user_id}`);
+//         try {
+//             // const res = await fetch(`${window.API_URLS.FASTAPI_BASE_URL}/api/chat/sessions/${user_id}`);
+//             // const res = await fetch(`${window.api_base_url}/chat/sessions/${user_id}`);
+//             const res = await fetch(`${window.api_base_url}/chat/sessions/${user_id}`);
 
 
-    //             const data = await res.json();
+//             const data = await res.json();
 
-    //             console.log("📥 세션 목록 응답 데이터:", data);
+//             console.log("📥 세션 목록 응답 데이터:", data);
 
-    //             if (!data.success) {
-    //                 showError("세션 목록을 불러오는 데 실패했습니다.");
-    //                 return;
-    //             }
+//             if (!data.success) {
+//                 showError("세션 목록을 불러오는 데 실패했습니다.");
+//                 return;
+//             }
 
-    //             const listContainer = document.getElementById("chatbot-session-list");
-    //             if (!listContainer) {
-    //                 console.warn("❗ #chatbot-session-list 요소가 없음");
-    //                 return;
-    //             }
+//             const listContainer = document.getElementById("chatbot-session-list");
+//             if (!listContainer) {
+//                 console.warn("❗ #chatbot-session-list 요소가 없음");
+//                 return;
+//             }
 
-    //             listContainer.innerHTML = '';
+//             listContainer.innerHTML = '';
 
-    //             data.sessions.forEach(session => {
-    //                 console.log("📄 세션 추가됨:", session.session_id, session.summary);  // ✅ 개별 세션 확인용
+//             data.sessions.forEach(session => {
+//                 console.log("📄 세션 추가됨:", session.session_id, session.summary);  // ✅ 개별 세션 확인용
 
-    //                 const div = document.createElement("div");
-    //                 div.className = "chatbot-session-item";
-    //                 div.setAttribute("data-session-id", session.session_id);
-    //                 div.innerHTML = `
-    //                 <div class="chatbot-session-title">
-    //   <span class="chat-icon">💬</span>
-    //   <span class="session-summary">${session.summary || "새 대화"}</span>
-    // </div>
-    //                 <div class="chatbot-session-preview">${session.preview || "..."}</div>
-    //                 <button class="delete-session-btn" data-session-id="${session.session_id}">×</button>
-    //                 <script type="application/json" class="session-messages">[]</script>
-    //             `;
-    //                 listContainer.appendChild(div);
-    //             });
+//                 const div = document.createElement("div");
+//                 div.className = "chatbot-session-item";
+//                 div.setAttribute("data-session-id", session.session_id);
+//                 div.innerHTML = `
+//                 <div class="chatbot-session-title">
+//   <span class="chat-icon">💬</span>
+//   <span class="session-summary">${session.summary || "새 대화"}</span>
+// </div>
+//                 <div class="chatbot-session-preview">${session.preview || "..."}</div>
+//                 <button class="delete-session-btn" data-session-id="${session.session_id}">×</button>
+//                 <script type="application/json" class="session-messages">[]</script>
+//             `;
+//                 listContainer.appendChild(div);
+//             });
 
-    //             this.refreshSessionList();
-    //             this.sessionItems = document.querySelectorAll('.chatbot-session-item');
-    //             this.sessionItems.forEach((item) => {
-    //                 item.addEventListener('click', (e) => {
-    //                     if (e.target.closest('.delete-session-btn')) return;
-    //                     this.handleSessionClick(e, item);
-    //                 });
+//             this.refreshSessionList();
+//             this.sessionItems = document.querySelectorAll('.chatbot-session-item');
+//             this.sessionItems.forEach((item) => {
+//                 item.addEventListener('click', (e) => {
+//                     if (e.target.closest('.delete-session-btn')) return;
+//                     this.handleSessionClick(e, item);
+//                 });
 
-    //                 const chatbot = this;
-    //                 const deleteBtn = item.querySelector('.delete-session-btn');
-    //                 if (deleteBtn) {
-    //                     deleteBtn.addEventListener('click', (e) => {
-    //                         e.stopPropagation();
-    //                         const sessionId = deleteBtn.getAttribute("data-session-id");
-    //                         chatbot.openDeleteModal(sessionId);
-    //                     });
-    //                 }
-    //             });
+//                 const chatbot = this;
+//                 const deleteBtn = item.querySelector('.delete-session-btn');
+//                 if (deleteBtn) {
+//                     deleteBtn.addEventListener('click', (e) => {
+//                         e.stopPropagation();
+//                         const sessionId = deleteBtn.getAttribute("data-session-id");
+//                         chatbot.openDeleteModal(sessionId);
+//                     });
+//                 }
+//             });
 
-    //             console.log("✅ 세션 목록 렌더링 완료");
+//             console.log("✅ 세션 목록 렌더링 완료");
 
-    //         } catch (e) {
-    //             console.error("세션 목록 로딩 오류:", e);
-    //             showError("세션 목록을 불러오는 중 오류가 발생했습니다.");
-    //         }
-    //     }
+//         } catch (e) {
+//             console.error("세션 목록 로딩 오류:", e);
+//             showError("세션 목록을 불러오는 중 오류가 발생했습니다.");
+//         }
+//     }
 
 
     getCaretText(element) {
@@ -844,40 +844,8 @@ class ChatBot {
         }
     }
 
-    // renderMessages(messages) {
-    //     console.log("📥 렌더링할 메시지:", messages);  // 추가
-    //     if (this.renderLock) return;
-    //     this.renderLock = true;
-
-    //     this.chatArea.innerHTML = '';
-
-    //     if (!messages || messages.length === 0) {
-    //         this.chatArea.innerHTML = '<div class="empty-chat">메시지가 없습니다.</div>';
-    //         this.renderLock = false;
-    //         return;
-    //     }
-
-    //     // ✅ 타입 정규화 및 순서대로 렌더링
-    //     messages.forEach(message => {
-    //         // 타입 정규화 처리
-    //         let messageType = 'bot'; // 기본값
-    //         if (message.type === 'user') {
-    //             messageType = 'user';
-    //         } else if (message.type === 'chatbot' || message.type === 'bot') {
-    //             messageType = 'bot';
-    //         }
-
-    //         console.log(`렌더링: ${messageType} - ${message.text.substring(0, 50)}...`);
-    //         this.addMessageToChat(messageType, message.text);
-    //     });
-
-    //     // ✅ 항상 아래로 스크롤
-    //     this.chatArea.scrollTop = this.chatArea.scrollHeight;
-
-    //     this.renderLock = false;
-    // }
     renderMessages(messages) {
-        console.log("📥 렌더링할 메시지:", messages);
+        console.log("📥 렌더링할 메시지:", messages);  // 추가
         if (this.renderLock) return;
         this.renderLock = true;
 
@@ -889,26 +857,25 @@ class ChatBot {
             return;
         }
 
-        // ✅ message_id 기준 정렬
-        const sorted = messages.slice().sort((a, b) => {
-            return (a.message_id || 0) - (b.message_id || 0);
-        });
-
-        sorted.forEach(message => {
-            let messageType = 'bot';
+        // ✅ 타입 정규화 및 순서대로 렌더링
+        messages.forEach(message => {
+            // 타입 정규화 처리
+            let messageType = 'bot'; // 기본값
             if (message.type === 'user') {
                 messageType = 'user';
             } else if (message.type === 'chatbot' || message.type === 'bot') {
                 messageType = 'bot';
             }
 
+            console.log(`렌더링: ${messageType} - ${message.text.substring(0, 50)}...`);
             this.addMessageToChat(messageType, message.text);
         });
 
+        // ✅ 항상 아래로 스크롤
         this.chatArea.scrollTop = this.chatArea.scrollHeight;
+
         this.renderLock = false;
     }
-
 
 
     addMessageToChat(type, text) {
@@ -988,59 +955,14 @@ class ChatBot {
 
             const tokenText = this.extractTokenListFromHTML(text);
             if (tokenText.length > 0) {
-                // const tokenDiv = document.createElement('div');
-                // tokenDiv.className = 'token-list-below';
-                // tokenDiv.style.display = 'flex';
-                // tokenDiv.style.flexWrap = 'wrap';
-                // tokenDiv.style.gap = '6px';
-                // tokenDiv.style.marginTop = '6px';
-                // tokenDiv.style.justifyContent = 'flex-start';       // 그대로 유지
-                // tokenDiv.style.alignSelf = 'flex-end';              // ✅ 오른쪽 정렬 (핵심)
-                // tokenDiv.style.maxWidth = '100%';
-                // tokenDiv.style.textAlign = 'right';                 // ✅ badge들이 우측에서 줄바꿈되게
                 const tokenDiv = document.createElement('div');
                 tokenDiv.className = 'token-list-below';
-                tokenDiv.style.display = 'flex';
-                tokenDiv.style.flexWrap = 'wrap';
-                tokenDiv.style.gap = '6px';
-                tokenDiv.style.marginTop = '6px';
-                tokenDiv.style.maxWidth = '480px';                  // ✅ 말풍선 너비 맞춤
-                tokenDiv.style.wordBreak = 'break-word';
-                tokenDiv.style.flexShrink = '1';
-                tokenDiv.style.alignSelf = 'flex-end';              // ✅ wrapper 기준 오른쪽 정렬
-                tokenDiv.style.marginLeft = 'auto';                 // ✅ 오른쪽에 붙임
-                tokenDiv.style.justifyContent = 'flex-end';         // ✅ 줄 안에서도 오른쪽 정렬
-
-
-                tokenDiv.style.wordBreak = 'break-word';
-                tokenDiv.style.flexShrink = '1';                   // ✅ 줄바꿈 허용
-
-
-                tokenText.forEach((token, idx) => {
-                    const badge = document.createElement('span');
-                    badge.textContent = token;
-                    badge.style.background = '#f0f0f0';
-                    badge.style.color = '#333';
-                    badge.style.fontSize = '12px';
-                    badge.style.padding = '4px 10px';
-                    badge.style.borderRadius = '12px';
-                    badge.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
-                    badge.style.whiteSpace = 'nowrap';
-                    badge.style.fontWeight = '500';
-
-                    tokenDiv.appendChild(badge);
-
-                    // ✅ 2개마다 줄바꿈 block 삽입
-                    if ((idx + 1) % 2 === 0 && idx < tokenText.length - 1) {
-                        const spacer = document.createElement('div');
-                        spacer.style.flexBasis = '100%';  // 줄바꿈 강제
-                        tokenDiv.appendChild(spacer);
-                    }
-                });
-
-
+                tokenDiv.textContent = `[${tokenText.join(', ')}]`;
+                tokenDiv.style.fontSize = '12px';
+                tokenDiv.style.color = '#888';
+                tokenDiv.style.marginTop = '4px';
+                tokenDiv.style.marginRight = '4px';
                 wrapper.appendChild(tokenDiv);
-
             }
 
             messageRow.appendChild(wrapper);

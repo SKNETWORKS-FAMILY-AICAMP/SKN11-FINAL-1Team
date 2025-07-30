@@ -1,4 +1,3 @@
-import re
 from fastapi import APIRouter, HTTPException, Depends, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -396,13 +395,7 @@ async def get_user_sessions_rag(user_id: int, db: Session = Depends(get_db)):
                     first_user_message = msg
                     break
             
-            # preview = first_user_message.message_text if first_user_message else ""
-            preview = ""
-            if first_user_message:
-                raw = first_user_message.message_text
-                preview = re.sub(r"<span.*?>.*?</span>", "", raw, flags=re.DOTALL).strip()
-
-
+            preview = first_user_message.message_text if first_user_message else ""
             result.append({
                 "session_id": session.session_id,
                 "summary": session.summary,
@@ -422,7 +415,6 @@ async def get_chat_messages_rag(session_id: int, db: Session = Depends(get_db)):
         result = []
         for msg in messages:
             result.append({
-                "message_id": msg.message_id,  # 추가
                 "type": msg.message_type,
                 "text": msg.message_text
             })
