@@ -1,6 +1,7 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 import json
+import logging
 import markdown
 from django.utils.html import strip_tags
 from django.utils.text import Truncator
@@ -276,6 +277,11 @@ def task_update(request, task_assign_id):
         
         # 업데이트할 데이터 준비
         update_data = {'status': new_status}
+        
+        # 🔧 하위 태스크의 경우 parent_id 유지 (중요!)
+        if task_info.get('parent_id') is not None:
+            update_data['parent_id'] = task_info.get('parent_id')
+            print(f"DEBUG - 하위 태스크 감지: parent_id={task_info.get('parent_id')} 유지")
         
         # 상태에 따른 날짜 업데이트
         if old_status != '진행중' and new_status == '진행중':
@@ -1030,9 +1036,11 @@ def task_detail(request, task_assign_id):
                             user_name = f"{last_name}{first_name}".strip()
                     
                     memo_list.append({
+                        'id': memo.get('memo_id') or memo.get('id'),  # 메모 ID 추가
                         'user': user_name,
                         'comment': memo.get('comment'),
                         'create_date': memo.get('create_date'),
+                        'user_id': user_info.get('user_id') if user_info else None,  # 수정/삭제 권한 확인용
                     })
             
             logger.info(f"FastAPI로 메모 {len(memo_list)}개 조회 성공")
@@ -1049,13 +1057,17 @@ def task_detail(request, task_assign_id):
                 
                 for memo in django_memos:
                     user_name = '🤖 리뷰 에이전트'
+                    user_id = None
                     if memo.user:
                         user_name = f"{memo.user.last_name}{memo.user.first_name}"
+                        user_id = memo.user.user_id
                     
                     memo_list.append({
+                        'id': memo.memo_id,  # 메모 ID 추가
                         'user': user_name,
                         'comment': memo.comment,
                         'create_date': memo.create_date.isoformat() if memo.create_date else '',
+                        'user_id': user_id,  # 수정/삭제 권한 확인용
                     })
                 
                 logger.info(f"Django ORM으로 메모 {len(memo_list)}개 조회 성공")
@@ -1222,6 +1234,7 @@ def update_task_status(request, task_id):
                     'status': task_obj.status,
                     'priority': task_obj.priority,
                     'mentorship_id': task_obj.mentorship_id,
+                    'parent_id': task_obj.parent_id,  # 🔧 중요: parent_id 추가!
                 }
                 use_fastapi = False
                 logger.info(f"✅ Django ORM 개별 태스크 조회 성공: {task_obj.title}")
@@ -1276,6 +1289,7 @@ def update_task_status(request, task_id):
             'status': new_status,
             'priority': data.get('priority', task_result.get('priority')),  # 기본값 '중' 제거
             'mentorship_id': mentorship_id,
+            'parent_id': task_result.get('parent_id'),  # 🔧 중요: parent_id 유지!
         }
         
         # 🔧 None 값 제거 (FastAPI에서 Optional 필드 처리)
@@ -1289,7 +1303,14 @@ def update_task_status(request, task_id):
         logger.info(f"🔄 상태 변경: {old_status} -> {new_status}")
         logger.info(f"🔧 FastAPI 업데이트 데이터: {update_data}")
         
-        # 🔧 날짜 필드 업데이트 로직
+        # � 하위 태스크인 경우 parent_id 검증 로그 추가
+        if task_result.get('parent_id'):
+            logger.info(f"🔍 하위 태스크 업데이트 감지:")
+            logger.info(f"  - task_id: {task_id}")
+            logger.info(f"  - parent_id: {task_result.get('parent_id')} (유지되어야 함)")
+            logger.info(f"  - update_data에 포함된 parent_id: {update_data.get('parent_id')}")
+        
+        # �🔧 날짜 필드 업데이트 로직
         if new_status == '진행중' and not task_result.get('real_start_date'):
             from datetime import datetime
             update_data['real_start_date'] = datetime.now().date().isoformat()
@@ -1306,7 +1327,18 @@ def update_task_status(request, task_id):
                 result = fastapi_client.update_task_assign(task_id, update_data)
                 logger.info(f"✅ FastAPI 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
                 
-                # 🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
+                # � 하위 태스크 업데이트 후 검증
+                if task_result.get('parent_id'):
+                    try:
+                        updated_task = fastapi_client.get_task_assign(task_id)
+                        if updated_task.get('parent_id') != task_result.get('parent_id'):
+                            logger.error(f"❌ 심각한 오류: 하위 태스크 {task_id}의 parent_id가 {task_result.get('parent_id')} -> {updated_task.get('parent_id')}로 변경됨!")
+                        else:
+                            logger.info(f"✅ 하위 태스크 {task_id}의 parent_id 올바르게 유지됨: {updated_task.get('parent_id')}")
+                    except Exception as verify_error:
+                        logger.warning(f"⚠️ 하위 태스크 {task_id} 업데이트 후 검증 실패: {verify_error}")
+                
+                # �🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
                 if new_status == '완료' and not task_result.get('parent_id'):
                     logger.info(f"🔥 상위 태스크 {task_id} 완료 감지 - 하위 태스크 자동 완료 처리 시작")
                     try:
@@ -1396,7 +1428,16 @@ def update_task_status(request, task_id):
                 task_obj.save()
                 logger.info(f"✅ Django ORM 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
                 
-                # 🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
+                # � Django ORM 하위 태스크 업데이트 후 검증
+                if task_obj.parent_id:
+                    task_obj.refresh_from_db()
+                    expected_parent_id = task_result.get('parent_id') if isinstance(task_result, dict) else getattr(task_result, 'parent_id', None)
+                    if task_obj.parent_id != expected_parent_id:
+                        logger.error(f"❌ Django ORM 심각한 오류: 하위 태스크 {task_id}의 parent_id가 {expected_parent_id} -> {task_obj.parent_id}로 변경됨!")
+                    else:
+                        logger.info(f"✅ Django ORM 하위 태스크 {task_id}의 parent_id 올바르게 유지됨: {task_obj.parent_id}")
+                
+                # �🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
                 if new_status == '완료' and not task_obj.parent_id:
                     logger.info(f"🔥 상위 태스크 {task_id} 완료 감지 (Django ORM) - 하위 태스크 자동 완료 처리 시작")
                     try:
@@ -1519,33 +1560,36 @@ def auto_complete_subtasks(parent_task_id, mentorship_id):
                     continue
                 
                 try:
-                    # FastAPI로 하위 태스크 상태 업데이트
+                    # 🔧 안전한 방법: 상태 변경을 위한 최소한의 데이터만 업데이트
                     update_data = {
-                        'title': subtask.get('title'),
-                        'description': subtask.get('description', ''),
-                        'guideline': subtask.get('guideline', ''),
-                        'week': subtask.get('week', 1),
-                        'order': subtask.get('order', 1),
-                        'scheduled_start_date': subtask.get('scheduled_start_date'),
-                        'scheduled_end_date': subtask.get('scheduled_end_date'),
-                        'real_start_date': subtask.get('real_start_date'),
-                        'real_end_date': subtask.get('real_end_date'),
-                        'status': '완료',  # 완료 상태로 변경
-                        'priority': subtask.get('priority'),
-                        'mentorship_id': mentorship_id,
-                        'parent_id': parent_task_id
+                        'status': '완료'  # 완료 상태로 변경
                     }
                     
                     # 실제 완료일이 없으면 현재 날짜로 설정
-                    if not update_data['real_end_date']:
+                    if not subtask.get('real_end_date'):
                         from datetime import datetime
                         update_data['real_end_date'] = datetime.now().date().isoformat()
                     
-                    # None 값 제거
-                    clean_update_data = {k: v for k, v in update_data.items() if v is not None}
+                    # 🔍 하위 태스크 정보 검증 로그
+                    logger.info(f"🔍 하위 태스크 {subtask_id} 업데이트 전 정보:")
+                    logger.info(f"  - title: {subtask.get('title')}")
+                    logger.info(f"  - parent_id: {subtask.get('parent_id')} (유지되어야 함: {parent_task_id})")
+                    logger.info(f"  - 현재 상태: {current_status} -> 완료")
+                    logger.info(f"  - update_data: {update_data}")
                     
-                    result = fastapi_client.update_task_assign(subtask_id, clean_update_data)
+                    result = fastapi_client.update_task_assign(subtask_id, update_data)
                     logger.info(f"✅ FastAPI로 하위 태스크 {subtask_id} 완료 처리 성공: {current_status} -> 완료")
+                    
+                    # 🔍 업데이트 후 검증 (선택적)
+                    try:
+                        updated_task = fastapi_client.get_task_assign(subtask_id)
+                        if updated_task.get('parent_id') != parent_task_id:
+                            logger.error(f"❌ 심각한 오류: 하위 태스크 {subtask_id}의 parent_id가 {parent_task_id} -> {updated_task.get('parent_id')}로 변경됨!")
+                        else:
+                            logger.info(f"✅ 하위 태스크 {subtask_id}의 parent_id 올바르게 유지됨: {updated_task.get('parent_id')}")
+                    except Exception as verify_error:
+                        logger.warning(f"⚠️ 하위 태스크 {subtask_id} 업데이트 후 검증 실패: {verify_error}")
+                    
                     completed_count += 1
                     
                 except Exception as fastapi_error:
@@ -1594,6 +1638,12 @@ def auto_complete_subtasks(parent_task_id, mentorship_id):
                         logger.info(f"⏭️ 하위 태스크 {subtask.task_assign_id}는 이미 완료 상태입니다.")
                         continue
                     
+                    # 🔍 Django ORM 하위 태스크 정보 검증 로그
+                    logger.info(f"🔍 Django ORM 하위 태스크 {subtask.task_assign_id} 업데이트:")
+                    logger.info(f"  - title: {subtask.title}")
+                    logger.info(f"  - parent_id: {subtask.parent_id} (유지되어야 함: {parent_task_id})")
+                    logger.info(f"  - 현재 상태: {subtask.status} -> 완료")
+                    
                     old_status = subtask.status
                     subtask.status = '완료'
                     
@@ -1602,6 +1652,14 @@ def auto_complete_subtasks(parent_task_id, mentorship_id):
                     
                     subtask.save()
                     logger.info(f"✅ 하위 태스크 {subtask.task_assign_id} 완료 처리 성공: {old_status} -> 완료")
+                    
+                    # 🔍 Django ORM 업데이트 후 검증
+                    subtask.refresh_from_db()
+                    if subtask.parent_id != parent_task_id:
+                        logger.error(f"❌ Django ORM 심각한 오류: 하위 태스크 {subtask.task_assign_id}의 parent_id가 변경됨!")
+                    else:
+                        logger.info(f"✅ Django ORM 하위 태스크 {subtask.task_assign_id}의 parent_id 올바르게 유지됨: {subtask.parent_id}")
+                    
                     completed_count += 1
                 
                 logger.info(f"🎉 하위 태스크 자동 완료 처리 완료 (Django ORM): {completed_count}/{subtasks.count()}개 성공")
@@ -1818,4 +1876,126 @@ def complete_onboarding(request):
             'success': False,
             'error': f'처리 중 오류가 발생했습니다: {str(e)}'
         }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def memo_update(request, memo_id):
+    """메모 수정 API"""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"메모 수정 요청 - memo_id: {memo_id}")
+        
+        data = json.loads(request.body)
+        new_comment = data.get('comment', '').strip()
+        
+        if not new_comment:
+            return JsonResponse({'success': False, 'error': '메모 내용을 입력하세요.'}, status=400)
+        
+        # 현재 사용자 정보
+        user_data = request.session.get('user_data', {})
+        user_id = user_data.get('user_id') or getattr(request.user, 'user_id', None)
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
+        
+        # FastAPI 우선, Django ORM 대체
+        try:
+            # FastAPI로 메모 수정 시도
+            update_data = {'comment': new_comment}
+            result = fastapi_client.update_memo(memo_id, update_data)
+            
+            logger.info(f"FastAPI로 메모 수정 성공 - memo_id: {memo_id}")
+            return JsonResponse({
+                'success': True,
+                'memo': {
+                    'id': memo_id,
+                    'comment': new_comment,
+                    'create_date': result.get('create_date', ''),
+                }
+            })
+            
+        except Exception as fastapi_error:
+            logger.warning(f"FastAPI 메모 수정 실패: {fastapi_error}")
+            
+            # Django ORM 대체 로직
+            try:
+                from core.models import Memo
+                
+                memo = Memo.objects.filter(memo_id=memo_id, user_id=user_id).first()
+                if not memo:
+                    return JsonResponse({'success': False, 'error': '메모를 찾을 수 없거나 수정 권한이 없습니다.'}, status=404)
+                
+                memo.comment = new_comment
+                memo.save()
+                
+                logger.info(f"Django ORM으로 메모 수정 성공 - memo_id: {memo_id}")
+                return JsonResponse({
+                    'success': True,
+                    'memo': {
+                        'id': memo_id,
+                        'comment': memo.comment,
+                        'create_date': memo.create_date.isoformat() if memo.create_date else '',
+                    }
+                })
+                
+            except Exception as orm_error:
+                logger.error(f"Django ORM 메모 수정 실패: {orm_error}")
+                return JsonResponse({'success': False, 'error': f'메모 수정 실패: {str(orm_error)}'}, status=500)
+        
+    except Exception as e:
+        logger.error(f"메모 수정 전체 실패: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def memo_delete(request, memo_id):
+    """메모 삭제 API"""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"메모 삭제 요청 - memo_id: {memo_id}")
+        
+        # 현재 사용자 정보
+        user_data = request.session.get('user_data', {})
+        user_id = user_data.get('user_id') or getattr(request.user, 'user_id', None)
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
+        
+        # FastAPI 우선, Django ORM 대체
+        try:
+            # FastAPI로 메모 삭제 시도
+            result = fastapi_client.delete_memo(memo_id)
+            
+            logger.info(f"FastAPI로 메모 삭제 성공 - memo_id: {memo_id}")
+            return JsonResponse({'success': True, 'message': '메모가 삭제되었습니다.'})
+            
+        except Exception as fastapi_error:
+            logger.warning(f"FastAPI 메모 삭제 실패: {fastapi_error}")
+            
+            # Django ORM 대체 로직
+            try:
+                from core.models import Memo
+                
+                memo = Memo.objects.filter(memo_id=memo_id, user_id=user_id).first()
+                if not memo:
+                    return JsonResponse({'success': False, 'error': '메모를 찾을 수 없거나 삭제 권한이 없습니다.'}, status=404)
+                
+                memo.delete()
+                
+                logger.info(f"Django ORM으로 메모 삭제 성공 - memo_id: {memo_id}")
+                return JsonResponse({'success': True, 'message': '메모가 삭제되었습니다.'})
+                
+            except Exception as orm_error:
+                logger.error(f"Django ORM 메모 삭제 실패: {orm_error}")
+                return JsonResponse({'success': False, 'error': f'메모 삭제 실패: {str(orm_error)}'}, status=500)
+        
+    except Exception as e:
+        logger.error(f"메모 삭제 전체 실패: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 

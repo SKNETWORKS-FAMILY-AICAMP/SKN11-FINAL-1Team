@@ -126,31 +126,57 @@ function initMemoInput() {
   const chatInput = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send-btn');
   
+  // 텍스트 영역 자동 크기 조정 함수
+  function autoResizeTextarea(textarea) {
+    textarea.style.height = 'auto';
+    const scrollHeight = textarea.scrollHeight;
+    const minHeight = 42; // 최소 높이
+    const maxHeight = 120; // 최대 높이
+    
+    if (scrollHeight <= maxHeight) {
+      textarea.style.height = Math.max(scrollHeight, minHeight) + 'px';
+    } else {
+      textarea.style.height = maxHeight + 'px';
+    }
+  }
+  
+  if (chatInput) {
+    // 입력 시 자동 크기 조정
+    chatInput.addEventListener('input', function() {
+      autoResizeTextarea(this);
+    });
+    
+    // 키 이벤트 처리
+    chatInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        // Shift+Enter가 아닌 Enter만 눌렀을 때 등록
+        e.preventDefault();
+        if (sendBtn) {
+          sendBtn.click();
+        }
+      }
+      // Shift+Enter는 기본 동작(줄바꿈)을 허용
+    });
+    
+    // 초기 크기 설정
+    autoResizeTextarea(chatInput);
+  }
+  
   if (sendBtn) {
     sendBtn.addEventListener('click', async function() {
       const comment = chatInput.value.trim();
       if (comment && currentTaskId) {
         if (await saveMemo(currentTaskId, comment)) {
           chatInput.value = '';
+          // 텍스트 영역 크기 초기화
+          if (chatInput) {
+            autoResizeTextarea(chatInput);
+          }
         }
       } else if (!comment) {
         showWarning('메모를 입력해주세요.');
       } else if (!currentTaskId) {
         showWarning('태스크를 선택해주세요.');
-      }
-    });
-  }
-  
-  if (chatInput) {
-    chatInput.addEventListener('keypress', async function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const comment = chatInput.value.trim();
-        if (comment && currentTaskId) {
-          if (await saveMemo(currentTaskId, comment)) {
-            chatInput.value = '';
-          }
-        }
       }
     });
   }
@@ -739,9 +765,24 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     chatInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         chatSendBtn.click();
+      }
+      // Shift+Enter는 기본 동작(줄바꿈)을 허용
+    });
+    
+    // 텍스트 영역 자동 크기 조정
+    chatInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      const scrollHeight = this.scrollHeight;
+      const minHeight = 42;
+      const maxHeight = 120;
+      
+      if (scrollHeight <= maxHeight) {
+        this.style.height = Math.max(scrollHeight, minHeight) + 'px';
+      } else {
+        this.style.height = maxHeight + 'px';
       }
     });
   }
@@ -1086,10 +1127,25 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   if (messageInput) {
-    messageInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
+    messageInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
+      }
+      // Shift+Enter는 기본 동작(줄바꿈)을 허용
+    });
+    
+    // 텍스트 영역 자동 크기 조정
+    messageInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      const scrollHeight = this.scrollHeight;
+      const minHeight = 42;
+      const maxHeight = 120;
+      
+      if (scrollHeight <= maxHeight) {
+        this.style.height = Math.max(scrollHeight, minHeight) + 'px';
+      } else {
+        this.style.height = maxHeight + 'px';
       }
     });
   }
