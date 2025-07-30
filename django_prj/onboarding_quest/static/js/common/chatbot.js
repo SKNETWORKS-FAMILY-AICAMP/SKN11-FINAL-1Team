@@ -336,7 +336,9 @@ class ChatBot {
 
         const keyword = match[1];
 
-        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
+        // fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}`)
+        fetch(`${this.apiBaseUrl}/chat/autocomplete?query=${encodeURIComponent(keyword)}&user_id=${encodeURIComponent(user_id)}`)
+
 
 
             .then(res => {
@@ -941,6 +943,21 @@ async function createNewSession() {
         window.chatBot.addMessageToChat('bot', welcomeText);
 
         // 🔥 추가: session-messages 스크립트에도 초기 메시지 반영
+        // const script = div.querySelector('.session-messages');
+        // if (script) {
+        //     try {
+        //         const existing = JSON.parse(script.textContent || '[]');
+        //         existing.push({
+        //             type: 'bot',
+        //             text: welcomeText,
+        //             time: new Date().toISOString().split('T')[0]
+        //         });
+        //         script.textContent = JSON.stringify(existing);
+        //     } catch (e) {
+        //         console.error('세션 메시지 초기화 실패:', e);
+        //     }
+        // }
+        // 🔥 추가: session-messages 스크립트에도 초기 메시지 반영
         const script = div.querySelector('.session-messages');
         if (script) {
             try {
@@ -955,6 +972,12 @@ async function createNewSession() {
                 console.error('세션 메시지 초기화 실패:', e);
             }
         }
+
+        // ✅ 세션 리스트 다시 바인딩 (세션 추가 후 세션 전환 안 되는 버그 해결)
+        if (window.chatBot) {
+            window.chatBot.refreshSessionList();
+        }
+
 
     } catch (e) {
         console.error("세션 생성 실패:", e);
@@ -1002,27 +1025,34 @@ function getCsrfToken() {
 //     }
 // });
 
+// document.addEventListener('DOMContentLoaded', function () {
+//     if (!window.chatBot) {
+//         window.chatBot = new ChatBot();
+//     }
+
+//     // 기존 서버 렌더링된 세션 아이템들에 클릭 이벤트 바인딩
+//     const items = document.querySelectorAll('.chatbot-session-item');
+//     items.forEach((item) => {
+//         item.addEventListener('click', (e) => {
+//             if (e.target.closest('.delete-session-btn')) return;
+//             window.chatBot.selectSession(item);  // ✅ 세션 선택
+//         });
+
+//         const deleteBtn = item.querySelector('.delete-session-btn');
+//         if (deleteBtn) {
+//             deleteBtn.addEventListener('click', (e) => {
+//                 e.stopPropagation();
+//                 window.chatBot.openDeleteModal(deleteBtn.getAttribute('data-session-id'));
+//             });
+//         }
+//     });
+// });
 document.addEventListener('DOMContentLoaded', function () {
     if (!window.chatBot) {
         window.chatBot = new ChatBot();
+        window.chatBot.refreshSessionList();  // ✅ 필수: DOM 렌더링된 세션 리스트로 이벤트 바인딩
     }
-
-    // 기존 서버 렌더링된 세션 아이템들에 클릭 이벤트 바인딩
-    const items = document.querySelectorAll('.chatbot-session-item');
-    items.forEach((item) => {
-        item.addEventListener('click', (e) => {
-            if (e.target.closest('.delete-session-btn')) return;
-            window.chatBot.selectSession(item);  // ✅ 세션 선택
-        });
-
-        const deleteBtn = item.querySelector('.delete-session-btn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                window.chatBot.openDeleteModal(deleteBtn.getAttribute('data-session-id'));
-            });
-        }
-    });
 });
+
 
 

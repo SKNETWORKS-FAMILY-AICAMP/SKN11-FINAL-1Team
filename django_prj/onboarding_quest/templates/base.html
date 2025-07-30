@@ -115,7 +115,7 @@
             {% if request.user.is_authenticated %}
                 {% if request.user.role == 'mentor' %}
                     {% if request.user.is_admin %}
-                        <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-200 flex items-center gap-3 font-bold text-blue-700 hover:text-blue-900{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>직원 관리</a>
+                        <a href="{% url 'account:supervisor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-200 flex items-center gap-3 font-bold text-blue-700 hover:text-blue-900{% if request.path == '/account/supervisor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>조직 관리</a>
                         <a href="{% url 'account:manage_mentorship' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-200 flex items-center gap-3 font-bold text-blue-700 hover:text-blue-900{% if request.path == '/account/manage_mentorship/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>멘토쉽 관리</a>
                     {% endif %}
                     <a href="{% url 'mentor:mentor' %}" class="sidebar-link block py-3 px-4 rounded-lg hover:bg-gray-50 flex items-center gap-3 font-bold text-black hover:text-black{% if request.path == '/mentor/' %} bg-blue-50 text-blue-600 border-r-2 border-blue-600{% endif %}"><span class="text-lg"></span>대쉬보드</a>
