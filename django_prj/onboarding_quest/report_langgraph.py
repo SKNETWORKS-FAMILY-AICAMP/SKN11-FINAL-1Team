@@ -162,17 +162,36 @@ class ReportNodes:
                        ta.scheduled_start_date, ta.scheduled_end_date,
                        ta.real_start_date, ta.real_end_date
                 FROM core_taskassign ta
-                WHERE ta.mentorship_id_id = %s
+                WHERE ta.mentorship_id_id = %s AND ta.parent_id IS NULL
                 ORDER BY ta.task_assign_id
             """, (user_row['mentorship_id'],))
             tasks = cur.fetchall()
             
             # 보고서 생성을 위한 데이터 구성
-            report_data = {
-                'mentee_name': f"{user_row['last_name']}{user_row['first_name']}",
-                'role': user_row['role'],
-                'mentor_name': f"{user_row['mentor_last_name']}{user_row['mentor_first_name']}",
-                'tasks': [{
+            # report_tasks = []
+            # for task in tasks:
+            #     task_data = {
+            #         'mentee_name': f"{user_row['last_name']}{user_row['first_name']}",
+            #         'role': user_row['role'],
+            #         'mentor_name': f"{user_row['mentor_last_name']}{user_row['mentor_first_name']}",
+            #         'tasks': [{
+            #             'id': task['task_assign_id'],
+            #             'title': task['title'],
+            #             'description': task['description'],
+            #             'status': task['status'],
+            #             'start_date': task['scheduled_start_date'],
+            #             'end_date': task['scheduled_end_date'],
+            #             'real_start_date': task['real_start_date'],
+            #             'real_end_date': task['real_end_date'],
+            #             'memos': [],
+            #             'reviews': [],
+            #             'subtasks': []
+            #         } for task in tasks]
+            #     }
+
+            report_tasks = []
+            for task in tasks:
+                task_data = {
                     'id': task['task_assign_id'],
                     'title': task['title'],
                     'description': task['description'],
@@ -180,29 +199,102 @@ class ReportNodes:
                     'start_date': task['scheduled_start_date'],
                     'end_date': task['scheduled_end_date'],
                     'real_start_date': task['real_start_date'],
-                    'real_end_date': task['real_end_date']
-                } for task in tasks]
+                    'real_end_date': task['real_end_date'],
+                    'memos': [],
+                    'reviews': [],
+                    'subtasks': []
+                }
+                # 이후 task_data에 memos, reviews, subtasks를 채움
+                report_tasks.append(task_data)
+                
+                # 메모(댓글)
+                cur.execute("""
+                    SELECT comment, create_date, user_id 
+                    FROM core_memo
+                    WHERE task_assign_id = %s
+                    ORDER BY create_date
+                """, (task['task_assign_id'],))
+                memos = cur.fetchall()
+                task_data['memos'] = [{'comment': m['comment'], 'date': m['create_date']} for m in memos]
+                task_data['reviews'] = [{'content': m['comment'], 'date': m['create_date']} for m in memos if m['user_id'] is None]
+
+                # 하위태스크
+                cur.execute("""
+                    SELECT st.task_assign_id, st.title, st.description, st.status,
+                           st.scheduled_start_date, st.scheduled_end_date,
+                           st.real_start_date, st.real_end_date
+                    FROM core_taskassign st
+                    WHERE st.parent_id = %s
+                    ORDER BY st.task_assign_id
+                """, (task['task_assign_id'],))
+                subtasks = cur.fetchall()
+
+                for sub in subtasks:
+                    sub_data = {
+                        'id': sub['task_assign_id'],
+                        'title': sub['title'],
+                        'description': sub['description'],
+                        'status': sub['status'],
+                        'start_date': sub['scheduled_start_date'],
+                        'end_date': sub['scheduled_end_date'],
+                        'real_start_date': sub['real_start_date'],
+                        'real_end_date': sub['real_end_date'],
+                        'memos': []
+                    }
+                    cur.execute("""
+                        SELECT comment, create_date FROM core_memo
+                        WHERE task_assign_id = %s
+                        ORDER BY create_date
+                    """, (sub['task_assign_id'],))
+                    sub_memos = cur.fetchall()
+                    sub_data['memos'] = [{'comment': sm['comment'], 'date': sm['create_date']} for sm in sub_memos]
+                    task_data['subtasks'].append(sub_data)
+
+                report_tasks.append(task_data)
+
+            report_data = {
+                'mentee_name': f"{user_row['last_name']}{user_row['first_name']}",
+                'role': user_row['role'],
+                'mentor_name': f"{user_row['mentor_last_name']}{user_row['mentor_first_name']}",
+                'tasks': report_tasks
             }
+
+            def format_task_info(tasks):
+                lines = []
+                for t in tasks:
+                    lines.append(f"- {t['title']} ({t['status']})")
+                    if t['memos']:
+                        lines.append(f"  메모: {'; '.join([m['comment'] for m in t['memos']])}")
+                    if t['reviews']:
+                        lines.append(f"  리뷰: {'; '.join([r['content'] for r in t['reviews']])}")
+                    for s in t['subtasks']:
+                        lines.append(f"   · 하위태스크: {s['title']} ({s['status']})")
+                        if s['memos']:
+                            lines.append(f"     메모: {'; '.join([m['comment'] for m in s['memos']])}")
+                return "\n".join(lines)
+
             
             # GPT를 사용한 보고서 생성
             prompt = f"""
-            다음 정보를 바탕으로 {report_data['mentee_name']} 멘티의 온보딩 최종 평가 보고서를 작성해주세요.
+            다음 정보를 바탕으로 멘티의 온보딩 최종 평가 보고서를 작성해주세요.
 
             **작성 지침:**
-            1. 서두 문구(예: '~를 작성하겠습니다')는 쓰지 않고 1번 항목부터 바로 시작할 것.
+            1. 보고서는 서두 문구(예: "~를 작성하겠습니다") 없이 1번 항목부터 바로 시작할 것.
             2. 모든 문장은 존칭형으로 작성할 것. ('~했다' 대신 '~했습니다', '~하였다' 대신 '~하였습니다' 사용)
             3. 마크다운 문법(##, **, - 등)은 쓰지 말고 평문으로 작성할 것.
             4. HR 평가자가 참고할 수 있도록 업무 성실도, 문제 해결 능력, 협업 태도, 자기 주도성, 시간 관리 능력 등을 구체적으로 평가할 것.
             5. 태스크 수행 내용이 부족하거나 미흡한 부분은 객관적으로 지적하고, 개선 방향을 구체적으로 제시할 것.
-            6. 태스크 수행 과정에서 나타난 강점(예: 주도성, 학습 속도, 협업 능력 등)은 사례를 들어 설명할 것.
-            7. 이름으로 반복해서 문장을 시작하지 말고, 첫 언급 이후에는 '해당 멘티', '이 과정에서' 등 대명사나 전환 문구를 사용해 자연스럽게 연결할 것.
-            8. 문장 간 자연스러운 흐름을 위해 접속사(예: 또한, 더 나아가, 이에 따라, 결과적으로 등)를 적절히 사용하여 문장이 단절되지 않도록 한 문단 안에서 이어지게 작성할 것.
-            9. **각 항목(1~4번)은 최소 500자 이상 작성하여, 전체 글자 수가 2000자 이상이 되도록 할 것.**
-            10. 항목별 작성 가이드:
-                1) 전체 온보딩 과정 요약: 온보딩 기간 동안 수행한 주요 태스크와 진행 과정의 흐름을 객관적으로 정리.
-                2) 주요 성과 및 습득 역량: 멘티가 얻은 기술적 역량, 협업 능력, 문제 해결 능력 등을 구체적으로 설명.
-                3) 개선 필요 사항: 부족했던 부분과 향후 보완할 점을 구체적으로 제안.
-                4) 종합 평가: 멘티의 전반적인 평가와 향후 성장 가능성을 평가자의 의견 중심으로 작성. (1번 요약을 반복하지 말 것)
+            6. 태스크 수행 과정에서 나타난 강점(예: 주도성, 학습 속도, 협업 능력 등)은 실제 사례를 들어 설명할 것.
+            7. 문장 간 자연스러운 흐름을 위해 접속사(예: 또한, 더 나아가, 이에 따라, 결과적으로 등)와 전환 문구(예: 이 과정에서, 특히, 한편)를 활용할 것.
+            8. 같은 의미의 단어 반복을 피하고, 대명사와 유사 표현을 적절히 사용하여 문장을 부드럽게 이어갈 것.
+            9. 항목 간 자연스러운 연결을 위해 '먼저', '다음으로', '마지막으로' 등 순서 표현을 적극 활용할 것.
+            10. 각 항목(1~4번)은 최소 500자 이상 작성하며, 전체 글자 수는 2000자 이상이 되도록 할 것.
+
+            **항목별 작성 가이드:**
+            1) 전체 온보딩 과정 요약: 온보딩 기간 동안 수행한 주요 태스크와 진행 과정을 체계적으로 요약.
+            2) 주요 성과 및 습득 역량: 멘티가 얻은 기술적 역량, 협업 능력, 문제 해결 능력 등을 구체적으로 기술.
+            3) 개선 필요 사항: 부족한 부분과 향후 개선 방향을 구체적으로 제안.
+            4) 종합 평가: 멘티의 전반적인 평가와 성장 가능성을 평가자의 시각에서 종합적으로 서술. (1번 요약 내용 반복 금지)
 
             멘티 정보:
             이름: {report_data['mentee_name']}
@@ -218,6 +310,7 @@ class ReportNodes:
 
             위 정보를 바탕으로 HR팀이 참고할 수 있는 실무적 최종 평가 보고서를 작성하세요.
             """
+
 
             
             report = llm.invoke(prompt).content
