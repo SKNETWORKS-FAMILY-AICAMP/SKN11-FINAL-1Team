@@ -1276,21 +1276,43 @@ def update_task_status(request, task_id):
         logger.info(f"🔍 - 요청된 mentorship_id: {mentorship_id}")
         
         # 🚀 FastAPI TaskAssignCreate 스키마에 맞는 완전한 데이터 구성
+        # 🔧 중요: 기존 태스크 정보 우선, 클라이언트 데이터는 명시적으로 변경된 것만 적용
         update_data = {
-            'title': data.get('title', task_result.get('title') or ''),
-            'description': data.get('description', task_result.get('description') or ''), 
-            'guideline': data.get('guideline', task_result.get('guideline') or ''),
+            'title': task_result.get('title') or '',  # 🔧 기존 제목 유지
+            'description': task_result.get('description') or '',  # 🔧 기존 설명 유지
+            'guideline': task_result.get('guideline') or '',  # 🔧 기존 가이드라인 유지
             'week': task_result.get('week', 1),
             'order': task_result.get('order', 1),
-            'scheduled_start_date': data.get('scheduled_start_date', task_result.get('scheduled_start_date')),
-            'scheduled_end_date': data.get('scheduled_end_date', task_result.get('scheduled_end_date')),
+            'scheduled_start_date': task_result.get('scheduled_start_date'),
+            'scheduled_end_date': task_result.get('scheduled_end_date'),
             'real_start_date': task_result.get('real_start_date'),
             'real_end_date': task_result.get('real_end_date'),
-            'status': new_status,
-            'priority': data.get('priority', task_result.get('priority')),  # 기본값 '중' 제거
+            'status': new_status,  # 🔧 상태만 변경
+            'priority': task_result.get('priority'),  # 🔧 기존 우선순위 유지
             'mentorship_id': mentorship_id,
             'parent_id': task_result.get('parent_id'),  # 🔧 중요: parent_id 유지!
         }
+        
+        # 🔧 클라이언트에서 명시적으로 수정 요청한 필드만 업데이트
+        if data.get('description') and data.get('description').strip():
+            update_data['description'] = data.get('description').strip()
+            logger.info(f"🔍 클라이언트에서 설명 수정 요청: {data.get('description')[:50]}...")
+        
+        if data.get('title') and data.get('title').strip():
+            update_data['title'] = data.get('title').strip()
+            logger.info(f"🔍 클라이언트에서 제목 수정 요청: {data.get('title')}")
+        
+        if data.get('priority') and data.get('priority').strip():
+            update_data['priority'] = data.get('priority').strip()
+            logger.info(f"🔍 클라이언트에서 우선순위 수정 요청: {data.get('priority')}")
+        
+        if data.get('scheduled_start_date'):
+            update_data['scheduled_start_date'] = data.get('scheduled_start_date')
+            logger.info(f"🔍 클라이언트에서 시작일 수정 요청: {data.get('scheduled_start_date')}")
+        
+        if data.get('scheduled_end_date'):
+            update_data['scheduled_end_date'] = data.get('scheduled_end_date')
+            logger.info(f"🔍 클라이언트에서 종료일 수정 요청: {data.get('scheduled_end_date')}")
         
         # 🔧 None 값 제거 (FastAPI에서 Optional 필드 처리)
         clean_update_data = {}
@@ -1309,6 +1331,16 @@ def update_task_status(request, task_id):
             logger.info(f"  - task_id: {task_id}")
             logger.info(f"  - parent_id: {task_result.get('parent_id')} (유지되어야 함)")
             logger.info(f"  - update_data에 포함된 parent_id: {update_data.get('parent_id')}")
+            logger.info(f"  - 기존 제목: '{task_result.get('title')}'")
+            logger.info(f"  - 기존 설명: '{task_result.get('description')[:100] if task_result.get('description') else '없음'}...'")
+            logger.info(f"  - 업데이트할 제목: '{update_data.get('title')}'")
+            logger.info(f"  - 업데이트할 설명: '{update_data.get('description')[:100] if update_data.get('description') else '없음'}...'")
+            logger.info(f"  - 상태 변경: {task_result.get('status')} -> {new_status}")
+        else:
+            logger.info(f"🔍 상위 태스크 업데이트:")
+            logger.info(f"  - task_id: {task_id}")
+            logger.info(f"  - parent_id: None (상위 태스크)")
+            logger.info(f"  - 상태 변경: {task_result.get('status')} -> {new_status}")
         
         # �🔧 날짜 필드 업데이트 로직
         if new_status == '진행중' and not task_result.get('real_start_date'):
@@ -1335,17 +1367,36 @@ def update_task_status(request, task_id):
                             logger.error(f"❌ 심각한 오류: 하위 태스크 {task_id}의 parent_id가 {task_result.get('parent_id')} -> {updated_task.get('parent_id')}로 변경됨!")
                         else:
                             logger.info(f"✅ 하위 태스크 {task_id}의 parent_id 올바르게 유지됨: {updated_task.get('parent_id')}")
+                        
+                        # 🔍 내용 변경 검증
+                        if updated_task.get('title') != task_result.get('title'):
+                            logger.warning(f"⚠️ 하위 태스크 {task_id} 제목 변경됨: '{task_result.get('title')}' -> '{updated_task.get('title')}'")
+                        else:
+                            logger.info(f"✅ 하위 태스크 {task_id} 제목 올바르게 유지됨")
+                        
+                        if updated_task.get('description') != task_result.get('description'):
+                            logger.warning(f"⚠️ 하위 태스크 {task_id} 설명 변경됨")
+                            logger.info(f"  이전: '{task_result.get('description')[:100] if task_result.get('description') else '없음'}...'")
+                            logger.info(f"  현재: '{updated_task.get('description')[:100] if updated_task.get('description') else '없음'}...'")
+                        else:
+                            logger.info(f"✅ 하위 태스크 {task_id} 설명 올바르게 유지됨")
+                            
                     except Exception as verify_error:
                         logger.warning(f"⚠️ 하위 태스크 {task_id} 업데이트 후 검증 실패: {verify_error}")
                 
-                # �🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
+                # � 상위 태스크와 하위 태스크는 완전히 독립적으로 동작
+                # 상위 태스크 완료 시에도 하위 태스크 상태는 변경하지 않음
                 if new_status == '완료' and not task_result.get('parent_id'):
-                    logger.info(f"🔥 상위 태스크 {task_id} 완료 감지 - 하위 태스크 자동 완료 처리 시작")
-                    try:
-                        auto_complete_subtasks(task_id, mentorship_id)
-                        logger.info(f"✅ 하위 태스크 자동 완료 처리 완료")
-                    except Exception as subtask_error:
-                        logger.error(f"❌ 하위 태스크 자동 완료 처리 실패: {subtask_error}")
+                    logger.info(f"🔥 상위 태스크 {task_id} 완료됨 - 하위 태스크는 독립적으로 유지됩니다.")
+                    logger.info(f"🔍 상위 태스크 완료는 진척도에만 반영되며, 하위 태스크 상태는 변경하지 않습니다.")
+                elif task_result.get('parent_id'):
+                    logger.info(f"🔍 하위 태스크 {task_id} 상태 변경됨: {old_status} -> {new_status}")
+                    logger.info(f"🔍 하위 태스크는 상위 태스크({task_result.get('parent_id')})에 영향을 주지 않습니다.")
+                
+                # 🚨 하위 태스크 완료 시 상위 태스크를 자동으로 완료시키는 로직 방지
+                if task_result.get('parent_id') and new_status == '완료':
+                    logger.info(f"🚨 하위 태스크 {task_id} 완료됨 - 상위 태스크는 독립적으로 유지됩니다.")
+                    # 상위 태스크 자동 완료 로직을 실행하지 않음
                 
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
@@ -1393,18 +1444,26 @@ def update_task_status(request, task_id):
                 logger.info(f"🔧 Django ORM으로 태스크 상태 업데이트 시도...")
                 task_obj = TaskAssign.objects.get(task_assign_id=task_id)
                 task_obj.status = new_status
-                if new_description:
-                    task_obj.description = new_description  # 추가
+                
+                # 🔧 명시적으로 요청된 필드만 업데이트 (기존 내용 보호)
+                if data.get('description') and data.get('description').strip():
+                    task_obj.description = data.get('description').strip()
+                    logger.info(f"🔍 Django ORM 설명 수정: {data.get('description')[:50]}...")
+                
+                if data.get('title') and data.get('title').strip():
+                    task_obj.title = data.get('title').strip()
+                    logger.info(f"🔍 Django ORM 제목 수정: {data.get('title')}")
 
                 # 🔧 우선순위 업데이트
-                if data.get('priority'):
-                    task_obj.priority = data['priority']
+                if data.get('priority') and data.get('priority').strip():
+                    task_obj.priority = data.get('priority').strip()
+                    logger.info(f"🔍 Django ORM 우선순위 수정: {data.get('priority')}")
 
                 # 🔧 종료일 업데이트
                 if data.get('scheduled_end_date'):
                     try:
                         task_obj.scheduled_end_date = datetime.strptime(data['scheduled_end_date'], '%Y-%m-%d').date()
-                        logger.info(f"📅 종료일 저장: {task_obj.scheduled_end_date}")
+                        logger.info(f"📅 Django ORM 종료일 저장: {task_obj.scheduled_end_date}")
                     except ValueError:
                         logger.warning(f"유효하지 않은 종료일 형식: {data['scheduled_end_date']}")
 
@@ -1412,7 +1471,7 @@ def update_task_status(request, task_id):
                 if data.get('scheduled_start_date'):
                     try:
                         task_obj.scheduled_start_date = datetime.strptime(data['scheduled_start_date'], '%Y-%m-%d').date()
-                        logger.info(f"📅 시작일 저장: {task_obj.scheduled_start_date}")
+                        logger.info(f"📅 Django ORM 시작일 저장: {task_obj.scheduled_start_date}")
                     except ValueError:
                         logger.warning(f"유효하지 않은 시작일 형식: {data['scheduled_start_date']}")
 
@@ -1436,15 +1495,36 @@ def update_task_status(request, task_id):
                         logger.error(f"❌ Django ORM 심각한 오류: 하위 태스크 {task_id}의 parent_id가 {expected_parent_id} -> {task_obj.parent_id}로 변경됨!")
                     else:
                         logger.info(f"✅ Django ORM 하위 태스크 {task_id}의 parent_id 올바르게 유지됨: {task_obj.parent_id}")
+                    
+                    # 🔍 Django ORM 내용 변경 검증
+                    original_title = task_result.get('title') if isinstance(task_result, dict) else getattr(task_result, 'title', None)
+                    original_description = task_result.get('description') if isinstance(task_result, dict) else getattr(task_result, 'description', None)
+                    
+                    if task_obj.title != original_title:
+                        logger.warning(f"⚠️ Django ORM 하위 태스크 {task_id} 제목 변경됨: '{original_title}' -> '{task_obj.title}'")
+                    else:
+                        logger.info(f"✅ Django ORM 하위 태스크 {task_id} 제목 올바르게 유지됨")
+                    
+                    if task_obj.description != original_description:
+                        logger.warning(f"⚠️ Django ORM 하위 태스크 {task_id} 설명 변경됨")
+                        logger.info(f"  이전: '{original_description[:100] if original_description else '없음'}...'")
+                        logger.info(f"  현재: '{task_obj.description[:100] if task_obj.description else '없음'}...'")
+                    else:
+                        logger.info(f"✅ Django ORM 하위 태스크 {task_id} 설명 올바르게 유지됨")
                 
-                # �🔥 상위 태스크가 완료될 때 하위 태스크들도 자동으로 완료 처리
+                # � 상위 태스크와 하위 태스크는 완전히 독립적으로 동작 (Django ORM)
+                # 상위 태스크 완료 시에도 하위 태스크 상태는 변경하지 않음
                 if new_status == '완료' and not task_obj.parent_id:
-                    logger.info(f"🔥 상위 태스크 {task_id} 완료 감지 (Django ORM) - 하위 태스크 자동 완료 처리 시작")
-                    try:
-                        auto_complete_subtasks(task_id, mentorship_id)
-                        logger.info(f"✅ 하위 태스크 자동 완료 처리 완료 (Django ORM)")
-                    except Exception as subtask_error:
-                        logger.error(f"❌ 하위 태스크 자동 완료 처리 실패 (Django ORM): {subtask_error}")
+                    logger.info(f"🔥 상위 태스크 {task_id} 완료됨 (Django ORM) - 하위 태스크는 독립적으로 유지됩니다.")
+                    logger.info(f"🔍 상위 태스크 완료는 진척도에만 반영되며, 하위 태스크 상태는 변경하지 않습니다.")
+                elif task_obj.parent_id:
+                    logger.info(f"🔍 하위 태스크 {task_id} 상태 변경됨 (Django ORM): {old_status} -> {new_status}")
+                    logger.info(f"🔍 하위 태스크는 상위 태스크({task_obj.parent_id})에 영향을 주지 않습니다.")
+                
+                # 🚨 하위 태스크 완료 시 상위 태스크를 자동으로 완료시키는 로직 방지 (Django ORM)
+                if task_obj.parent_id and new_status == '완료':
+                    logger.info(f"🚨 하위 태스크 {task_id} 완료됨 (Django ORM) - 상위 태스크는 독립적으로 유지됩니다.")
+                    # 상위 태스크 자동 완료 로직을 실행하지 않음
                 
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
@@ -1527,155 +1607,23 @@ def create_review_request_alarm(mentorship_id, task_title, task_id=None):
 
 
 def auto_complete_subtasks(parent_task_id, mentorship_id):
-    """상위 태스크가 완료될 때 하위 태스크들을 자동으로 완료 처리하는 함수"""
+    """
+    🚨 DEPRECATED: 이 함수는 더 이상 사용되지 않습니다.
+    상위 태스크와 하위 태스크는 완전히 독립적으로 동작하도록 변경되었습니다.
+    상위 태스크 완료 시에도 하위 태스크 상태는 자동으로 변경되지 않습니다.
+    진척도는 상위 태스크 완료 상태만을 기준으로 계산됩니다.
+    """
     import logging
     logger = logging.getLogger(__name__)
     
-    try:
-        logger.info(f"🔥 상위 태스크 {parent_task_id} 완료 - 하위 태스크들 자동 완료 처리 시작")
-        
-        # FastAPI로 하위 태스크들 찾기
-        try:
-            tasks_result = fastapi_client.get_task_assigns(mentorship_id=mentorship_id)
-            all_tasks = tasks_result.get('task_assigns', [])
-            
-            # 하위 태스크들 필터링 (parent_id가 현재 완료된 태스크인 것들)
-            subtasks = [task for task in all_tasks if task.get('parent_id') == parent_task_id]
-            
-            if not subtasks:
-                logger.info(f"✅ 상위 태스크 {parent_task_id}에 하위 태스크가 없습니다.")
-                return True
-            
-            logger.info(f"🔍 찾은 하위 태스크 개수: {len(subtasks)}")
-            
-            # 각 하위 태스크를 완료 상태로 변경
-            completed_count = 0
-            for subtask in subtasks:
-                subtask_id = subtask.get('task_assign_id')
-                current_status = subtask.get('status')
-                
-                # 이미 완료된 하위 태스크는 스킵
-                if current_status == '완료':
-                    logger.info(f"⏭️ 하위 태스크 {subtask_id}는 이미 완료 상태입니다.")
-                    continue
-                
-                try:
-                    # 🔧 안전한 방법: 상태 변경을 위한 최소한의 데이터만 업데이트
-                    update_data = {
-                        'status': '완료'  # 완료 상태로 변경
-                    }
-                    
-                    # 실제 완료일이 없으면 현재 날짜로 설정
-                    if not subtask.get('real_end_date'):
-                        from datetime import datetime
-                        update_data['real_end_date'] = datetime.now().date().isoformat()
-                    
-                    # 🔍 하위 태스크 정보 검증 로그
-                    logger.info(f"🔍 하위 태스크 {subtask_id} 업데이트 전 정보:")
-                    logger.info(f"  - title: {subtask.get('title')}")
-                    logger.info(f"  - parent_id: {subtask.get('parent_id')} (유지되어야 함: {parent_task_id})")
-                    logger.info(f"  - 현재 상태: {current_status} -> 완료")
-                    logger.info(f"  - update_data: {update_data}")
-                    
-                    result = fastapi_client.update_task_assign(subtask_id, update_data)
-                    logger.info(f"✅ FastAPI로 하위 태스크 {subtask_id} 완료 처리 성공: {current_status} -> 완료")
-                    
-                    # 🔍 업데이트 후 검증 (선택적)
-                    try:
-                        updated_task = fastapi_client.get_task_assign(subtask_id)
-                        if updated_task.get('parent_id') != parent_task_id:
-                            logger.error(f"❌ 심각한 오류: 하위 태스크 {subtask_id}의 parent_id가 {parent_task_id} -> {updated_task.get('parent_id')}로 변경됨!")
-                        else:
-                            logger.info(f"✅ 하위 태스크 {subtask_id}의 parent_id 올바르게 유지됨: {updated_task.get('parent_id')}")
-                    except Exception as verify_error:
-                        logger.warning(f"⚠️ 하위 태스크 {subtask_id} 업데이트 후 검증 실패: {verify_error}")
-                    
-                    completed_count += 1
-                    
-                except Exception as fastapi_error:
-                    logger.error(f"❌ FastAPI로 하위 태스크 {subtask_id} 완료 처리 실패: {fastapi_error}")
-                    
-                    # FastAPI 실패 시 Django ORM으로 fallback
-                    try:
-                        from core.models import TaskAssign
-                        from datetime import datetime
-                        
-                        subtask_obj = TaskAssign.objects.get(task_assign_id=subtask_id)
-                        subtask_obj.status = '완료'
-                        
-                        if not subtask_obj.real_end_date:
-                            subtask_obj.real_end_date = datetime.now().date()
-                        
-                        subtask_obj.save()
-                        logger.info(f"✅ Django ORM으로 하위 태스크 {subtask_id} 완료 처리 성공: {current_status} -> 완료")
-                        completed_count += 1
-                        
-                    except Exception as orm_error:
-                        logger.error(f"❌ Django ORM으로도 하위 태스크 {subtask_id} 완료 처리 실패: {orm_error}")
-            
-            logger.info(f"🎉 하위 태스크 자동 완료 처리 완료: {completed_count}/{len(subtasks)}개 성공")
-            return completed_count > 0
-            
-        except Exception as get_tasks_error:
-            logger.error(f"❌ 하위 태스크 조회 실패: {get_tasks_error}")
-            
-            # FastAPI 실패 시 Django ORM으로 fallback
-            try:
-                from core.models import TaskAssign
-                from datetime import datetime
-                
-                subtasks = TaskAssign.objects.filter(parent_id=parent_task_id)
-                
-                if not subtasks.exists():
-                    logger.info(f"✅ 상위 태스크 {parent_task_id}에 하위 태스크가 없습니다. (Django ORM 조회)")
-                    return True
-                
-                logger.info(f"🔍 Django ORM으로 찾은 하위 태스크 개수: {subtasks.count()}")
-                
-                completed_count = 0
-                for subtask in subtasks:
-                    if subtask.status == '완료':
-                        logger.info(f"⏭️ 하위 태스크 {subtask.task_assign_id}는 이미 완료 상태입니다.")
-                        continue
-                    
-                    # 🔍 Django ORM 하위 태스크 정보 검증 로그
-                    logger.info(f"🔍 Django ORM 하위 태스크 {subtask.task_assign_id} 업데이트:")
-                    logger.info(f"  - title: {subtask.title}")
-                    logger.info(f"  - parent_id: {subtask.parent_id} (유지되어야 함: {parent_task_id})")
-                    logger.info(f"  - 현재 상태: {subtask.status} -> 완료")
-                    
-                    old_status = subtask.status
-                    subtask.status = '완료'
-                    
-                    if not subtask.real_end_date:
-                        subtask.real_end_date = datetime.now().date()
-                    
-                    subtask.save()
-                    logger.info(f"✅ 하위 태스크 {subtask.task_assign_id} 완료 처리 성공: {old_status} -> 완료")
-                    
-                    # 🔍 Django ORM 업데이트 후 검증
-                    subtask.refresh_from_db()
-                    if subtask.parent_id != parent_task_id:
-                        logger.error(f"❌ Django ORM 심각한 오류: 하위 태스크 {subtask.task_assign_id}의 parent_id가 변경됨!")
-                    else:
-                        logger.info(f"✅ Django ORM 하위 태스크 {subtask.task_assign_id}의 parent_id 올바르게 유지됨: {subtask.parent_id}")
-                    
-                    completed_count += 1
-                
-                logger.info(f"🎉 하위 태스크 자동 완료 처리 완료 (Django ORM): {completed_count}/{subtasks.count()}개 성공")
-                return completed_count > 0
-                
-            except Exception as orm_error:
-                logger.error(f"❌ Django ORM 하위 태스크 처리도 실패: {orm_error}")
-                return False
+    logger.warning(f"⚠️ DEPRECATED: auto_complete_subtasks 함수가 호출되었습니다. 더 이상 하위 태스크를 자동 완료하지 않습니다.")
+    logger.info(f"🔍 상위 태스크 {parent_task_id}가 완료되었지만, 하위 태스크는 독립적으로 유지됩니다.")
     
-    except Exception as e:
-        logger.error(f"❌ 하위 태스크 자동 완료 처리 중 예상치 못한 오류: {e}")
-        return False
+    # 더 이상 하위 태스크를 자동으로 완료시키지 않음
+    return True
 
 
-
-@login_required 
+@login_required  
 def change_task_status_for_test(request):
     """🧪 테스트용: 태스크 상태 변경 유틸리티"""
     if request.method == 'POST':
