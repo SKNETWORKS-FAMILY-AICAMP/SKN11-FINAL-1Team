@@ -18,14 +18,16 @@ function renderUploadList() {
   addedFiles.forEach((f, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-  <td style="width:5%;"></td> <!-- 체크박스 열 자리 맞춤 -->
+  <td style="width:5%;">
+    <input type="file" style="display:none;" data-file-index="${idx}">
+  </td>
   <td style="width:25%;">${f.name}</td>
   <td style="width:40%;">
-    <input type="text" placeholder="설명 입력" value="${f.description}" 
+    <input type="text" name="description_${idx}" placeholder="설명 입력" value="${f.description}" 
            onchange="updateFileInfo(${idx}, 'description', this.value)">
   </td>
   <td style="width:15%; text-align: center;">
-    <input type="checkbox" ${f.common_doc ? 'checked' : ''} 
+    <input type="checkbox" name="is_common_${idx}" ${f.common_doc ? 'checked' : ''} 
            onchange="updateFileInfo(${idx}, 'common_doc', this.checked)">
   </td>
   <td style="width:15%; text-align: center;">
@@ -34,6 +36,15 @@ function renderUploadList() {
 `;
 
     uploadListTbody.appendChild(tr);
+    
+    // 숨겨진 파일 input에 실제 파일 데이터 설정
+    const fileInput = tr.querySelector('input[type="file"]');
+    if (fileInput && f.file) {
+      // FileList는 읽기 전용이므로 DataTransfer를 사용하여 파일을 설정
+      const dt = new DataTransfer();
+      dt.items.add(f.file);
+      fileInput.files = dt.files;
+    }
   });
 
   const btnGroup = document.getElementById('doc-btn-group');
@@ -135,8 +146,16 @@ if (dropArea && fileInput) {
 
 uploadBtn?.addEventListener('click', async () => {
   if (addedFiles.length === 0) return;
+  
+  // 로딩 상태 시작
+  uploadBtn.classList.add('loading');
   uploadBtn.disabled = true;
-  uploadBtn.textContent = '업로드 중...';
+  
+  const btnText = uploadBtn.querySelector('.btn-text');
+  const btnLoading = uploadBtn.querySelector('.btn-loading');
+  
+  if (btnText) btnText.style.display = 'none';
+  if (btnLoading) btnLoading.style.display = 'flex';
 
   try {
     for (const fileInfo of addedFiles) {
@@ -153,13 +172,25 @@ uploadBtn?.addEventListener('click', async () => {
         body: formData
       });
 
+      // 응답을 텍스트로 먼저 받기
+      const responseText = await response.text();
+
+      // 응답 상태 확인
+      if (!response.ok) {
+        throw new Error(`서버 오류 (${response.status}): ${responseText.slice(0, 200)}...`);
+      }
+
+      // JSON 파싱 시도
       let result;
       try {
-        result = await response.json();
+        result = JSON.parse(responseText);
       } catch (jsonError) {
-        // JSON 파싱 실패 시 텍스트로 받아서 에러 표시
-        const errorText = await response.text();
-        throw new Error(`서버 응답 파싱 오류 (${response.status}): ${errorText}`);
+        // HTML 에러 페이지 또는 기타 비JSON 응답 처리
+        if (responseText.startsWith('<!DOCTYPE') || responseText.includes('<html>')) {
+          throw new Error(`서버에서 HTML 에러 페이지가 반환되었습니다. 관리자에게 문의하세요.`);
+        } else {
+          throw new Error(`JSON 파싱 오류: ${responseText.slice(0, 200)}...`);
+        }
       }
 
       if (!result.success) throw new Error(result.error || result.message || '업로드 실패');
@@ -177,8 +208,12 @@ uploadBtn?.addEventListener('click', async () => {
     console.error('Upload error:', err);
     showError('업로드 실패: ' + err.message);
   } finally {
+    // 로딩 상태 종료
+    uploadBtn.classList.remove('loading');
     uploadBtn.disabled = false;
-    uploadBtn.textContent = '📤 업로드';
+    
+    if (btnText) btnText.style.display = 'inline';
+    if (btnLoading) btnLoading.style.display = 'none';
   }
 });
 //#endregion

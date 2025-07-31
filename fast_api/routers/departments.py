@@ -20,9 +20,14 @@ async def create_department(department: schemas.DepartmentCreate, db: Session = 
 
 
 @router.get("/", response_model=List[schemas.Department])
-async def get_departments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """부서 목록 조회"""
-    departments = crud.get_departments(db, skip=skip, limit=limit)
+async def get_departments(
+    skip: int = 0, 
+    limit: int = 100, 
+    company_id: str = None, 
+    db: Session = Depends(get_db)
+):
+    """부서 목록 조회 (회사별 필터링 지원)"""
+    departments = crud.get_departments(db, skip=skip, limit=limit, company_id=company_id)
     return departments
 
 

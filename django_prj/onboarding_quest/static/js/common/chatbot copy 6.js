@@ -687,7 +687,7 @@ class ChatBot {
                 body: JSON.stringify({
                     question: question,
                     // question: htmlMessage,  // ✅ 토큰 포함된 HTML 메시지 저장
-                    html_message: htmlMessage,  // 추가
+                    // question,
                     doc_filter: tokens,
                     session_id: sessionId ? parseInt(sessionId) : null,
                     user_id: parseInt(user_id),

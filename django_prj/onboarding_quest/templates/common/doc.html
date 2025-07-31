@@ -287,6 +287,28 @@ body {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: none;
   color: white;
+  position: relative;
+  min-width: 140px; /* 버튼 크기 고정 */
+}
+
+.doc-upload-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.doc-upload-btn .btn-loading {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-upload-btn.loading .btn-text {
+  display: none;
+}
+
+.doc-upload-btn.loading .btn-loading {
+  display: flex;
 }
 
 .doc-upload-btn.show,
@@ -529,6 +551,15 @@ body {
 {% block content %}
 <script>
   const CURRENT_DEPARTMENT_ID = {{ user.department.department_id }};
+  
+  // API URLs 정의 (context_processors.py에서 제공되지 않은 경우 대비)
+  if (typeof window.API_URLS === 'undefined') {
+    window.API_URLS = {
+      DJANGO_BASE_URL: '{{ django_base_url|default:"http://localhost:8000" }}',
+      FASTAPI_BASE_URL: '{{ fastapi_base_url|default:"http://localhost:8001" }}',
+      RAG_API_URL: '{{ rag_api_url|default:"http://localhost:8001" }}'
+    };
+  }
 </script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
@@ -571,7 +602,7 @@ body {
 
         <button class="doc-upload-btn" id="doc-upload-btn">
           <span class="btn-text">업로드</span>
-          <span class="btn-loading" style="display: none;">
+          <span class="btn-loading">
             <div class="loading-spinner"></div>
             업로드중...
           </span>
@@ -678,7 +709,7 @@ body {
 <script src="{% static 'js/common/doc.js' %}?v={{ now|date:'U' }}"></script>
 
 <script>
-// CSRF 토큰 가져오기
+// CSRF 토큰 가져오기 (doc.js에서 사용될 수 있도록 전역 함수로 유지)
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -694,7 +725,7 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// 메시지 표시 함수
+// 메시지 표시 함수들 (doc.js와 호환되도록 전역 함수로 정의)
 function showMessage(message, type = 'success') {
     const messageDiv = document.createElement('div');
     messageDiv.className = `alert alert-${type}`;
@@ -728,89 +759,25 @@ function showMessage(message, type = 'success') {
     }, 3000);
 }
 
-// 문서 업로드 AJAX 처리
-document.addEventListener('DOMContentLoaded', function() {
-    const uploadBtn = document.getElementById('doc-upload-btn');
-    if (uploadBtn) {
-        const btnText = uploadBtn.querySelector('.btn-text');
-        const btnLoading = uploadBtn.querySelector('.btn-loading');
-        
-        uploadBtn.addEventListener('click', async function() {
-            const uploadList = document.getElementById('doc-upload-list-tbody');
-            if (!uploadList) {
-                showMessage('업로드할 파일 목록을 찾을 수 없습니다.', 'error');
-                return;
-            }
-            
-            const files = uploadList.querySelectorAll('tr');
-            if (files.length === 0) {
-                showMessage('업로드할 파일을 선택해주세요.', 'error');
-                return;
-            }
-            
-            // 로딩 상태 시작
-            if (btnText) btnText.style.display = 'none';
-            if (btnLoading) btnLoading.style.display = 'inline-flex';
-            uploadBtn.disabled = true;
-            
-            try {
-                const formData = new FormData();
-                
-                // 파일 목록에서 데이터 수집
-                files.forEach((row, index) => {
-                    const fileInput = row.querySelector('input[type="file"]');
-                    const descInput = row.querySelector('input[name*="description"]');
-                    const tagInput = row.querySelector('input[name*="tags"]');
-                    const commonCheck = row.querySelector('input[name*="is_common"]');
-                    
-                    if (fileInput && fileInput.files[0]) {
-                        formData.append(`files[${index}]`, fileInput.files[0]);
-                        formData.append(`descriptions[${index}]`, descInput ? descInput.value : '');
-                        formData.append(`tags[${index}]`, tagInput ? tagInput.value : '');
-                        formData.append(`is_common[${index}]`, commonCheck ? commonCheck.checked : false);
-                    }
-                });
-                
-                const response = await fetch('/common/doc/', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success) {
-                        showMessage('문서가 성공적으로 업로드되었습니다!');
-                        
-                        // 업로드 목록 초기화
-                        uploadList.innerHTML = '';
-                        
-                        // 2초 후 페이지 새로고침
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        throw new Error(result.error || '문서 업로드에 실패했습니다.');
-                    }
-                } else {
-                    const errorText = await response.text();
-                    throw new Error(`서버 오류 (${response.status}): ${errorText}`);
-                }
-            } catch (error) {
-                console.error('문서 업로드 오류:', error);
-                showMessage(error.message || '문서 업로드 중 오류가 발생했습니다.', 'error');
-            } finally {
-                // 로딩 상태 종료
-                if (btnText) btnText.style.display = 'inline';
-                if (btnLoading) btnLoading.style.display = 'none';
-                uploadBtn.disabled = false;
-            }
-        });
-    }
-});
+// doc.js와 호환성을 위한 함수들
+function showSuccess(message) {
+    showMessage(message, 'success');
+}
+
+function showError(message) {
+    showMessage(message, 'error');
+}
+
+// 커스텀 확인 대화상자 (doc.js에서 사용)
+function showCustomConfirm(message) {
+    return new Promise((resolve) => {
+        if (confirm(message)) {
+            resolve(true);
+        } else {
+            resolve(false);
+        }
+    });
+}
 
 // FastAPI용 삭제 모달 트리거 함수 (doc.js와 동일한 이름)
 function deleteDocModal(docId) {
@@ -822,13 +789,13 @@ function deleteDocModal(docId) {
 const style = document.createElement('style');
 style.textContent = `
 .loading-spinner {
-    width: 12px;
-    height: 12px;
-    border: 2px solid #ffffff33;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     border-top: 2px solid #ffffff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-right: 5px;
+    margin-right: 8px;
 }
 
 @keyframes spin {
@@ -837,8 +804,20 @@ style.textContent = `
 }
 
 .btn-loading {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.doc-upload-btn.loading {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
 }
 `;
 document.head.appendChild(style);

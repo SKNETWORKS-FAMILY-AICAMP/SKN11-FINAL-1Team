@@ -1,6 +1,7 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 import json
+import logging
 import markdown
 from django.utils.html import strip_tags
 from django.utils.text import Truncator
@@ -276,6 +277,11 @@ def task_update(request, task_assign_id):
         
         # 업데이트할 데이터 준비
         update_data = {'status': new_status}
+        
+        # 🔧 하위 태스크의 경우 parent_id 유지 (중요!)
+        if task_info.get('parent_id') is not None:
+            update_data['parent_id'] = task_info.get('parent_id')
+            print(f"DEBUG - 하위 태스크 감지: parent_id={task_info.get('parent_id')} 유지")
         
         # 상태에 따른 날짜 업데이트
         if old_status != '진행중' and new_status == '진행중':
@@ -1030,9 +1036,11 @@ def task_detail(request, task_assign_id):
                             user_name = f"{last_name}{first_name}".strip()
                     
                     memo_list.append({
+                        'id': memo.get('memo_id') or memo.get('id'),  # 메모 ID 추가
                         'user': user_name,
                         'comment': memo.get('comment'),
                         'create_date': memo.get('create_date'),
+                        'user_id': user_info.get('user_id') if user_info else None,  # 수정/삭제 권한 확인용
                     })
             
             logger.info(f"FastAPI로 메모 {len(memo_list)}개 조회 성공")
@@ -1049,13 +1057,17 @@ def task_detail(request, task_assign_id):
                 
                 for memo in django_memos:
                     user_name = '🤖 리뷰 에이전트'
+                    user_id = None
                     if memo.user:
                         user_name = f"{memo.user.last_name}{memo.user.first_name}"
+                        user_id = memo.user.user_id
                     
                     memo_list.append({
+                        'id': memo.memo_id,  # 메모 ID 추가
                         'user': user_name,
                         'comment': memo.comment,
                         'create_date': memo.create_date.isoformat() if memo.create_date else '',
+                        'user_id': user_id,  # 수정/삭제 권한 확인용
                     })
                 
                 logger.info(f"Django ORM으로 메모 {len(memo_list)}개 조회 성공")
@@ -1222,6 +1234,7 @@ def update_task_status(request, task_id):
                     'status': task_obj.status,
                     'priority': task_obj.priority,
                     'mentorship_id': task_obj.mentorship_id,
+                    'parent_id': task_obj.parent_id,  # 🔧 중요: parent_id 추가!
                 }
                 use_fastapi = False
                 logger.info(f"✅ Django ORM 개별 태스크 조회 성공: {task_obj.title}")
@@ -1263,20 +1276,43 @@ def update_task_status(request, task_id):
         logger.info(f"🔍 - 요청된 mentorship_id: {mentorship_id}")
         
         # 🚀 FastAPI TaskAssignCreate 스키마에 맞는 완전한 데이터 구성
+        # 🔧 중요: 기존 태스크 정보 우선, 클라이언트 데이터는 명시적으로 변경된 것만 적용
         update_data = {
-            'title': data.get('title', task_result.get('title') or ''),
-            'description': data.get('description', task_result.get('description') or ''), 
-            'guideline': data.get('guideline', task_result.get('guideline') or ''),
+            'title': task_result.get('title') or '',  # 🔧 기존 제목 유지
+            'description': task_result.get('description') or '',  # 🔧 기존 설명 유지
+            'guideline': task_result.get('guideline') or '',  # 🔧 기존 가이드라인 유지
             'week': task_result.get('week', 1),
             'order': task_result.get('order', 1),
-            'scheduled_start_date': data.get('scheduled_start_date', task_result.get('scheduled_start_date')),
-            'scheduled_end_date': data.get('scheduled_end_date', task_result.get('scheduled_end_date')),
+            'scheduled_start_date': task_result.get('scheduled_start_date'),
+            'scheduled_end_date': task_result.get('scheduled_end_date'),
             'real_start_date': task_result.get('real_start_date'),
             'real_end_date': task_result.get('real_end_date'),
-            'status': new_status,
-            'priority': data.get('priority', task_result.get('priority')),  # 기본값 '중' 제거
+            'status': new_status,  # 🔧 상태만 변경
+            'priority': task_result.get('priority'),  # 🔧 기존 우선순위 유지
             'mentorship_id': mentorship_id,
+            'parent_id': task_result.get('parent_id'),  # 🔧 중요: parent_id 유지!
         }
+        
+        # 🔧 클라이언트에서 명시적으로 수정 요청한 필드만 업데이트
+        if data.get('description') and data.get('description').strip():
+            update_data['description'] = data.get('description').strip()
+            logger.info(f"🔍 클라이언트에서 설명 수정 요청: {data.get('description')[:50]}...")
+        
+        if data.get('title') and data.get('title').strip():
+            update_data['title'] = data.get('title').strip()
+            logger.info(f"🔍 클라이언트에서 제목 수정 요청: {data.get('title')}")
+        
+        if data.get('priority') and data.get('priority').strip():
+            update_data['priority'] = data.get('priority').strip()
+            logger.info(f"🔍 클라이언트에서 우선순위 수정 요청: {data.get('priority')}")
+        
+        if data.get('scheduled_start_date'):
+            update_data['scheduled_start_date'] = data.get('scheduled_start_date')
+            logger.info(f"🔍 클라이언트에서 시작일 수정 요청: {data.get('scheduled_start_date')}")
+        
+        if data.get('scheduled_end_date'):
+            update_data['scheduled_end_date'] = data.get('scheduled_end_date')
+            logger.info(f"🔍 클라이언트에서 종료일 수정 요청: {data.get('scheduled_end_date')}")
         
         # 🔧 None 값 제거 (FastAPI에서 Optional 필드 처리)
         clean_update_data = {}
@@ -1289,7 +1325,24 @@ def update_task_status(request, task_id):
         logger.info(f"🔄 상태 변경: {old_status} -> {new_status}")
         logger.info(f"🔧 FastAPI 업데이트 데이터: {update_data}")
         
-        # 🔧 날짜 필드 업데이트 로직
+        # � 하위 태스크인 경우 parent_id 검증 로그 추가
+        if task_result.get('parent_id'):
+            logger.info(f"🔍 하위 태스크 업데이트 감지:")
+            logger.info(f"  - task_id: {task_id}")
+            logger.info(f"  - parent_id: {task_result.get('parent_id')} (유지되어야 함)")
+            logger.info(f"  - update_data에 포함된 parent_id: {update_data.get('parent_id')}")
+            logger.info(f"  - 기존 제목: '{task_result.get('title')}'")
+            logger.info(f"  - 기존 설명: '{task_result.get('description')[:100] if task_result.get('description') else '없음'}...'")
+            logger.info(f"  - 업데이트할 제목: '{update_data.get('title')}'")
+            logger.info(f"  - 업데이트할 설명: '{update_data.get('description')[:100] if update_data.get('description') else '없음'}...'")
+            logger.info(f"  - 상태 변경: {task_result.get('status')} -> {new_status}")
+        else:
+            logger.info(f"🔍 상위 태스크 업데이트:")
+            logger.info(f"  - task_id: {task_id}")
+            logger.info(f"  - parent_id: None (상위 태스크)")
+            logger.info(f"  - 상태 변경: {task_result.get('status')} -> {new_status}")
+        
+        # �🔧 날짜 필드 업데이트 로직
         if new_status == '진행중' and not task_result.get('real_start_date'):
             from datetime import datetime
             update_data['real_start_date'] = datetime.now().date().isoformat()
@@ -1305,6 +1358,46 @@ def update_task_status(request, task_id):
             try:
                 result = fastapi_client.update_task_assign(task_id, update_data)
                 logger.info(f"✅ FastAPI 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
+                
+                # � 하위 태스크 업데이트 후 검증
+                if task_result.get('parent_id'):
+                    try:
+                        updated_task = fastapi_client.get_task_assign(task_id)
+                        if updated_task.get('parent_id') != task_result.get('parent_id'):
+                            logger.error(f"❌ 심각한 오류: 하위 태스크 {task_id}의 parent_id가 {task_result.get('parent_id')} -> {updated_task.get('parent_id')}로 변경됨!")
+                        else:
+                            logger.info(f"✅ 하위 태스크 {task_id}의 parent_id 올바르게 유지됨: {updated_task.get('parent_id')}")
+                        
+                        # 🔍 내용 변경 검증
+                        if updated_task.get('title') != task_result.get('title'):
+                            logger.warning(f"⚠️ 하위 태스크 {task_id} 제목 변경됨: '{task_result.get('title')}' -> '{updated_task.get('title')}'")
+                        else:
+                            logger.info(f"✅ 하위 태스크 {task_id} 제목 올바르게 유지됨")
+                        
+                        if updated_task.get('description') != task_result.get('description'):
+                            logger.warning(f"⚠️ 하위 태스크 {task_id} 설명 변경됨")
+                            logger.info(f"  이전: '{task_result.get('description')[:100] if task_result.get('description') else '없음'}...'")
+                            logger.info(f"  현재: '{updated_task.get('description')[:100] if updated_task.get('description') else '없음'}...'")
+                        else:
+                            logger.info(f"✅ 하위 태스크 {task_id} 설명 올바르게 유지됨")
+                            
+                    except Exception as verify_error:
+                        logger.warning(f"⚠️ 하위 태스크 {task_id} 업데이트 후 검증 실패: {verify_error}")
+                
+                # � 상위 태스크와 하위 태스크는 완전히 독립적으로 동작
+                # 상위 태스크 완료 시에도 하위 태스크 상태는 변경하지 않음
+                if new_status == '완료' and not task_result.get('parent_id'):
+                    logger.info(f"🔥 상위 태스크 {task_id} 완료됨 - 하위 태스크는 독립적으로 유지됩니다.")
+                    logger.info(f"🔍 상위 태스크 완료는 진척도에만 반영되며, 하위 태스크 상태는 변경하지 않습니다.")
+                elif task_result.get('parent_id'):
+                    logger.info(f"🔍 하위 태스크 {task_id} 상태 변경됨: {old_status} -> {new_status}")
+                    logger.info(f"🔍 하위 태스크는 상위 태스크({task_result.get('parent_id')})에 영향을 주지 않습니다.")
+                
+                # 🚨 하위 태스크 완료 시 상위 태스크를 자동으로 완료시키는 로직 방지
+                if task_result.get('parent_id') and new_status == '완료':
+                    logger.info(f"🚨 하위 태스크 {task_id} 완료됨 - 상위 태스크는 독립적으로 유지됩니다.")
+                    # 상위 태스크 자동 완료 로직을 실행하지 않음
+                
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
                     try:
@@ -1351,18 +1444,26 @@ def update_task_status(request, task_id):
                 logger.info(f"🔧 Django ORM으로 태스크 상태 업데이트 시도...")
                 task_obj = TaskAssign.objects.get(task_assign_id=task_id)
                 task_obj.status = new_status
-                if new_description:
-                    task_obj.description = new_description  # 추가
+                
+                # 🔧 명시적으로 요청된 필드만 업데이트 (기존 내용 보호)
+                if data.get('description') and data.get('description').strip():
+                    task_obj.description = data.get('description').strip()
+                    logger.info(f"🔍 Django ORM 설명 수정: {data.get('description')[:50]}...")
+                
+                if data.get('title') and data.get('title').strip():
+                    task_obj.title = data.get('title').strip()
+                    logger.info(f"🔍 Django ORM 제목 수정: {data.get('title')}")
 
                 # 🔧 우선순위 업데이트
-                if data.get('priority'):
-                    task_obj.priority = data['priority']
+                if data.get('priority') and data.get('priority').strip():
+                    task_obj.priority = data.get('priority').strip()
+                    logger.info(f"🔍 Django ORM 우선순위 수정: {data.get('priority')}")
 
                 # 🔧 종료일 업데이트
                 if data.get('scheduled_end_date'):
                     try:
                         task_obj.scheduled_end_date = datetime.strptime(data['scheduled_end_date'], '%Y-%m-%d').date()
-                        logger.info(f"📅 종료일 저장: {task_obj.scheduled_end_date}")
+                        logger.info(f"📅 Django ORM 종료일 저장: {task_obj.scheduled_end_date}")
                     except ValueError:
                         logger.warning(f"유효하지 않은 종료일 형식: {data['scheduled_end_date']}")
 
@@ -1370,7 +1471,7 @@ def update_task_status(request, task_id):
                 if data.get('scheduled_start_date'):
                     try:
                         task_obj.scheduled_start_date = datetime.strptime(data['scheduled_start_date'], '%Y-%m-%d').date()
-                        logger.info(f"📅 시작일 저장: {task_obj.scheduled_start_date}")
+                        logger.info(f"📅 Django ORM 시작일 저장: {task_obj.scheduled_start_date}")
                     except ValueError:
                         logger.warning(f"유효하지 않은 시작일 형식: {data['scheduled_start_date']}")
 
@@ -1385,6 +1486,45 @@ def update_task_status(request, task_id):
                 
                 task_obj.save()
                 logger.info(f"✅ Django ORM 태스크 상태 업데이트 성공 - {old_status} -> {new_status}")
+                
+                # � Django ORM 하위 태스크 업데이트 후 검증
+                if task_obj.parent_id:
+                    task_obj.refresh_from_db()
+                    expected_parent_id = task_result.get('parent_id') if isinstance(task_result, dict) else getattr(task_result, 'parent_id', None)
+                    if task_obj.parent_id != expected_parent_id:
+                        logger.error(f"❌ Django ORM 심각한 오류: 하위 태스크 {task_id}의 parent_id가 {expected_parent_id} -> {task_obj.parent_id}로 변경됨!")
+                    else:
+                        logger.info(f"✅ Django ORM 하위 태스크 {task_id}의 parent_id 올바르게 유지됨: {task_obj.parent_id}")
+                    
+                    # 🔍 Django ORM 내용 변경 검증
+                    original_title = task_result.get('title') if isinstance(task_result, dict) else getattr(task_result, 'title', None)
+                    original_description = task_result.get('description') if isinstance(task_result, dict) else getattr(task_result, 'description', None)
+                    
+                    if task_obj.title != original_title:
+                        logger.warning(f"⚠️ Django ORM 하위 태스크 {task_id} 제목 변경됨: '{original_title}' -> '{task_obj.title}'")
+                    else:
+                        logger.info(f"✅ Django ORM 하위 태스크 {task_id} 제목 올바르게 유지됨")
+                    
+                    if task_obj.description != original_description:
+                        logger.warning(f"⚠️ Django ORM 하위 태스크 {task_id} 설명 변경됨")
+                        logger.info(f"  이전: '{original_description[:100] if original_description else '없음'}...'")
+                        logger.info(f"  현재: '{task_obj.description[:100] if task_obj.description else '없음'}...'")
+                    else:
+                        logger.info(f"✅ Django ORM 하위 태스크 {task_id} 설명 올바르게 유지됨")
+                
+                # � 상위 태스크와 하위 태스크는 완전히 독립적으로 동작 (Django ORM)
+                # 상위 태스크 완료 시에도 하위 태스크 상태는 변경하지 않음
+                if new_status == '완료' and not task_obj.parent_id:
+                    logger.info(f"🔥 상위 태스크 {task_id} 완료됨 (Django ORM) - 하위 태스크는 독립적으로 유지됩니다.")
+                    logger.info(f"🔍 상위 태스크 완료는 진척도에만 반영되며, 하위 태스크 상태는 변경하지 않습니다.")
+                elif task_obj.parent_id:
+                    logger.info(f"🔍 하위 태스크 {task_id} 상태 변경됨 (Django ORM): {old_status} -> {new_status}")
+                    logger.info(f"🔍 하위 태스크는 상위 태스크({task_obj.parent_id})에 영향을 주지 않습니다.")
+                
+                # 🚨 하위 태스크 완료 시 상위 태스크를 자동으로 완료시키는 로직 방지 (Django ORM)
+                if task_obj.parent_id and new_status == '완료':
+                    logger.info(f"🚨 하위 태스크 {task_id} 완료됨 (Django ORM) - 상위 태스크는 독립적으로 유지됩니다.")
+                    # 상위 태스크 자동 완료 로직을 실행하지 않음
                 
                 # ✅ 검토요청 알람 생성
                 if new_status == '검토요청':
@@ -1466,8 +1606,24 @@ def create_review_request_alarm(mentorship_id, task_title, task_id=None):
     return False
 
 
+def auto_complete_subtasks(parent_task_id, mentorship_id):
+    """
+    🚨 DEPRECATED: 이 함수는 더 이상 사용되지 않습니다.
+    상위 태스크와 하위 태스크는 완전히 독립적으로 동작하도록 변경되었습니다.
+    상위 태스크 완료 시에도 하위 태스크 상태는 자동으로 변경되지 않습니다.
+    진척도는 상위 태스크 완료 상태만을 기준으로 계산됩니다.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.warning(f"⚠️ DEPRECATED: auto_complete_subtasks 함수가 호출되었습니다. 더 이상 하위 태스크를 자동 완료하지 않습니다.")
+    logger.info(f"🔍 상위 태스크 {parent_task_id}가 완료되었지만, 하위 태스크는 독립적으로 유지됩니다.")
+    
+    # 더 이상 하위 태스크를 자동으로 완료시키지 않음
+    return True
 
-@login_required 
+
+@login_required  
 def change_task_status_for_test(request):
     """🧪 테스트용: 태스크 상태 변경 유틸리티"""
     if request.method == 'POST':
@@ -1668,4 +1824,126 @@ def complete_onboarding(request):
             'success': False,
             'error': f'처리 중 오류가 발생했습니다: {str(e)}'
         }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def memo_update(request, memo_id):
+    """메모 수정 API"""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"메모 수정 요청 - memo_id: {memo_id}")
+        
+        data = json.loads(request.body)
+        new_comment = data.get('comment', '').strip()
+        
+        if not new_comment:
+            return JsonResponse({'success': False, 'error': '메모 내용을 입력하세요.'}, status=400)
+        
+        # 현재 사용자 정보
+        user_data = request.session.get('user_data', {})
+        user_id = user_data.get('user_id') or getattr(request.user, 'user_id', None)
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
+        
+        # FastAPI 우선, Django ORM 대체
+        try:
+            # FastAPI로 메모 수정 시도
+            update_data = {'comment': new_comment}
+            result = fastapi_client.update_memo(memo_id, update_data)
+            
+            logger.info(f"FastAPI로 메모 수정 성공 - memo_id: {memo_id}")
+            return JsonResponse({
+                'success': True,
+                'memo': {
+                    'id': memo_id,
+                    'comment': new_comment,
+                    'create_date': result.get('create_date', ''),
+                }
+            })
+            
+        except Exception as fastapi_error:
+            logger.warning(f"FastAPI 메모 수정 실패: {fastapi_error}")
+            
+            # Django ORM 대체 로직
+            try:
+                from core.models import Memo
+                
+                memo = Memo.objects.filter(memo_id=memo_id, user_id=user_id).first()
+                if not memo:
+                    return JsonResponse({'success': False, 'error': '메모를 찾을 수 없거나 수정 권한이 없습니다.'}, status=404)
+                
+                memo.comment = new_comment
+                memo.save()
+                
+                logger.info(f"Django ORM으로 메모 수정 성공 - memo_id: {memo_id}")
+                return JsonResponse({
+                    'success': True,
+                    'memo': {
+                        'id': memo_id,
+                        'comment': memo.comment,
+                        'create_date': memo.create_date.isoformat() if memo.create_date else '',
+                    }
+                })
+                
+            except Exception as orm_error:
+                logger.error(f"Django ORM 메모 수정 실패: {orm_error}")
+                return JsonResponse({'success': False, 'error': f'메모 수정 실패: {str(orm_error)}'}, status=500)
+        
+    except Exception as e:
+        logger.error(f"메모 수정 전체 실패: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def memo_delete(request, memo_id):
+    """메모 삭제 API"""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"메모 삭제 요청 - memo_id: {memo_id}")
+        
+        # 현재 사용자 정보
+        user_data = request.session.get('user_data', {})
+        user_id = user_data.get('user_id') or getattr(request.user, 'user_id', None)
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'}, status=401)
+        
+        # FastAPI 우선, Django ORM 대체
+        try:
+            # FastAPI로 메모 삭제 시도
+            result = fastapi_client.delete_memo(memo_id)
+            
+            logger.info(f"FastAPI로 메모 삭제 성공 - memo_id: {memo_id}")
+            return JsonResponse({'success': True, 'message': '메모가 삭제되었습니다.'})
+            
+        except Exception as fastapi_error:
+            logger.warning(f"FastAPI 메모 삭제 실패: {fastapi_error}")
+            
+            # Django ORM 대체 로직
+            try:
+                from core.models import Memo
+                
+                memo = Memo.objects.filter(memo_id=memo_id, user_id=user_id).first()
+                if not memo:
+                    return JsonResponse({'success': False, 'error': '메모를 찾을 수 없거나 삭제 권한이 없습니다.'}, status=404)
+                
+                memo.delete()
+                
+                logger.info(f"Django ORM으로 메모 삭제 성공 - memo_id: {memo_id}")
+                return JsonResponse({'success': True, 'message': '메모가 삭제되었습니다.'})
+                
+            except Exception as orm_error:
+                logger.error(f"Django ORM 메모 삭제 실패: {orm_error}")
+                return JsonResponse({'success': False, 'error': f'메모 삭제 실패: {str(orm_error)}'}, status=500)
+        
+    except Exception as e:
+        logger.error(f"메모 삭제 전체 실패: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 

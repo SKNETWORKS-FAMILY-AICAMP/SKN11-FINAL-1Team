@@ -247,8 +247,6 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 # =================================
 # Agent 실행 주기 (초 단위)
 AGENT_CYCLE_INTERVAL = int(os.getenv('AGENT_CYCLE_INTERVAL', '30'))
-# 정시 체크 간격 (시간 단위)
-AGENT_HOURLY_CHECK = int(os.getenv('AGENT_HOURLY_CHECK', '1'))
 # 일일 체크 실행 시간 (24시간 형식)
 AGENT_DAILY_CHECK_HOUR = int(os.getenv('AGENT_DAILY_CHECK_HOUR', '9'))
 # Agent 활성화 여부

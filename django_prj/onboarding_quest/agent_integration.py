@@ -330,29 +330,21 @@ D : 개선 정도 0~40% 문제해결력 0~40% 실무 적용성 0~40%
     def _check_onboarding_completion(self, user_id: int):
         """온보딩 완료 여부 체크 및 보고서 생성 (Agent_LangGraph_final.py의 EventAgent.check_completion 로직)"""
         try:
-            from core.models import Mentorship, TaskAssign, User
+            from core.models import Mentorship, TaskAssign
             
-            # 사용자의 활성 멘토십 조회
-            active_mentorship = Mentorship.objects.filter(
+            # 사용자의 비활성화된 멘토십 중 보고서가 없는 것만 조회
+            deactive_mentorship = Mentorship.objects.filter(
                 mentee_id=user_id,
-                is_active=True
+                is_active=False,  # 비활성화된 멘토십
+                report__isnull=True  # 보고서가 없는 멘토십만
             ).first()
             
-            if not active_mentorship:
+            # 멘토십이 없거나 이미 보고서가 있는 경우
+            if not deactive_mentorship:
                 return
             
-            # 해당 멘토십의 모든 태스크 조회
-            all_tasks = TaskAssign.objects.filter(
-                mentorship_id=active_mentorship,
-                parent__isnull=True  # 상위 태스크만
-            )
-            
-            # 모든 태스크가 완료되었는지 확인
-            incomplete_tasks = all_tasks.exclude(status='완료')
-            
-            if not incomplete_tasks.exists():
-                self.logger.info(f"🎉 온보딩 완료 감지: user_id={user_id}")
-                self._generate_final_report(user_id, active_mentorship)
+            self.logger.info(f"🔚 온보딩 종료 감지: user_id={user_id}")
+            self._generate_final_report(user_id, deactive_mentorship)
                 
         except Exception as e:
             self.logger.error(f"❌ 온보딩 완료 체크 실패: {e}")
@@ -366,7 +358,8 @@ D : 개선 정도 0~40% 문제해결력 0~40% 실무 적용성 0~40%
             full_name = f"{mentee.last_name}{mentee.first_name}"
             
             # 모든 태스크 및 메모 조회
-            all_tasks = TaskAssign.objects.filter(mentorship_id=mentorship)
+            all_tasks = TaskAssign.objects.filter(mentorship_id=mentorship, 
+                                                  parent__isnull=True)  # 상위 태스크만
             all_memos = Memo.objects.filter(task_assign__in=all_tasks)
             
             if llm:
@@ -546,40 +539,43 @@ D : 개선 정도 0~40% 문제해결력 0~40% 실무 적용성 0~40%
                 if not mentorships.exists():
                     continue
                 
-                # 해당 멘티의 태스크들 중 마감일이 오늘이거나 내일인 것들
+                # 해당 멘티의 태스크들 중 마감일이 오늘이거나 내일인 것들 (상위 태스크만)
                 today_tasks = TaskAssign.objects.filter(
                     mentorship_id__in=mentorships,
                     scheduled_end_date=today,
-                    status__in=['진행전', '진행중']
+                    status__in=['진행전', '진행중'],
+                    parent__isnull=True  # 상위 태스크만
                 )
                 
                 tomorrow_tasks = TaskAssign.objects.filter(
                     mentorship_id__in=mentorships,
                     scheduled_end_date=tomorrow,
-                    status__in=['진행전', '진행중']
+                    status__in=['진행전', '진행중'],
+                    parent__isnull=True  # 상위 태스크만
                 )
                 
                 overdue_tasks = TaskAssign.objects.filter(
                     mentorship_id__in=mentorships,
                     scheduled_end_date__lt=today,
-                    status__in=['진행전', '진행중']
+                    status__in=['진행전', '진행중'],
+                    parent__isnull=True  # 상위 태스크만
                 )
                 
                 # 알림 메시지 생성
                 if today_tasks.exists() or tomorrow_tasks.exists() or overdue_tasks.exists():
-                    message_parts = [f"안녕하세요, {mentee.last_name}{mentee.first_name}님."]
+                    message_parts = [f"안녕하세요, {mentee.last_name}{mentee.first_name}님.\n"]
                     
                     if overdue_tasks.exists():
                         overdue_titles = [task.title for task in overdue_tasks[:3]]
-                        message_parts.append(f"마감일이 지난 태스크: {', '.join(overdue_titles)}")
+                        message_parts.append(f"🔴 마감일이 지난 태스크: {', '.join(overdue_titles)}\n")
                     
                     if today_tasks.exists():
                         today_titles = [task.title for task in today_tasks[:3]]
-                        message_parts.append(f"오늘 마감인 태스크: {', '.join(today_titles)}")
+                        message_parts.append(f"🟡 오늘 마감인 태스크: {', '.join(today_titles)}\n")
                     
                     if tomorrow_tasks.exists():
                         tomorrow_titles = [task.title for task in tomorrow_tasks[:3]]
-                        message_parts.append(f"내일 마감인 태스크: {', '.join(tomorrow_titles)}")
+                        message_parts.append(f"🟢 내일 마감인 태스크: {', '.join(tomorrow_titles)}\n")
                     
                     message_parts.append("마감일을 놓치지 않도록 확인해 주세요.")
                     

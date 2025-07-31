@@ -33,7 +33,6 @@ DB_CONFIG = {
 # Agent 스케줄 설정
 AGENT_CONFIG = {
     'cycle_interval': int(os.getenv('AGENT_CYCLE_INTERVAL', 30)),  # 기본 30초
-    'hourly_check': int(os.getenv('AGENT_HOURLY_CHECK', 1)),     # 기본 1시간
     'daily_check_hour': int(os.getenv('AGENT_DAILY_CHECK_HOUR', 9)),  # 기본 오전 9시
     'enabled': os.getenv('AGENT_ENABLED', 'True').lower() == 'true'   # 기본 활성화
 }
@@ -87,15 +86,6 @@ def load_current_status_map():
 # ✅ 라우터
 def route_node(state: GraphState) -> GraphState:
     return state
-
-# def routing_condition(state: GraphState) -> str:
-#     if state.get("onboarding_due") and state.get("user_id"):
-#         return "check_onboarding_complete"
-#     if state.get("pending_review"):
-#         return "detect_status_change"
-#     if state.get("deadline_due"):
-#         return "check_deadline_tasks"
-#     return "check_deadline_tasks"
 
 
 def routing_condition(state: GraphState) -> str:
@@ -1071,7 +1061,6 @@ class AgentScheduler:
         print(f"🕐 백그라운드 스케줄러 시작... (주기: {AGENT_CONFIG['cycle_interval']}초)")
         
         last_cycle_time = time.time()
-        last_hourly_check = datetime.now().hour
         last_daily_check = datetime.now().date()
         
         while self.is_running:
@@ -1084,12 +1073,6 @@ class AgentScheduler:
                 if current_time - last_cycle_time >= AGENT_CONFIG['cycle_interval']:
                     self.run_agent_cycle()
                     last_cycle_time = current_time
-                
-                # 매시 정각에 실행 (hourly_check 간격으로)
-                elif current_hour != last_hourly_check and current_hour % AGENT_CONFIG['hourly_check'] == 0:
-                    print(f"⏰ 정시 체크 실행 (매 {AGENT_CONFIG['hourly_check']}시간)")
-                    self.run_agent_cycle()
-                    last_hourly_check = current_hour
                 
                 # 매일 설정된 시간에 실행
                 elif current_date != last_daily_check and current_hour == AGENT_CONFIG['daily_check_hour']:
@@ -1119,7 +1102,6 @@ class AgentScheduler:
         print("🚀 LangGraph 통합 에이전트 백그라운드 실행 시작...")
         print(f"📋 Agent 설정:")
         print(f"   - 실행 주기: {AGENT_CONFIG['cycle_interval']}초")
-        print(f"   - 정시 체크: 매 {AGENT_CONFIG['hourly_check']}시간")
         print(f"   - 일일 체크: 매일 {AGENT_CONFIG['daily_check_hour']}시")
         print(f"   - PostgreSQL DB: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
         
@@ -1155,7 +1137,6 @@ class AgentScheduler:
             "enabled": AGENT_CONFIG['enabled'],
             "config": {
                 "cycle_interval": AGENT_CONFIG['cycle_interval'],
-                "hourly_check": AGENT_CONFIG['hourly_check'],
                 "daily_check_hour": AGENT_CONFIG['daily_check_hour']
             },
             "database": {

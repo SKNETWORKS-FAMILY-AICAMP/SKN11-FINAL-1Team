@@ -1,4 +1,3 @@
-import re
 from fastapi import APIRouter, HTTPException, Depends, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -10,7 +9,6 @@ import logging
 import time
 import sys
 import os
-import html  # 상단에 추가
 from models import Docs  # 상단에 추가
 
 # logging.basicConfig(
@@ -97,7 +95,6 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 class RagChatRequest(BaseModel):
     question: str
-    html_message: Optional[str] = None  # ✅ 추가
     session_id: Optional[int] = None
     user_id: int
     department_id: int
@@ -243,8 +240,7 @@ async def chat_with_rag(request: RagChatRequest, db: Session = Depends(get_db)):
         # 사용자 메시지 저장
         crud.create_chat_message(db, schemas.ChatMessageCreate(
             session_id=session_id,
-            # message_text=request.question
-            message_text=request.html_message or request.question,
+            message_text=request.question,
             message_type="user"
         ))
         
@@ -399,24 +395,7 @@ async def get_user_sessions_rag(user_id: int, db: Session = Depends(get_db)):
                     first_user_message = msg
                     break
             
-            # preview = first_user_message.message_text if first_user_message else ""
-            # preview = ""
-            # if first_user_message:
-            #     raw = first_user_message.message_text
-            #     preview = re.sub(r"<span.*?>.*?</span>", "", raw, flags=re.DOTALL).strip()
-            preview = ""
-            if first_user_message:
-                from bs4 import BeautifulSoup
-                raw = first_user_message.message_text
-                # soup = BeautifulSoup(raw, "html.parser")
-                unescaped = html.unescape(raw)  # ← 이 줄 추가
-                soup = BeautifulSoup(unescaped, "html.parser")
-                for span in soup.select("span.token"):
-                    span.decompose()
-                preview = soup.get_text(strip=True)
-
-
-
+            preview = first_user_message.message_text if first_user_message else ""
             result.append({
                 "session_id": session.session_id,
                 "summary": session.summary,
@@ -436,7 +415,6 @@ async def get_chat_messages_rag(session_id: int, db: Session = Depends(get_db)):
         result = []
         for msg in messages:
             result.append({
-                "message_id": msg.message_id,  # 추가
                 "type": msg.message_type,
                 "text": msg.message_text
             })

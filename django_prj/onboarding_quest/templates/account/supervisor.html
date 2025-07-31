@@ -414,7 +414,7 @@
             </div>
             <a href="?" class="nav-item {% if not selected_department_id %}active{% endif %}">
                 <svg class="nav-icon" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                 </svg>
                 전체
             </a>
@@ -535,7 +535,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; margin-bottom: 16px;">
                 <!-- 왼쪽: 검색 관련 버튼들 -->
                 <div style="display: flex; gap: 12px; align-items: center;">
-                    <input type="text" id="search-input" placeholder="사번, 이름, 이메일 검색" value="{{ search_query }}" class="search-input" onkeyup="handleSearchKeyup(event)" style="max-width: 300px;">
+                    <input type="text" id="search-input" placeholder="사번, 이름, 이메일, 부서, 직급 검색" value="{{ search_query }}" class="search-input" onkeyup="handleSearchKeyup(event)" style="max-width: 350px;">
                     {% if selected_department_id %}
                     <input type="hidden" id="dept-filter" value="{{ selected_department_id }}">
                     {% endif %}
@@ -662,12 +662,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshBtn = document.querySelector('button[title="새로고침"]');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
+            // 검색 입력 필드 초기화
             document.getElementById('search-input').value = '';
             
             // 모든 헤더 정렬 상태 초기화
             Object.keys(sortStates).forEach(key => {
                 sortStates[key] = 'none';
             });
+            
+            // 클라이언트 사이드 검색 결과 초기화
+            const tbody = document.querySelector('.table tbody');
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                if (!row.classList.contains('no-search-result')) {
+                    row.style.display = '';
+                }
+            });
+            
+            // "검색 결과가 없습니다" 메시지 제거
+            const noResultRow = tbody.querySelector('.no-search-result');
+            if (noResultRow) {
+                noResultRow.remove();
+            }
             
             refreshUserList();
         });
@@ -711,11 +727,23 @@ async function refreshUserList(searchQuery = '') {
             updateUserTable(users);
         } else {
             console.error('사용자 목록 조회 실패:', response.status);
+            // 서버 사이드 검색 실패 시 클라이언트 사이드 검색으로 fallback
+            if (searchQuery) {
+                console.log('클라이언트 사이드 검색으로 전환');
+                performClientSideSearch();
+            }
         }
     } catch (error) {
         console.error('사용자 목록 새로고침 실패:', error);
-        // 실패 시 페이지 전체 새로고침으로 대체
-        window.location.reload();
+        
+        // 검색어가 있는 경우 클라이언트 사이드 검색 시도
+        if (searchQuery) {
+            console.log('네트워크 오류로 인해 클라이언트 사이드 검색으로 전환');
+            performClientSideSearch();
+        } else {
+            // 검색어가 없는 경우 페이지 전체 새로고침으로 대체
+            window.location.reload();
+        }
     }
 }
 
@@ -913,18 +941,81 @@ function updateHeaderIndicator(fieldId, indicator) {
 // 검색 함수들
 function performSearch() {
     const searchQuery = document.getElementById('search-input').value.trim();
+    
+    // 서버 사이드 검색 시도 (FastAPI 사용)
     refreshUserList(searchQuery);
+    
+    // 서버 검색이 실패하면 클라이언트 사이드 검색으로 fallback
+    // 이는 refreshUserList의 catch 블록에서 처리됨
 }
 
-function clearSearch() {
-    document.getElementById('search-input').value = '';
+// 클라이언트 사이드 검색 함수 (fallback용)
+function performClientSideSearch() {
+    const searchQuery = document.getElementById('search-input').value.trim().toLowerCase();
+    const tbody = document.querySelector('.table tbody');
+    const rows = tbody.querySelectorAll('tr');
     
-    // 모든 헤더 정렬 상태 초기화
-    Object.keys(sortStates).forEach(key => {
-        sortStates[key] = 'none';
+    if (!searchQuery) {
+        // 검색어가 없으면 모든 행 표시
+        rows.forEach(row => {
+            if (!row.querySelector('td[colspan]')) { // "등록된 직원이 없습니다" 메시지 제외
+                row.style.display = '';
+            }
+        });
+        return;
+    }
+    
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) { // "등록된 직원이 없습니다" 메시지는 건너뛰기
+            return;
+        }
+        
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 7) return; // 필요한 컬럼이 있는지 확인
+        
+        // 검색 대상 필드들 추출
+        const employeeNumber = cells[1].textContent.trim().toLowerCase(); // 사번
+        const name = cells[2].textContent.trim().toLowerCase(); // 성+이름
+        const email = cells[3].textContent.trim().toLowerCase(); // 이메일
+        const department = cells[4].textContent.trim().toLowerCase(); // 부서 (badge 텍스트 포함)
+        const position = cells[5].textContent.trim().toLowerCase(); // 직급
+        
+        // 검색어가 사번, 이름, 이메일, 부서, 직급 중 하나라도 포함되면 표시
+        const isMatch = employeeNumber.includes(searchQuery) || 
+                       name.includes(searchQuery) || 
+                       email.includes(searchQuery) ||
+                       department.includes(searchQuery) ||
+                       position.includes(searchQuery);
+        
+        if (isMatch) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
     });
     
-    refreshUserList();
+    // 검색 결과가 없으면 "검색 결과가 없습니다" 메시지 표시
+    const noResultRow = tbody.querySelector('.no-search-result');
+    if (visibleCount === 0) {
+        if (!noResultRow) {
+            const newRow = document.createElement('tr');
+            newRow.className = 'no-search-result';
+            newRow.innerHTML = `
+                <td colspan="9" style="text-align: center; padding: 40px; color: #9ca3af;">
+                    "${searchQuery}"에 대한 검색 결과가 없습니다.
+                </td>
+            `;
+            tbody.appendChild(newRow);
+        }
+    } else {
+        // 검색 결과가 있으면 "검색 결과가 없습니다" 메시지 제거
+        if (noResultRow) {
+            noResultRow.remove();
+        }
+    }
 }
 
 function handleSearchKeyup(event) {
